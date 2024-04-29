@@ -14,5 +14,5 @@ target_sources(xsl_wheel PRIVATE
 
 target_link_libraries(xsl_wheel
     PRIVATE
-    absl::log
+    ${SPDLOG_LIBRARIES}
 )

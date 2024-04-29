@@ -26,6 +26,6 @@ target_sources(xsl_transport
 target_link_libraries(xsl_transport
     PUBLIC
     xsl_wheel
-    absl::log
+    ${SPDLOG_LIBRARIES}
 )
 

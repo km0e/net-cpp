@@ -22,6 +22,7 @@ namespace wheel {
   using std::make_shared;
   using std::mutex;
   using std::atomic_flag;
+  using std::to_string;
 }  // namespace wheel
 
 #endif  // _XSL_UTILS_WHEEL_H_

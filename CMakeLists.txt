@@ -1,6 +1,23 @@
-cmake_minimum_required(VERSION 3.10)
-project(xsl LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.29)
+project(httpx)
 
-add_executable(xsl main.cpp)
-set_property(TARGET xsl PROPERTY CXX_STANDARD 20)
-target_include_directories(xsl PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(CMAKE_CXX_STANDARD 17)
+
+set(ABSL_PROPAGATE_CXX_STD ON)
+
+include(FetchContent)
+FetchContent_Declare(
+    abseil
+    GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
+    GIT_TAG 20240116.2
+)
+FetchContent_MakeAvailable(abseil)
+
+
+add_subdirectory(src)
+
+add_subdirectory(examples)
+
+enable_testing()
+
+add_subdirectory(tests)

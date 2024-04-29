@@ -1,0 +1,3 @@
+[submodule "src/utils/config/tomlplusplus"]
+	path = src/utils/config/tomlplusplus
+	url = https://github.com/marzer/tomlplusplus.git

@@ -3,15 +3,19 @@
 #include <unistd.h>
 #include <wheel.h>
 
-#ifndef TEST_HOST
-#define TEST_HOST "localhost"
-#endif
-#ifndef TEST_PORT
-#define TEST_PORT "8080"
-#endif
-int main() {
+#include <CLI/CLI.hpp>
+
+#include "CLI/App.hpp"
+
+int main(int argc, char **argv) {
+  CLI::App app{"TCP Client"};
+  wheel::string ip = "localhost";
+  app.add_option("-i,--ip", ip, "Ip to connect to")->required();
+  int port = 8080;
+  app.add_option("-p,--port", port, "Port to connect to")->required();
+  CLI11_PARSE(app, argc, argv);
   xsl::TcpClient client;
-  int fd = client.connect(TEST_HOST, TEST_PORT);
+  int fd = client.connect(ip.c_str(), wheel::to_string(port).c_str());
   if(fd < 0) {
     return 1;
   }
@@ -19,14 +23,14 @@ int main() {
   int res = write(fd, msg.c_str(), msg.size());
   if(res < 0) {
     close(fd);
-    spdlog::error("Failed to write to {}:{}", TEST_HOST, TEST_PORT);
+    spdlog::error("Failed to write to {}:{}", ip, port);
     return 1;
   }
   char buf[1024];
   res = read(fd, buf, sizeof(buf));
   if(res < 0) {
     close(fd);
-    spdlog::error("Failed to read from {}:{}", TEST_HOST, TEST_PORT);
+    spdlog::error("Failed to read from {}:{}", ip, port);
     return 1;
   }
   buf[res] = 0;

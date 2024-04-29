@@ -2,7 +2,7 @@
 #include <tcp_server.h>
 #include <unistd.h>
 namespace xsl {
-  TcpServer::TcpServer(wheel::string host, int port)
+  TcpServer::TcpServer(const char *host, int port)
     : server_fd(-1) {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(server_fd == -1) {
@@ -28,6 +28,11 @@ namespace xsl {
     }
     this->server_fd = server_fd;
   }
+  TcpServer::~TcpServer() {
+    if(this->server_fd != -1) {
+      close(this->server_fd);
+    }
+  }
   bool TcpServer::valid() {
     return this->server_fd != -1;
   }
@@ -40,7 +45,7 @@ namespace xsl {
         sockaddr addr;
         socklen_t addr_len = sizeof(addr);
         int client_fd = accept(this->server_fd, &addr, &addr_len);
-        if(client_fd == -1) {
+        if(client_fd == -1) {  // todo: handle error
           return true;
         }
         this->handler(poller, client_fd, IOM_EVENTS::IN);

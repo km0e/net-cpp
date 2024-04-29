@@ -3,6 +3,7 @@
 #define _XSL_UTILS_WHEEL_H_
 
 #include <mutex>
+#include <utility>
 #include <atomic>
 #include <queue>
 #include <unordered_map>
@@ -23,6 +24,7 @@ namespace wheel {
   using std::mutex;
   using std::atomic_flag;
   using std::to_string;
+  using std::pair;
 }  // namespace wheel
 
 #endif  // _XSL_UTILS_WHEEL_H_

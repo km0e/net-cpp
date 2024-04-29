@@ -2,22 +2,21 @@ import os
 import sys
 import subprocess
 import time
-
 test_program = sys.argv[1]
-test_host = sys.argv[2]
-test_port = sys.argv[3]
-ncat = sys.argv[4]
-cat = sys.argv[5]
+test_port = sys.argv[2]
+ncat = sys.argv[3]
+cat = sys.argv[4]
 
 # Start the echo server
 print("Starting echo server: ncat -l %s -c %s" % (test_port, cat))
-echo_server = subprocess.Popen([ncat, '-l', test_port, '-c', cat],
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
+echo_server = subprocess.Popen(
+    [ncat, '-l', test_port, '-c', cat],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE)
 # Sleep 100ms to give the echo server time to start
 time.sleep(0.1)
 # Run the test program
-test = subprocess.Popen([test_program, "-h", test_host, "-p", test_port],
+test = subprocess.Popen([test_program],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE)
 
@@ -40,3 +39,4 @@ if test.returncode != 0:
 else:
     print("Test passed")
     sys.exit(0)
+    

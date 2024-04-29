@@ -6,7 +6,8 @@
 namespace xsl {
   class TcpServer {
   public:
-    TcpServer(wheel::string host, int port);
+    TcpServer(const char* host, int port);
+    ~TcpServer();
     bool valid();
     void set_handler(Handler handler);
     void poller_register(wheel::shared_ptr<Poller> poller);

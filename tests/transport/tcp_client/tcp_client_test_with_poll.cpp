@@ -1,17 +1,20 @@
-#include <spdlog/spdlog.h>
 #include <poller.h>
 #include <pthread.h>
+#include <spdlog/spdlog.h>
 #include <tcp_client.h>
 #include <unistd.h>
 #include <wheel.h>
-#ifndef TEST_HOST
-#define TEST_HOST "localhost"
-#endif
-#ifndef TEST_PORT
-#define TEST_PORT "8080"
-#endif
+#include <CLI/CLI.hpp>
+
 #define MAX_ECHO_CYCLES 10
-int main() {
+int main(int argc, char **argv) {
+  CLI::App app{"TCP Client"};
+  wheel::string ip = "localhost";
+  app.add_option("-i,--ip", ip, "Ip to connect to")->required();
+  int port = 8080;
+  app.add_option("-p,--port", port, "Port to connect to")->required();
+  CLI11_PARSE(app, argc, argv);
+
   xsl::Poller poller;
   if(!poller.valid()) {
     return 1;
@@ -28,7 +31,7 @@ int main() {
     },
     &poller);
   xsl::TcpClient client;
-  int fd = client.connect(TEST_HOST, TEST_PORT);
+  int fd = client.connect(ip.c_str(), wheel::to_string(port).c_str());
   if(fd < 0) {
     return 1;
   }

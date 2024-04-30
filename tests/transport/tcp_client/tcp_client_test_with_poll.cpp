@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
   wheel::string ip = "localhost";
   app.add_option("-i,--ip", ip, "Ip to connect to")->required();
-  int port = 8080;
+  wheel::string port = "8080";
   app.add_option("-p,--port", port, "Port to connect to")->required();
   CLI11_PARSE(app, argc, argv);
 
@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
     },
     &poller);
   xsl::TcpClient client;
-  int fd = client.connect(ip.c_str(), wheel::to_string(port).c_str());
+  int fd = client.connect(ip.c_str(), port.c_str());
   if(fd < 0) {
     return 1;
   }

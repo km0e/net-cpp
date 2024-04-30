@@ -1,16 +1,19 @@
 #include <netdb.h>
 #include <tcp_server.h>
 #include <unistd.h>
+#include <spdlog/spdlog.h>
 namespace xsl {
   TcpServer::TcpServer(const char *host, int port)
     : server_fd(-1) {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(server_fd == -1) {
+      spdlog::error("Failed to create socket");
       return;
     }
     int opt = 1;
     if(setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
       close(server_fd);
+      spdlog::error("Failed to set socket options");
       return;
     }
     sockaddr addr;
@@ -20,10 +23,12 @@ namespace xsl {
     addr_in->sin_addr.s_addr = INADDR_ANY;
     if(bind(server_fd, &addr, sizeof(addr)) == -1) {
       close(server_fd);
+      spdlog::error("Failed to bind to {}:{}", host, port);
       return;
     }
     if(listen(server_fd, MAX_CONNECTIONS) == -1) {
       close(server_fd);
+      spdlog::error("Failed to listen on {}:{}", host, port);
       return;
     }
     this->server_fd = server_fd;
@@ -42,6 +47,7 @@ namespace xsl {
   void TcpServer::poller_register(wheel::shared_ptr<Poller> poller) {
     poller->register_handler(this->server_fd, IOM_EVENTS::IN, [poller, this](int fd, IOM_EVENTS events) -> bool {
       if(events & IOM_EVENTS::IN) {
+        spdlog::info("Accepting connection");
         sockaddr addr;
         socklen_t addr_len = sizeof(addr);
         int client_fd = accept(this->server_fd, &addr, &addr_len);

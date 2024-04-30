@@ -15,6 +15,7 @@ namespace xsl {
     if(epoll_ctl(this->fd, EPOLL_CTL_ADD, fd, &event) == -1) {
       return false;
     }
+    this->handlers[fd] = handler;
     return true;
   }
   void Poller::poll() {

@@ -1,7 +1,9 @@
+#include <arpa/inet.h>
 #include <netdb.h>
-#include <tcp_server.h>
-#include <unistd.h>
 #include <spdlog/spdlog.h>
+#include <xsl/transport/transport.h>
+#include <xsl/transport/tcp_server.h>
+#include <unistd.h>
 namespace xsl {
   TcpServer::TcpServer(const char *host, int port)
     : server_fd(-1) {
@@ -20,7 +22,7 @@ namespace xsl {
     sockaddr_in *addr_in = (sockaddr_in *)&addr;
     addr_in->sin_family = AF_INET;
     addr_in->sin_port = htons(port);
-    addr_in->sin_addr.s_addr = INADDR_ANY;
+    addr_in->sin_addr.s_addr = inet_addr(host);
     if(bind(server_fd, &addr, sizeof(addr)) == -1) {
       close(server_fd);
       spdlog::error("Failed to bind to {}:{}", host, port);

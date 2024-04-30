@@ -1,16 +1,9 @@
 
-message(STATUS "[SETUP] tcp server test")
-
-message(STATUS "[DEPENDENCY] tcp server test: xsl_wheel = ${XSL_WHEEL_DIR}")
-message(STATUS "[DEPENDENCY] tcp server test: xsl_transport = ${XSL_TRANSPORT_DIR}")
-
 include_directories(
-    ${XSL_WHEEL_DIR}
-    ${XSL_TRANSPORT_DIR}
+    ${XSL_INC_DIR}
 )
 
 link_libraries(
-    xsl_wheel
     xsl_transport
     ${SPDLOG_LIBRARIES}
     ${CLI11_LIBRARIES}
@@ -27,7 +20,7 @@ set(TEST_PORT 12345)
 if(NOT TEST_TOOL_NCAT OR NOT TEST_TOOL_CAT)
     message(FATAL_ERROR "ncat or cat not found")
 else()
-    message(STATUS "[DEPENDENCY] ncat: ${TEST_TOOL_NCAT}, cat: ${TEST_TOOL_CAT}")
+    message(STATUS "[tcp_server_test] ncat found: ${TEST_TOOL_NCAT}")
 endif()
 
 add_executable(tcp_server_test

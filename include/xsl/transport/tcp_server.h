@@ -1,8 +1,7 @@
 #pragma once
 #ifndef _XSL_NET_TRANSPORT_TCP_SERVER_H_
 #define _XSL_NET_TRANSPORT_TCP_SERVER_H_
-#include <poller.h>
-#include <transport.h>
+#include <xsl/sync/poller.h>
 namespace xsl {
   class TcpServer {
   public:

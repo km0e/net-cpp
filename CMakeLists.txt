@@ -23,6 +23,8 @@ FetchContent_MakeAvailable(cli11_proj)
 
 set(CLI11_LIBRARIES CLI11::CLI11)
 
+add_subdirectory(include)
+
 add_subdirectory(src)
 
 add_subdirectory(examples)

@@ -1,9 +1,10 @@
-#include <poller.h>
+#include <xsl/sync/poller.h>
+#include <xsl/transport/tcp_client.h>
+#include <xsl/utils/wheel/wheel.h>
+
 #include <pthread.h>
 #include <spdlog/spdlog.h>
-#include <tcp_client.h>
 #include <unistd.h>
-#include <wheel.h>
 #include <CLI/CLI.hpp>
 
 #define MAX_ECHO_CYCLES 10
@@ -36,8 +37,8 @@ int main(int argc, char **argv) {
     return 1;
   }
   int echo_cycles = 0;
-  poller.register_handler(fd, IOM_EVENTS::IN, [&poller, &echo_cycles](int fd, IOM_EVENTS events) -> bool {
-    if(events & IOM_EVENTS::IN) {
+  poller.register_handler(fd, xsl::IOM_EVENTS::IN, [&poller, &echo_cycles](int fd, xsl::IOM_EVENTS events) -> bool {
+    if(events & xsl::IOM_EVENTS::IN) {
       char buf[1024];
       int res = read(fd, buf, sizeof(buf));
       if(res < 0) {

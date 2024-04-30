@@ -1,7 +1,7 @@
 #include <spdlog/spdlog.h>
-#include <tcp_client.h>
 #include <unistd.h>
-#include <wheel.h>
+#include <xsl/transport/tcp_client.h>
+#include <xsl/utils/wheel/wheel.h>
 
 #include <CLI/CLI.hpp>
 

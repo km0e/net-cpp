@@ -1,31 +1,42 @@
-
-set(XSL_TRANSPORT_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "XSL_TRANSPORT_DIR")
-
-message(STATUS "[SETUP] xsl_transport: XSL_TRANSPORT_DIR = ${XSL_TRANSPORT_DIR}")
-
 add_library(xsl_transport STATIC)
-
-message(STATUS "[DEPENDENCY] xsl_transport: xsl_wheel = ${XSL_WHEEL_DIR}")
-target_include_directories(xsl_transport PUBLIC ${XSL_WHEEL_DIR})
-message(STATUS "[DEPENDENCY] xsl_transport: absl::log = ${ABSL_INCLUDE_DIR}")
-target_include_directories(xsl_transport PUBLIC ${XSL_TRANSPORT_DIR})
-
-target_sources(xsl_transport
+target_include_directories(xsl_wheel
     PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/transport.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/tcp_server.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/tcp_client.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/poller.h
-    PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/transport.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/tcp_server.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/tcp_client.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/poller.cpp
+    ${XSL_INC_DIR}
 )
+
+set(DIRECT_HEADER_LIST
+    transport.h
+    tcp_server.h
+    tcp_client.h
+)
+
+foreach(HEADER ${DIRECT_HEADER_LIST})
+    set(full_path ${XSL_INC_DIR}/xsl/transport/${HEADER})
+    message(STATUS "[xsl_transport] Add header file: ${full_path}")
+    target_sources(xsl_transport
+        PUBLIC
+        ${full_path}
+    )
+endforeach()
+
+set(DIRECT_SOURCE_LIST
+    transport.cpp
+    tcp_server.cpp
+    tcp_client.cpp
+)
+
+foreach(SOURCE ${DIRECT_SOURCE_LIST})
+    set(full_path ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE})
+    message(STATUS "[xsl_transport] Add source file: ${full_path}")
+    target_sources(xsl_transport
+        PRIVATE
+        ${full_path}
+    )
+endforeach()
 
 target_link_libraries(xsl_transport
     PUBLIC
     xsl_wheel
+    xsl_sync
     ${SPDLOG_LIBRARIES}
 )
-

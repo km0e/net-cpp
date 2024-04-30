@@ -1,12 +1,13 @@
 #pragma once
-#ifndef _XSL_NET_TRANSPORT_POLLER_H_
-#define _XSL_NET_TRANSPORT_POLLER_H_
+#ifndef _XSL_NET_POLLER_
+#define _XSL_NET_POLLER_
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-
+#include <xsl/config.h>
 #include <xsl/utils/wheel/wheel.h>
-namespace xsl {
+XSL_NAMESPACE_BEGIN
+namespace sync {
 #define USE_EPOLL
 #ifdef USE_EPOLL
   enum IOM_EVENTS {
@@ -43,5 +44,6 @@ namespace xsl {
     int fd;
     wheel::unordered_map<int, PollHandler> handlers;
   };
-}  // namespace xsl
+}  // namespace sync
+XSL_NAMESPACE_END
 #endif

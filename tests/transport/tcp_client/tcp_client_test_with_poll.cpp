@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
   app.add_option("-p,--port", port, "Port to connect to")->required();
   CLI11_PARSE(app, argc, argv);
 
-  xsl::Poller poller;
+  xsl::sync::Poller poller;
   if(!poller.valid()) {
     return 1;
   }
@@ -24,21 +24,21 @@ int main(int argc, char **argv) {
   pthread_create(
     &poller_thread, nullptr,
     [](void *arg) -> void * {
-      xsl::Poller *poller = (xsl::Poller *)arg;
+      xsl::sync::Poller *poller = (xsl::sync::Poller *)arg;
       while(true) {
         poller->poll();
       }
       return nullptr;
     },
     &poller);
-  xsl::TcpClient client;
+  xsl::transport::TcpClient client;
   int fd = client.connect(ip.c_str(), port.c_str());
   if(fd < 0) {
     return 1;
   }
   int echo_cycles = 0;
-  poller.register_handler(fd, xsl::IOM_EVENTS::IN, [&poller, &echo_cycles](int fd, xsl::IOM_EVENTS events) -> bool {
-    if(events & xsl::IOM_EVENTS::IN) {
+  poller.register_handler(fd, xsl::sync::IOM_EVENTS::IN, [&poller, &echo_cycles](int fd, xsl::sync::IOM_EVENTS events) -> bool {
+    if(events & xsl::sync::IOM_EVENTS::IN) {
       char buf[1024];
       int res = read(fd, buf, sizeof(buf));
       if(res < 0) {

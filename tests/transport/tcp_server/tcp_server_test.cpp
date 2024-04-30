@@ -14,7 +14,7 @@
 #ifndef TEST_PORT
 #define TEST_PORT 8080
 #endif
-bool recv_handler(int fd, xsl::IOM_EVENTS events);
+bool recv_handler(int fd, xsl::sync::IOM_EVENTS events);
 void sigterm_init() {
   struct sigaction act;
   act.sa_handler = [](int sig) -> void {
@@ -34,19 +34,20 @@ int main(int argc, char **argv) {
 
   sigterm_init();
 
-  xsl::TcpServer server(ip.c_str(), port);
+  xsl::transport::TcpServer server;
+  server.serve(ip.c_str(), port);
   if(!server.valid()) {
     spdlog::error("Failed to create server on {}:{}", ip, port);
     return 1;
   }
-  server.set_handler([&server](wheel::shared_ptr<xsl::Poller> poller, int fd, xsl::IOM_EVENTS events) -> bool {
+  server.set_handler([&server](wheel::shared_ptr<xsl::sync::Poller> poller, int fd, xsl::sync::IOM_EVENTS events) -> bool {
     spdlog::info("New connection");
-    if(events & xsl::IOM_EVENTS::IN) {
-      poller->register_handler(fd, xsl::IOM_EVENTS::IN, recv_handler);
+    if(events & xsl::sync::IOM_EVENTS::IN) {
+      poller->register_handler(fd, xsl::sync::IOM_EVENTS::IN, recv_handler);
     }
     return true;
   });
-  auto poller = wheel::make_shared<xsl::Poller>();
+  auto poller = wheel::make_shared<xsl::sync::Poller>();
   if(!poller->valid()) {
     spdlog::error("Failed to create poller");
     return 1;
@@ -56,7 +57,7 @@ int main(int argc, char **argv) {
   pthread_create(
     &poller_thread, nullptr,
     [](void *arg) -> void * {
-      xsl::Poller *poller = (xsl::Poller *)arg;
+      xsl::sync::Poller *poller = (xsl::sync::Poller *)arg;
       while(true) {
         poller->poll();
       }
@@ -69,8 +70,8 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-bool recv_handler(int fd, xsl::IOM_EVENTS events) {
-  if(events & xsl::IOM_EVENTS::IN) {
+bool recv_handler(int fd, xsl::sync::IOM_EVENTS events) {
+  if(events & xsl::sync::IOM_EVENTS::IN) {
     char buf[1024];
     while(true) {
       int res = read(fd, buf, sizeof(buf));

@@ -1,7 +1,8 @@
-#include <xsl/sync/poller.h>
 #include <sys/signal.h>
-namespace xsl {
-
+#include <xsl/config.h>
+#include <xsl/sync/poller.h>
+XSL_NAMESPACE_BEGIN
+namespace sync {
   Poller::Poller() {
     this->fd = epoll_create(1);
   }
@@ -41,5 +42,5 @@ namespace xsl {
   Poller::~Poller() {
     this->shutdown();
   }
-
-}  // namespace xsl
+}  // namespace sync
+XSL_NAMESPACE_END

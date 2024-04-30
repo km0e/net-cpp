@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
   wheel::string port = "8080";
   app.add_option("-p,--port", port, "Port to connect to")->required();
   CLI11_PARSE(app, argc, argv);
-  xsl::TcpClient client;
+  xsl::transport::TcpClient client;
   int fd = client.connect(ip.c_str(), port.c_str());
   if(fd < 0) {
     return 1;

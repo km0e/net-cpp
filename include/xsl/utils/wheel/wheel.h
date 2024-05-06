@@ -1,8 +1,10 @@
 #pragma once
+
 #ifndef _XSL_UTILS_WHEEL_H_
 #  define _XSL_UTILS_WHEEL_H_
-
+#  include <algorithm>
 #  include <atomic>
+#  include <concepts>
 #  include <functional>
 #  include <memory>
 #  include <mutex>
@@ -18,13 +20,16 @@
 
 namespace wheel {
   using std::atomic_flag;
+  using std::forward;
   using std::function;
   using std::make_shared;
   using std::make_unique;
+  using std::move;
   using std::mutex;
   using std::optional;
   using std::pair;
   using std::queue;
+  using std::same_as;
   using std::shared_ptr;
   using std::string;
   using std::string_view;

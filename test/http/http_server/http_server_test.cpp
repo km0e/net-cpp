@@ -39,11 +39,16 @@ int main(int argc, char **argv) {
   spdlog::set_level(spdlog::level::trace);
   sigterm_init();
   auto router = wheel::make_shared<xsl::http::HttpRouter>();
-  router->add_route("/", [](xsl::http::HttpRequest req) -> wheel::string {
+  router->add_route("/", [](xsl::http::HttpRequest req) -> xsl::http::HttpResponse {
     (void)req;
-    return "HTTP/1.1 200 OK\r\n\r\nHello, World!";
+    auto res = xsl::http::HttpResponse{};
+    res.version = "HTTP/1.1";
+    res.status_code = 200;
+    res.status_message = "OK";
+    res.body = "Hello, World!";
+    return res;
   });
-  auto handler_generator = wheel::make_shared<xsl::http::HandlerGenerator>(router);
+  auto handler_generator = wheel::make_shared<xsl::http::DefaultHandlerGenerator>(router);
   wheel::shared_ptr<xsl::sync::Poller> poller = wheel::make_shared<xsl::sync::EPoller>();
   xsl::transport::TcpServer tcp_server{};
   tcp_server.set_poller(poller);

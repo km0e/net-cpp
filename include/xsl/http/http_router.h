@@ -7,7 +7,7 @@
 
 HTTP_NAMESPACE_BEGIN
 
-using HttpRouteHandler = wheel::function<wheel::string(HttpRequest&)>;
+using HttpRouteHandler = wheel::function<HttpResponse(HttpRequest&&)>;
 
 enum class AddRouteErrorKind {
   Unknown,
@@ -40,28 +40,34 @@ public:
 };
 
 using AddRouteResult = wheel::Result<wheel::tuple<>, AddRouteError>;
-using RouteResult = wheel::Result<HttpRouteHandler, RouteError>;
+using RouteResult = wheel::Result<wheel::shared_ptr<HttpRouteHandler>, RouteError>;
 
 namespace router_details {
   class HttpRouteNode {
   public:
     HttpRouteNode();
     ~HttpRouteNode();
-    AddRouteResult add_route(wheel::string_view path, HttpRouteHandler handler);
+    AddRouteResult add_route(wheel::string_view path, HttpRouteHandler&& handler);
     RouteResult route(HttpRequest& request);
 
   private:
-    wheel::unordered_map<wheel::string_view, HttpRouteHandler> handlers;
+    wheel::unordered_map<wheel::string_view, wheel::shared_ptr<HttpRouteHandler>> handlers;
     wheel::unordered_map<wheel::string_view, wheel::shared_ptr<HttpRouteNode>> children;
   };
 }  // namespace router_details
+
+template <class R>
+concept Router = requires(R r, wheel::string_view path, HttpRouteHandler&& handler, HttpRequest& request) {
+  { r.add_route(path, wheel::move(handler)) } -> wheel::same_as<AddRouteResult>;
+  { r.route(request) } -> wheel::same_as<RouteResult>;
+};
 
 class HttpRouter {
 public:
   HttpRouter();
   ~HttpRouter();
-  void add_route(wheel::string_view path, HttpRouteHandler handler);
-  wheel::string route(HttpRequest& request);
+  AddRouteResult add_route(wheel::string_view path, HttpRouteHandler&& handler);
+  RouteResult route(HttpRequest& request);
 
 private:
   router_details::HttpRouteNode root;

@@ -24,7 +24,7 @@ namespace router_details {
   HttpRouteNode::HttpRouteNode() {}
   HttpRouteNode::~HttpRouteNode() {}
 
-  AddRouteResult HttpRouteNode::add_route(wheel::string_view path, HttpRouteHandler handler) {
+  AddRouteResult HttpRouteNode::add_route(wheel::string_view path, HttpRouteHandler&& handler) {
     spdlog::debug("[HttpRouteNode::add_route] Adding route: {}", path);
     if (path[0] != '/') {
       return AddRouteResult(AddRouteError(AddRouteErrorKind::InvalidPath, ""));
@@ -32,7 +32,8 @@ namespace router_details {
     auto pos = path.find('/', 1);
     if (pos == wheel::string_view::npos) {
       path = path.substr(1);
-      auto res = handlers.try_emplace(path, handler);
+      auto res
+          = handlers.try_emplace(path, wheel::make_shared<HttpRouteHandler>(wheel::move(handler)));
       if (!res.second) {
         return AddRouteResult(AddRouteError(AddRouteErrorKind::Conflict, ""));
       }
@@ -40,7 +41,7 @@ namespace router_details {
       return AddRouteResult({});
     }
     auto res = children.try_emplace(path.substr(1, pos - 1), wheel::make_shared<HttpRouteNode>());
-    return res.first->second->add_route(path.substr(pos), handler);
+    return res.first->second->add_route(path.substr(pos), wheel::move(handler));
   }
 
   RouteResult HttpRouteNode::route(HttpRequest& request) {
@@ -76,22 +77,14 @@ HttpRouter::HttpRouter() : root() {}
 
 HttpRouter::~HttpRouter() {}
 
-void HttpRouter::add_route(wheel::string_view path, HttpRouteHandler handler) {
+AddRouteResult HttpRouter::add_route(wheel::string_view path, HttpRouteHandler&& handler) {
   spdlog::debug("[HttpRouter::add_route] Adding route: {}", path);
-  auto res = root.add_route(path, handler);
-  if (res.is_err()) {
-    spdlog::error("[HttpRouter::add_route] Failed to add route: {}", res.unwrap_err().message);
-  }
+  return root.add_route(path, wheel::move(handler));
 }
 
-wheel::string HttpRouter::route(HttpRequest& request) {
+RouteResult HttpRouter::route(HttpRequest& request) {
   spdlog::debug("[HttpRouter::route] Routing request: {}", request.path);
-  auto res = root.route(request);
-  if (res.is_err()) {
-    spdlog::error("[HttpRouter::route] Failed to route: {}", res.unwrap_err().message);
-    return "";
-  }
-  return res.unwrap()(request);
+  return root.route(request);
 }
 
 HTTP_NAMESPACE_END

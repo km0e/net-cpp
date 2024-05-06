@@ -1,15 +1,15 @@
 #pragma once
 #include "xsl/sync/sync.h"
 #ifndef _XSL_NET_POLLER_
-#define _XSL_NET_POLLER_
-#include <sys/epoll.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <xsl/config.h>
-#include <xsl/utils/wheel/wheel.h>
+#  define _XSL_NET_POLLER_
+#  include <sys/epoll.h>
+#  include <sys/socket.h>
+#  include <sys/types.h>
+#  include <xsl/config.h>
+#  include <xsl/utils/wheel/wheel.h>
 SYNC_NAMESPACE_BEGIN
-#define USE_EPOLL
-#ifdef USE_EPOLL
+#  define USE_EPOLL
+#  ifdef USE_EPOLL
 enum class IOM_EVENTS : uint32_t {
   NONE = 0,
   IN = EPOLL_EVENTS::EPOLLIN,
@@ -33,7 +33,7 @@ IOM_EVENTS& operator|=(IOM_EVENTS& a, IOM_EVENTS b);
 IOM_EVENTS operator&(IOM_EVENTS a, IOM_EVENTS b);
 IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b);
 IOM_EVENTS operator~(IOM_EVENTS a);
-#endif
+#  endif
 using PollHandler = wheel::function<IOM_EVENTS(int fd, IOM_EVENTS events)>;
 class Poller {
 public:
@@ -55,6 +55,7 @@ public:
   void poll() override;
   void unregister(int fd) override;
   void shutdown() override;
+
 private:
   int fd;
   wheel::unordered_map<int, PollHandler> handlers;

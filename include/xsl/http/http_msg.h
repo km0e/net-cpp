@@ -1,8 +1,8 @@
 #pragma once
 #ifndef _XSL_NET_HTTP_MSG_H_
-#define _XSL_NET_HTTP_MSG_H_
-#include <xsl/http/config.h>
-#include <xsl/utils/wheel/wheel.h>
+#  define _XSL_NET_HTTP_MSG_H_
+#  include <xsl/http/config.h>
+#  include <xsl/utils/wheel/wheel.h>
 HTTP_NAMESPACE_BEGIN
 enum class RequestErrorKind {
   Unknown,
@@ -18,11 +18,11 @@ public:
   wheel::string message;
 };
 
-
 class HttpRequest {
 public:
   HttpRequest();
   ~HttpRequest();
+
 public:
   wheel::string raw;
   wheel::string_view method;

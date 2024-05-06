@@ -1,9 +1,9 @@
 #pragma once
 #ifndef _XSL_SYNC_MUTEX_H_
-#define _XSL_SYNC_MUTEX_H_
-#include <xsl/sync/sync.h>
+#  define _XSL_SYNC_MUTEX_H_
+#  include <xsl/sync/sync.h>
 
-#include <mutex>
+#  include <mutex>
 SYNC_NAMESPACE_BEGIN
 using Mutex = std::mutex;
 class TryLockGuard {
@@ -12,6 +12,7 @@ public:
   ~TryLockGuard();
   bool is_locked();
   bool try_lock();
+
 private:
   Mutex& m;
   bool locked;

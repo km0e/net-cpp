@@ -1,9 +1,9 @@
 #pragma once
 #ifndef _XSL_NET_HTTP_ROUTER_H_
-#define _XSL_NET_HTTP_ROUTER_H_
-#include <xsl/http/config.h>
-#include <xsl/http/http_msg.h>
-#include <xsl/utils/wheel/wheel.h>
+#  define _XSL_NET_HTTP_ROUTER_H_
+#  include <xsl/http/config.h>
+#  include <xsl/http/http_msg.h>
+#  include <xsl/utils/wheel/wheel.h>
 
 HTTP_NAMESPACE_BEGIN
 
@@ -49,6 +49,7 @@ namespace router_details {
     ~HttpRouteNode();
     AddRouteResult add_route(wheel::string_view path, HttpRouteHandler handler);
     RouteResult route(HttpRequest& request);
+
   private:
     wheel::unordered_map<wheel::string_view, HttpRouteHandler> handlers;
     wheel::unordered_map<wheel::string_view, wheel::shared_ptr<HttpRouteNode>> children;
@@ -61,6 +62,7 @@ public:
   ~HttpRouter();
   void add_route(wheel::string_view path, HttpRouteHandler handler);
   wheel::string route(HttpRequest& request);
+
 private:
   router_details::HttpRouteNode root;
 };

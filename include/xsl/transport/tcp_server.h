@@ -1,10 +1,10 @@
 #pragma once
 #ifndef _XSL_NET_TRANSPORT_TCP_SERVER_H_
-#define _XSL_NET_TRANSPORT_TCP_SERVER_H_
-#include <xsl/sync/poller.h>
-#include <xsl/transport/transport.h>
-#include <xsl/transport/utils.h>
-#include <xsl/utils/wheel/wheel.h>
+#  define _XSL_NET_TRANSPORT_TCP_SERVER_H_
+#  include <xsl/sync/poller.h>
+#  include <xsl/transport/transport.h>
+#  include <xsl/transport/utils.h>
+#  include <xsl/utils/wheel/wheel.h>
 TRANSPORT_NAMESPACE_BEGIN
 
 enum class HandleHint {
@@ -30,6 +30,7 @@ public:
   ~TcpConn();
   sync::IOM_EVENTS send();
   sync::IOM_EVENTS recv();
+
 private:
   int fd;
   wheel::shared_ptr<sync::Poller> poller;
@@ -46,21 +47,22 @@ class TcpServer {
 public:
   TcpServer(TcpConfig config = {});
   ~TcpServer();
-  bool serve(const char *ip, int port);
+  bool serve(const char* ip, int port);
   bool valid();
   void set_max_connections(int max_connections);
-  // Handler is a function that takes a shared pointer to a Poller, an int, and an IOM_EVENTS enum and returns a bool
-  // The handler is called when the server receives a connection
+  // Handler is a function that takes a shared pointer to a Poller, an int, and an IOM_EVENTS enum
+  // and returns a bool The handler is called when the server receives a connection
   void set_handler_generator(wheel::shared_ptr<HandlerGenerator> handler_generator);
   void set_poller(wheel::shared_ptr<sync::Poller> poller);
+
 private:
   sync::IOM_EVENTS proxy_handler(int fd, sync::IOM_EVENTS events);
   sync::IOM_EVENTS accept_handler(int fd, sync::IOM_EVENTS events);
 
   int server_fd;
   TcpConfig config;
-  // Handler is a function that takes a shared pointer to a Poller, an int, and an IOM_EVENTS enum and returns a bool
-  // The handler is called when the server receives a connection
+  // Handler is a function that takes a shared pointer to a Poller, an int, and an IOM_EVENTS enum
+  // and returns a bool The handler is called when the server receives a connection
   wheel::shared_ptr<HandlerGenerator> handler_generator;
   wheel::unordered_map<int, TcpConn> handlers;
   wheel::shared_ptr<sync::Poller> poller;

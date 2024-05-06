@@ -36,6 +36,8 @@ set_languages("c++20")
 
 add_requires("thread-pool", "spdlog", "cli11", "fmt")
 
+add_ldflags("-fuse-ld=mold")
+
 add_rules("plugin.compile_commands.autoupdate", {outputdir = "build"})
 
 add_includedirs("$(projectdir)/include")

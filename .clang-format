@@ -3,10 +3,11 @@
   AccessModifierOffset: '-2'
   AlignTrailingComments: 'true'
   AllowAllParametersOfDeclarationOnNextLine: 'false'
-  AlwaysBreakTemplateDeclarations: 'No'
+  AlwaysBreakTemplateDeclarations: 'Yes'
   BreakBeforeBraces: Attach
   ColumnLimit: '100'
   ConstructorInitializerAllOnOneLineOrOnePerLine: 'true'
+  IndentRequiresClause: 'true'
   IncludeBlocks: Regroup
   IndentPPDirectives: AfterHash
   IndentWidth: '2'

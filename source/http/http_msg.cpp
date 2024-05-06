@@ -7,8 +7,7 @@ RequestError::RequestError(RequestErrorKind kind, wheel::string message)
 RequestError::~RequestError() {}
 HttpRequest::HttpRequest() {}
 HttpRequest::~HttpRequest() {}
-ResponseError::ResponseError(int code, wheel::string_view message)
-    : code(code), message(message) {}
+ResponseError::ResponseError(int code, wheel::string_view message) : code(code), message(message) {}
 ResponseError::~ResponseError() {}
 HttpResponse::HttpResponse() {}
 HttpResponse::~HttpResponse() {}

@@ -57,10 +57,11 @@ namespace router_details {
 }  // namespace router_details
 
 template <class R>
-concept Router = requires(R r, wheel::string_view path, HttpRouteHandler&& handler, HttpRequest& request) {
-  { r.add_route(path, wheel::move(handler)) } -> wheel::same_as<AddRouteResult>;
-  { r.route(request) } -> wheel::same_as<RouteResult>;
-};
+concept Router
+    = requires(R r, wheel::string_view path, HttpRouteHandler&& handler, HttpRequest& request) {
+        { r.add_route(path, wheel::move(handler)) } -> wheel::same_as<AddRouteResult>;
+        { r.route(request) } -> wheel::same_as<RouteResult>;
+      };
 
 class HttpRouter {
 public:

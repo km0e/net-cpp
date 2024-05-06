@@ -15,7 +15,8 @@ public:
   ~HttpParser();
   wheel::vector<RequestResult> parse(const char* data, size_t len);
 };
-template <Router R> class HttpHandler {
+template <Router R>
+class HttpHandler {
 public:
   HttpHandler(wheel::shared_ptr<R> router) : router(router) {}
   ~HttpHandler() {}
@@ -49,7 +50,8 @@ private:
   wheel::shared_ptr<R> router;
 };
 
-template <Router R> class HandlerGenerator : public transport::HandlerGenerator {
+template <Router R>
+class HandlerGenerator : public transport::HandlerGenerator {
 public:
   HandlerGenerator(wheel::shared_ptr<R> router) : router(router) {}
   transport::Handler operator()() { return HttpHandler<R>{this->router}; }

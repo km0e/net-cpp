@@ -42,7 +42,8 @@ namespace wheel {
   // using dp::details::default_function_type;
   using std::lock_guard;
 
-  template <typename T, typename E> class Result {
+  template <typename T, typename E>
+  class Result {
   public:
     Result(T value) : value(value) {}
     Result(E error) : value(error) {}

@@ -36,8 +36,6 @@ add_link_options(-fuse-ld=mold)
 
 add_compile_options(-O3)
 
-# ---- Options ----
-option(ENABLE_TEST_COVERAGE "Enable test coverage" OFF)
 
 # --- Import tools ----
 # enable compiler warnings if is debug build
@@ -51,17 +49,16 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 
-# ---- code coverage ----
-if(ENABLE_TEST_COVERAGE)
-  add_compile_options(-O0 -g -fprofile-arcs -ftest-coverage)
-  add_link_options(-fprofile-arcs -ftest-coverage)
-endif()
 
 add_subdirectory(include)
 
 add_subdirectory(source)
 
+add_subdirectory(examples)
+
+# ---- Add XslTests ----
+enable_testing()
+
 add_subdirectory(test)
 
-add_subdirectory(examples)
 

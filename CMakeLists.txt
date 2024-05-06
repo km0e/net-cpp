@@ -1,34 +1,67 @@
-cmake_minimum_required(VERSION 3.29)
-project(net-pp)
+cmake_minimum_required(VERSION 3.14...3.22)
 
-set(CMAKE_CXX_STANDARD 17)
+# ---- Project ----
 
-set(ABSL_PROPAGATE_CXX_STD ON)
+# Note: update this to your new project's name and version
+project(
+  Xsl
+  VERSION 1.0
+  LANGUAGES CXX
+)
 
-#spdlog
+
+set(CMAKE_CXX_STANDARD 20)
+
+# ---- Include guards ----
+
+if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
+  message(
+    FATAL_ERROR
+      "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there."
+  )
+endif()
+
 
 find_package(spdlog REQUIRED)
 
-set(SPDLOG_LIBRARIES spdlog::spdlog_header_only)
+find_package(CLI11 REQUIRED)
 
-include(FetchContent)
-FetchContent_Declare(
-    cli11_proj
-    QUIET
-    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-    GIT_TAG v2.3.2
-)
-
-FetchContent_MakeAvailable(cli11_proj)
+find_package(fmt REQUIRED)
 
 set(CLI11_LIBRARIES CLI11::CLI11)
 
+set(FMT_LIBRARIES fmt::fmt)
+
+add_link_options(-fuse-ld=mold)
+
+add_compile_options(-O3)
+
+# ---- Options ----
+option(ENABLE_TEST_COVERAGE "Enable test coverage" OFF)
+
+# --- Import tools ----
+# enable compiler warnings if is debug build
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    add_compile_options(-Wall -Wpedantic -Wextra -Werror)
+  elseif(MSVC)
+    add_compile_options(/W4 /WX)
+    add_compile_definitions(_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING)
+  endif()
+endif()
+
+
+# ---- code coverage ----
+if(ENABLE_TEST_COVERAGE)
+  add_compile_options(-O0 -g -fprofile-arcs -ftest-coverage)
+  add_link_options(-fprofile-arcs -ftest-coverage)
+endif()
+
 add_subdirectory(include)
 
-add_subdirectory(src)
+add_subdirectory(source)
+
+add_subdirectory(test)
 
 add_subdirectory(examples)
 
-enable_testing()
-
-add_subdirectory(tests)

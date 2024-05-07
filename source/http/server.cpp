@@ -13,7 +13,7 @@ wheel::vector<RequestResult> HttpParser::parse(const char* data, size_t len) {
   wheel::string_view view(data, len);
   size_t pos = 0;
   while (pos < len) {
-    HttpRequest req;
+    Request req;
     size_t end = view.find("\r\n\r\n", pos);
     if (end == wheel::string_view::npos) {
       break;

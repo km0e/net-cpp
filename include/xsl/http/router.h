@@ -6,9 +6,11 @@
 #  include <xsl/utils/wheel/wheel.h>
 
 #  include <cstdint>
+
+#  include "xsl/http/context.h"
 HTTP_NAMESPACE_BEGIN
 
-using RouteHandler = wheel::function<HttpResponse(HttpRequest&&)>;
+using RouteHandler = wheel::function<Response(Context& ctx)>;
 
 enum class AddRouteErrorKind {
   Unknown,
@@ -48,24 +50,22 @@ public:
 };
 
 using AddRouteResult = wheel::Result<wheel::tuple<>, AddRouteError>;
-using RouteResult = wheel::Result<wheel::shared_ptr<RouteHandler>, RouteError>;
+using RouteResult = wheel::Result<Response, RouteError>;
 
 template <class R>
-concept Router
-    = requires(R r, wheel::string_view path, RouteHandler&& handler, HttpRequest& request) {
-        { r.add_route(HttpMethod{}, path, wheel::move(handler)) } -> wheel::same_as<AddRouteResult>;
-        { r.route(request) } -> wheel::same_as<RouteResult>;
-        { r.error_handler(RouteError{}, wheel::move(handler)) };
-      };
+concept Router = requires(R r, wheel::string_view path, RouteHandler&& handler, Context& ctx) {
+  { r.add_route(HttpMethod{}, path, wheel::move(handler)) } -> wheel::same_as<AddRouteResult>;
+  { r.route(ctx) } -> wheel::same_as<RouteResult>;
+  { r.error_handler(RouteError{}, wheel::move(handler)) };
+};
 
 namespace router_details {
   class HttpRouteNode {
   public:
     HttpRouteNode();
     ~HttpRouteNode();
-    AddRouteResult add_route(HttpMethod method, wheel::string_view path,
-                             RouteHandler&& handler);
-    RouteResult route(HttpRequest& request);
+    AddRouteResult add_route(HttpMethod method, wheel::string_view path, RouteHandler&& handler);
+    RouteResult route(Context& ctx);
 
   private:
     wheel::array<wheel::shared_ptr<RouteHandler>, METHOD_COUNT> handlers;
@@ -73,22 +73,24 @@ namespace router_details {
   };
 }  // namespace router_details
 
-const RouteHandler UNKNOWN_HANDLER = [](HttpRequest&& request) -> HttpResponse {
-  return HttpResponse{"HTTP/1.1", 500, "Internal Server Error"};
+const RouteHandler UNKNOWN_HANDLER = [](Context& ctx) -> Response {
+  return Response{"HTTP/1.1", 500, "Internal Server Error"};
 };
 
-const RouteHandler NOT_FOUND_HANDLER = [](HttpRequest&& request) -> HttpResponse {
-  return HttpResponse{"HTTP/1.1", 404, "Not Found"};
+const RouteHandler NOT_FOUND_HANDLER = [](Context& ctx) -> Response {
+  return Response{"HTTP/1.1", 404, "Not Found"};
 };
-const RouteHandler UNIMPLEMENTED_HANDLER = [](HttpRequest&& request) -> HttpResponse {
-  return HttpResponse{"HTTP/1.1", 501, "Not Implemented"};
+
+const RouteHandler UNIMPLEMENTED_HANDLER = [](Context& ctx) -> Response {
+  return Response{"HTTP/1.1", 501, "Not Implemented"};
 };
+
 class DefaultRouter {
 public:
   DefaultRouter();
   ~DefaultRouter();
   AddRouteResult add_route(HttpMethod method, wheel::string_view path, RouteHandler&& handler);
-  RouteResult route(HttpRequest& request);
+  RouteResult route(Context& ctx);
   void error_handler(RouteError error, RouteHandler&& handler);
 
 private:

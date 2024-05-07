@@ -11,6 +11,8 @@
 
 #include <CLI/CLI.hpp>
 
+#include "xsl/http/context.h"
+
 #ifndef TEST_HOST
 #  define TEST_HOST "127.0.0.1"
 #endif
@@ -39,9 +41,9 @@ int main(int argc, char **argv) {
   sigterm_init();
   auto router = wheel::make_shared<xsl::http::DefaultRouter>();
   router->add_route(xsl::http::HttpMethod::GET, "/",
-                    [](xsl::http::HttpRequest req) -> xsl::http::HttpResponse {
-                      (void)req;
-                      auto res = xsl::http::HttpResponse{};
+                    [](xsl::http::Context &ctx) -> xsl::http::Response {
+                      (void)ctx;
+                      auto res = xsl::http::Response{};
                       res.version = "HTTP/1.1";
                       res.status_code = 200;
                       res.status_message = "OK";

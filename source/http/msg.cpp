@@ -52,15 +52,15 @@ RequestError::RequestError(RequestErrorKind kind) : kind(kind) {}
 RequestError::RequestError(RequestErrorKind kind, wheel::string message)
     : kind(kind), message(message) {}
 RequestError::~RequestError() {}
-HttpRequest::HttpRequest() {}
-HttpRequest::~HttpRequest() {}
+Request::Request() {}
+Request::~Request() {}
 ResponseError::ResponseError(int code, wheel::string_view message) : code(code), message(message) {}
 ResponseError::~ResponseError() {}
-HttpResponse::HttpResponse() {}
-HttpResponse::HttpResponse(wheel::string version, int status_code, wheel::string status_message)
+Response::Response() {}
+Response::Response(wheel::string version, int status_code, wheel::string status_message)
     : version(version), status_code(status_code), status_message(status_message) {}
-HttpResponse::~HttpResponse() {}
-wheel::string HttpResponse::to_string() const {
+Response::~Response() {}
+wheel::string Response::to_string() const {
   wheel::string res;
   res.reserve(1024);
   res += version;

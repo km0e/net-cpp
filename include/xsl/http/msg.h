@@ -33,10 +33,10 @@ public:
   wheel::string message;
 };
 
-class HttpRequest {
+class Request {
 public:
-  HttpRequest();
-  ~HttpRequest();
+  Request();
+  ~Request();
   wheel::string raw;
   wheel::string_view method_view;
   HttpMethod method;
@@ -45,7 +45,7 @@ public:
   wheel::unordered_map<wheel::string_view, wheel::string_view> headers;
   wheel::string_view body;
 };
-using RequestResult = wheel::Result<HttpRequest, RequestError>;
+using RequestResult = wheel::Result<Request, RequestError>;
 
 class ResponseError {
 public:
@@ -55,11 +55,11 @@ public:
   wheel::string_view message;
 };
 
-struct HttpResponse {
+struct Response {
 public:
-  HttpResponse();
-  HttpResponse(wheel::string version, int status_code, wheel::string status_message);
-  ~HttpResponse();
+  Response();
+  Response(wheel::string version, int status_code, wheel::string status_message);
+  ~Response();
   wheel::string version;
   int status_code;
   wheel::string status_message;
@@ -67,7 +67,7 @@ public:
   wheel::string body;
   wheel::string to_string() const;
 };
-using ResponseResult = wheel::Result<HttpResponse, ResponseError>;
+using ResponseResult = wheel::Result<Response, ResponseError>;
 
 HTTP_NAMESPACE_END
 #endif

@@ -7,6 +7,8 @@
 #  include <xsl/sync/poller.h>
 #  include <xsl/transport/server.h>
 #  include <xsl/utils/wheel/wheel.h>
+
+#  include "xsl/http/context.h"
 HTTP_NAMESPACE_BEGIN
 class HttpParser {
 public:
@@ -29,13 +31,13 @@ public:
           res += "HTTP/1.1 400 Bad Request\r\n\r\n";
           continue;
         }
-        auto tmp = req.unwrap();
-        auto tmpres = this->router->route(tmp);
+        auto ctx = Context{req.unwrap()};
+        auto tmpres = this->router->route(ctx);
         if (tmpres.is_err()) {
           res += "HTTP/1.1 404 Not Found\r\n\r\n";
           continue;
         }
-        res += (*tmpres.unwrap())(std::move(tmp)).to_string();
+        res += tmpres.unwrap().to_string();
       }
       data = res;
       return transport::HandleState{sync::IOM_EVENTS::OUT, transport::HandleHint::WRITE};

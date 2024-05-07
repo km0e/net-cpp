@@ -52,16 +52,16 @@ private:
 using DefaultHandler = Handler<DefaultRouter>;
 
 template <Router R, transport::Handler H>
-class DefaultHandlerGenerator {
+class HandlerGenerator {
 public:
-  DefaultHandlerGenerator(wheel::shared_ptr<R> router) : router(router) {}
+  HandlerGenerator(wheel::shared_ptr<R> router) : router(router) {}
   H generate() { return Handler<R>{this->router}; }
 
 private:
   wheel::shared_ptr<R> router;
 };
 
-using DefaultHG = DefaultHandlerGenerator<DefaultRouter, DefaultHandler>;
+using DefaultHG = HandlerGenerator<DefaultRouter, DefaultHandler>;
 
 using DefaultServer = transport::TcpServer<Handler<DefaultRouter>, DefaultHG>;
 

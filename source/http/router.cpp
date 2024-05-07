@@ -30,14 +30,14 @@ namespace router_details {
   HttpRouteNode::~HttpRouteNode() {}
 
   AddRouteResult HttpRouteNode::add_route(HttpMethod method, wheel::string_view path,
-                                          HttpRouteHandler&& handler) {
+                                          RouteHandler&& handler) {
     spdlog::debug("[HttpRouteNode::add_route] Adding route: {}", path);
     if (path.empty()) {
       auto& old = handlers[static_cast<uint8_t>(method)];
       if (old != nullptr) {
         return AddRouteResult(AddRouteError(AddRouteErrorKind::Conflict, ""));
       }
-      old = wheel::make_shared<HttpRouteHandler>(wheel::move(handler));
+      old = wheel::make_shared<RouteHandler>(wheel::move(handler));
       return AddRouteResult({});
     }
     if (path[0] != '/') {
@@ -86,7 +86,7 @@ DefaultRouter::DefaultRouter() : root() {}
 DefaultRouter::~DefaultRouter() {}
 
 AddRouteResult DefaultRouter::add_route(HttpMethod method, wheel::string_view path,
-                                        HttpRouteHandler&& handler) {
+                                        RouteHandler&& handler) {
   spdlog::debug("[HttpRouter::add_route] Adding route: {}", path);
   return root.add_route(method, path, wheel::move(handler));
 }
@@ -99,14 +99,14 @@ RouteResult DefaultRouter::route(HttpRequest& request) {
   auto res = root.route(request);
   return root.route(request);
 }
-void DefaultRouter::error_handler(RouteError error, HttpRouteHandler&& handler) {
+void DefaultRouter::error_handler(RouteError error, RouteHandler&& handler) {
   spdlog::debug("[HttpRouter::error_handler] Handling error: {}", error.to_string());
   if (error.kind == RouteErrorKind::NotFound) {
-    this->error_handlers[static_cast<uint8_t>(error.kind)] = wheel::make_shared<HttpRouteHandler>(wheel::move(handler));
+    this->error_handlers[static_cast<uint8_t>(error.kind)] = wheel::make_shared<RouteHandler>(wheel::move(handler));
   } else if (error.kind == RouteErrorKind::Unimplemented) {
-    this->error_handlers[static_cast<uint8_t>(error.kind)] = wheel::make_shared<HttpRouteHandler>(wheel::move(handler));
+    this->error_handlers[static_cast<uint8_t>(error.kind)] = wheel::make_shared<RouteHandler>(wheel::move(handler));
   } else {
-    this->error_handlers[0] = wheel::make_shared<HttpRouteHandler>(wheel::move(handler));
+    this->error_handlers[0] = wheel::make_shared<RouteHandler>(wheel::move(handler));
   }
 }
 

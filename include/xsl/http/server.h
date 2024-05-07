@@ -1,10 +1,9 @@
 #pragma once
 #ifndef _XSL_NET_HTTP_SERVER_H_
 #  define _XSL_NET_HTTP_SERVER_H_
-#  include <xsl/config.h>
-#  include <xsl/http/config.h>
-#  include <xsl/http/http_msg.h>
-#  include <xsl/http/http_router.h>
+#  include <xsl/http/http.h>
+#  include <xsl/http/msg.h>
+#  include <xsl/http/router.h>
 #  include <xsl/sync/poller.h>
 #  include <xsl/transport/tcp_server.h>
 #  include <xsl/utils/wheel/wheel.h>
@@ -51,16 +50,16 @@ private:
 };
 
 template <Router R>
-class HandlerGenerator : public transport::HandlerGenerator {
+class DefaultHandlerGenerator : public transport::HandlerGenerator {
 public:
-  HandlerGenerator(wheel::shared_ptr<R> router) : router(router) {}
+  DefaultHandlerGenerator(wheel::shared_ptr<R> router) : router(router) {}
   transport::Handler operator()() { return HttpHandler<R>{this->router}; }
 
 private:
   wheel::shared_ptr<R> router;
 };
 
-using DefaultHandlerGenerator = HandlerGenerator<HttpRouter>;
+using DefaultHG = DefaultHandlerGenerator<DefaultRouter>;
 
 HTTP_NAMESPACE_END
 #endif

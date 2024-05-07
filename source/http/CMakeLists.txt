@@ -5,9 +5,10 @@ target_include_directories(xsl_http
 )
 
 set(DIRECT_HEADER_LIST
-    http_server.h
-    http_router.h
-    http_msg.h
+    http.h
+    server.h
+    router.h
+    msg.h
 )
 
 foreach(HEADER ${DIRECT_HEADER_LIST})
@@ -20,9 +21,9 @@ foreach(HEADER ${DIRECT_HEADER_LIST})
 endforeach()
 
 set(DIRECT_SOURCE_LIST
-    http_server.cpp
-    http_router.cpp
-    http_msg.cpp
+    server.cpp
+    router.cpp
+    msg.cpp
 )
 
 foreach(SOURCE ${DIRECT_SOURCE_LIST})

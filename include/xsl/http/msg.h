@@ -1,9 +1,24 @@
 #pragma once
 #ifndef _XSL_NET_HTTP_MSG_H_
 #  define _XSL_NET_HTTP_MSG_H_
-#  include <xsl/http/config.h>
+#  include <xsl/http/http.h>
 #  include <xsl/utils/wheel/wheel.h>
 HTTP_NAMESPACE_BEGIN
+enum class HttpMethod : uint8_t {
+  EXT,
+  GET,
+  POST,
+  PUT,
+  DELETE,
+  HEAD,
+  OPTIONS,
+  TRACE,
+  CONNECT,
+  UNKNOWN = 0xff,
+};
+const int METHOD_COUNT = 9;
+wheel::string method_cast(HttpMethod method);
+HttpMethod method_cast(wheel::string_view method);
 enum class RequestErrorKind {
   Unknown,
   InvalidFormat,
@@ -23,7 +38,8 @@ public:
   HttpRequest();
   ~HttpRequest();
   wheel::string raw;
-  wheel::string_view method;
+  wheel::string_view method_view;
+  HttpMethod method;
   wheel::string_view path;
   wheel::string_view version;
   wheel::unordered_map<wheel::string_view, wheel::string_view> headers;
@@ -39,9 +55,10 @@ public:
   wheel::string_view message;
 };
 
-class HttpResponse {
+struct HttpResponse {
 public:
   HttpResponse();
+  HttpResponse(wheel::string version, int status_code, wheel::string status_message);
   ~HttpResponse();
   wheel::string version;
   int status_code;

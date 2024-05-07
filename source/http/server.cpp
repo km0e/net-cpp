@@ -1,8 +1,7 @@
 #include <spdlog/spdlog.h>
-#include <xsl/config.h>
-#include <xsl/http/config.h>
-#include <xsl/http/http_msg.h>
-#include <xsl/http/http_server.h>
+#include <xsl/http/http.h>
+#include <xsl/http/msg.h>
+#include <xsl/http/server.h>
 #include <xsl/sync/poller.h>
 #include <xsl/transport/tcp_server.h>
 #include <xsl/utils/wheel/wheel.h>
@@ -29,8 +28,9 @@ wheel::vector<RequestResult> HttpParser::parse(const char* data, size_t len) {
       reqs.emplace_back(RequestError(RequestErrorKind::InvalidFormat));
       break;
     }
-    req.method = line.substr(0, space);
-    spdlog::debug("[HttpParser::parse] method: {}", req.method);
+    req.method_view = line.substr(0, space);
+    req.method = method_cast(req.method_view);
+    spdlog::debug("[HttpParser::parse] method: {}", req.method_view);
     size_t space2 = line.find(' ', space + 1);
     if (space2 == wheel::string_view::npos) {
       reqs.emplace_back(RequestError(RequestErrorKind::InvalidFormat));

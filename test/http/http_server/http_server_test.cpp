@@ -2,15 +2,14 @@
 #include <spdlog/spdlog.h>
 #include <sys/signal.h>
 #include <unistd.h>
-#include <xsl/http/http_msg.h>
-#include <xsl/http/http_server.h>
+#include <xsl/http/msg.h>
+#include <xsl/http/router.h>
+#include <xsl/http/server.h>
+#include <xsl/sync/poller.h>
+#include <xsl/transport/tcp_server.h>
 #include <xsl/utils/wheel/wheel.h>
 
 #include <CLI/CLI.hpp>
-
-#include "xsl/http/http_router.h"
-#include "xsl/sync/poller.h"
-#include "xsl/transport/tcp_server.h"
 
 #ifndef TEST_HOST
 #  define TEST_HOST "127.0.0.1"
@@ -38,17 +37,18 @@ int main(int argc, char **argv) {
   CLI11_PARSE(app, argc, argv);
   spdlog::set_level(spdlog::level::trace);
   sigterm_init();
-  auto router = wheel::make_shared<xsl::http::HttpRouter>();
-  router->add_route("/", [](xsl::http::HttpRequest req) -> xsl::http::HttpResponse {
-    (void)req;
-    auto res = xsl::http::HttpResponse{};
-    res.version = "HTTP/1.1";
-    res.status_code = 200;
-    res.status_message = "OK";
-    res.body = "Hello, World!";
-    return res;
-  });
-  auto handler_generator = wheel::make_shared<xsl::http::DefaultHandlerGenerator>(router);
+  auto router = wheel::make_shared<xsl::http::DefaultRouter>();
+  router->add_route(xsl::http::HttpMethod::GET, "/",
+                    [](xsl::http::HttpRequest req) -> xsl::http::HttpResponse {
+                      (void)req;
+                      auto res = xsl::http::HttpResponse{};
+                      res.version = "HTTP/1.1";
+                      res.status_code = 200;
+                      res.status_message = "OK";
+                      res.body = "Hello, World!";
+                      return res;
+                    });
+  auto handler_generator = wheel::make_shared<xsl::http::DefaultHG>(router);
   wheel::shared_ptr<xsl::sync::Poller> poller = wheel::make_shared<xsl::sync::EPoller>();
   xsl::transport::TcpServer tcp_server{};
   tcp_server.set_poller(poller);

@@ -19,7 +19,7 @@ class Handler {
 public:
   Handler(wheel::shared_ptr<R> router) : router(router) {}
   ~Handler() {}
-  transport::HandleState handle(int read_write, wheel::string& data) {
+  transport::HandleState operator()(int read_write, wheel::string& data) {
     if (read_write == 0) {
       auto reqs = this->parser.parse(data.c_str(), data.size());
       wheel::string res;
@@ -55,7 +55,7 @@ template <Router R, transport::Handler H>
 class HandlerGenerator {
 public:
   HandlerGenerator(wheel::shared_ptr<R> router) : router(router) {}
-  H generate() { return Handler<R>{this->router}; }
+  H operator()() { return Handler<R>{this->router}; }
 
 private:
   wheel::shared_ptr<R> router;

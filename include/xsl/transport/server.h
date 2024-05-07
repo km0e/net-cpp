@@ -25,7 +25,7 @@ public:
 };
 template <class T>
 concept Handler = requires(T t, int i, wheel::string& s) {
-  { t.handle(i, s) } -> wheel::same_as<HandleState>;
+  { t(i, s) } -> wheel::same_as<HandleState>;
 };
 
 template <Handler H>
@@ -45,7 +45,7 @@ private:
 };
 template <class T, class H>
 concept HandlerGenerator = Handler<H> && requires(T t, H h) {
-  { t.generate() } -> wheel::same_as<H>;
+  { t() } -> wheel::same_as<H>;
 };
 template <Handler H, HandlerGenerator<H> HG>
 class TcpServer {
@@ -84,7 +84,7 @@ sync::IOM_EVENTS TcpConn<H>::send() {
   wheel::string data;
   auto state = HandleState{};
   while (true) {
-    state = this->handler.handle(1, data);
+    state = this->handler(1, data);
     this->send_buffer += data;
     while (!this->send_buffer.empty()) {
       ssize_t n = ::send(this->fd, this->send_buffer.c_str(), this->send_buffer.size(), 0);
@@ -130,7 +130,7 @@ sync::IOM_EVENTS TcpConn<H>::recv() {
   if (n == 0) {
     spdlog::debug("[read] recv over");
   }
-  auto state = this->handler.handle(0, data);
+  auto state = this->handler(0, data);
   if (state.hint == HandleHint::WRITE) {
     spdlog::debug("[TcpConn::recv] Handling write hint");
     this->send_buffer += data;
@@ -218,7 +218,7 @@ sync::IOM_EVENTS TcpServer<H, HG>::accept_handler(int fd, sync::IOM_EVENTS event
       close(client_fd);
       return sync::IOM_EVENTS::IN;
     }
-    auto tcp_conn = TcpConn(client_fd, this->poller, this->handler_generator->generate());
+    auto tcp_conn = TcpConn(client_fd, this->poller, (*this->handler_generator)());
     auto events = tcp_conn.recv();
     if ((events & sync::IOM_EVENTS::OUT) == sync::IOM_EVENTS::OUT) {
       spdlog::debug("[TcpServer::<lambda::handler>] Sending data");

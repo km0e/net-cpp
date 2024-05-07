@@ -25,7 +25,7 @@ void sigterm_init() {
 }
 class Handler {
 public:
-  xsl::transport::HandleState handle(int r_w, wheel::string &data) {
+  xsl::transport::HandleState operator()(int r_w, wheel::string &data) {
     (void)data;
     if (r_w == 0) {
       return xsl::transport::HandleState(xsl::sync::IOM_EVENTS::OUT,
@@ -40,7 +40,7 @@ class HandlerGenerator {
 public:
   HandlerGenerator() {}
   ~HandlerGenerator() {}
-  Handler generate() { return {}; }
+  Handler operator()() { return {}; }
 
 private:
   wheel::string data;

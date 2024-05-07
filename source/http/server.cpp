@@ -3,7 +3,7 @@
 #include <xsl/http/msg.h>
 #include <xsl/http/server.h>
 #include <xsl/sync/poller.h>
-#include <xsl/transport/tcp_server.h>
+#include <xsl/transport/server.h>
 #include <xsl/utils/wheel/wheel.h>
 
 HTTP_NAMESPACE_BEGIN

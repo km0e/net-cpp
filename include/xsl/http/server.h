@@ -5,7 +5,7 @@
 #  include <xsl/http/msg.h>
 #  include <xsl/http/router.h>
 #  include <xsl/sync/poller.h>
-#  include <xsl/transport/tcp_server.h>
+#  include <xsl/transport/server.h>
 #  include <xsl/utils/wheel/wheel.h>
 HTTP_NAMESPACE_BEGIN
 class HttpParser {
@@ -15,11 +15,11 @@ public:
   wheel::vector<RequestResult> parse(const char* data, size_t len);
 };
 template <Router R>
-class HttpHandler {
+class Handler {
 public:
-  HttpHandler(wheel::shared_ptr<R> router) : router(router) {}
-  ~HttpHandler() {}
-  transport::HandleState operator()(int read_write, wheel::string& data) {
+  Handler(wheel::shared_ptr<R> router) : router(router) {}
+  ~Handler() {}
+  transport::HandleState handle(int read_write, wheel::string& data) {
     if (read_write == 0) {
       auto reqs = this->parser.parse(data.c_str(), data.size());
       wheel::string res;
@@ -49,17 +49,21 @@ private:
   wheel::shared_ptr<R> router;
 };
 
-template <Router R>
-class DefaultHandlerGenerator : public transport::HandlerGenerator {
+using DefaultHandler = Handler<DefaultRouter>;
+
+template <Router R, transport::Handler H>
+class DefaultHandlerGenerator {
 public:
   DefaultHandlerGenerator(wheel::shared_ptr<R> router) : router(router) {}
-  transport::Handler operator()() { return HttpHandler<R>{this->router}; }
+  H generate() { return Handler<R>{this->router}; }
 
 private:
   wheel::shared_ptr<R> router;
 };
 
-using DefaultHG = DefaultHandlerGenerator<DefaultRouter>;
+using DefaultHG = DefaultHandlerGenerator<DefaultRouter, DefaultHandler>;
+
+using DefaultServer = transport::TcpServer<Handler<DefaultRouter>, DefaultHG>;
 
 HTTP_NAMESPACE_END
 #endif

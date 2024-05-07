@@ -3,7 +3,7 @@
 #include <sys/signal.h>
 #include <unistd.h>
 #include <xsl/sync/poller.h>
-#include <xsl/transport/tcp_server.h>
+#include <xsl/transport/server.h>
 #include <xsl/utils/wheel/wheel.h>
 
 #include <CLI/CLI.hpp>
@@ -23,23 +23,24 @@ void sigterm_init() {
   sigaction(SIGTERM, &act, nullptr);
   sigaction(SIGINT, &act, nullptr);
 }
-
-class HandlerGenerator : public xsl::transport::HandlerGenerator {
+class Handler {
+public:
+  xsl::transport::HandleState handle(int r_w, wheel::string &data) {
+    (void)data;
+    if (r_w == 0) {
+      return xsl::transport::HandleState(xsl::sync::IOM_EVENTS::OUT,
+                                         xsl::transport::HandleHint::WRITE);
+    } else {
+      return xsl::transport::HandleState(xsl::sync::IOM_EVENTS::NONE,
+                                         xsl::transport::HandleHint::NONE);
+    }
+  }
+};
+class HandlerGenerator {
 public:
   HandlerGenerator() {}
   ~HandlerGenerator() {}
-  xsl::transport::Handler operator()() {
-    return [](int r_w, wheel::string &data) -> xsl::transport::HandleState {
-      (void)data;
-      if (r_w == 0) {
-        return xsl::transport::HandleState(xsl::sync::IOM_EVENTS::OUT,
-                                           xsl::transport::HandleHint::WRITE);
-      } else {
-        return xsl::transport::HandleState(xsl::sync::IOM_EVENTS::NONE,
-                                           xsl::transport::HandleHint::NONE);
-      }
-    };
-  }
+  Handler generate() { return {}; }
 
 private:
   wheel::string data;
@@ -62,7 +63,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   auto handler_generator = wheel::make_shared<HandlerGenerator>();
-  xsl::transport::TcpServer server{};
+  xsl::transport::TcpServer<Handler, HandlerGenerator> server{};
   server.set_poller(poller);
   server.set_handler_generator(handler_generator);
   if (!server.serve(ip.c_str(), port)) {

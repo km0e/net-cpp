@@ -6,7 +6,7 @@ target_include_directories(xsl_transport
 
 set(DIRECT_HEADER_LIST
     transport.h
-    tcp_server.h
+    server.h
     utils.h
 )
 
@@ -21,7 +21,7 @@ endforeach()
 
 set(DIRECT_SOURCE_LIST
     transport.cpp
-    tcp_server.cpp
+    server.cpp
     utils.cpp
 )
 

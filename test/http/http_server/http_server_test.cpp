@@ -6,7 +6,7 @@
 #include <xsl/http/router.h>
 #include <xsl/http/server.h>
 #include <xsl/sync/poller.h>
-#include <xsl/transport/tcp_server.h>
+#include <xsl/transport/server.h>
 #include <xsl/utils/wheel/wheel.h>
 
 #include <CLI/CLI.hpp>
@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
                     });
   auto handler_generator = wheel::make_shared<xsl::http::DefaultHG>(router);
   wheel::shared_ptr<xsl::sync::Poller> poller = wheel::make_shared<xsl::sync::EPoller>();
-  xsl::transport::TcpServer tcp_server{};
+  xsl::http::DefaultServer tcp_server{};
   tcp_server.set_poller(poller);
   tcp_server.set_handler_generator(handler_generator);
   if (!tcp_server.serve(TEST_HOST, TEST_PORT)) {

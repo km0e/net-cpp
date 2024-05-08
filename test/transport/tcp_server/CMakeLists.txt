@@ -1,12 +1,6 @@
 
-include_directories(
-    ${XSL_INC_DIR}
-)
-
 link_libraries(
-    xsl_wheel
     xsl_transport
-    xsl_sync
 )
 
 # use nc to test

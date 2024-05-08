@@ -1,12 +1,7 @@
 add_library(xsl_transport STATIC)
-target_include_directories(xsl_transport
-    PUBLIC
-    ${XSL_INC_DIR}
-)
 
 set(DIRECT_HEADER_LIST
     transport.h
-    server.h
     utils.h
 )
 
@@ -21,7 +16,6 @@ endforeach()
 
 set(DIRECT_SOURCE_LIST
     transport.cpp
-    server.cpp
     utils.cpp
 )
 
@@ -34,8 +28,11 @@ foreach(SOURCE ${DIRECT_SOURCE_LIST})
     )
 endforeach()
 
+add_subdirectory(tcp)
+
 target_link_libraries(xsl_transport
     PUBLIC
     xsl_utils
     xsl_sync
+    xsl_tcp
 )

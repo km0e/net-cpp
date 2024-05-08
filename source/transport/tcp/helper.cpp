@@ -1,10 +1,12 @@
 #include <fcntl.h>
+#include <fmt/format.h>
 #include <spdlog/spdlog.h>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <xsl/transport/tcp/conn.h>
 
+#include <cstddef>
 #include <numeric>
 
 #include "xsl/transport/tcp/helper.h"
@@ -25,6 +27,16 @@ bool SendFile::exec(int sfd) {
       spdlog::error("fstat failed");
     }
     ssize_t n = sendfile(sfd, ffd, nullptr, 1024);
+    if (n == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        spdlog::debug("[sendfile] send over");
+      } else {
+        spdlog::error("[sendfile] Failed to send file");
+        return false;
+      }
+    } else if (n < st.st_size) {
+      return false;
+    }
   }
 }
 wheel::unique_ptr<TaskNode> SendString::create(wheel::string&& data) {
@@ -33,6 +45,7 @@ wheel::unique_ptr<TaskNode> SendString::create(wheel::string&& data) {
 SendString::SendString(wheel::string&& data) { this->data_buffer.emplace_back(wheel::move(data)); }
 SendString::~SendString() {}
 bool SendString::exec(int sfd) {
+  spdlog::trace("[SendString::exec]");
   while (!this->data_buffer.empty()) {
     auto& data = this->data_buffer.front();
     ssize_t n = write(sfd, data.c_str(), data.size());
@@ -43,10 +56,11 @@ bool SendString::exec(int sfd) {
         spdlog::error("[write] Failed to send data");
         return false;
       }
-    } else if (n < data.size()) {
+    } else if (static_cast<size_t>(n) < data.size()) {
       data.erase(0, n);
       return false;
     }
+    spdlog::debug("[SendString::exec] send {} bytes", n);
     this->data_buffer.pop_front();
   }
   return true;
@@ -59,6 +73,7 @@ RecvString::RecvString(wheel::string& data) : data_buffer(data) {}
 RecvString::~RecvString() {}
 
 bool RecvString::exec(int sfd) {
+  spdlog::trace("[RecvString::exec]");
   wheel::vector<wheel::string> data;
   char buf[MAX_SINGLE_RECV_SIZE];
   ssize_t n;
@@ -75,8 +90,8 @@ bool RecvString::exec(int sfd) {
       return false;
     }
   }
-  spdlog::debug("[read] data size: {}", (data.size() - 1) * MAX_SINGLE_RECV_SIZE + n);
   this->data_buffer = std::accumulate(data.begin(), data.end(), wheel::string());
+  spdlog::debug("[RecvString::exec] data size: {}", this->data_buffer.size());
   return true;
 }
 

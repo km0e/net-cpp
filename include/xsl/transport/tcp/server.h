@@ -37,7 +37,7 @@ private:
 
 template <Handler H, HandlerGenerator<H> HG>
 TcpServer<H, HG>::TcpServer(TcpConfig config)
-    : server_fd(-1), config(config), poller(nullptr), handler_generator(nullptr), handlers() {}
+    : server_fd(-1), config(config), handler_generator(nullptr), handlers(), poller(nullptr) {}
 
 template <Handler H, HandlerGenerator<H> HG>
 TcpServer<H, HG>::~TcpServer() {

@@ -1,8 +1,4 @@
 add_library(xsl_sync STATIC)
-target_include_directories(xsl_wheel
-    PUBLIC
-    ${XSL_INC_DIR}
-)
 
 set(DIRECT_HEADER_LIST
     poller.h

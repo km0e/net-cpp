@@ -5,13 +5,12 @@ add_executable(echo-server)
 
 target_link_libraries(echo-server
     xsl_wheel
-    xsl_transport
+    xsl_tcp
+    ${FMT_LIBRARIES}
 )
 
 target_include_directories(echo-server
     PRIVATE
-    ${XSL_WHEEL_DIR}
-    ${XSL_TRANSPORT_DIR}
     abseil::absl
 )
 

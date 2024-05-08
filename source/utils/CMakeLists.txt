@@ -3,11 +3,6 @@ add_subdirectory(wheel)
 
 add_library(xsl_utils STATIC)
 
-target_include_directories(xsl_utils
-    PUBLIC
-    ${XSL_INC_DIR}
-)
-
 set(DIRECT_HEADER_LIST
     utils.h
 )

@@ -28,7 +28,7 @@ private:
 template <Handler H>
 TcpConn<H>::TcpConn(int fd, wheel::shared_ptr<sync::Poller> poller, H&& handler)
     : fd(fd), poller(poller), handler(handler) {
-  auto cfg = handler.init();
+  auto cfg = this->handler.init();
   this->recv_tasks.splice_after(this->recv_tasks.before_begin(), cfg.recv_tasks);
 }
 
@@ -45,7 +45,7 @@ sync::IOM_EVENTS TcpConn<H>::send() {
   // move new tasks to this->tasks tail
   hl.splice_after(hl.before_begin(), this->send_tasks);
   this->send_tasks = std::move(hl);
-  while (true) {
+  while (!this->send_tasks.empty()) {
     if (this->send_tasks.front()->exec(this->fd)) {
       this->send_tasks.pop_front();
     } else {
@@ -60,10 +60,12 @@ sync::IOM_EVENTS TcpConn<H>::recv() {
   while (true) {
     for (auto& task : this->recv_tasks) {
       if (task->exec(this->fd)) {
-        break;
+        goto out;  // maybe goto is not good
       }
     }
   }
+out:
+  spdlog::debug("[TcpConn::recv] recv all data");
   auto state = this->handler.recv(this->recv_tasks);
   return state.events;
 }

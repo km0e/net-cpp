@@ -35,11 +35,12 @@ class Handler {
 public:
   HandleConfig init() {
     HandleConfig config{};
-    config.recv_tasks.push_front(wheel::move(wheel::make_unique<xsl::transport::tcp::RecvString>(this->data)));
-    return wheel::move(config);
+    spdlog::debug("[T][Handler::init] Pushing recv task");
+    config.recv_tasks.push_front(xsl::transport::tcp::RecvString::create(this->data));
+    return config;
   }
-  TcpHandleState recv(TcpTasks &_) {
-    spdlog::info("Received data: {}", data);
+  TcpHandleState recv([[maybe_unused]] TcpTasks &tasks) {
+    spdlog::info("[T][Handler::recv] Received data: {}", this->data);
     return TcpHandleState(xsl::sync::IOM_EVENTS::OUT, TcpHandleHint::WRITE);
   }
   TcpHandleState send(TcpTasks &tasks) {

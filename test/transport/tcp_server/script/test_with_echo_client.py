@@ -25,10 +25,10 @@ for test_program in test_programs:
     server.wait()
     if client.returncode != 0 or server.returncode != 0:
         print("Test failed")
-        print("Test Server output:")
+        print("Test Server status: %d, output:" % server.returncode)
         print(str(server.stdout.read(), 'utf-8'))
         print(str(server.stderr.read(), 'utf-8'))
-        print("Test Client output:")
+        print("Test Client output: %d, output:" % client.returncode)
         print(str(client.stdout.read(), 'utf-8'))
         print(str(client.stderr.read(), 'utf-8'))
         sys.exit(1)

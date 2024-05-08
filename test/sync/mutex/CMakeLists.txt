@@ -1,8 +1,3 @@
-
-include_directories(
-    ${XSL_INC_DIR}
-)
-
 link_libraries(
     xsl_wheel
     xsl_sync

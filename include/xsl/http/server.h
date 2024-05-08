@@ -1,4 +1,5 @@
 #pragma once
+#include <spdlog/spdlog.h>
 #include "xsl/transport/tcp/helper.h"
 #include "xsl/transport/tcp/tcp.h"
 #ifndef _XSL_NET_HTTP_SERVER_H_
@@ -29,10 +30,11 @@ public:
   ~Handler() {}
   transport::tcp::HandleConfig init() {
     transport::tcp::HandleConfig cfg{};
-    cfg.recv_tasks.emplace_front(transport::tcp::RecvString::create(this->send_data));
-    return wheel::move(cfg);
+    cfg.recv_tasks.emplace_front(transport::tcp::RecvString::create(this->recv_data));
+    return cfg;
   }
-  TcpHandleState recv(transport::tcp::Tasks& _) {
+  TcpHandleState recv([[maybe_unused]] transport::tcp::Tasks& tasks) {
+    spdlog::trace("[http::Handler::recv]");
     auto reqs = this->parser.parse(recv_data.c_str(), recv_data.size());
     wheel::string res;
     res.reserve(1024);

@@ -9,18 +9,15 @@ project(
   LANGUAGES CXX
 )
 
-
 set(CMAKE_CXX_STANDARD 20)
 
 # ---- Include guards ----
-
 if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
   message(
     FATAL_ERROR
-      "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there."
+    "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there."
   )
 endif()
-
 
 find_package(spdlog REQUIRED)
 
@@ -36,7 +33,6 @@ add_link_options(-fuse-ld=mold)
 
 add_compile_options(-O3)
 
-
 # --- Import tools ----
 # enable compiler warnings if is debug build
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -48,9 +44,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   endif()
 endif()
 
-
-
 add_subdirectory(include)
+
+include_directories(${XSL_INC_DIR})
 
 add_subdirectory(source)
 
@@ -60,5 +56,3 @@ add_subdirectory(examples)
 enable_testing()
 
 add_subdirectory(test)
-
-

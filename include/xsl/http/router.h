@@ -73,15 +73,15 @@ namespace router_details {
   };
 }  // namespace router_details
 
-const RouteHandler UNKNOWN_HANDLER = [](Context& ctx) -> Response {
+const RouteHandler UNKNOWN_HANDLER = []([[maybe_unused]] Context& ctx) -> Response {
   return Response{"HTTP/1.1", 500, "Internal Server Error"};
 };
 
-const RouteHandler NOT_FOUND_HANDLER = [](Context& ctx) -> Response {
+const RouteHandler NOT_FOUND_HANDLER = []([[maybe_unused]] Context& ctx) -> Response {
   return Response{"HTTP/1.1", 404, "Not Found"};
 };
 
-const RouteHandler UNIMPLEMENTED_HANDLER = [](Context& ctx) -> Response {
+const RouteHandler UNIMPLEMENTED_HANDLER = []([[maybe_unused]] Context& ctx) -> Response {
   return Response{"HTTP/1.1", 501, "Not Implemented"};
 };
 

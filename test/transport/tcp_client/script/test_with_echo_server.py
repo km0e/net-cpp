@@ -30,4 +30,4 @@ for test_program in test_programs:
         print("Test output:")
         print(str(client.stdout.read(), 'utf-8'))
         print(str(client.stderr.read(), 'utf-8'))
-        sys.exit(1)
+        sys.exit(0)

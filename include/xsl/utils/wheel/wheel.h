@@ -6,7 +6,9 @@
 #  include <array>
 #  include <atomic>
 #  include <concepts>
+#  include <forward_list>
 #  include <functional>
+#  include <list>
 #  include <memory>
 #  include <mutex>
 #  include <optional>
@@ -23,7 +25,11 @@ namespace wheel {
   using std::array;
   using std::atomic_flag;
   using std::forward;
+  using std::forward_list;
   using std::function;
+  using std::unique_ptr;
+  using std::make_unique;
+  using std::list;
   using std::make_shared;
   using std::make_unique;
   using std::move;
@@ -66,6 +72,7 @@ namespace wheel {
     T unwrap() { return std::get<T>(value); }
     E unwrap_err() { return std::get<E>(value); }
     RefResult<T, E> as_ref() { return RefResult<T, E>(value); }
+
   private:
     std::variant<T, E> value;
   };

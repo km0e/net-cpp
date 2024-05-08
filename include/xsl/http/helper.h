@@ -9,6 +9,7 @@
 HTTP_NAMESPACE_BEGIN
 class StaticRouteHandler {
 public:
+  // path format: /path/to/file or /path/to/dir/
   StaticRouteHandler(wheel::string&& path);
   ~StaticRouteHandler();
   Response operator()(Context& request);

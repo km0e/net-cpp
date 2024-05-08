@@ -3,50 +3,15 @@
 #  define _XSL_NET_TRANSPORT_TCP_SERVER_H_
 #  include <spdlog/spdlog.h>
 #  include <xsl/sync/poller.h>
+#  include <xsl/transport/tcp/conn.h>
+#  include <xsl/transport/tcp/tcp.h>
 #  include <xsl/transport/transport.h>
 #  include <xsl/transport/utils.h>
 #  include <xsl/utils/utils.h>
 #  include <xsl/utils/wheel/wheel.h>
-TRANSPORT_NAMESPACE_BEGIN
 
-enum class HandleHint {
-  NONE = 0,
-  // Hint that the param data is a pointer to a string that should be sent
-  WRITE = 2,
-};
+TCP_NAMESPACE_BEGIN
 
-class HandleState {
-public:
-  HandleState();
-  HandleState(sync::IOM_EVENTS events, HandleHint hint);
-  ~HandleState();
-  sync::IOM_EVENTS events;
-  HandleHint hint;
-};
-template <class T>
-concept Handler = requires(T t, int i, wheel::string& s) {
-  { t(i, s) } -> wheel::same_as<HandleState>;
-};
-
-template <Handler H>
-class TcpConn {
-public:
-  TcpConn(TcpConn&&) = default;
-  TcpConn(int fd, wheel::shared_ptr<sync::Poller> poller, H&& handler);
-  ~TcpConn();
-  sync::IOM_EVENTS send();
-  sync::IOM_EVENTS recv();
-
-private:
-  int fd;
-  wheel::shared_ptr<sync::Poller> poller;
-  H handler;
-  wheel::string send_buffer;
-};
-template <class T, class H>
-concept HandlerGenerator = Handler<H> && requires(T t, H h) {
-  { t() } -> wheel::same_as<H>;
-};
 template <Handler H, HandlerGenerator<H> HG>
 class TcpServer {
 public:
@@ -69,74 +34,6 @@ private:
   wheel::unordered_map<int, TcpConn<H>> handlers;
   wheel::shared_ptr<sync::Poller> poller;
 };
-template <Handler H>
-TcpConn<H>::TcpConn(int fd, wheel::shared_ptr<sync::Poller> poller, H&& handler)
-    : fd(fd), poller(poller), handler(handler) {}
-
-template <Handler H>
-TcpConn<H>::~TcpConn() {
-  close(this->fd);
-}
-
-template <Handler H>
-sync::IOM_EVENTS TcpConn<H>::send() {
-  spdlog::trace("[TcpConn::send]");
-  wheel::string data;
-  auto state = HandleState{};
-  while (true) {
-    state = this->handler(1, data);
-    this->send_buffer += data;
-    while (!this->send_buffer.empty()) {
-      ssize_t n = ::send(this->fd, this->send_buffer.c_str(), this->send_buffer.size(), 0);
-      if (n == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          spdlog::debug("[TcpConn::send] send over");
-        } else {
-          spdlog::error("[TcpConn::send] Failed to send data");
-        }
-        break;
-      } else if ((size_t)n == this->send_buffer.size()) {
-        break;
-      }
-      this->send_buffer = this->send_buffer.substr(n);
-    }
-    if ((state.events & sync::IOM_EVENTS::OUT) != sync::IOM_EVENTS::OUT) {
-      break;
-    }
-  }
-  return state.events;
-}
-template <Handler H>
-sync::IOM_EVENTS TcpConn<H>::recv() {
-  spdlog::trace("[TcpConn::recv]");
-  spdlog::trace("[read] Reading from fd: {}", fd);
-  wheel::string data;
-  data.clear();
-  data.reserve(1024);
-  char buf[1024];
-  ssize_t n;
-  while ((n = ::recv(fd, buf, sizeof(buf), 0)) > 0) {
-    data.append(buf, n);
-  }
-  spdlog::debug("[read] data size: {}", data.size());
-  if (n == -1) {
-    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      spdlog::debug("[read] recv over");
-    } else {
-      spdlog::error("[read] Failed to recv data");
-      return sync::IOM_EVENTS::NONE;
-    }
-  }
-  if (n == 0) {
-    spdlog::debug("[read] recv over");
-  }
-  auto state = this->handler(0, data);
-  if (state.hint == HandleHint::WRITE) {
-    spdlog::debug("[TcpConn::recv] Handling write hint");
-    this->send_buffer += data;
-  }
-  return state.events;
-}
 
 template <Handler H, HandlerGenerator<H> HG>
 TcpServer<H, HG>::TcpServer(TcpConfig config)
@@ -239,5 +136,5 @@ sync::IOM_EVENTS TcpServer<H, HG>::accept_handler(int fd, sync::IOM_EVENTS event
   return sync::IOM_EVENTS::NONE;
 }
 
-TRANSPORT_NAMESPACE_END
+TCP_NAMESPACE_END
 #endif

@@ -6,7 +6,7 @@
 #include <xsl/http/router.h>
 #include <xsl/http/server.h>
 #include <xsl/sync/poller.h>
-#include <xsl/transport/server.h>
+#include <xsl/transport/tcp/server.h>
 #include <xsl/utils/wheel/wheel.h>
 
 #include <CLI/CLI.hpp>
@@ -19,8 +19,6 @@
 #ifndef TEST_PORT
 #  define TEST_PORT 8080
 #endif
-bool recv_handler(int fd, xsl::sync::IOM_EVENTS events);
-
 void sigterm_init() {
   struct sigaction act;
   act.sa_handler = [](int sig) -> void {

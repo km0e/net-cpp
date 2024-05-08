@@ -3,10 +3,13 @@
 #include <sys/signal.h>
 #include <unistd.h>
 #include <xsl/sync/poller.h>
-#include <xsl/transport/server.h>
+#include <xsl/transport/tcp/server.h>
 #include <xsl/utils/wheel/wheel.h>
 
 #include <CLI/CLI.hpp>
+
+#include "xsl/transport/tcp/helper.h"
+#include "xsl/transport/tcp/tcp.h"
 
 #ifndef TEST_HOST
 #  define TEST_HOST "127.0.0.1"
@@ -23,18 +26,27 @@ void sigterm_init() {
   sigaction(SIGTERM, &act, nullptr);
   sigaction(SIGINT, &act, nullptr);
 }
+using TcpHandleState = xsl::transport::tcp::HandleState;
+using TcpHandleHint = xsl::transport::tcp::HandleHint;
+using xsl::transport::tcp::HandleConfig;
+using xsl::transport::tcp::TcpServer;
+using TcpTasks = xsl::transport::tcp::Tasks;
 class Handler {
 public:
-  xsl::transport::HandleState operator()(int r_w, wheel::string &data) {
-    (void)data;
-    if (r_w == 0) {
-      return xsl::transport::HandleState(xsl::sync::IOM_EVENTS::OUT,
-                                         xsl::transport::HandleHint::WRITE);
-    } else {
-      return xsl::transport::HandleState(xsl::sync::IOM_EVENTS::NONE,
-                                         xsl::transport::HandleHint::NONE);
-    }
+  HandleConfig init() {
+    HandleConfig config{};
+    config.recv_tasks.push_front(wheel::move(wheel::make_unique<xsl::transport::tcp::RecvString>(this->data)));
+    return wheel::move(config);
   }
+  TcpHandleState recv(TcpTasks &_) {
+    spdlog::info("Received data: {}", data);
+    return TcpHandleState(xsl::sync::IOM_EVENTS::OUT, TcpHandleHint::WRITE);
+  }
+  TcpHandleState send(TcpTasks &tasks) {
+    tasks.emplace_front(xsl::transport::tcp::SendString::create(wheel::move(this->data)));
+    return TcpHandleState(xsl::sync::IOM_EVENTS::NONE, TcpHandleHint::NONE);
+  }
+  wheel::string data;
 };
 class HandlerGenerator {
 public:
@@ -63,7 +75,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   auto handler_generator = wheel::make_shared<HandlerGenerator>();
-  xsl::transport::TcpServer<Handler, HandlerGenerator> server{};
+  TcpServer<Handler, HandlerGenerator> server{};
   server.set_poller(poller);
   server.set_handler_generator(handler_generator);
   if (!server.serve(ip.c_str(), port)) {

@@ -6,6 +6,7 @@
 #include <xsl/utils/wheel/wheel.h>
 
 #include <cstdint>
+
 #include "xsl/http/context.h"
 
 HTTP_NAMESPACE_BEGIN
@@ -66,6 +67,7 @@ namespace router_details {
     auto pos = ctx.current_path.find('/', 1);
     auto sub = ctx.current_path.substr(1, pos);
     auto iter = this->children.find(sub);
+    ctx.current_path = ctx.current_path.substr(sub.length() + 1);
     if (iter != this->children.end()) {
       auto res = iter->second->route(ctx);
       if (res.is_ok())
@@ -92,7 +94,7 @@ AddRouteResult DefaultRouter::add_route(HttpMethod method, wheel::string_view pa
   return root.add_route(method, path, wheel::move(handler));
 }
 
-RouteResult DefaultRouter::route(Context&ctx) {
+RouteResult DefaultRouter::route(Context& ctx) {
   spdlog::debug("[HttpRouter::route] Routing request: {}", ctx.current_path);
   if (ctx.request.method == HttpMethod::UNKNOWN) {
     return RouteResult(RouteError(RouteErrorKind::Unknown, ""));

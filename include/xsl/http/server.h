@@ -1,9 +1,8 @@
 #pragma once
-#include <spdlog/spdlog.h>
-#include "xsl/transport/tcp/helper.h"
-#include "xsl/transport/tcp/tcp.h"
+
 #ifndef _XSL_NET_HTTP_SERVER_H_
 #  define _XSL_NET_HTTP_SERVER_H_
+#  include <spdlog/spdlog.h>
 #  include <xsl/http/http.h>
 #  include <xsl/http/msg.h>
 #  include <xsl/http/router.h>
@@ -12,6 +11,8 @@
 #  include <xsl/utils/wheel/wheel.h>
 
 #  include "xsl/http/context.h"
+#  include "xsl/transport/tcp/context.h"
+#  include "xsl/transport/tcp/helper.h"
 HTTP_NAMESPACE_BEGIN
 class HttpParser {
 public:
@@ -33,7 +34,7 @@ public:
     cfg.recv_tasks.emplace_front(transport::tcp::RecvString::create(this->recv_data));
     return cfg;
   }
-  TcpHandleState recv([[maybe_unused]] transport::tcp::Tasks& tasks) {
+  TcpHandleState recv([[maybe_unused]] transport::tcp::RecvTasks& tasks) {
     spdlog::trace("[http::Handler::recv]");
     auto reqs = this->parser.parse(recv_data.c_str(), recv_data.size());
     wheel::string res;
@@ -55,7 +56,7 @@ public:
     this->send_data = wheel::move(res);
     return TcpHandleState{sync::IOM_EVENTS::OUT, TcpHandleHint::WRITE};
   }
-  TcpHandleState send(transport::tcp::Tasks& tasks) {
+  TcpHandleState send(transport::tcp::SendTasks& tasks) {
     tasks.emplace_front(transport::tcp::SendString::create(wheel::move(this->send_data)));
     return TcpHandleState{sync::IOM_EVENTS::NONE, TcpHandleHint::NONE};
   }

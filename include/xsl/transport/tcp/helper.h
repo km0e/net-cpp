@@ -1,39 +1,52 @@
 #pragma once
-#include "xsl/utils/wheel/wheel.h"
 #ifndef _XSL_NET_TRANSPORT_TCP_HELPER_H_
 #  define _XSL_NET_TRANSPORT_TCP_HELPER_H_
-#  include <xsl/transport/tcp/tcp.h>
-TCP_NAMESPACE_BEGIN
-class SendFile : public TaskNode {
-public:
-  SendFile(wheel::string&& path);
-  ~SendFile();
-  bool exec(int fd) override;
+#  include <xsl/transport/tcp/context.h>
+#  include <xsl/transport/tcp/def.h>
 
-private:
+#  include "xsl/utils/wheel/wheel.h"
+TCP_NAMESPACE_BEGIN
+// class ErrorHandle : public TaskNode {
+class FileInfor {
+public:
+  FileInfor(size_t size);
+  size_t size;
+};
+using FileHeaderGenerator = wheel::function<wheel::string(const FileInfor&)>;
+
+class SendFile : public SendTaskNode {
+public:
+  SendFile(
+      wheel::string&& path, FileHeaderGenerator&& header_gen = [](const FileInfor&) { return ""; });
+  ~SendFile();
+  bool exec(SendContext& ctx) override;
+
+protected:
   wheel::list<wheel::string> path_buffer;
+  FileHeaderGenerator header_gen;
 };
 
-class SendString : public TaskNode {
+class SendString : public SendTaskNode {
 public:
-  static wheel::unique_ptr<TaskNode> create(wheel::string&& data);
+  static wheel::unique_ptr<SendTaskNode> create(wheel::string&& data);
   SendString(wheel::string&& data);
   SendString(SendString&&) = default;
   ~SendString();
-  bool exec(int fd) override;
+  bool exec(SendContext& ctx) override;
 
 private:
   wheel::list<wheel::string> data_buffer;
 };
 const size_t MAX_SINGLE_RECV_SIZE = 1024;
-class RecvString : public TaskNode {
+class RecvString : public RecvTaskNode {
 public:
-  static wheel::unique_ptr<TaskNode> create(wheel::string& data);
+  static wheel::unique_ptr<RecvTaskNode> create(wheel::string& data);
   RecvString(RecvString&&) = default;
   RecvString(wheel::string& data);
   ~RecvString();
-  bool exec(int fd) override;
+  bool exec(RecvContext& ctx) override;
 
+private:
   wheel::string& data_buffer;
 };
 TCP_NAMESPACE_END

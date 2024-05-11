@@ -9,7 +9,6 @@
 #include <CLI/CLI.hpp>
 
 #include "xsl/transport/tcp/helper.h"
-#include "xsl/transport/tcp/tcp.h"
 
 #ifndef TEST_HOST
 #  define TEST_HOST "127.0.0.1"
@@ -30,7 +29,8 @@ using TcpHandleState = xsl::transport::tcp::HandleState;
 using TcpHandleHint = xsl::transport::tcp::HandleHint;
 using xsl::transport::tcp::HandleConfig;
 using xsl::transport::tcp::TcpServer;
-using TcpTasks = xsl::transport::tcp::Tasks;
+using SendTasks = xsl::transport::tcp::SendTasks;
+using RecvTasks = xsl::transport::tcp::RecvTasks;
 class Handler {
 public:
   HandleConfig init() {
@@ -39,11 +39,11 @@ public:
     config.recv_tasks.push_front(xsl::transport::tcp::RecvString::create(this->data));
     return config;
   }
-  TcpHandleState recv([[maybe_unused]] TcpTasks &tasks) {
+  TcpHandleState recv([[maybe_unused]] RecvTasks &tasks) {
     spdlog::info("[T][Handler::recv] Received data: {}", this->data);
     return TcpHandleState(xsl::sync::IOM_EVENTS::OUT, TcpHandleHint::WRITE);
   }
-  TcpHandleState send(TcpTasks &tasks) {
+  TcpHandleState send(SendTasks &tasks) {
     tasks.emplace_front(xsl::transport::tcp::SendString::create(wheel::move(this->data)));
     return TcpHandleState(xsl::sync::IOM_EVENTS::NONE, TcpHandleHint::NONE);
   }

@@ -1,5 +1,5 @@
-#include <xsl/sync/mutex.h>
-#include <xsl/sync/sync.h>
+#include "xsl/sync/mutex.h"
+#include "xsl/sync/sync.h"
 
 SYNC_NAMESPACE_BEGIN
 TryLockGuard::TryLockGuard(Mutex& m) : m(m) { locked = m.try_lock(); }

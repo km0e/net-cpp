@@ -1,10 +1,10 @@
 #include <spdlog/spdlog.h>
 #include <unistd.h>
-#include <xsl/utils/wheel/wheel.h>
 
 #include <CLI/CLI.hpp>
 
 #include "xsl/transport/utils.h"
+#include "xsl/utils/wheel/wheel.h"
 
 int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};

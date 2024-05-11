@@ -6,7 +6,6 @@
 #  include <sys/signal.h>
 #  include <sys/socket.h>
 #  include <sys/types.h>
-#  include <wheel.h>
 #  define USE_EPOLL
 class Url {};
 

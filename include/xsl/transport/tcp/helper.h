@@ -1,9 +1,8 @@
 #pragma once
 #ifndef _XSL_NET_TRANSPORT_TCP_HELPER_H_
 #  define _XSL_NET_TRANSPORT_TCP_HELPER_H_
-#  include <xsl/transport/tcp/context.h>
-#  include <xsl/transport/tcp/def.h>
-
+#  include "xsl/transport/tcp/context.h"
+#  include "xsl/transport/tcp/def.h"
 #  include "xsl/utils/wheel/wheel.h"
 TCP_NAMESPACE_BEGIN
 // TODO: add FileHeaderGenerator
@@ -16,8 +15,7 @@ TCP_NAMESPACE_BEGIN
 
 class SendFile : public SendTaskNode {
 public:
-  SendFile(
-      wheel::string&& path);
+  SendFile(wheel::string&& path);
   ~SendFile();
   bool exec(SendContext& ctx) override;
 

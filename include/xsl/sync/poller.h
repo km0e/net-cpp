@@ -4,10 +4,9 @@
 #  include <sys/epoll.h>
 #  include <sys/socket.h>
 #  include <sys/types.h>
-#  include <xsl/config.h>
-#  include <xsl/utils/wheel/wheel.h>
 
 #  include "xsl/sync/sync.h"
+#  include "xsl/utils/wheel/wheel.h"
 SYNC_NAMESPACE_BEGIN
 #  define USE_EPOLL
 #  ifdef USE_EPOLL

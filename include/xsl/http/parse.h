@@ -1,9 +1,9 @@
 #pragma once
 #ifndef _XSL_NET_HTTP_PARSE_H_
 #  define _XSL_NET_HTTP_PARSE_H_
-#  include <xsl/http/http.h>
-#  include <xsl/http/msg.h>
-#  include <xsl/utils/wheel/wheel.h>
+#  include "xsl/http/http.h"
+#  include "xsl/http/msg.h"
+#  include "xsl/utils/wheel/wheel.h"
 HTTP_NAMESPACE_BEGIN
 enum class ParseErrorKind {
   Unknown,

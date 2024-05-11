@@ -2,11 +2,10 @@
 #ifndef _XSL_NET_TRANSPORT_TCP_CONN_H_
 #  define _XSL_NET_TRANSPORT_TCP_CONN_H_
 #  include <spdlog/spdlog.h>
-#  include <xsl/sync/poller.h>
-#  include <xsl/transport/tcp/conn.h>
-#  include <xsl/transport/tcp/context.h>
-#  include <xsl/transport/tcp/def.h>
 
+#  include "xsl/sync/poller.h"
+#  include "xsl/transport/tcp/context.h"
+#  include "xsl/transport/tcp/def.h"
 #  include "xsl/utils/wheel/wheel.h"
 TCP_NAMESPACE_BEGIN
 enum class HandleHint {

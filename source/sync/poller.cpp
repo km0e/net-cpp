@@ -1,7 +1,8 @@
 #include <spdlog/spdlog.h>
 #include <sys/signal.h>
-#include <xsl/config.h>
-#include <xsl/sync/poller.h>
+
+#include "xsl/config.h"
+#include "xsl/sync/poller.h"
 XSL_NAMESPACE_BEGIN
 namespace sync {
   IOM_EVENTS operator|(IOM_EVENTS a, IOM_EVENTS b) {

@@ -1,5 +1,5 @@
 #include <spdlog/spdlog.h>
-#include <xsl/sync/mutex.h>
+#include "xsl/sync/mutex.h"
 int main() {
   xsl::sync::Mutex m;
   m.lock();

@@ -1,8 +1,8 @@
 #pragma once
 #ifndef _XSL_NET_HTTP_MSG_H_
 #  define _XSL_NET_HTTP_MSG_H_
-#  include <xsl/http/http.h>
-#  include <xsl/utils/wheel/wheel.h>
+#  include "xsl/http/http.h"
+#  include "xsl/utils/wheel/wheel.h"
 HTTP_NAMESPACE_BEGIN
 enum class HttpMethod : uint8_t {
   EXT,

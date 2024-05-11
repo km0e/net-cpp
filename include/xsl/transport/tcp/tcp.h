@@ -4,8 +4,6 @@
 
 #  define TCP_NAMESPACE_BEGIN namespace xsl::transport::tcp {
 #  define TCP_NAMESPACE_END }
-#  include <xsl/sync/poller.h>
-#  include <xsl/utils/wheel/wheel.h>
 
 TCP_NAMESPACE_BEGIN
 

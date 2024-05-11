@@ -3,9 +3,8 @@
 #include "xsl/http/msg.h"
 #include "xsl/utils/wheel/wheel.h"
 HTTP_NAMESPACE_BEGIN
-Context::Context(Request&& request) {
-    this->request = request;
-    this->current_path = request.path;
+Context::Context(Request&& request) : request(std::move(request)) {
+  this->current_path = request.view.path;
 }
 Context::~Context() {}
 

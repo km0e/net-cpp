@@ -48,11 +48,11 @@ HttpMethod method_cast(wheel::string_view method) {
     return HttpMethod::UNKNOWN;
   }
 }
-RequestError::RequestError(RequestErrorKind kind) : kind(kind) {}
-RequestError::RequestError(RequestErrorKind kind, wheel::string message)
-    : kind(kind), message(message) {}
-RequestError::~RequestError() {}
-Request::Request() {}
+RequestView::RequestView() {}
+RequestView::~RequestView() {}
+Request::Request(wheel::string raw, RequestView view) : raw(raw), view(view) {
+  method = method_cast(view.method);
+}
 Request::~Request() {}
 ResponseError::ResponseError(int code, wheel::string_view message) : code(code), message(message) {}
 ResponseError::~ResponseError() {}

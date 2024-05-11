@@ -25,7 +25,7 @@ namespace sync {
   }
   bool EPoller::valid() { return this->fd != -1; }
 
-  bool EPoller::register_handler(int fd, IOM_EVENTS events, PollHandler handler) {
+  bool EPoller::subscribe(int fd, IOM_EVENTS events, PollHandler handler) {
     spdlog::trace("[Poller::register_handler]");
     epoll_event event;
     event.events = (uint32_t)events;
@@ -37,7 +37,7 @@ namespace sync {
     this->handlers[fd] = handler;
     return true;
   }
-  bool EPoller::modify_handler(int fd, IOM_EVENTS events) {
+  bool EPoller::modify(int fd, IOM_EVENTS events) {
     spdlog::trace("[Poller::modify_handler]");
     epoll_event event;
     event.events = (uint32_t)events;
@@ -62,13 +62,7 @@ namespace sync {
     }
     spdlog::debug("[Poller::poll] Polling {} events", n);
     for (int i = 0; i < n; i++) {
-      IOM_EVENTS event
-          = this->handlers[events[i].data.fd](events[i].data.fd, (IOM_EVENTS)events[i].events);
-      if (event == IOM_EVENTS::NONE) {
-        this->unregister(events[i].data.fd);
-      } else {
-        this->modify_handler(events[i].data.fd, event);
-      }
+      this->handlers[events[i].data.fd](events[i].data.fd, (IOM_EVENTS)events[i].events);
     }
   }
   void EPoller::unregister(int fd) { epoll_ctl(this->fd, EPOLL_CTL_DEL, fd, nullptr); }

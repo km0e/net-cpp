@@ -6,24 +6,23 @@
 
 #  include "xsl/utils/wheel/wheel.h"
 TCP_NAMESPACE_BEGIN
-// class ErrorHandle : public TaskNode {
-class FileInfor {
-public:
-  FileInfor(size_t size);
-  size_t size;
-};
-using FileHeaderGenerator = wheel::function<wheel::string(const FileInfor&)>;
+// TODO: add FileHeaderGenerator
+// class FileInfor {
+// public:
+//   FileInfor(size_t size);
+//   size_t size;
+// };
+// using FileHeaderGenerator = wheel::function<wheel::string(const FileInfor&)>;
 
 class SendFile : public SendTaskNode {
 public:
   SendFile(
-      wheel::string&& path, FileHeaderGenerator&& header_gen = [](const FileInfor&) { return ""; });
+      wheel::string&& path);
   ~SendFile();
   bool exec(SendContext& ctx) override;
 
 protected:
   wheel::list<wheel::string> path_buffer;
-  FileHeaderGenerator header_gen;
 };
 
 class SendString : public SendTaskNode {

@@ -1,5 +1,4 @@
 #pragma once
-#include "xsl/sync/sync.h"
 #ifndef _XSL_NET_POLLER_
 #  define _XSL_NET_POLLER_
 #  include <sys/epoll.h>
@@ -7,6 +6,8 @@
 #  include <sys/types.h>
 #  include <xsl/config.h>
 #  include <xsl/utils/wheel/wheel.h>
+
+#  include "xsl/sync/sync.h"
 SYNC_NAMESPACE_BEGIN
 #  define USE_EPOLL
 #  ifdef USE_EPOLL
@@ -34,11 +35,11 @@ IOM_EVENTS operator&(IOM_EVENTS a, IOM_EVENTS b);
 IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b);
 IOM_EVENTS operator~(IOM_EVENTS a);
 #  endif
-using PollHandler = wheel::function<IOM_EVENTS(int fd, IOM_EVENTS events)>;
+using PollHandler = wheel::function<void(int fd, IOM_EVENTS events)>;
 class Poller {
 public:
-  virtual bool register_handler(int fd, IOM_EVENTS events, PollHandler handler) = 0;
-  virtual bool modify_handler(int fd, IOM_EVENTS events) = 0;
+  virtual bool subscribe(int fd, IOM_EVENTS events, PollHandler handler) = 0;
+  virtual bool modify(int fd, IOM_EVENTS events) = 0;
   virtual void poll() = 0;
   virtual void unregister(int fd) = 0;
   virtual void shutdown() = 0;
@@ -50,8 +51,8 @@ public:
   EPoller();
   ~EPoller();
   bool valid();
-  bool register_handler(int fd, IOM_EVENTS events, PollHandler handler) override;
-  bool modify_handler(int fd, IOM_EVENTS events) override;
+  bool subscribe(int fd, IOM_EVENTS events, PollHandler handler) override;
+  bool modify(int fd, IOM_EVENTS events) override;
   void poll() override;
   void unregister(int fd) override;
   void shutdown() override;

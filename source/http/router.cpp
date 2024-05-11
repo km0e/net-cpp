@@ -35,10 +35,15 @@ namespace router_details {
                                           RouteHandler&& handler) {
     spdlog::debug("[HttpRouteNode::add_route] Adding route: {}", path);
     if (path.empty()) {
+      spdlog::debug("[HttpRouteNode::add_route] for Method: {} Path: {}", method_cast(method),
+                    path);
       auto& old = handlers[static_cast<uint8_t>(method)];
-      if (old != nullptr) {
+      spdlog::debug("[HttpRouteNode::add_route] old");
+      if (old) {
+        spdlog::error("[HttpRouteNode::add_route] Route already exists: {}", path);
         return AddRouteResult(AddRouteError(AddRouteErrorKind::Conflict, ""));
       }
+      spdlog::debug("[HttpRouteNode::add_route] Route added: {}", path);
       old = wheel::make_shared<RouteHandler>(wheel::move(handler));
       return AddRouteResult({});
     }
@@ -47,7 +52,7 @@ namespace router_details {
     }
     auto pos = path.find('/', 1);
     auto sub = path.substr(1, pos);
-    auto res = children.try_emplace(sub);
+    auto res = children.try_emplace(sub, wheel::make_shared<HttpRouteNode>());
     return res.first->second->add_route(method, path.substr(sub.length() + 1),
                                         wheel::move(handler));
   }

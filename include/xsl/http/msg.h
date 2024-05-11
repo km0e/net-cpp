@@ -19,33 +19,25 @@ enum class HttpMethod : uint8_t {
 const int METHOD_COUNT = 9;
 wheel::string method_cast(HttpMethod method);
 HttpMethod method_cast(wheel::string_view method);
-enum class RequestErrorKind {
-  Unknown,
-  InvalidFormat,
-};
 
-class RequestError {
+class RequestView {
 public:
-  RequestError(RequestErrorKind kind);
-  RequestError(RequestErrorKind kind, wheel::string message);
-  ~RequestError();
-  RequestErrorKind kind;
-  wheel::string message;
+  RequestView();
+  ~RequestView();
+  wheel::string_view method;
+  wheel::string_view path;
+  wheel::string_view version;
+  wheel::unordered_map<wheel::string_view, wheel::string_view> headers;
 };
 
 class Request {
 public:
-  Request();
+  Request(wheel::string raw, RequestView view);
   ~Request();
   wheel::string raw;
-  wheel::string_view method_view;
   HttpMethod method;
-  wheel::string_view path;
-  wheel::string_view version;
-  wheel::unordered_map<wheel::string_view, wheel::string_view> headers;
-  wheel::string_view body;
+  RequestView view;
 };
-using RequestResult = wheel::Result<Request, RequestError>;
 
 class ResponseError {
 public:

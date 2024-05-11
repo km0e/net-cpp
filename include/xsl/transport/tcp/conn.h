@@ -56,8 +56,9 @@ public:
   TcpConn(TcpConn&&) = default;
   TcpConn(int fd, wheel::shared_ptr<sync::Poller> poller, H&& handler);
   ~TcpConn();
-  sync::IOM_EVENTS send();
-  sync::IOM_EVENTS recv();
+  void send();
+  void recv();
+  bool valid();
 
 private:
   int fd;
@@ -65,22 +66,30 @@ private:
   H handler;
   RecvTasks recv_tasks;
   SendTasks send_tasks;
+  sync::IOM_EVENTS events;
   //   std::list < wheel::string send_buffer;
 };
 template <Handler H>
 TcpConn<H>::TcpConn(int fd, wheel::shared_ptr<sync::Poller> poller, H&& handler)
     : fd(fd), poller(poller), handler(handler) {
+  poller->subscribe(fd, sync::IOM_EVENTS::IN,
+                    [this](int fd, sync::IOM_EVENTS events) { this->recv(); });
   auto cfg = this->handler.init();
   this->recv_tasks.splice_after(this->recv_tasks.before_begin(), cfg.recv_tasks);
 }
 
 template <Handler H>
 TcpConn<H>::~TcpConn() {
+  if (this->events != sync::IOM_EVENTS::NONE) this->poller->unregister(this->fd);
   close(this->fd);
 }
 
 template <Handler H>
-sync::IOM_EVENTS TcpConn<H>::send() {
+bool TcpConn<H>::valid() {
+  return this->events != sync::IOM_EVENTS::NONE;
+}
+template <Handler H>
+void TcpConn<H>::send() {
   spdlog::trace("[TcpConn::send]");
   SendTasks hl;
   auto state = this->handler.send(hl);
@@ -95,14 +104,18 @@ sync::IOM_EVENTS TcpConn<H>::send() {
       break;
     }
   }
-  return state.events;
+  if (state.events != this->events) {
+    this->poller->modify(this->fd, state.events);
+  }
+  this->events = state.events;
 }
 template <Handler H>
-sync::IOM_EVENTS TcpConn<H>::recv() {
+void TcpConn<H>::recv() {
   spdlog::trace("[TcpConn::recv]");
   if (this->recv_tasks.empty()) {
     spdlog::error("[TcpConn::recv] No recv task found");
-    return sync::IOM_EVENTS::NONE;
+    this->events = sync::IOM_EVENTS::NONE;
+    this->poller->unregister(this->fd);
   }
   RecvContext ctx(this->fd, this->recv_tasks);
   while (true) {
@@ -114,7 +127,12 @@ sync::IOM_EVENTS TcpConn<H>::recv() {
   }
   spdlog::debug("[TcpConn::recv] recv all data");
   auto state = this->handler.recv(this->recv_tasks);
-  return state.events;
+  if ((state.events & sync::IOM_EVENTS::OUT) == sync::IOM_EVENTS::OUT) {
+    this->send();
+  } else if (state.events != this->events) {
+    this->poller->modify(this->fd, state.events);
+    this->events = state.events;
+  }
 }
 TCP_NAMESPACE_END
 

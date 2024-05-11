@@ -17,7 +17,7 @@
 #  define TEST_HOST "127.0.0.1"
 #endif
 #ifndef TEST_PORT
-#  define TEST_PORT 8080
+#  define TEST_PORT 12345
 #endif
 void sigterm_init() {
   struct sigaction act;
@@ -30,10 +30,10 @@ void sigterm_init() {
 }
 int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
-  wheel::string ip = "localhost";
-  app.add_option("-i,--ip", ip, "Ip to connect to")->required();
-  int port = 8080;
-  app.add_option("-p,--port", port, "Port to connect to")->required();
+  wheel::string ip = TEST_HOST;
+  app.add_option("-i,--ip", ip, "Ip to connect to");
+  int port = TEST_PORT;
+  app.add_option("-p,--port", port, "Port to connect to");
   CLI11_PARSE(app, argc, argv);
   spdlog::set_level(spdlog::level::trace);
   sigterm_init();

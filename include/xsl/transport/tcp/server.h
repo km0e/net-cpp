@@ -49,7 +49,7 @@ template <Handler H, HandlerGenerator<H> HG>
 bool TcpServer<H, HG>::serve(const char* host, int port) {
   this->server_fd = create_tcp_server(host, port, this->config);
   if (this->valid()) {
-    auto res = this->poller->register_handler(
+    auto res = this->poller->subscribe(
         this->server_fd, sync::IOM_EVENTS::IN,
         [this](int fd, sync::IOM_EVENTS events) { return this->accept_handler(fd, events); });
     if (!res) {
@@ -110,28 +110,17 @@ sync::IOM_EVENTS TcpServer<H, HG>::accept_handler(int fd, sync::IOM_EVENTS event
     if (client_fd == -1) {  // todo: handle error
       return sync::IOM_EVENTS::IN;
     }
-    if (!set_non_blocking(client_fd)) {
-      spdlog::warn("[TcpServer::<lambda::handler>] Failed to set non-blocking");
-      close(client_fd);
-      return sync::IOM_EVENTS::IN;
+    // if (!set_non_blocking(client_fd)) {
+    //   spdlog::warn("[TcpServer::<lambda::handler>] Failed to set non-blocking");
+    //   close(client_fd);
+    //   return sync::IOM_EVENTS::IN;
+    // }
+    TcpConn tcp_conn{client_fd, this->poller, (*this->handler_generator)()};
+    tcp_conn.recv();
+    if (tcp_conn.valid()) {
+      this->handlers.try_emplace(client_fd, std::move(tcp_conn));
     }
-    auto tcp_conn = TcpConn(client_fd, this->poller, (*this->handler_generator)());
-    auto events = tcp_conn.recv();
-    if ((events & sync::IOM_EVENTS::OUT) == sync::IOM_EVENTS::OUT) {
-      spdlog::debug("[TcpServer::<lambda::handler>] Sending data");
-      events = tcp_conn.send();
-    }
-    if (events == sync::IOM_EVENTS::NONE) {
-      spdlog::debug("[TcpServer::<lambda::handler>] One-time connection");
-      return sync::IOM_EVENTS::IN;
-    }
-    this->handlers.try_emplace(client_fd, std::move(tcp_conn));
-    if (!poller->register_handler(client_fd, events, [this](int fd, sync::IOM_EVENTS events) {
-          return this->proxy_handler(fd, events);
-        })) {
-      close(client_fd);
-      return sync::IOM_EVENTS::IN;
-    }
+    return sync::IOM_EVENTS::IN;
   }
   return sync::IOM_EVENTS::NONE;
 }

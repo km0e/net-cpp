@@ -13,21 +13,20 @@
 #include "xsl/transport/tcp/tcp.h"
 #include "xsl/utils/wheel/wheel.h"
 TCP_NAMESPACE_BEGIN
-FileInfor::FileInfor(size_t size) : size(size) {}
+// TODO: add FileHeaderGenerator
+// FileInfor::FileInfor(size_t size) : size(size) {}
+//  class ReadySendFile {
+//    public:
+//      ReadySendFile(wheel::string&& path, FileHeaderGenerator&& generator);
+//      ~ReadySendFile();
+//      bool exec(SendContext& ctx);
 
-class ReadySendFile {
-  public:
-    ReadySendFile(wheel::string&& path, FileHeaderGenerator&& generator);
-    ~ReadySendFile();
-    bool exec(SendContext& ctx);
+//   private:
+//     wheel::string path;
+//     FileHeaderGenerator header_gen;
+// };
 
-  private:
-    wheel::string path;
-    FileHeaderGenerator header_gen;
-};
-
-SendFile::SendFile(wheel::string&& path, FileHeaderGenerator&& generator)
-    : path_buffer({wheel::move(path)}), header_gen(wheel::move(generator)) {}
+SendFile::SendFile(wheel::string&& path) : path_buffer({wheel::move(path)}) {}
 SendFile::~SendFile() {}
 bool SendFile::exec(SendContext& ctx) {
   while (true) {
@@ -40,16 +39,20 @@ bool SendFile::exec(SendContext& ctx) {
       close(ffd);
       spdlog::error("fstat failed");
     }
-    wheel::string header = this->header_gen(FileInfor(st.st_size));
-    ssize_t n = write(ctx.sfd, header.c_str(), header.size());
+    off_t offset = 0;
+    ssize_t n = sendfile(ctx.sfd, ffd, &offset, st.st_size);
+    // TODO: handle sendfile error
     if (n == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         spdlog::debug("[sendfile] send over");
       } else {
         spdlog::error("[sendfile] Failed to send file");
+        close(ffd);
         return false;
       }
     } else if (n < st.st_size) {
+      spdlog::debug("[sendfile] send {} bytes", n);
+      close(ffd);
       return false;
     }
     close(ffd);
@@ -58,6 +61,7 @@ bool SendFile::exec(SendContext& ctx) {
       break;
     }
   }
+  return true;
 }
 wheel::unique_ptr<SendTaskNode> SendString::create(wheel::string&& data) {
   return wheel::make_unique<SendString>(wheel::move(data));
@@ -99,17 +103,21 @@ bool RecvString::exec(RecvContext& ctx) {
   ssize_t n;
   do {
     n = ::recv(ctx.sfd, buf, sizeof(buf), 0);
+    if (n == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        spdlog::debug("[RecvString::exec] recv over");
+        break;
+      } else {
+        spdlog::error("[RecvString::exec] Failed to recv data, err : {}", strerror(errno));
+        // TODO: handle recv error
+        return false;
+      }
+    } else if (n == 0) {
+      spdlog::debug("[RecvString::exec] recv over");
+      break;
+    }
     data.emplace_back(buf, n);
   } while (n == sizeof(buf));
-  if (n == -1) {
-    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      spdlog::debug("[read] recv over");
-    } else {
-      spdlog::error("[read] Failed to recv data");
-      // TODO: handle recv error
-      return false;
-    }
-  }
   this->data_buffer = std::accumulate(data.begin(), data.end(), wheel::string());
   spdlog::debug("[RecvString::exec] data size: {}", this->data_buffer.size());
   return true;

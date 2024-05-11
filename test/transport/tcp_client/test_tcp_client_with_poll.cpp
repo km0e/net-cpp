@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   int echo_cycles = 0;
-  poller.register_handler(
+  poller.subscribe(
       fd, xsl::sync::IOM_EVENTS::IN,
       [&echo_cycles](int fd, xsl::sync::IOM_EVENTS events) -> xsl::sync::IOM_EVENTS {
         if ((events & xsl::sync::IOM_EVENTS::IN) == xsl::sync::IOM_EVENTS::IN) {

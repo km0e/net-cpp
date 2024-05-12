@@ -1,6 +1,6 @@
-#include <spdlog/spdlog.h>
-
 #include "xsl/http/http.h"
+
+#include <spdlog/spdlog.h>
 
 HTTP_NAMESPACE_BEGIN
 

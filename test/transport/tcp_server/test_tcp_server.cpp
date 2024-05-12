@@ -1,14 +1,13 @@
+#include "xsl/sync/poller.h"
+#include "xsl/transport/tcp/helper.h"
+#include "xsl/transport/tcp/server.h"
+#include "xsl/wheel/wheel.h"
+
+#include <CLI/CLI.hpp>
 #include <pthread.h>
 #include <spdlog/spdlog.h>
 #include <sys/signal.h>
 #include <unistd.h>
-
-#include <CLI/CLI.hpp>
-
-#include "xsl/sync/poller.h"
-#include "xsl/transport/tcp/helper.h"
-#include "xsl/transport/tcp/server.h"
-#include "xsl/utils/wheel/wheel.h"
 
 #ifndef TEST_HOST
 #  define TEST_HOST "127.0.0.1"
@@ -19,7 +18,7 @@
 void sigterm_init() {
   struct sigaction act;
   act.sa_handler = [](int sig) -> void {
-    spdlog::info("Received signal {}", sig);
+    SPDLOG_INFO("Received signal {}", sig);
     exit(0);
   };
   sigaction(SIGTERM, &act, nullptr);
@@ -31,23 +30,24 @@ using xsl::transport::tcp::HandleConfig;
 using xsl::transport::tcp::TcpServer;
 using SendTasks = xsl::transport::tcp::SendTasks;
 using RecvTasks = xsl::transport::tcp::RecvTasks;
+using xsl::wheel::string;
 class Handler {
 public:
   HandleConfig init() {
     HandleConfig config{};
-    spdlog::debug("[T][Handler::init] Pushing recv task");
+    SPDLOG_DEBUG("[T][Handler::init] Pushing recv task");
     config.recv_tasks.push_front(xsl::transport::tcp::RecvString::create(this->data));
     return config;
   }
   TcpHandleState recv([[maybe_unused]] RecvTasks &tasks) {
-    spdlog::info("[T][Handler::recv] Received data: {}", this->data);
+    SPDLOG_INFO("[T][Handler::recv] Received data: {}", this->data);
     return TcpHandleState(xsl::sync::IOM_EVENTS::OUT, TcpHandleHint::WRITE);
   }
   TcpHandleState send(SendTasks &tasks) {
-    tasks.emplace_front(xsl::transport::tcp::SendString::create(wheel::move(this->data)));
+    tasks.emplace_front(xsl::transport::tcp::SendString::create(xsl::wheel::move(this->data)));
     return TcpHandleState(xsl::sync::IOM_EVENTS::NONE, TcpHandleHint::NONE);
   }
-  wheel::string data;
+  string data;
 };
 class HandlerGenerator {
 public:
@@ -56,12 +56,12 @@ public:
   Handler operator()() { return {}; }
 
 private:
-  wheel::string data;
+  string data;
 };
 
 int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
-  wheel::string ip = "localhost";
+  string ip = "localhost";
   app.add_option("-i,--ip", ip, "Ip to connect to")->required();
   int port = 8080;
   app.add_option("-p,--port", port, "Port to connect to")->required();
@@ -70,17 +70,17 @@ int main(int argc, char **argv) {
   sigterm_init();
 
   spdlog::set_level(spdlog::level::trace);
-  auto poller = wheel::make_shared<xsl::sync::EPoller>();
+  auto poller = xsl::wheel::make_shared<xsl::sync::EPoller>();
   if (!poller->valid()) {
-    spdlog::error("Failed to create poller");
+    SPDLOG_ERROR("Failed to create poller");
     return 1;
   }
-  auto handler_generator = wheel::make_shared<HandlerGenerator>();
+  auto handler_generator = xsl::wheel::make_shared<HandlerGenerator>();
   TcpServer<Handler, HandlerGenerator> server{};
   server.set_poller(poller);
   server.set_handler_generator(handler_generator);
   if (!server.serve(ip.c_str(), port)) {
-    spdlog::error("Failed to create server on {}:{}", ip, port);
+    SPDLOG_ERROR("Failed to create server on {}:{}", ip, port);
     return 1;
   }
   pthread_t poller_thread;

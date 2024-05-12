@@ -2,7 +2,8 @@
 #ifndef _XSL_NET_HTTP_MSG_H_
 #  define _XSL_NET_HTTP_MSG_H_
 #  include "xsl/http/http.h"
-#  include "xsl/utils/wheel/wheel.h"
+#  include "xsl/wheel/hash_map.h"
+#  include "xsl/wheel/wheel.h"
 HTTP_NAMESPACE_BEGIN
 enum class HttpMethod : uint8_t {
   EXT,
@@ -27,7 +28,7 @@ public:
   wheel::string_view method;
   wheel::string_view path;
   wheel::string_view version;
-  wheel::unordered_map<wheel::string_view, wheel::string_view> headers;
+  wheel::HashMap<wheel::string_view, wheel::string_view> headers;
 };
 
 class Request {
@@ -55,7 +56,7 @@ public:
   wheel::string version;
   int status_code;
   wheel::string status_message;
-  wheel::unordered_map<wheel::string, wheel::string> headers;
+  wheel::HashMap<wheel::string, wheel::string> headers;
   wheel::string body;
   wheel::string to_string() const;
 };

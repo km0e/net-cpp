@@ -1,1 +1,1 @@
-includes("http", "sync", "transport", "utils")
+includes("http", "sync", "transport", "utils", "wheel")

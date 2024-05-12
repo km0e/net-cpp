@@ -2,8 +2,6 @@
 
 #ifndef _XSL_NET_HTTP_SERVER_H_
 #  define _XSL_NET_HTTP_SERVER_H_
-#  include <spdlog/spdlog.h>
-
 #  include "xsl/http/context.h"
 #  include "xsl/http/http.h"
 #  include "xsl/http/msg.h"
@@ -13,7 +11,9 @@
 #  include "xsl/transport/tcp/context.h"
 #  include "xsl/transport/tcp/helper.h"
 #  include "xsl/transport/tcp/server.h"
-#  include "xsl/utils/wheel/wheel.h"
+#  include "xsl/wheel/wheel.h"
+
+#  include <spdlog/spdlog.h>
 HTTP_NAMESPACE_BEGIN
 
 template <Router R>
@@ -26,12 +26,13 @@ public:
   Handler(wheel::shared_ptr<R> router) : router(router) {}
   ~Handler() {}
   transport::tcp::HandleConfig init() {
+    SPDLOG_TRACE("");
     transport::tcp::HandleConfig cfg{};
     cfg.recv_tasks.emplace_front(transport::tcp::RecvString::create(this->recv_data));
     return cfg;
   }
   TcpHandleState recv([[maybe_unused]] transport::tcp::RecvTasks& tasks) {
-    spdlog::trace("[http::Handler::recv]");
+    SPDLOG_TRACE("");
     if (this->recv_data.empty()) {
       return TcpHandleState{sync::IOM_EVENTS::IN, TcpHandleHint::NONE};
     }

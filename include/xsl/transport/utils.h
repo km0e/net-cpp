@@ -2,7 +2,7 @@
 #ifndef _XSL_NET_TRANSPORT_UTILS_H_
 #  define _XSL_NET_TRANSPORT_UTILS_H_
 #  include "xsl/transport/transport.h"
-#  include "xsl/utils/wheel/wheel.h"
+#  include "xsl/wheel/wheel.h"
 TRANSPORT_NAMESPACE_BEGIN
 
 int create_tcp_client(const char *ip, const char *port);

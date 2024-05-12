@@ -1,5 +1,6 @@
-#include <fcntl.h>
 #include "xsl/utils/utils.h"
+
+#include <fcntl.h>
 bool set_non_blocking(int fd) {
   int flags = fcntl(fd, F_GETFL, 0);
   if (flags == -1) {

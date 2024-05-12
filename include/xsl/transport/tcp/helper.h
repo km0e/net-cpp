@@ -3,7 +3,7 @@
 #  define _XSL_NET_TRANSPORT_TCP_HELPER_H_
 #  include "xsl/transport/tcp/context.h"
 #  include "xsl/transport/tcp/def.h"
-#  include "xsl/utils/wheel/wheel.h"
+#  include "xsl/wheel/wheel.h"
 TCP_NAMESPACE_BEGIN
 // TODO: add FileHeaderGenerator
 // class FileInfor {

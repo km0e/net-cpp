@@ -14,4 +14,11 @@
   NamespaceIndentation: All
   BreakBeforeBinaryOperators: All
   BreakBeforeTernaryOperators: 'true'
+  IncludeCategories:
+  - Regex:	'^".*'
+    Priority:	1
+  - Regex:	'.*\.h'
+    Priority:	2
+  - Regex:	'.*'
+    Priority:	3
 ...

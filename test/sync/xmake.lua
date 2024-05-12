@@ -1,2 +1,2 @@
-add_deps("sync")
+add_deps("wheel")
 includes("mutex")

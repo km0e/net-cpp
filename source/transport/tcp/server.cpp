@@ -1,7 +1,7 @@
-#include <spdlog/spdlog.h>
-
 #include "xsl/sync/poller.h"
 #include "xsl/transport/tcp/conn.h"
+
+#include <spdlog/spdlog.h>
 
 #define MAX_CONNECTIONS 10
 

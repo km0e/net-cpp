@@ -1,12 +1,12 @@
 #pragma once
 #ifndef _XSL_NET_HTTP_ROUTER_H_
 #  define _XSL_NET_HTTP_ROUTER_H_
-#  include <cstdint>
-
 #  include "xsl/http/context.h"
 #  include "xsl/http/http.h"
 #  include "xsl/http/msg.h"
-#  include "xsl/utils/wheel/wheel.h"
+#  include "xsl/wheel/wheel.h"
+
+#  include <cstdint>
 HTTP_NAMESPACE_BEGIN
 
 using RouteHandler = wheel::function<Response(Context& ctx)>;
@@ -68,7 +68,7 @@ namespace router_details {
 
   private:
     wheel::array<wheel::shared_ptr<RouteHandler>, METHOD_COUNT> handlers;
-    wheel::unordered_map<wheel::string_view, wheel::shared_ptr<HttpRouteNode>> children;
+    wheel::ConcurrentHashMap<wheel::string_view, wheel::shared_ptr<HttpRouteNode>> children;
   };
 }  // namespace router_details
 

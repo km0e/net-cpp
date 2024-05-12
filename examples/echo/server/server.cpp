@@ -1,11 +1,12 @@
-#include "xsl/transport/tcp/server.h>
-#include "xsl/utils/wheel/wheel.h>
+#include "xsl/transport/tcp/server.h"
+#include "xsl/wheel/mutex.h"
+#include "xsl/wheel/wheel.h"
 // use absl for threadpool
 #include <absl/synchronization/internal/thread_pool.h>
 
-auto echo_buffer = wheel::make_shared<wheel::queue<wheel::string>>();
-auto buffer_mutex = wheel::make_shared<wheel::mutex>();
-auto stop = wheel::atomic_flag();
+auto echo_buffer = xsl::wheel::make_shared<xsl::wheel::queue<xsl::wheel::string>>();
+auto buffer_mutex = xsl::wheel::make_shared<xsl::wheel::Mutex>();
+auto stop = xsl::wheel::atomic_flag();
 
 // bool server_read(wheel::shared_ptr<Poller> poller, int fd, IOM_EVENTS events) {
 //   if(events & IOM_EVENTS::IN) {

@@ -1,8 +1,8 @@
-#include <spdlog/spdlog.h>
-#include <sys/signal.h>
-
 #include "xsl/config.h"
 #include "xsl/sync/poller.h"
+
+#include <spdlog/spdlog.h>
+#include <sys/signal.h>
 XSL_NAMESPACE_BEGIN
 namespace sync {
   IOM_EVENTS operator|(IOM_EVENTS a, IOM_EVENTS b) {
@@ -22,24 +22,25 @@ namespace sync {
   IOM_EVENTS operator~(IOM_EVENTS a) { return (IOM_EVENTS)(~(uint32_t)a); }
   EPoller::EPoller() {
     this->fd = epoll_create(1);
-    spdlog::debug("[Poller::Poller] Poller fd: {}", this->fd);
+    SPDLOG_DEBUG("Poller fd: {}", this->fd);
   }
   bool EPoller::valid() { return this->fd != -1; }
 
-  bool EPoller::subscribe(int fd, IOM_EVENTS events, PollHandler handler) {
-    spdlog::trace("[Poller::register_handler]");
+  bool EPoller::subscribe(int fd, IOM_EVENTS events, PollHandler&& handler) {
+    SPDLOG_TRACE("");
     epoll_event event;
     event.events = (uint32_t)events;
     event.data.fd = fd;
     if (epoll_ctl(this->fd, EPOLL_CTL_ADD, fd, &event) == -1) {
       return false;
     }
-    spdlog::debug("[Poller::register_handler] Handler registered for fd: {}", fd);
-    this->handlers[fd] = handler;
+    SPDLOG_DEBUG("Handler registered for fd: {}", fd);
+    // there should be a lock here?
+    this->handlers.lock()->try_emplace(fd, wheel::make_shared<PollHandler>(handler));
     return true;
   }
   bool EPoller::modify(int fd, IOM_EVENTS events) {
-    spdlog::trace("[Poller::modify_handler]");
+    SPDLOG_TRACE("[Poller::modify_handler]");
     epoll_event event;
     event.events = (uint32_t)events;
     event.data.fd = fd;
@@ -49,7 +50,7 @@ namespace sync {
     return true;
   }
   void EPoller::poll() {
-    spdlog::trace("[Poller::poll]");
+    SPDLOG_TRACE("");
     epoll_event events[10];
     sigset_t mask;
     sigemptyset(&mask);
@@ -58,15 +59,19 @@ namespace sync {
     sigaddset(&mask, SIGQUIT);
     int n = epoll_pwait(this->fd, events, 10, -1, &mask);
     if (n == -1) {
-      spdlog::error("[Poller::poll] Failed to poll");
+      SPDLOG_ERROR("Failed to poll");
       return;
     }
-    spdlog::debug("[Poller::poll] Polling {} events", n);
+    SPDLOG_DEBUG("Polling {} events", n);
     for (int i = 0; i < n; i++) {
-      this->handlers[events[i].data.fd](events[i].data.fd, (IOM_EVENTS)events[i].events);
+      auto handler = this->handlers.share()->at(events[i].data.fd);
+      (*handler)(events[i].data.fd, (IOM_EVENTS)events[i].events);
     }
   }
-  void EPoller::unregister(int fd) { epoll_ctl(this->fd, EPOLL_CTL_DEL, fd, nullptr); }
+  void EPoller::unregister(int fd) {
+    epoll_ctl(this->fd, EPOLL_CTL_DEL, fd, nullptr);
+    (*this->handlers.lock()).erase(fd);
+  }
   void EPoller::shutdown() { close(this->fd); }
   EPoller::~EPoller() { this->shutdown(); }
 }  // namespace sync

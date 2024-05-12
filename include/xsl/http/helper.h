@@ -4,7 +4,7 @@
 #  include "xsl/http/context.h"
 #  include "xsl/http/http.h"
 #  include "xsl/http/msg.h"
-#  include "xsl/utils/wheel/wheel.h"
+#  include "xsl/wheel/wheel.h"
 HTTP_NAMESPACE_BEGIN
 class StaticRouteHandler {
 public:

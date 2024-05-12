@@ -1,12 +1,12 @@
 #pragma once
 #ifndef _XSL_NET_TRANSPORT_TCP_CONN_H_
 #  define _XSL_NET_TRANSPORT_TCP_CONN_H_
-#  include <spdlog/spdlog.h>
-
 #  include "xsl/sync/poller.h"
 #  include "xsl/transport/tcp/context.h"
 #  include "xsl/transport/tcp/def.h"
-#  include "xsl/utils/wheel/wheel.h"
+#  include "xsl/wheel/wheel.h"
+
+#  include <spdlog/spdlog.h>
 TCP_NAMESPACE_BEGIN
 enum class HandleHint {
   NONE = 0,
@@ -89,7 +89,7 @@ bool TcpConn<H>::valid() {
 }
 template <Handler H>
 void TcpConn<H>::send() {
-  spdlog::trace("[TcpConn::send]");
+  SPDLOG_TRACE("[TcpConn::send]");
   SendTasks hl;
   auto state = this->handler.send(hl);
   // move new tasks to this->tasks tail
@@ -110,9 +110,9 @@ void TcpConn<H>::send() {
 }
 template <Handler H>
 void TcpConn<H>::recv() {
-  spdlog::trace("[TcpConn::recv]");
+  SPDLOG_TRACE("[TcpConn::recv]");
   if (this->recv_tasks.empty()) {
-    spdlog::error("[TcpConn::recv] No recv task found");
+    SPDLOG_ERROR("[TcpConn::recv] No recv task found");
     this->events = sync::IOM_EVENTS::NONE;
     this->poller->unregister(this->fd);
   }
@@ -124,7 +124,7 @@ void TcpConn<H>::recv() {
       ctx.iter = this->recv_tasks.begin();
     }
   }
-  spdlog::debug("[TcpConn::recv] recv all data");
+  SPDLOG_DEBUG("[TcpConn::recv] recv all data");
   auto state = this->handler.recv(this->recv_tasks);
   if ((state.events & sync::IOM_EVENTS::OUT) == sync::IOM_EVENTS::OUT) {
     this->send();

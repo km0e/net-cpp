@@ -1,9 +1,9 @@
+#include "xsl/http/http.h"
+#include "xsl/http/parse.h"
+
 #include <spdlog/spdlog.h>
 
 #include <cstddef>
-
-#include "xsl/http/http.h"
-#include "xsl/http/parse.h"
 HTTP_NAMESPACE_BEGIN
 ParseError::ParseError(ParseErrorKind kind) : kind(kind) {}
 ParseError::ParseError(ParseErrorKind kind, wheel::string message) : kind(kind), message(message) {}
@@ -30,16 +30,16 @@ ParseError::~ParseError() {}
 //     }
 //     req.method_view = line.substr(0, space);
 //     req.method = method_cast(req.method_view);
-//     spdlog::debug("[HttpParser::parse] method: {}", req.method_view);
+//     SPDLOG_DEBUG("[HttpParser::parse] method: {}", req.method_view);
 //     size_t space2 = line.find(' ', space + 1);
 //     if (space2 == wheel::string_view::npos) {
 //       reqs.emplace_back(RequestError(RequestErrorKind::InvalidFormat));
 //       break;
 //     }
 //     req.path = line.substr(space + 1, space2 - space - 1);
-//     spdlog::debug("[HttpParser::parse] path: {}", req.path);
+//     SPDLOG_DEBUG("[HttpParser::parse] path: {}", req.path);
 //     req.version = line.substr(space2 + 1);
-//     spdlog::debug("[HttpParser::parse] version: {}", req.version);
+//     SPDLOG_DEBUG("[HttpParser::parse] version: {}", req.version);
 //     size_t body_len = 0;
 //     while (header_start < raw_view.size()) {
 //       size_t header_end = raw_view.find("\r\n", header_start);
@@ -75,7 +75,7 @@ ParseError::~ParseError() {}
 // the end of the request
 // @return: the parsed request or the error
 ParseResult HttpParser::parse(const char* data, size_t& len) {
-  spdlog::trace("[HttpParser::parse] Parsing request");
+  SPDLOG_TRACE("[HttpParser::parse] Parsing request");
   ParseResult res{ParseError(ParseErrorKind::Unknown)};
   wheel::string_view view(data, len);
   size_t pos = 0;
@@ -124,7 +124,7 @@ ParseResult HttpParser::parse(const char* data, size_t& len) {
       pos = vend + 2;
     }
   }
-  spdlog::trace("[HttpParser::parse] Parsed request over");
+  SPDLOG_TRACE("[HttpParser::parse] Parsed request over");
   return res;
 }
 HTTP_NAMESPACE_END

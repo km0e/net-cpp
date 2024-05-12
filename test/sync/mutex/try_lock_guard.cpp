@@ -1,16 +1,17 @@
+#include "xsl/wheel/mutex.h"
+
 #include <spdlog/spdlog.h>
-#include "xsl/sync/mutex.h"
 int main() {
-  xsl::sync::Mutex m;
+  xsl::wheel::Mutex m;
   m.lock();
-  xsl::sync::TryLockGuard g(m);
+  xsl::wheel::TryLockGuard g(m);
   if (g.is_locked()) {
-    spdlog::error("Mutex should not be locked");
+    SPDLOG_ERROR("Mutex should not be locked");
   }
   m.unlock();
   g.try_lock();
   if (!g.is_locked()) {
-    spdlog::error("Mutex should be locked");
+    SPDLOG_ERROR("Mutex should be locked");
   }
   return 0;
 }

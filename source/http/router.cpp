@@ -1,13 +1,13 @@
-#include <spdlog/spdlog.h>
-
-#include <cstdint>
-
 #include "xsl/http/context.h"
 #include "xsl/http/http.h"
 #include "xsl/http/msg.h"
 #include "xsl/http/parse.h"
 #include "xsl/http/router.h"
-#include "xsl/utils/wheel/wheel.h"
+#include "xsl/wheel/wheel.h"
+
+#include <spdlog/spdlog.h>
+
+#include <cstdint>
 
 HTTP_NAMESPACE_BEGIN
 AddRouteError::AddRouteError(AddRouteErrorKind kind) : kind(kind) {}
@@ -33,17 +33,16 @@ namespace router_details {
 
   AddRouteResult HttpRouteNode::add_route(HttpMethod method, wheel::string_view path,
                                           RouteHandler&& handler) {
-    spdlog::debug("[HttpRouteNode::add_route] Adding route: {}", path);
+    SPDLOG_DEBUG("Adding route: {}", path);
     if (path.empty()) {
-      spdlog::debug("[HttpRouteNode::add_route] for Method: {} Path: {}", method_cast(method),
-                    path);
+      SPDLOG_DEBUG("for Method: {} Path: {}", method_cast(method), path);
       auto& old = handlers[static_cast<uint8_t>(method)];
-      spdlog::debug("[HttpRouteNode::add_route] old");
+      SPDLOG_DEBUG("old");
       if (old) {
-        spdlog::error("[HttpRouteNode::add_route] Route already exists: {}", path);
+        SPDLOG_ERROR("Route already exists: {}", path);
         return AddRouteResult(AddRouteError(AddRouteErrorKind::Conflict, ""));
       }
-      spdlog::debug("[HttpRouteNode::add_route] Route added: {}", path);
+      SPDLOG_DEBUG("Route added: {}", path);
       old = wheel::make_shared<RouteHandler>(wheel::move(handler));
       return AddRouteResult({});
     }
@@ -52,13 +51,13 @@ namespace router_details {
     }
     auto pos = path.find('/', 1);
     auto sub = path.substr(1, pos);
-    auto res = children.try_emplace(sub, wheel::make_shared<HttpRouteNode>());
+    auto res = children.lock()->try_emplace(sub, wheel::make_shared<HttpRouteNode>());
     return res.first->second->add_route(method, path.substr(sub.length() + 1),
                                         wheel::move(handler));
   }
 
   RouteResult HttpRouteNode::route(Context& ctx) {
-    spdlog::debug("[HttpRouteNode::route] Routing request: {}", ctx.current_path);
+    SPDLOG_DEBUG("Routing request: {}", ctx.current_path);
     if (ctx.current_path.empty()) {
       auto& handler = handlers[static_cast<uint8_t>(ctx.request.method)];
       if (handler == nullptr) {
@@ -71,9 +70,10 @@ namespace router_details {
     }
     auto pos = ctx.current_path.find('/', 1);
     auto sub = ctx.current_path.substr(1, pos);
-    auto iter = this->children.find(sub);
+    // TODO: find and check is not thread safe
+    auto iter = this->children.share()->find(sub);
     ctx.current_path = ctx.current_path.substr(sub.length() + 1);
-    if (iter != this->children.end()) {
+    if (iter != this->children.share()->end()) {
       auto res = iter->second->route(ctx);
       if (res.is_ok())
         return res;
@@ -81,8 +81,8 @@ namespace router_details {
         return res;
       }
     }
-    iter = this->children.find("");
-    if (iter != this->children.end()) {
+    iter = this->children.share()->find("");
+    if (iter != this->children.share()->end()) {
       return iter->second->route(ctx);
     }
     return RouteResult(RouteError(RouteErrorKind::NotFound, ""));
@@ -95,12 +95,12 @@ DefaultRouter::~DefaultRouter() {}
 
 AddRouteResult DefaultRouter::add_route(HttpMethod method, wheel::string_view path,
                                         RouteHandler&& handler) {
-  spdlog::debug("[HttpRouter::add_route] Adding route: {}", path);
+  SPDLOG_DEBUG("Adding route: {}", path);
   return root.add_route(method, path, wheel::move(handler));
 }
 
 RouteResult DefaultRouter::route(Context& ctx) {
-  spdlog::debug("[HttpRouter::route] Routing request: {}", ctx.current_path);
+  SPDLOG_DEBUG("Routing request: {}", ctx.current_path);
   if (ctx.request.method == HttpMethod::UNKNOWN) {
     return RouteResult(RouteError(RouteErrorKind::Unknown, ""));
   }
@@ -108,7 +108,7 @@ RouteResult DefaultRouter::route(Context& ctx) {
 }
 
 void DefaultRouter::error_handler(RouteError error, RouteHandler&& handler) {
-  spdlog::debug("[HttpRouter::error_handler] Handling error: {}", error.to_string());
+  SPDLOG_DEBUG("Handling error: {}", error.to_string());
   if (error.kind == RouteErrorKind::NotFound) {
     this->error_handlers[static_cast<uint8_t>(error.kind)]
         = wheel::make_shared<RouteHandler>(wheel::move(handler));

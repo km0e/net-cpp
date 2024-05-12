@@ -1,7 +1,7 @@
-#include "xsl/sync/mutex.h"
-#include "xsl/sync/sync.h"
+#include "xsl/wheel/mutex.h"
+#include "xsl/wheel/wheel.h"
 
-SYNC_NAMESPACE_BEGIN
+WHEEL_NAMESPACE_BEGIN
 TryLockGuard::TryLockGuard(Mutex& m) : m(m) { locked = m.try_lock(); }
 TryLockGuard::~TryLockGuard() {
   if (locked) {
@@ -10,4 +10,4 @@ TryLockGuard::~TryLockGuard() {
 }
 bool TryLockGuard::is_locked() { return locked; }
 bool TryLockGuard::try_lock() { return locked = m.try_lock(); }
-SYNC_NAMESPACE_END
+WHEEL_NAMESPACE_END

@@ -2,80 +2,38 @@
 
 #ifndef _XSL_UTILS_WHEEL_H_
 #  define _XSL_UTILS_WHEEL_H_
-#  include "xsl/config.h"
-
-#  include <algorithm>
-#  include <array>
-#  include <atomic>
-#  include <concepts>
-#  include <forward_list>
-#  include <functional>
-#  include <list>
-#  include <memory>
-#  include <optional>
-#  include <queue>
-#  include <string>
-#  include <string_view>
-#  include <tuple>
-#  include <utility>
-#  include <variant>
-#  include <vector>
-#  define WHEEL_NAMESPACE_BEGIN namespace xsl::wheel {
-#  define WHEEL_NAMESPACE_END }
-
-WHEEL_NAMESPACE_BEGIN
-using std::array;
-using std::atomic_flag;
-using std::forward;
-using std::forward_list;
-using std::function;
-using std::list;
-using std::make_shared;
-using std::make_unique;
-using std::move;
-using std::optional;
-using std::pair;
-using std::queue;
-using std::same_as;
-using std::shared_ptr;
-using std::string;
-using std::string_view;
-using std::to_string;
-using std::tuple;
-using std::unique_ptr;
-
-using std::vector;
-// using dp::thread_pool;
-// using dp::details::default_function_type;
-using std::lock_guard;
-
-template <typename T, typename E>
-class RefResult {
-public:
-  RefResult(const std::variant<T, E>& value) : value(value) {}
-  constexpr bool is_ok() const { return std::holds_alternative<T>(value); }
-  constexpr bool is_err() const { return std::holds_alternative<E>(value); }
-  const T& unwrap() { return std::get<T>(value); }
-  const E& unwrap_err() { return std::get<E>(value); }
-
-private:
-  const std::variant<T, E>& value;
-};
-template <typename T, typename E>
-class Result {
-public:
-  Result(T value) : value(value) {}
-  Result(E error) : value(error) {}
-  constexpr bool is_ok() const { return std::holds_alternative<T>(value); }
-  constexpr bool is_err() const { return std::holds_alternative<E>(value); }
-  T unwrap() { return std::get<T>(value); }
-  E unwrap_err() { return std::get<E>(value); }
-  RefResult<T, E> as_ref() { return RefResult<T, E>(value); }
-
-private:
-  std::variant<T, E> value;
-};
-
-WHEEL_NAMESPACE_END
+#  include "xsl/wheel/hash_map.h"
+#  include "xsl/wheel/mutex.h"
+#  include "xsl/wheel/result.h"
+namespace xsl::wheel {
+  using detail::ConcurrentHashMap;
+  using detail::LockGuard;
+  using detail::Mutex;
+  using detail::Result;
+  using detail::SharedLockGuard;
+  using detail::SharedMutex;
+  using detail::TryLockGuard;
+  using giant::array;
+  using giant::same_as;
+  using giant::move_constructible;
+  using giant::derived_from;
+  using giant::list;
+  using giant::forward_list;
+  using giant::function;
+  using giant::make_optional;
+  using giant::make_shared;
+  using giant::make_unique;
+  using giant::move;
+  using giant::nullopt;
+  using giant::optional;
+  using giant::shared_ptr;
+  using giant::string;
+  using giant::string_view;
+  using giant::unique_ptr;
+  using giant::unordered_map;
+  using giant::tuple;
+  using giant::to_string;
+  using giant::vector;
+}  // namespace xsl::wheel
 
 #endif  // _XSL_UTILS_WHEEL_H_

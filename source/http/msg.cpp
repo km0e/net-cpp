@@ -1,53 +1,8 @@
-#include "xsl/http/http.h"
 #include "xsl/http/msg.h"
+#include "xsl/transport/tcp/tcp.h"
+#include "xsl/wheel/wheel.h"
 HTTP_NAMESPACE_BEGIN
-wheel::string method_cast(HttpMethod method) {
-  switch (method) {
-    case HttpMethod::EXT:
-      return "EXT";
-    case HttpMethod::GET:
-      return "GET";
-    case HttpMethod::POST:
-      return "POST";
-    case HttpMethod::PUT:
-      return "PUT";
-    case HttpMethod::DELETE:
-      return "DELETE";
-    case HttpMethod::HEAD:
-      return "HEAD";
-    case HttpMethod::OPTIONS:
-      return "OPTIONS";
-    case HttpMethod::TRACE:
-      return "TRACE";
-    case HttpMethod::CONNECT:
-      return "CONNECT";
-    default:
-      return "Unknown";
-  }
-}
-HttpMethod method_cast(wheel::string_view method) {
-  if (method == "EXT") {
-    return HttpMethod::EXT;
-  } else if (method == "GET") {
-    return HttpMethod::GET;
-  } else if (method == "POST") {
-    return HttpMethod::POST;
-  } else if (method == "PUT") {
-    return HttpMethod::PUT;
-  } else if (method == "DELETE") {
-    return HttpMethod::DELETE;
-  } else if (method == "HEAD") {
-    return HttpMethod::HEAD;
-  } else if (method == "OPTIONS") {
-    return HttpMethod::OPTIONS;
-  } else if (method == "TRACE") {
-    return HttpMethod::TRACE;
-  } else if (method == "CONNECT") {
-    return HttpMethod::CONNECT;
-  } else {
-    return HttpMethod::UNKNOWN;
-  }
-}
+
 RequestView::RequestView() {}
 RequestView::~RequestView() {}
 Request::Request(wheel::string raw, RequestView view) : raw(raw), view(view) {
@@ -56,14 +11,15 @@ Request::Request(wheel::string raw, RequestView view) : raw(raw), view(view) {
 Request::~Request() {}
 ResponseError::ResponseError(int code, wheel::string_view message) : code(code), message(message) {}
 ResponseError::~ResponseError() {}
-Response::Response() {}
-Response::Response(wheel::string version, int status_code, wheel::string status_message)
-    : version(version), status_code(status_code), status_message(status_message) {}
-Response::~Response() {}
-wheel::string Response::to_string() const {
+
+ResponsePart::ResponsePart() {}
+ResponsePart::ResponsePart(int status_code, wheel::string status_message, HttpVersion version)
+    : status_code(status_code), status_message(status_message), version(version) {}
+ResponsePart::~ResponsePart() {}
+wheel::unique_ptr<transport::tcp::SendString> ResponsePart::into_send_task_ptr() {
   wheel::string res;
   res.reserve(1024);
-  res += version;
+  res += version_cast(version);
   res += " ";
   res += wheel::to_string(status_code);
   res += " ";
@@ -76,8 +32,31 @@ wheel::string Response::to_string() const {
     res += "\r\n";
   }
   res += "\r\n";
-  res += body;
-  return res;
+  return wheel::make_unique<transport::tcp::SendString>(wheel::move(res));
 }
-
+transport::tcp::SendTasks ResponsePart::into_send_tasks() {
+  transport::tcp::SendTasks tasks;
+  tasks.emplace_after(tasks.before_begin(), into_send_task_ptr());
+  return wheel::move(tasks);
+}
+Response<transport::tcp::SendTasks>::Response() {}
+Response<transport::tcp::SendTasks>::Response(ResponsePart&& part,
+                                              transport::tcp::SendTasks&& tasks)
+    : part(wheel::move(part)), tasks(wheel::move(tasks)) {}
+Response<transport::tcp::SendTasks>::~Response() {}
+transport::tcp::SendTasks Response<transport::tcp::SendTasks>::into_send_tasks() {
+  this->tasks.emplace_after(this->tasks.before_begin(), this->part.into_send_task_ptr());
+  return wheel::move(this->tasks);
+}
+Response<wheel::string>::Response() {}
+Response<wheel::string>::Response(ResponsePart&& part, wheel::string&& body)
+    : part(part), body(body) {}
+Response<wheel::string>::~Response() {}
+transport::tcp::SendTasks Response<wheel::string>::into_send_tasks() {
+  transport::tcp::SendTasks tasks;
+  tasks.emplace_after(tasks.before_begin(),
+                      wheel::make_unique<transport::tcp::SendString>(wheel::move(body)));
+  tasks.emplace_after(tasks.before_begin(), part.into_send_task_ptr());
+  return wheel::move(tasks);
+}
 HTTP_NAMESPACE_END

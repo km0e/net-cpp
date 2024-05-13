@@ -5,6 +5,7 @@
 #  include "xsl/transport/tcp/conn.h"
 #  include "xsl/transport/tcp/def.h"
 #  include "xsl/transport/utils.h"
+#  include "xsl/utils/utils.h"
 #  include "xsl/wheel/wheel.h"
 
 #  include <spdlog/spdlog.h>
@@ -30,7 +31,7 @@ private:
   // Handler is a function that takes a shared pointer to a Poller, an int, and an IOM_EVENTS enum
   // and returns a bool The handler is called when the server receives a connection
   wheel::shared_ptr<HG> handler_generator;
-  wheel::ConcurrentHashMap<int, TcpConn<H>> handlers;
+  wheel::ConcurrentHashMap<int, wheel::unique_ptr<TcpConn<H>>> handlers;
   wheel::shared_ptr<sync::Poller> poller;
 };
 
@@ -106,6 +107,7 @@ void TcpServer<H, HG>::set_max_connections(int max_connections) {
 // }
 template <Handler H, HandlerGenerator<H> HG>
 sync::IOM_EVENTS TcpServer<H, HG>::accept_handler(int fd, sync::IOM_EVENTS events) {
+  SPDLOG_TRACE("start accept");
   if ((events & sync::IOM_EVENTS::IN) == sync::IOM_EVENTS::IN) {
     SPDLOG_INFO("New connection");
     sockaddr addr;
@@ -114,19 +116,23 @@ sync::IOM_EVENTS TcpServer<H, HG>::accept_handler(int fd, sync::IOM_EVENTS event
     if (client_fd == -1) {  // todo: handle error
       return sync::IOM_EVENTS::IN;
     }
-    // if (!set_non_blocking(client_fd)) {
-    //   SPDLOG_WARN("[TcpServer::<lambda::handler>] Failed to set non-blocking");
-    //   close(client_fd);
-    //   return sync::IOM_EVENTS::IN;
-    // }
-    TcpConn tcp_conn{client_fd, this->poller, (*this->handler_generator)()};
-    tcp_conn.recv();
-    if (tcp_conn.valid()) {
+    if (!set_non_blocking(client_fd)) {
+      SPDLOG_WARN("[TcpServer::<lambda::handler>] Failed to set non-blocking");
+      close(client_fd);
+      return sync::IOM_EVENTS::IN;
+    }
+    auto tcp_conn
+        = TcpConn<H>::make_tcp_conn(client_fd, this->poller, (*this->handler_generator)());
+    tcp_conn->recv();
+    if (tcp_conn->valid()) {
+      SPDLOG_DEBUG("New connection established");
       // TODO: drop connection
       this->handlers.lock()->try_emplace(client_fd, std::move(tcp_conn));
     }
+    SPDLOG_TRACE("accept done");
     return sync::IOM_EVENTS::IN;
   }
+  SPDLOG_TRACE("there is no IN event");
   return sync::IOM_EVENTS::NONE;
 }
 

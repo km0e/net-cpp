@@ -1,8 +1,7 @@
-#include "xsl/http/context.h"
-#include "xsl/http/msg.h"
-#include "xsl/http/router.h"
-#include "xsl/http/server.h"
-#include "xsl/sync/poller.h"
+// #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+
+#include "xsl/http/http.h"
+#include "xsl/sync/sync.h"
 #include "xsl/wheel/wheel.h"
 
 #include <CLI/CLI.hpp>
@@ -26,8 +25,9 @@ void sigterm_init() {
   sigaction(SIGTERM, &act, nullptr);
   sigaction(SIGINT, &act, nullptr);
 }
-using xsl::wheel::make_shared;
-using xsl::wheel::string;
+using namespace xsl::http;
+using namespace xsl::wheel;
+using namespace xsl::sync;
 int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
   string ip = TEST_HOST;
@@ -37,20 +37,18 @@ int main(int argc, char **argv) {
   CLI11_PARSE(app, argc, argv);
   spdlog::set_level(spdlog::level::trace);
   sigterm_init();
-  xsl::http::DefaultServer tcp_server{};
-  auto router = make_shared<xsl::http::DefaultRouter>();
-  router->add_route(xsl::http::HttpMethod::GET, "/",
-                    [](xsl::http::Context &ctx) -> xsl::http::Response {
-                      (void)ctx;
-                      auto res = xsl::http::Response{};
-                      res.version = "HTTP/1.1";
-                      res.status_code = 200;
-                      res.status_message = "OK";
-                      res.body = "Hello, World!";
-                      return res;
-                    });
-  auto handler_generator = make_shared<xsl::http::DefaultHG>(router);
-  xsl::wheel::shared_ptr<xsl::sync::Poller> poller = make_shared<xsl::sync::EPoller>();
+  DefaultServer tcp_server{};
+  auto router = make_shared<DefaultRouter>();
+  router->add_route(HttpMethod::GET, "/",
+                    create_static_handler("test/http/http_server/web/static/").unwrap());
+  router->error_handler(
+      RouteErrorKind::NotFound,
+      create_static_handler("test/http/http_server/web/static/404.html").unwrap());
+  router->error_handler(
+      RouteErrorKind::Unimplemented,
+      create_static_handler("test/http/http_server/web/static/501.html").unwrap());
+  auto handler_generator = make_shared<DefaultHandlerGenerator>(router);
+  xsl::wheel::shared_ptr<Poller> poller = make_shared<DefaultPoller>();
   tcp_server.set_poller(poller);
   tcp_server.set_handler_generator(handler_generator);
   if (!tcp_server.serve(TEST_HOST, TEST_PORT)) {
@@ -61,7 +59,7 @@ int main(int argc, char **argv) {
   pthread_create(
       &poller_thread, nullptr,
       [](void *arg) -> void * {
-        xsl::sync::EPoller *poller = (xsl::sync::EPoller *)arg;
+        DefaultPoller *poller = (xsl::sync::DefaultPoller *)arg;
         while (true) {
           poller->poll();
         }

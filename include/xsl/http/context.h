@@ -1,7 +1,7 @@
 #pragma once
 #ifndef _XSL_NET_HTTP_CONTEXT_H_
 #  define _XSL_NET_HTTP_CONTEXT_H_
-#  include "xsl/http/http.h"
+#  include "xsl/http/def.h"
 #  include "xsl/http/msg.h"
 #  include "xsl/wheel/wheel.h"
 HTTP_NAMESPACE_BEGIN
@@ -11,6 +11,7 @@ public:
   ~Context();
   wheel::string_view current_path;
   Request request;
+  bool is_ok;
 };
 
 HTTP_NAMESPACE_END

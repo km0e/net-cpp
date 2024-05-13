@@ -44,7 +44,8 @@ public:
     return TcpHandleState(xsl::sync::IOM_EVENTS::OUT, TcpHandleHint::WRITE);
   }
   TcpHandleState send(SendTasks &tasks) {
-    tasks.emplace_front(xsl::transport::tcp::SendString::create(xsl::wheel::move(this->data)));
+    tasks.emplace_front(
+        xsl::wheel::make_unique<xsl::transport::tcp::SendString>(xsl::wheel::move(this->data)));
     return TcpHandleState(xsl::sync::IOM_EVENTS::NONE, TcpHandleHint::NONE);
   }
   string data;

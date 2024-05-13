@@ -1,5 +1,5 @@
+#include "xsl/transport/tcp/context.h"
 #include "xsl/transport/tcp/helper.h"
-#include "xsl/transport/tcp/tcp.h"
 #include "xsl/wheel/wheel.h"
 
 #include <fcntl.h>
@@ -62,13 +62,10 @@ bool SendFile::exec(SendContext& ctx) {
   }
   return true;
 }
-wheel::unique_ptr<SendTaskNode> SendString::create(wheel::string&& data) {
-  return wheel::make_unique<SendString>(wheel::move(data));
-}
 SendString::SendString(wheel::string&& data) { this->data_buffer.emplace_back(wheel::move(data)); }
 SendString::~SendString() {}
 bool SendString::exec(SendContext& ctx) {
-  SPDLOG_TRACE("[SendString::exec]");
+  SPDLOG_TRACE("start send");
   while (!this->data_buffer.empty()) {
     auto& data = this->data_buffer.front();
     ssize_t n = write(ctx.sfd, data.c_str(), data.size());
@@ -83,20 +80,20 @@ bool SendString::exec(SendContext& ctx) {
       data.erase(0, n);
       return false;
     }
-    SPDLOG_DEBUG("[SendString::exec] send {} bytes", n);
+    SPDLOG_DEBUG("send {} bytes", n);
     this->data_buffer.pop_front();
   }
   return true;
 }
-wheel::unique_ptr<RecvTaskNode> RecvString::create(wheel::string& data) {
+wheel::unique_ptr<RecvString> RecvString::create(wheel::string& data) {
   return wheel::make_unique<RecvString>(data);
 }
 
 RecvString::RecvString(wheel::string& data) : data_buffer(data) {}
 RecvString::~RecvString() {}
 
-bool RecvString::exec(RecvContext& ctx) {
-  SPDLOG_TRACE("[RecvString::exec]");
+RecvResult RecvString::exec(RecvContext& ctx) {
+  SPDLOG_TRACE("start recv string");
   wheel::vector<wheel::string> data;
   char buf[MAX_SINGLE_RECV_SIZE];
   ssize_t n;
@@ -104,22 +101,27 @@ bool RecvString::exec(RecvContext& ctx) {
     n = ::recv(ctx.sfd, buf, sizeof(buf), 0);
     if (n == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        SPDLOG_DEBUG("[RecvString::exec] recv over");
+        if (data.empty()) {
+          SPDLOG_DEBUG("recv eof");
+          return RecvResult{RecvError::RECV_EOF};
+        }
+        SPDLOG_DEBUG("recv over");
         break;
       } else {
-        SPDLOG_ERROR("[RecvString::exec] Failed to recv data, err : {}", strerror(errno));
+        SPDLOG_ERROR("Failed to recv data, err : {}", strerror(errno));
         // TODO: handle recv error
-        return false;
+        return RecvResult{RecvError::UNKNOWN};
       }
     } else if (n == 0) {
-      SPDLOG_DEBUG("[RecvString::exec] recv over");
+      SPDLOG_DEBUG("recv eof");
+      return RecvResult{RecvError::RECV_EOF};
       break;
     }
     data.emplace_back(buf, n);
   } while (n == sizeof(buf));
   this->data_buffer = std::accumulate(data.begin(), data.end(), wheel::string());
-  SPDLOG_DEBUG("[RecvString::exec] data size: {}", this->data_buffer.size());
-  return true;
+  SPDLOG_DEBUG("data size: {}", this->data_buffer.size());
+  return RecvResult{true};
 }
 
 TCP_NAMESPACE_END

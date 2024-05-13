@@ -1,7 +1,10 @@
 #pragma once
-#ifndef _XSL_SYNC_CONFIG_H_
-#  define _XSL_SYNC_CONFIG_H_
-#  include "xsl/config.h"
-#  define SYNC_NAMESPACE_BEGIN namespace xsl::sync {
-#  define SYNC_NAMESPACE_END }
+#ifndef _XSL_SYNC_H_
+#  define _XSL_SYNC_H_
+#include "xsl/sync/poller.h"
+namespace xsl::sync {
+  using detail::DefaultPoller;
+  using detail::Poller;
+  using detail::IOM_EVENTS;
+}  // namespace xsl::sync
 #endif

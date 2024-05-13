@@ -1,8 +1,7 @@
 #pragma once
 #ifndef _XSL_NET_POLLER_
 #  define _XSL_NET_POLLER_
-#  include "xsl/sync/sync.h"
-#  include "xsl/wheel/hash_map.h"
+#  include "xsl/sync/def.h"
 #  include "xsl/wheel/wheel.h"
 
 #  include <sys/epoll.h>
@@ -44,12 +43,12 @@ public:
   virtual void unregister(int fd) = 0;
   virtual void shutdown() = 0;
 };
-class EPoller;
-using Handler = wheel::function<void(wheel::shared_ptr<EPoller> poller, int fd, IOM_EVENTS events)>;
-class EPoller : public Poller {
+class DefaultPoller;
+using Handler = wheel::function<void(wheel::shared_ptr<DefaultPoller> poller, int fd, IOM_EVENTS events)>;
+class DefaultPoller : public Poller {
 public:
-  EPoller();
-  ~EPoller();
+  DefaultPoller();
+  ~DefaultPoller();
   bool valid();
   bool subscribe(int fd, IOM_EVENTS events, PollHandler&& handler) override;
   bool modify(int fd, IOM_EVENTS events) override;

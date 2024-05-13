@@ -1,8 +1,7 @@
 #pragma once
 #ifndef _XSL_WHEEL_MUTEX_H_
 #  define _XSL_WHEEL_MUTEX_H_
-#  include "xsl/wheel/wheel.h"
-
+#  include "xsl/wheel/def.h"
 #  include <spdlog/spdlog.h>
 
 #  include <mutex>

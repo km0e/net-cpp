@@ -1,7 +1,7 @@
 #pragma once
 #ifndef _XSL_NET_TRANSPORT_TCP_CONN_H_
 #  define _XSL_NET_TRANSPORT_TCP_CONN_H_
-#  include "xsl/sync/poller.h"
+#  include "xsl/sync/sync.h"
 #  include "xsl/transport/tcp/context.h"
 #  include "xsl/transport/tcp/def.h"
 #  include "xsl/wheel/wheel.h"
@@ -38,7 +38,7 @@ public:
 //    - hint is WRITE and i is 0, send data
 //    - hint is READ and i is 1, read data
 template <class T>
-concept Handler = requires(T t, SendTasks& sts, RecvTasks& rts) {
+concept Handler = wheel::move_constructible<T> && requires(T t, SendTasks& sts, RecvTasks& rts) {
   { t.init() } -> wheel::same_as<HandleConfig>;
   { t.send(sts) } -> wheel::same_as<HandleState>;
   { t.recv(rts) } -> wheel::same_as<HandleState>;
@@ -52,7 +52,10 @@ concept HandlerGenerator = Handler<H> && requires(T t, H h) {
 template <Handler H>
 class TcpConn {
 public:
-  TcpConn(TcpConn&&) = default;
+  static wheel::unique_ptr<TcpConn<H>> make_tcp_conn(int fd, wheel::shared_ptr<sync::Poller> poller,
+                                                     H&& handler);
+  TcpConn(TcpConn&&);
+  // Don't directly use the constructor, use make_tcp_conn instead
   TcpConn(int fd, wheel::shared_ptr<sync::Poller> poller, H&& handler);
   ~TcpConn();
   void send();
@@ -69,18 +72,39 @@ private:
   //   std::list < wheel::string send_buffer;
 };
 template <Handler H>
-TcpConn<H>::TcpConn(int fd, wheel::shared_ptr<sync::Poller> poller, H&& handler)
-    : fd(fd), poller(poller), handler(handler) {
+wheel::unique_ptr<TcpConn<H>> TcpConn<H>::make_tcp_conn(int fd,
+                                                        wheel::shared_ptr<sync::Poller> poller,
+                                                        H&& handler) {
+  auto conn = wheel::make_unique<TcpConn<H>>(fd, poller, wheel::move(handler));
+  // we should pass the unique_ptr to the lambda, otherwise the conn will be deleted or moved
   poller->subscribe(fd, sync::IOM_EVENTS::IN,
-                    [this](int fd, sync::IOM_EVENTS events) { this->recv(); });
+                    [conn = conn.get()](int fd, sync::IOM_EVENTS events) { conn->recv(); });
+  return conn;
+}
+template <Handler H>
+TcpConn<H>::TcpConn(int fd, wheel::shared_ptr<sync::Poller> poller, H&& handler)
+    : fd(fd), poller(poller), handler(wheel::move(handler)), events(sync::IOM_EVENTS::IN) {
   auto cfg = this->handler.init();
   this->recv_tasks.splice_after(this->recv_tasks.before_begin(), cfg.recv_tasks);
+}
+template <Handler H>
+TcpConn<H>::TcpConn(TcpConn&& other)
+    : fd(other.fd),
+      poller(other.poller),
+      handler(wheel::move(other.handler)),
+      recv_tasks(wheel::move(other.recv_tasks)),
+      send_tasks(wheel::move(other.send_tasks)),
+      events(other.events) {
+  other.events = sync::IOM_EVENTS::NONE;
+  other.fd = -1;
 }
 
 template <Handler H>
 TcpConn<H>::~TcpConn() {
-  if (this->events != sync::IOM_EVENTS::NONE) this->poller->unregister(this->fd);
-  close(this->fd);
+  if (this->events != sync::IOM_EVENTS::NONE) {
+    this->poller->unregister(this->fd);
+    close(this->fd);
+  };
 }
 
 template <Handler H>
@@ -89,7 +113,7 @@ bool TcpConn<H>::valid() {
 }
 template <Handler H>
 void TcpConn<H>::send() {
-  SPDLOG_TRACE("[TcpConn::send]");
+  SPDLOG_TRACE("start send");
   SendTasks hl;
   auto state = this->handler.send(hl);
   // move new tasks to this->tasks tail
@@ -110,21 +134,43 @@ void TcpConn<H>::send() {
 }
 template <Handler H>
 void TcpConn<H>::recv() {
-  SPDLOG_TRACE("[TcpConn::recv]");
+  SPDLOG_TRACE("start recv");
   if (this->recv_tasks.empty()) {
-    SPDLOG_ERROR("[TcpConn::recv] No recv task found");
+    SPDLOG_ERROR("No recv task found");
     this->events = sync::IOM_EVENTS::NONE;
     this->poller->unregister(this->fd);
   }
   RecvContext ctx(this->fd, this->recv_tasks);
   while (true) {
-    if (ctx.iter->get()->exec(ctx)) break;
-    ctx.iter++;
-    if (ctx.iter == this->recv_tasks.end()) {
-      ctx.iter = this->recv_tasks.begin();
+    auto res = ctx.iter->get()->exec(ctx);
+    if (res.is_ok()) {
+      if (res.unwrap()) {
+        break;
+      }
+      ctx.iter++;
+      if (ctx.iter == this->recv_tasks.end()) {
+        ctx.iter = this->recv_tasks.begin();
+      }
+    } else {
+      switch (res.unwrap_err()) {
+        case RecvError::RECV_EOF:
+          SPDLOG_DEBUG("recv eof");
+          this->events = sync::IOM_EVENTS::NONE;
+          this->poller->unregister(this->fd);
+          close(this->fd);
+          return;
+        case RecvError::UNKNOWN:
+          SPDLOG_ERROR("recv error");
+          this->events = sync::IOM_EVENTS::NONE;
+          this->poller->unregister(this->fd);
+          close(this->fd);
+          return;
+        default:
+          break;
+      }
     }
   }
-  SPDLOG_DEBUG("[TcpConn::recv] recv all data");
+  SPDLOG_DEBUG("recv all data");
   auto state = this->handler.recv(this->recv_tasks);
   if ((state.events & sync::IOM_EVENTS::OUT) == sync::IOM_EVENTS::OUT) {
     this->send();
@@ -132,6 +178,7 @@ void TcpConn<H>::recv() {
     this->poller->modify(this->fd, state.events);
     this->events = state.events;
   }
+  SPDLOG_TRACE("recv done");
 }
 TCP_NAMESPACE_END
 

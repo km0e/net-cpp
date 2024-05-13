@@ -4,6 +4,12 @@
 #  include "xsl/transport/tcp/def.h"
 #  include "xsl/wheel/wheel.h"
 TCP_NAMESPACE_BEGIN
+enum class RecvError {
+  UNKNOWN,
+  RECV_EOF,
+};
+wheel::string_view to_string(RecvError err);
+using RecvResult = wheel::Result<bool, RecvError>;
 class SendContext;
 class RecvContext;
 class SendTaskNode {
@@ -21,7 +27,7 @@ public:
   //          return false if the task is done, but not recv all data, will call next task
   //          if all tasks are done, but not recv all data, will call recv again
   // - send : return true if the task is done(send all data)
-  virtual bool exec(RecvContext& ctx) = 0;
+  virtual RecvResult exec(RecvContext& ctx) = 0;
   virtual ~RecvTaskNode() = default;
 };
 using SendTasks = wheel::forward_list<wheel::unique_ptr<SendTaskNode>>;

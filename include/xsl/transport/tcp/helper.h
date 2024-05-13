@@ -25,7 +25,6 @@ protected:
 
 class SendString : public SendTaskNode {
 public:
-  static wheel::unique_ptr<SendTaskNode> create(wheel::string&& data);
   SendString(wheel::string&& data);
   SendString(SendString&&) = default;
   ~SendString();
@@ -37,11 +36,11 @@ private:
 const size_t MAX_SINGLE_RECV_SIZE = 1024;
 class RecvString : public RecvTaskNode {
 public:
-  static wheel::unique_ptr<RecvTaskNode> create(wheel::string& data);
+  static wheel::unique_ptr<RecvString> create(wheel::string& data);
   RecvString(RecvString&&) = default;
   RecvString(wheel::string& data);
   ~RecvString();
-  bool exec(RecvContext& ctx) override;
+  RecvResult exec(RecvContext& ctx) override;
 
 private:
   wheel::string& data_buffer;

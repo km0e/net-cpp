@@ -3,14 +3,12 @@
 #ifndef _XSL_NET_HTTP_SERVER_H_
 #  define _XSL_NET_HTTP_SERVER_H_
 #  include "xsl/http/context.h"
-#  include "xsl/http/http.h"
+#  include "xsl/http/def.h"
 #  include "xsl/http/msg.h"
 #  include "xsl/http/parse.h"
 #  include "xsl/http/router.h"
 #  include "xsl/sync/poller.h"
-#  include "xsl/transport/tcp/context.h"
-#  include "xsl/transport/tcp/helper.h"
-#  include "xsl/transport/tcp/server.h"
+#  include "xsl/transport/tcp/tcp.h"
 #  include "xsl/wheel/wheel.h"
 
 #  include <spdlog/spdlog.h>
@@ -24,11 +22,12 @@ private:
 
 public:
   Handler(wheel::shared_ptr<R> router) : router(router) {}
+  Handler(Handler&&) = default;
   ~Handler() {}
   transport::tcp::HandleConfig init() {
     SPDLOG_TRACE("");
     transport::tcp::HandleConfig cfg{};
-    cfg.recv_tasks.emplace_front(transport::tcp::RecvString::create(this->recv_data));
+    cfg.recv_tasks.emplace_front(wheel::make_unique<transport::tcp::RecvString>(this->recv_data));
     return cfg;
   }
   TcpHandleState recv([[maybe_unused]] transport::tcp::RecvTasks& tasks) {
@@ -53,19 +52,23 @@ public:
       return TcpHandleState{sync::IOM_EVENTS::NONE, TcpHandleHint::NONE};
     }
     this->recv_data.clear();
-    this->send_data = wheel::move(rtres.unwrap().to_string());
+    this->send_tasks = wheel::move(rtres.unwrap()->into_send_tasks());
     return TcpHandleState{sync::IOM_EVENTS::OUT, TcpHandleHint::WRITE};
   }
   TcpHandleState send(transport::tcp::SendTasks& tasks) {
-    tasks.emplace_front(transport::tcp::SendString::create(wheel::move(this->send_data)));
-    return TcpHandleState{sync::IOM_EVENTS::NONE, TcpHandleHint::NONE};
+    SPDLOG_TRACE("");
+    if (this->send_tasks.empty()) {
+      return TcpHandleState{sync::IOM_EVENTS::NONE, TcpHandleHint::NONE};
+    }
+    tasks.splice_after(tasks.before_begin(), wheel::move(this->send_tasks));
+    return TcpHandleState{sync::IOM_EVENTS::OUT, TcpHandleHint::NONE};
   }
 
 private:
   HttpParser parser;
   wheel::shared_ptr<R> router;
-  wheel::string send_data;
   wheel::string recv_data;
+  transport::tcp::SendTasks send_tasks;
 };
 
 using DefaultHandler = Handler<DefaultRouter>;
@@ -80,9 +83,9 @@ private:
   wheel::shared_ptr<R> router;
 };
 
-using DefaultHG = HandlerGenerator<DefaultRouter, DefaultHandler>;
+using DefaultHandlerGenerator = HandlerGenerator<DefaultRouter, DefaultHandler>;
 
-using DefaultServer = transport::tcp::TcpServer<Handler<DefaultRouter>, DefaultHG>;
+using DefaultServer = transport::tcp::TcpServer<Handler<DefaultRouter>, DefaultHandlerGenerator>;
 
 HTTP_NAMESPACE_END
 #endif

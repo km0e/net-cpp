@@ -42,6 +42,7 @@ public:
   virtual void poll() = 0;
   virtual void unregister(int fd) = 0;
   virtual void shutdown() = 0;
+  virtual ~Poller() = default;
 };
 class DefaultPoller;
 using Handler = wheel::function<void(wheel::shared_ptr<DefaultPoller> poller, int fd, IOM_EVENTS events)>;

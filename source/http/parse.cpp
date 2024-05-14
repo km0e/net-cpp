@@ -1,4 +1,3 @@
-#include "xsl/http/http.h"
 #include "xsl/http/parse.h"
 #include "xsl/wheel/wheel.h"
 
@@ -6,7 +5,8 @@
 
 #include <cstddef>
 HTTP_NAMESPACE_BEGIN
-ParseError::ParseError(ParseErrorKind kind) : kind(kind) {}
+ParseError::ParseError(ParseErrorKind kind)
+    : kind(kind), message(PARSE_ERROR_STRINGS[static_cast<int>(kind)]) {}
 ParseError::ParseError(ParseErrorKind kind, wheel::string message) : kind(kind), message(message) {}
 ParseError::~ParseError() {}
 std::string ParseError::to_string() const {

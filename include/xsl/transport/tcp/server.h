@@ -23,7 +23,8 @@ public:
   wheel::shared_ptr<HG> handler_generator;
 };
 template <TcpHandler H, HandlerGenerator<H> HG>
-TcpServerConfig<H, HG>::TcpServerConfig() {
+TcpServerConfig<H, HG>::TcpServerConfig()
+    : host("0.0.0.0"), port(8080), poller(nullptr), handler_generator(nullptr) {
   // for debug
   spdlog::set_pattern("[%D-%T][%^%l%$][%t][%!] %v");
 }
@@ -106,24 +107,21 @@ public:
   TcpServer(int fd, wheel::shared_ptr<HG> handler_generator,
             wheel::shared_ptr<sync::Poller> poller);
   ~TcpServer();
-  void set_poller(wheel::shared_ptr<sync::Poller> poller);
   sync::IOM_EVENTS accept(int fd, sync::IOM_EVENTS events);
-  void set_handler_generator(wheel::shared_ptr<HG> handler_generator);
-  void set_max_connections(int max_connections);
 
 private:
   int fd;
   // Handler is a function that takes a shared pointer to a Poller, an int, and an IOM_EVENTS enum
   // and returns a bool The handler is called when the server receives a connection
   wheel::shared_ptr<HG> handler_generator;
-  wheel::ConcurrentHashMap<int, wheel::unique_ptr<TcpConn<H>>> handlers;
   wheel::shared_ptr<sync::Poller> poller;
+  wheel::ConcurrentHashMap<int, wheel::unique_ptr<TcpConn<H>>> handlers;
 };
 
 template <TcpHandler H, HandlerGenerator<H> HG>
 TcpServer<H, HG>::TcpServer(int fd, wheel::shared_ptr<HG> handler_generator,
                             wheel::shared_ptr<sync::Poller> poller)
-    : fd(fd), handler_generator(handler_generator), poller(poller) {
+    : fd(fd), handler_generator(handler_generator), poller(poller), handlers() {
   poller->subscribe(fd, sync::IOM_EVENTS::IN,
                     [this](int fd, sync::IOM_EVENTS events) { return this->accept(fd, events); });
 }

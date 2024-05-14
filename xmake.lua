@@ -6,30 +6,8 @@ set_version("0.1.0", {build = "%Y%m%d%H%M"})
 add_rules("mode.debug", "mode.release", "mode.coverage")
 
 
-toolchain("gcc")
-    on_load(function (toolchain)
-        if is_mode("debug") then
-            set_warnings("all", "error", 'pedantic', 'extra')
-        end
-    end)
-toolchain_end()
-
-toolchain("clang")
-    on_load(function (toolchain)
-        if is_mode("debug") then
-            set_warnings("all", "error", 'pedantic', 'extra')
-        end
-    end)
-toolchain_end()
-
-toolchain("msvc")
-    on_load(function (toolchain)
-        if is_mode("debug") then
-            set_warnings("/W4", "/WX")
-            add_defines("_SILENCE_CXX20_DEPRECATED_WARNING")
-        end
-    end)
-toolchain_end()
+set_warnings("everything")
+-- set_warnings("all", "error", 'pedantic', 'extra')
 
 set_languages("c++20")
 

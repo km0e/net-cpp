@@ -9,7 +9,7 @@ WHEEL_NAMESPACE_BEGIN
 template <class K, class V>
 class ConcurrentHashMap {
 public:
-  ConcurrentHashMap() {}
+  ConcurrentHashMap() : map(), mutex() {}
   ~ConcurrentHashMap() {}
   SharedLockGuard<giant::unordered_map<K, V>> share() {
     return SharedLockGuard<giant::unordered_map<K, V>>(this->mutex, map);

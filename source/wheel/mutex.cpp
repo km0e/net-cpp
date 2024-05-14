@@ -2,7 +2,7 @@
 #include "xsl/wheel/wheel.h"
 
 WHEEL_NAMESPACE_BEGIN
-TryLockGuard::TryLockGuard(Mutex& m) : m(m) { locked = m.try_lock(); }
+TryLockGuard::TryLockGuard(Mutex& m) : m(m), locked(false) { locked = m.try_lock(); }
 TryLockGuard::~TryLockGuard() {
   if (locked) {
     m.unlock();

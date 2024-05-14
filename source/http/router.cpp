@@ -9,12 +9,13 @@
 #include <cstdint>
 
 HTTP_NAMESPACE_BEGIN
-RouteHandleError::RouteHandleError() {}
+RouteHandleError::RouteHandleError() : message("") {}
 RouteHandleError::RouteHandleError(wheel::string message) : message(message) {}
 RouteHandleError::~RouteHandleError() {}
 wheel::string RouteHandleError::to_string() const { return message; }
 
-AddRouteError::AddRouteError(AddRouteErrorKind kind) : kind(kind) {}
+AddRouteError::AddRouteError(AddRouteErrorKind kind)
+    : kind(kind), message(ADD_ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]) {}
 AddRouteError::AddRouteError(AddRouteErrorKind kind, wheel::string message)
     : kind(kind), message(message) {}
 AddRouteError::~AddRouteError() {}
@@ -22,20 +23,21 @@ std::string AddRouteError::to_string() const {
   return wheel::string{ADD_ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]} + ": " + message;
 }
 
-RouteError::RouteError() {}
-RouteError::RouteError(RouteErrorKind kind) : kind(kind) {}
+RouteError::RouteError() : kind(RouteErrorKind::Unknown), message("") {}
+RouteError::RouteError(RouteErrorKind kind)
+    : kind(kind), message(ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]) {}
 RouteError::RouteError(RouteErrorKind kind, wheel::string message) : kind(kind), message(message) {}
 RouteError::~RouteError() {}
 wheel::string RouteError::to_string() const {
   return wheel::string{ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]} + ": " + message;
 }
 
-HttpParser::HttpParser() {}
+HttpParser::HttpParser() : view() {}
 
 HttpParser::~HttpParser() {}
 
 namespace router_details {
-  HttpRouteNode::HttpRouteNode() {}
+  HttpRouteNode::HttpRouteNode() : handlers(), children() {}
   HttpRouteNode::~HttpRouteNode() {}
 
   AddRouteResult HttpRouteNode::add_route(HttpMethod method, wheel::string_view path,
@@ -73,7 +75,7 @@ namespace router_details {
       }
       RouteHandleResult res = (*handler)(ctx);
       if (res.is_ok()) {
-        return RouteResult(wheel::move(res.unwrap()));
+        return RouteResult(res.unwrap());
       }
       return RouteResult(RouteError(RouteErrorKind::Unknown, ""));
     }

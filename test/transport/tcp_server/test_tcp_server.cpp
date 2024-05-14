@@ -46,7 +46,7 @@ public:
 };
 class HandlerGenerator {
 public:
-  HandlerGenerator() {}
+  HandlerGenerator() : data("Hello, world!") {}
   ~HandlerGenerator() {}
   Handler operator()() { return {}; }
 

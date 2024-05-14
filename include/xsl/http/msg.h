@@ -18,11 +18,11 @@ public:
 
 class Request {
 public:
-  Request(wheel::string raw, RequestView view);
+  Request(wheel::string&& raw, RequestView view);
   ~Request();
-  wheel::string raw;
   HttpMethod method;
   RequestView view;
+  wheel::string raw;
 };
 
 class ResponseError {
@@ -36,6 +36,7 @@ public:
 class IntoSendTasks {
 public:
   virtual TcpSendTasks into_send_tasks() = 0;
+  virtual ~IntoSendTasks() = default;
 };
 
 using IntoSendTasksPtr = wheel::unique_ptr<IntoSendTasks>;
@@ -48,7 +49,7 @@ using IntoSendTasksPtr = wheel::unique_ptr<IntoSendTasks>;
 class ResponsePart : public IntoSendTasks {
 public:
   ResponsePart();
-  ResponsePart(int status_code, wheel::string status_message, HttpVersion version);
+  ResponsePart(int status_code, wheel::string&& status_message, HttpVersion version);
   ~ResponsePart();
   int status_code;
   wheel::string status_message;

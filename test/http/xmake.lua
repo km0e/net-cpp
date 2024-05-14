@@ -1,2 +1,2 @@
-add_deps("http","transport")
+add_deps("http")
 includes("http_server")

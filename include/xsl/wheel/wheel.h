@@ -29,6 +29,7 @@ namespace xsl::wheel {
   using giant::string;
   using giant::string_view;
   using giant::unique_ptr;
+  using giant::bind;
   using giant::unordered_map;
   using giant::tuple;
   using giant::to_string;

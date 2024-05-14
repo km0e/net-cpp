@@ -1,9 +1,10 @@
-#include "xsl/transport/utils.h"
+#include "xsl/net/transport/tcp/tcp.h"
 
 #include <CLI/CLI.hpp>
 #include <spdlog/spdlog.h>
 #include <unistd.h>
 using xsl::wheel::string;
+using namespace xsl::net::transport::tcp;
 int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
   string ip = "127.0.0.1";
@@ -12,7 +13,7 @@ int main(int argc, char **argv) {
   app.add_option("-p,--port", port, "Port to connect to")->required();
   CLI11_PARSE(app, argc, argv);
 
-  int fd = xsl::transport::create_tcp_client(ip.c_str(), port.c_str());
+  int fd = create_tcp_client(ip.c_str(), port.c_str());
   if (fd < 0) {
     return 1;
   }

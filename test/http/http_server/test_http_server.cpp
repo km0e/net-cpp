@@ -1,7 +1,7 @@
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
 
-#include "xsl/http/http.h"
-#include "xsl/sync/sync.h"
+#include "xsl/net/http/http.h"
+#include "xsl/net/sync/sync.h"
 #include "xsl/wheel/wheel.h"
 
 #include <CLI/CLI.hpp>
@@ -25,9 +25,9 @@ void sigterm_init() {
   sigaction(SIGTERM, &act, nullptr);
   sigaction(SIGINT, &act, nullptr);
 }
-using namespace xsl::http;
+using namespace xsl::net::http;
 using namespace xsl::wheel;
-using namespace xsl::sync;
+using namespace xsl::net::sync;
 int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
   string ip = TEST_HOST;
@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
   pthread_create(
       &poller_thread, nullptr,
       [](void *arg) -> void * {
-        DefaultPoller *poller = (xsl::sync::DefaultPoller *)arg;
+        DefaultPoller *poller = (DefaultPoller *)arg;
         while (true) {
           poller->poll();
         }

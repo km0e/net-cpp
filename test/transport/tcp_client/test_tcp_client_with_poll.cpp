@@ -1,13 +1,14 @@
-#include "xsl/sync/poller.h"
-#include "xsl/sync/sync.h"
-#include "xsl/transport/utils.h"
+#include "xsl/net/sync/poller.h"
+#include "xsl/net/sync/sync.h"
+#include "xsl/net/transport/tcp/tcp.h"
 
 #include <CLI/CLI.hpp>
 #include <pthread.h>
 #include <spdlog/spdlog.h>
 #include <unistd.h>
 using namespace xsl::wheel;
-using namespace xsl::sync;
+using namespace xsl::net::sync;
+using namespace xsl::net::transport::tcp;
 #define MAX_ECHO_CYCLES 10
 int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
@@ -32,7 +33,7 @@ int main(int argc, char **argv) {
         return nullptr;
       },
       &poller);
-  int fd = xsl::transport::create_tcp_client(ip.c_str(), port.c_str());
+  int fd = create_tcp_client(ip.c_str(), port.c_str());
   if (fd < 0) {
     return 1;
   }

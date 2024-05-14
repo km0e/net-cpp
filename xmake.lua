@@ -22,6 +22,6 @@ add_ldflags("-fuse-ld=mold")
 
 add_rules("plugin.compile_commands.autoupdate", {outputdir = "build"})
 
-add_includedirs("$(projectdir)/include")
+add_includedirs("$(projectdir)/include", {public = true})
 
 includes("include", "source", "test")

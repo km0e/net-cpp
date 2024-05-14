@@ -44,6 +44,7 @@ namespace xsl::wheel::giant {
   using std::queue;
   using std::runtime_error;
   using std::same_as;
+  using std::bind;
   using std::shared_ptr;
   using std::string;
   using std::string_view;

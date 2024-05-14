@@ -1,1 +1,6 @@
-includes("http", "sync", "transport", "utils", "wheel")
+includes("net", "wheel")
+target("xsl")
+    set_kind("static")
+    add_files("*.cpp")
+    add_headerfiles("$(projectdir)/include/(**.h)")
+    add_deps("net", "wheel")

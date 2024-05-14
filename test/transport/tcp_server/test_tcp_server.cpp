@@ -1,5 +1,5 @@
-#include "xsl/sync/sync.h"
-#include "xsl/transport/tcp/tcp.h"
+#include "xsl/net/sync/sync.h"
+#include "xsl/net/transport/tcp/tcp.h"
 #include "xsl/wheel/wheel.h"
 
 #include <CLI/CLI.hpp>
@@ -23,9 +23,9 @@ void sigterm_init() {
   sigaction(SIGTERM, &act, nullptr);
   sigaction(SIGINT, &act, nullptr);
 }
-using namespace xsl::transport::tcp;
+using namespace xsl::net::transport::tcp;
 using namespace xsl::wheel;
-using namespace xsl::sync;
+using namespace xsl::net::sync;
 class Handler {
 public:
   TcpHandleConfig init() {

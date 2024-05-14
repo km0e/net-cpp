@@ -28,76 +28,6 @@ TcpServerConfig<H, HG>::TcpServerConfig()
   // for debug
   spdlog::set_pattern("[%D-%T][%^%l%$][%t][%!] %v");
 }
-// template <TcpHandler H, HandlerGenerator<H> HG>
-// class TcpServerImpl {
-// public:
-//   static wheel::unique_ptr<TcpServerImpl<H, HG>> make_tcp_server_impl(
-//       int fd, wheel::shared_ptr<HG> handler_generator, wheel::shared_ptr<sync::Poller> poller) {
-//     auto impl = wheel::make_unique<TcpServerImpl<H, HG>>(handler_generator, poller);
-//     auto res = poller->subscribe(fd, sync::IOM_EVENTS::IN,
-//                                  [server = impl.get()](int fd, sync::IOM_EVENTS events) {
-//                                    return server->accept(fd, events);
-//                                  });
-//     if (!res) {
-//       SPDLOG_ERROR("Failed to register handler");
-//       return nullptr;
-//     }
-//     return impl;
-//   }
-//   // Don't directly use the constructor, use make_tcp_server_impl instead
-//   TcpServerImpl(wheel::shared_ptr<HG> handler_generator, wheel::shared_ptr<sync::Poller> poller);
-//   sync::IOM_EVENTS accept(int fd, sync::IOM_EVENTS);
-
-// public:
-//   wheel::shared_ptr<HG> handler_generator;
-//   wheel::ConcurrentHashMap<int, wheel::unique_ptr<TcpConn<H>>> handlers;
-//   wheel::shared_ptr<sync::Poller> poller;
-// };
-// template <TcpHandler H, HandlerGenerator<H> HG>
-// class TcpServerBuilder {
-// public:
-//   TcpServerBuilder(wheel::shared_ptr<HG> handler_generator, wheel::shared_ptr<sync::Poller>
-//   poller);
-
-// public:
-//   wheel::shared_ptr<HG> handler_generator;
-//   wheel::shared_ptr<sync::Poller> poller;
-// };
-
-// template <TcpHandler H, HandlerGenerator<H> HG>
-// TcpServerImpl<H, HG>::TcpServerImpl(wheel::shared_ptr<HG> handler_generator,
-//                                     wheel::shared_ptr<sync::Poller> poller)
-//     : handler_generator(handler_generator), poller(poller) {}
-// template <TcpHandler H, HandlerGenerator<H> HG>
-// sync::IOM_EVENTS TcpServerImpl<H, HG>::accept(int fd, sync::IOM_EVENTS events) {
-//   SPDLOG_TRACE("start accept");
-//   if ((events & sync::IOM_EVENTS::IN) == sync::IOM_EVENTS::IN) {
-//     SPDLOG_INFO("New connection");
-//     sockaddr addr;
-//     socklen_t addr_len = sizeof(addr);
-//     int client_fd = accept(fd, &addr, &addr_len);
-//     if (client_fd == -1) {  // todo: handle error
-//       return sync::IOM_EVENTS::IN;
-//     }
-//     if (!set_non_blocking(client_fd)) {
-//       SPDLOG_WARN("[TcpServer::<lambda::handler>] Failed to set non-blocking");
-//       close(client_fd);
-//       return sync::IOM_EVENTS::IN;
-//     }
-//     auto tcp_conn
-//         = TcpConn<H>::make_tcp_conn(client_fd, this->poller, (*this->handler_generator)());
-//     tcp_conn->recv(client_fd, sync::IOM_EVENTS::IN);
-//     if (tcp_conn->valid()) {
-//       SPDLOG_DEBUG("New connection established");
-//       // TODO: drop connection
-//       this->handlers.lock()->try_emplace(client_fd, std::move(tcp_conn));
-//     }
-//     SPDLOG_TRACE("accept done");
-//     return sync::IOM_EVENTS::IN;
-//   }
-//   SPDLOG_TRACE("there is no IN event");
-//   return sync::IOM_EVENTS::NONE;
-// }
 
 template <TcpHandler H, HandlerGenerator<H> HG>
 class TcpServer {
@@ -167,7 +97,7 @@ sync::IOM_EVENTS TcpServer<H, HG>::accept(int fd, sync::IOM_EVENTS events) {
     if (tcp_conn->valid()) {
       SPDLOG_DEBUG("New connection established");
       // TODO: drop connection
-      this->handlers.lock()->try_emplace(client_fd, std::move(tcp_conn));
+      this->handlers.lock()->emplace(client_fd, std::move(tcp_conn));
     }
     SPDLOG_TRACE("accept done");
     return sync::IOM_EVENTS::IN;
@@ -175,58 +105,6 @@ sync::IOM_EVENTS TcpServer<H, HG>::accept(int fd, sync::IOM_EVENTS events) {
   SPDLOG_TRACE("there is no IN event");
   return sync::IOM_EVENTS::NONE;
 }
-// template <TcpHandler H, HandlerGenerator<H> HG>
-// sync::IOM_EVENTS TcpServer<H, HG>::proxy_handler(int fd, sync::IOM_EVENTS events) {
-//   sync::IOM_EVENTS res = sync::IOM_EVENTS::NONE;
-//   // TODO: handle state
-//   if ((events & sync::IOM_EVENTS::IN) == sync::IOM_EVENTS::IN) {
-//     auto it = this->handlers.find(fd);
-//     if (it == this->handlers.end()) {
-//       SPDLOG_ERROR("[TcpServer::proxy_handler] No handler found for fd: {}", fd);
-//       return sync::IOM_EVENTS::NONE;
-//     }
-//     res |= it->second.recv();
-//   }
-//   if ((events & sync::IOM_EVENTS::OUT) == sync::IOM_EVENTS::OUT) {
-//     auto it = this->handlers.find(fd);
-//     if (it == this->handlers.end()) {
-//       SPDLOG_ERROR("[TcpServer::proxy_handler] No handler found for fd: {}", fd);
-//       return sync::IOM_EVENTS::NONE;
-//     }
-//     res |= it->second.send();
-//   }
-//   return res;
-// }
-// template <TcpHandler H, HandlerGenerator<H> HG>
-// sync::IOM_EVENTS TcpServer<H, HG>::accept_handler(int fd, sync::IOM_EVENTS events) {
-//   SPDLOG_TRACE("start accept");
-//   if ((events & sync::IOM_EVENTS::IN) == sync::IOM_EVENTS::IN) {
-//     SPDLOG_INFO("New connection");
-//     sockaddr addr;
-//     socklen_t addr_len = sizeof(addr);
-//     int client_fd = accept(fd, &addr, &addr_len);
-//     if (client_fd == -1) {  // todo: handle error
-//       return sync::IOM_EVENTS::IN;
-//     }
-//     if (!set_non_blocking(client_fd)) {
-//       SPDLOG_WARN("[TcpServer::<lambda::handler>] Failed to set non-blocking");
-//       close(client_fd);
-//       return sync::IOM_EVENTS::IN;
-//     }
-//     auto tcp_conn
-//         = TcpConn<H>::make_tcp_conn(client_fd, this->poller, (*this->handler_generator)());
-//     tcp_conn->recv(client_fd, sync::IOM_EVENTS::IN);
-//     if (tcp_conn->valid()) {
-//       SPDLOG_DEBUG("New connection established");
-//       // TODO: drop connection
-//       this->handlers.lock()->try_emplace(client_fd, std::move(tcp_conn));
-//     }
-//     SPDLOG_TRACE("accept done");
-//     return sync::IOM_EVENTS::IN;
-//   }
-//   SPDLOG_TRACE("there is no IN event");
-//   return sync::IOM_EVENTS::NONE;
-// }
 
 TCP_NAMESPACE_END
 #endif

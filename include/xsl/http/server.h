@@ -17,7 +17,7 @@ HTTP_NAMESPACE_BEGIN
 template <Router R>
 class Handler {
 public:
-  Handler(wheel::shared_ptr<R> router) : router(router) {}
+  Handler(wheel::shared_ptr<R> router) : parser{}, router{router}, recv_data{}, send_tasks{} {}
   Handler(Handler&&) = default;
   ~Handler() {}
   TcpHandleConfig init() {

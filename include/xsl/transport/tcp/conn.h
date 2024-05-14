@@ -62,16 +62,20 @@ public:
 
 private:
   int fd;
+  sync::IOM_EVENTS events;
   wheel::shared_ptr<sync::Poller> poller;
-  H handler;
   RecvTasks recv_tasks;
   SendTasks send_tasks;
-  sync::IOM_EVENTS events;
-  //   std::list < wheel::string send_buffer;
+  H handler;
 };
 template <TcpHandler H>
 TcpConn<H>::TcpConn(int fd, wheel::shared_ptr<sync::Poller> poller, H&& handler)
-    : fd(fd), poller(poller), handler(wheel::move(handler)), events(sync::IOM_EVENTS::IN) {
+    : fd(fd),
+      events(sync::IOM_EVENTS::IN),
+      poller(poller),
+      recv_tasks(),
+      send_tasks(),
+      handler(wheel::move(handler)) {
   poller->subscribe(fd, sync::IOM_EVENTS::IN,
                     [this](int fd, sync::IOM_EVENTS events) { this->recv(fd, events); });
   auto cfg = this->handler.init();
@@ -79,7 +83,14 @@ TcpConn<H>::TcpConn(int fd, wheel::shared_ptr<sync::Poller> poller, H&& handler)
 }
 
 template <TcpHandler H>
-TcpConn<H>::~TcpConn() {}
+TcpConn<H>::~TcpConn() {
+  if (this->events != sync::IOM_EVENTS::NONE) {
+    this->poller->unregister(this->fd);
+  }
+  if (this->fd != -1) {
+    close(this->fd);
+  }
+}
 
 template <TcpHandler H>
 bool TcpConn<H>::valid() {
@@ -113,8 +124,9 @@ void TcpConn<H>::recv(int fd, sync::IOM_EVENTS events) {
   SPDLOG_TRACE("start recv");
   if (this->recv_tasks.empty()) {
     SPDLOG_ERROR("No recv task found");
-    this->events = sync::IOM_EVENTS::NONE;
-    this->poller->unregister(fd);
+    // this->events = sync::IOM_EVENTS::NONE;
+    // this->poller->unregister(fd);
+    return ;
   }
   RecvContext ctx(fd, this->recv_tasks);
   while (true) {
@@ -131,15 +143,17 @@ void TcpConn<H>::recv(int fd, sync::IOM_EVENTS events) {
       switch (res.unwrap_err()) {
         case RecvError::RECV_EOF:
           SPDLOG_DEBUG("recv eof");
-          this->events = sync::IOM_EVENTS::NONE;
           this->poller->unregister(fd);
+          this->events = sync::IOM_EVENTS::NONE;
           close(fd);
+          fd = -1;
           return;
         case RecvError::UNKNOWN:
           SPDLOG_ERROR("recv error");
-          this->events = sync::IOM_EVENTS::NONE;
           this->poller->unregister(fd);
+          this->events = sync::IOM_EVENTS::NONE;
           close(fd);
+          fd = -1;
           return;
         default:
           break;

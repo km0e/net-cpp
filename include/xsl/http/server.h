@@ -16,21 +16,17 @@ HTTP_NAMESPACE_BEGIN
 
 template <Router R>
 class Handler {
-private:
-  using TcpHandleState = transport::tcp::HandleState;
-  using TcpHandleHint = transport::tcp::HandleHint;
-
 public:
   Handler(wheel::shared_ptr<R> router) : router(router) {}
   Handler(Handler&&) = default;
   ~Handler() {}
-  transport::tcp::HandleConfig init() {
+  TcpHandleConfig init() {
     SPDLOG_TRACE("");
-    transport::tcp::HandleConfig cfg{};
-    cfg.recv_tasks.emplace_front(wheel::make_unique<transport::tcp::RecvString>(this->recv_data));
+    TcpHandleConfig cfg{};
+    cfg.recv_tasks.emplace_front(wheel::make_unique<TcpRecvString>(this->recv_data));
     return cfg;
   }
-  TcpHandleState recv([[maybe_unused]] transport::tcp::RecvTasks& tasks) {
+  TcpHandleState recv([[maybe_unused]] TcpRecvTasks& tasks) {
     SPDLOG_TRACE("");
     if (this->recv_data.empty()) {
       return TcpHandleState{sync::IOM_EVENTS::IN, TcpHandleHint::NONE};
@@ -55,7 +51,7 @@ public:
     this->send_tasks = wheel::move(rtres.unwrap()->into_send_tasks());
     return TcpHandleState{sync::IOM_EVENTS::OUT, TcpHandleHint::WRITE};
   }
-  TcpHandleState send(transport::tcp::SendTasks& tasks) {
+  TcpHandleState send(TcpSendTasks& tasks) {
     SPDLOG_TRACE("");
     if (this->send_tasks.empty()) {
       return TcpHandleState{sync::IOM_EVENTS::NONE, TcpHandleHint::NONE};
@@ -68,12 +64,12 @@ private:
   HttpParser parser;
   wheel::shared_ptr<R> router;
   wheel::string recv_data;
-  transport::tcp::SendTasks send_tasks;
+  TcpSendTasks send_tasks;
 };
 
 using DefaultHandler = Handler<DefaultRouter>;
 
-template <Router R, transport::tcp::Handler H>
+template <Router R, TcpHandler H>
 class HandlerGenerator {
 public:
   HandlerGenerator(wheel::shared_ptr<R> router) : router(router) {}
@@ -85,7 +81,7 @@ private:
 
 using DefaultHandlerGenerator = HandlerGenerator<DefaultRouter, DefaultHandler>;
 
-using DefaultServer = transport::tcp::TcpServer<Handler<DefaultRouter>, DefaultHandlerGenerator>;
+using DefaultServer = TcpServer<Handler<DefaultRouter>, DefaultHandlerGenerator>;
 
 HTTP_NAMESPACE_END
 #endif

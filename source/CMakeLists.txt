@@ -1,4 +1,6 @@
 
+add_subdirectory(wheel)
+
 add_subdirectory(utils)
 
 add_subdirectory(sync)

@@ -5,7 +5,7 @@
 #  include "xsl/transport/tcp/tcp.h"
 #  include "xsl/wheel/wheel.h"
 HTTP_NAMESPACE_BEGIN
-
+using namespace transport::tcp;
 class RequestView {
 public:
   RequestView();
@@ -35,14 +35,14 @@ public:
 
 class IntoSendTasks {
 public:
-  virtual transport::tcp::SendTasks into_send_tasks() = 0;
+  virtual TcpSendTasks into_send_tasks() = 0;
 };
 
 using IntoSendTasksPtr = wheel::unique_ptr<IntoSendTasks>;
 
 // class Response {
 // public:
-//   virtual transport::tcp::SendTasks to_send_tasks() = 0;
+//   virtual TcpSendTasks to_send_tasks() = 0;
 // };
 
 class ResponsePart : public IntoSendTasks {
@@ -54,8 +54,8 @@ public:
   wheel::string status_message;
   HttpVersion version;
   wheel::unordered_map<wheel::string, wheel::string> headers;
-  wheel::unique_ptr<transport::tcp::SendString> into_send_task_ptr();
-  transport::tcp::SendTasks into_send_tasks();
+  wheel::unique_ptr<TcpSendString> into_send_task_ptr();
+  TcpSendTasks into_send_tasks();
 };
 
 template <class B>
@@ -70,7 +70,7 @@ public:
   ~Response();
   ResponsePart part;
   wheel::optional<B> body;
-  transport::tcp::SendTasks to_send_tasks();
+  TcpSendTasks to_send_tasks();
 };
 
 template <wheel::derived_from<IntoSendTasks> B>
@@ -83,24 +83,24 @@ Response<B>::Response(ResponsePart&& part, B&& body)
 template <wheel::derived_from<IntoSendTasks> B>
 Response<B>::~Response() {}
 template <wheel::derived_from<IntoSendTasks> B>
-transport::tcp::SendTasks Response<B>::to_send_tasks() {
-  transport::tcp::SendTasks tasks;
+TcpSendTasks Response<B>::to_send_tasks() {
+  TcpSendTasks tasks;
   auto head = tasks.emplace_after(tasks.before_begin(), part.into_send_task_ptr());
   if (body) {
     tasks.emplace_after(head, body->into_send_tasks());
   }
-  return wheel::move(tasks);
+  return tasks;
 }
 
 template <>
-class Response<transport::tcp::SendTasks> : public IntoSendTasks {
+class Response<TcpSendTasks> : public IntoSendTasks {
 public:
   Response();
-  Response(ResponsePart&& part, transport::tcp::SendTasks&& tasks);
+  Response(ResponsePart&& part, TcpSendTasks&& tasks);
   ~Response();
   ResponsePart part;
-  transport::tcp::SendTasks tasks;
-  transport::tcp::SendTasks into_send_tasks();
+  TcpSendTasks tasks;
+  TcpSendTasks into_send_tasks();
 };
 
 template <>
@@ -111,7 +111,7 @@ public:
   ~Response();
   ResponsePart part;
   wheel::string body;
-  transport::tcp::SendTasks into_send_tasks();
+  TcpSendTasks into_send_tasks();
 };
 
 using DefaultResponse = Response<wheel::string>;

@@ -1,6 +1,4 @@
 
-add_subdirectory(wheel)
-
 add_library(xsl_utils STATIC)
 
 set(DIRECT_HEADER_LIST

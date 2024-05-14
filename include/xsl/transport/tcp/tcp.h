@@ -6,15 +6,15 @@
 #  include "xsl/transport/tcp/helper.h"
 #  include "xsl/transport/tcp/server.h"
 namespace xsl::transport::tcp {
-  using detail::HandleConfig;
-  using detail::HandleHint;
-  using detail::Handler;
-  using detail::HandleState;
-  using detail::RecvString;
-  using detail::RecvTasks;
-  using detail::SendString;
-  using detail::SendTasks;
-  using detail::SendFile;
+  using TcpHandleConfig = detail::HandleConfig;
+  using TcpHandleHint = detail::HandleHint;
+  using detail::TcpHandler;
+  using TcpHandleState = detail::HandleState;
+  using TcpRecvString = detail::RecvString;
+  using TcpRecvTasks = detail::RecvTasks;
+  using TcpSendFile = detail::SendFile;
+  using TcpSendString = detail::SendString;
+  using TcpSendTasks = detail::SendTasks;
   using detail::TcpServer;
 }  // namespace xsl::transport::tcp
 #endif

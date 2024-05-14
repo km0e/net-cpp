@@ -37,17 +37,17 @@ public:
   SendContext(SendContext&&) = default;
   SendContext(int sfd, SendTasks& tasks);
   ~SendContext();
-  SendTasks& tasks;
   int sfd;
+  SendTasks& tasks;
 };
 class RecvContext {
 public:
   RecvContext(RecvContext&&) = default;
   RecvContext(int sfd, RecvTasks& tasks);
   ~RecvContext();
+  int sfd;
   RecvTasks& tasks;
   RecvTasks::iterator iter;
-  int sfd;
 };
 TCP_NAMESPACE_END
 #endif

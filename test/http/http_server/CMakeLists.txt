@@ -18,7 +18,7 @@ else()
 endif()
 
 add_executable(http_server_test
-    ${CMAKE_CURRENT_SOURCE_DIR}/http_server_test.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_http_server.cpp
 )
 
 # add_dependencies(http_server_test tcp_client_test)

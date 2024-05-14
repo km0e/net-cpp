@@ -19,16 +19,17 @@ FileRouteHandler::FileRouteHandler(wheel::string&& path) : path(path) {}
 FileRouteHandler::~FileRouteHandler() {}
 
 RouteHandleResult FileRouteHandler::operator()(Context& ctx) {
+  (void)ctx;
   struct stat buf;
   int res = stat(this->path.c_str(), &buf);
   if (res == -1) {
     SPDLOG_ERROR("stat failed: {}", strerror(errno));
     return RouteHandleResult(RouteHandleError("stat failed"));
   }
-  transport::tcp::SendTasks tasks;
+  TcpSendTasks tasks;
   tasks.emplace_after(tasks.before_begin(),
-                      wheel::make_unique<transport::tcp::SendFile>(wheel::move(this->path)));
-  return RouteHandleResult{wheel::make_unique<Response<transport::tcp::SendTasks>>(
+                      wheel::make_unique<TcpSendFile>(wheel::move(this->path)));
+  return RouteHandleResult{wheel::make_unique<Response<TcpSendTasks>>(
       ResponsePart{200, "OK", HttpVersion::HTTP_1_1}, wheel::move(tasks))};
 }
 
@@ -53,10 +54,10 @@ RouteHandleResult FolderRouteHandler::operator()(Context& ctx) {
   if (S_ISDIR(buf.st_mode)) {
     return RouteHandleResult(NOT_FOUND_HANDLER(ctx));
   }
-  transport::tcp::SendTasks tasks;
+  TcpSendTasks tasks;
   tasks.emplace_after(tasks.before_begin(),
-                      wheel::make_unique<transport::tcp::SendFile>(wheel::move(full_path)));
-  return RouteHandleResult{wheel::make_unique<Response<transport::tcp::SendTasks>>(
+                      wheel::make_unique<TcpSendFile>(wheel::move(full_path)));
+  return RouteHandleResult{wheel::make_unique<Response<TcpSendTasks>>(
       ResponsePart{200, "OK", HttpVersion::HTTP_1_1}, wheel::move(tasks))};
 }
 StaticCreateResult create_static_handler(wheel::string&& path) {

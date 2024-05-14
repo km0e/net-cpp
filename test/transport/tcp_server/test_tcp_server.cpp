@@ -1,6 +1,5 @@
-#include "xsl/sync/poller.h"
-#include "xsl/transport/tcp/helper.h"
-#include "xsl/transport/tcp/server.h"
+#include "xsl/sync/sync.h"
+#include "xsl/transport/tcp/tcp.h"
 #include "xsl/wheel/wheel.h"
 
 #include <CLI/CLI.hpp>
@@ -24,29 +23,24 @@ void sigterm_init() {
   sigaction(SIGTERM, &act, nullptr);
   sigaction(SIGINT, &act, nullptr);
 }
-using TcpHandleState = xsl::transport::tcp::HandleState;
-using TcpHandleHint = xsl::transport::tcp::HandleHint;
-using xsl::transport::tcp::HandleConfig;
-using xsl::transport::tcp::TcpServer;
-using SendTasks = xsl::transport::tcp::SendTasks;
-using RecvTasks = xsl::transport::tcp::RecvTasks;
-using xsl::wheel::string;
+using namespace xsl::transport::tcp;
+using namespace xsl::wheel;
+using namespace xsl::sync;
 class Handler {
 public:
-  HandleConfig init() {
-    HandleConfig config{};
+  TcpHandleConfig init() {
+    TcpHandleConfig config{};
     SPDLOG_DEBUG("[T][Handler::init] Pushing recv task");
-    config.recv_tasks.push_front(xsl::transport::tcp::RecvString::create(this->data));
+    config.recv_tasks.push_front(TcpRecvString::create(this->data));
     return config;
   }
-  TcpHandleState recv([[maybe_unused]] RecvTasks &tasks) {
+  TcpHandleState recv([[maybe_unused]] TcpRecvTasks &tasks) {
     SPDLOG_INFO("[T][Handler::recv] Received data: {}", this->data);
-    return TcpHandleState(xsl::sync::IOM_EVENTS::OUT, TcpHandleHint::WRITE);
+    return TcpHandleState(IOM_EVENTS::OUT, TcpHandleHint::WRITE);
   }
-  TcpHandleState send(SendTasks &tasks) {
-    tasks.emplace_front(
-        xsl::wheel::make_unique<xsl::transport::tcp::SendString>(xsl::wheel::move(this->data)));
-    return TcpHandleState(xsl::sync::IOM_EVENTS::NONE, TcpHandleHint::NONE);
+  TcpHandleState send(TcpSendTasks &tasks) {
+    tasks.emplace_front(make_unique<TcpSendString>(xsl::wheel::move(this->data)));
+    return TcpHandleState(IOM_EVENTS::NONE, TcpHandleHint::NONE);
   }
   string data;
 };
@@ -71,12 +65,12 @@ int main(int argc, char **argv) {
   sigterm_init();
 
   spdlog::set_level(spdlog::level::trace);
-  auto poller = xsl::wheel::make_shared<xsl::sync::EPoller>();
+  auto poller = make_shared<DefaultPoller>();
   if (!poller->valid()) {
     SPDLOG_ERROR("Failed to create poller");
     return 1;
   }
-  auto handler_generator = xsl::wheel::make_shared<HandlerGenerator>();
+  auto handler_generator = make_shared<HandlerGenerator>();
   TcpServer<Handler, HandlerGenerator> server{};
   server.set_poller(poller);
   server.set_handler_generator(handler_generator);
@@ -88,7 +82,7 @@ int main(int argc, char **argv) {
   pthread_create(
       &poller_thread, nullptr,
       [](void *arg) -> void * {
-        xsl::sync::EPoller *poller = (xsl::sync::EPoller *)arg;
+        DefaultPoller *poller = (DefaultPoller *)arg;
         while (true) {
           poller->poll();
         }

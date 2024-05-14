@@ -12,7 +12,7 @@
 
 TCP_NAMESPACE_BEGIN
 
-template <Handler H, HandlerGenerator<H> HG>
+template <TcpHandler H, HandlerGenerator<H> HG>
 class TcpServer {
 public:
   TcpServer(TcpConfig config = {});
@@ -35,20 +35,20 @@ private:
   wheel::shared_ptr<sync::Poller> poller;
 };
 
-template <Handler H, HandlerGenerator<H> HG>
+template <TcpHandler H, HandlerGenerator<H> HG>
 TcpServer<H, HG>::TcpServer(TcpConfig config)
     : server_fd(-1), config(config), handler_generator(nullptr), handlers(), poller(nullptr) {
   spdlog::set_pattern("[%D-%T][%^%l%$][%t][%!] %v");
   // SPDLOG_ERROR("{}",(int)spdlog::get_level());
 }
 
-template <Handler H, HandlerGenerator<H> HG>
+template <TcpHandler H, HandlerGenerator<H> HG>
 TcpServer<H, HG>::~TcpServer() {
   if (this->valid()) {
     close(this->server_fd);
   }
 }
-template <Handler H, HandlerGenerator<H> HG>
+template <TcpHandler H, HandlerGenerator<H> HG>
 bool TcpServer<H, HG>::serve(const char* host, int port) {
   SPDLOG_TRACE("Starting server on {}:{}", host, port);
   this->server_fd = create_tcp_server(host, port, this->config);
@@ -65,25 +65,25 @@ bool TcpServer<H, HG>::serve(const char* host, int port) {
   return this->valid();
 }
 
-template <Handler H, HandlerGenerator<H> HG>
+template <TcpHandler H, HandlerGenerator<H> HG>
 void TcpServer<H, HG>::set_poller(wheel::shared_ptr<sync::Poller> poller) {
   this->poller = poller;
 }
 
-template <Handler H, HandlerGenerator<H> HG>
+template <TcpHandler H, HandlerGenerator<H> HG>
 bool TcpServer<H, HG>::valid() {
   return this->server_fd != -1 && this->poller != nullptr;
 }
-template <Handler H, HandlerGenerator<H> HG>
+template <TcpHandler H, HandlerGenerator<H> HG>
 void TcpServer<H, HG>::set_handler_generator(wheel::shared_ptr<HG> handler_generator) {
   this->handler_generator = handler_generator;
 }
-template <Handler H, HandlerGenerator<H> HG>
+template <TcpHandler H, HandlerGenerator<H> HG>
 void TcpServer<H, HG>::set_max_connections(int max_connections) {
   this->config.max_connections = max_connections;
 }
 
-// template <Handler H, HandlerGenerator<H> HG>
+// template <TcpHandler H, HandlerGenerator<H> HG>
 // sync::IOM_EVENTS TcpServer<H, HG>::proxy_handler(int fd, sync::IOM_EVENTS events) {
 //   sync::IOM_EVENTS res = sync::IOM_EVENTS::NONE;
 //   // TODO: handle state
@@ -105,7 +105,7 @@ void TcpServer<H, HG>::set_max_connections(int max_connections) {
 //   }
 //   return res;
 // }
-template <Handler H, HandlerGenerator<H> HG>
+template <TcpHandler H, HandlerGenerator<H> HG>
 sync::IOM_EVENTS TcpServer<H, HG>::accept_handler(int fd, sync::IOM_EVENTS events) {
   SPDLOG_TRACE("start accept");
   if ((events & sync::IOM_EVENTS::IN) == sync::IOM_EVENTS::IN) {
@@ -123,7 +123,7 @@ sync::IOM_EVENTS TcpServer<H, HG>::accept_handler(int fd, sync::IOM_EVENTS event
     }
     auto tcp_conn
         = TcpConn<H>::make_tcp_conn(client_fd, this->poller, (*this->handler_generator)());
-    tcp_conn->recv();
+    tcp_conn->recv(client_fd, sync::IOM_EVENTS::IN);
     if (tcp_conn->valid()) {
       SPDLOG_DEBUG("New connection established");
       // TODO: drop connection

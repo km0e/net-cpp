@@ -4,9 +4,9 @@
 // use absl for threadpool
 #include <absl/synchronization/internal/thread_pool.h>
 
-auto echo_buffer = xsl::wheel::make_shared<xsl::wheel::queue<xsl::wheel::string>>();
-auto buffer_mutex = xsl::wheel::make_shared<xsl::wheel::Mutex>();
-auto stop = xsl::wheel::atomic_flag();
+// auto echo_buffer = xsl::wheel::make_shared<xsl::wheel::queue<xsl::wheel::string>>();
+// auto buffer_mutex = xsl::wheel::make_shared<xsl::wheel::Mutex>();
+// auto stop = xsl::wheel::atomic_flag();
 
 // bool server_read(wheel::shared_ptr<Poller> poller, int fd, IOM_EVENTS events) {
 //   if(events & IOM_EVENTS::IN) {

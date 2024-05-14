@@ -37,7 +37,11 @@ int main(int argc, char **argv) {
   CLI11_PARSE(app, argc, argv);
   spdlog::set_level(spdlog::level::trace);
   sigterm_init();
-  DefaultServer tcp_server{};
+
+  DefaultServerConfig config{};
+  config.max_connections = 10;
+  config.host = ip;
+  config.port = port;
   auto router = make_shared<DefaultRouter>();
   router->add_route(HttpMethod::GET, "/",
                     create_static_handler("test/http/http_server/web/static/").unwrap());
@@ -48,10 +52,15 @@ int main(int argc, char **argv) {
       RouteErrorKind::Unimplemented,
       create_static_handler("test/http/http_server/web/static/501.html").unwrap());
   auto handler_generator = make_shared<DefaultHandlerGenerator>(router);
-  xsl::wheel::shared_ptr<Poller> poller = make_shared<DefaultPoller>();
-  tcp_server.set_poller(poller);
-  tcp_server.set_handler_generator(handler_generator);
-  if (!tcp_server.serve(TEST_HOST, TEST_PORT)) {
+  config.handler_generator = handler_generator;
+  xsl::wheel::shared_ptr<DefaultPoller> poller = make_shared<DefaultPoller>();
+  if (!poller->valid()) {
+    SPDLOG_ERROR("Failed to create poller");
+    return 1;
+  }
+  config.poller = poller;
+  auto server = DefaultServer::serve(config);
+  if (!server) {
     SPDLOG_ERROR("Failed to serve");
     return 1;
   }

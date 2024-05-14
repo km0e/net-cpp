@@ -11,6 +11,7 @@ namespace xsl::transport::tcp {
   using detail::TcpHandler;
   using TcpHandleState = detail::HandleState;
   using TcpRecvString = detail::RecvString;
+  using detail::TcpServerConfig;
   using TcpRecvTasks = detail::RecvTasks;
   using TcpSendFile = detail::SendFile;
   using TcpSendString = detail::SendString;

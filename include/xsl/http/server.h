@@ -82,6 +82,7 @@ private:
 using DefaultHandlerGenerator = HandlerGenerator<DefaultRouter, DefaultHandler>;
 
 using DefaultServer = TcpServer<Handler<DefaultRouter>, DefaultHandlerGenerator>;
+using DefaultServerConfig = TcpServerConfig<Handler<DefaultRouter>, DefaultHandlerGenerator>;
 
 HTTP_NAMESPACE_END
 #endif

@@ -11,6 +11,7 @@ namespace xsl::http {
   using detail::DefaultResponse;
   using detail::DefaultRouter;
   using detail::DefaultServer;
+  using detail::DefaultServerConfig;
   using detail::HttpMethod;
   using detail::HttpVersion;
   using detail::Request;

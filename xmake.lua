@@ -9,7 +9,7 @@ add_rules("mode.debug", "mode.release", "mode.coverage")
 toolchain("gcc")
     on_load(function (toolchain)
         if is_mode("debug") then
-            toolchain:set_warnings("all", "error", 'pedantic', 'extra')
+            set_warnings("all", "error", 'pedantic', 'extra')
         end
     end)
 toolchain_end()
@@ -17,7 +17,7 @@ toolchain_end()
 toolchain("clang")
     on_load(function (toolchain)
         if is_mode("debug") then
-            toolchain:set_warnings("all", "error", 'pedantic', 'extra')
+            set_warnings("all", "error", 'pedantic', 'extra')
         end
     end)
 toolchain_end()

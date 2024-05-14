@@ -65,16 +65,20 @@ int main(int argc, char **argv) {
   sigterm_init();
 
   spdlog::set_level(spdlog::level::trace);
+  TcpServerConfig<Handler, HandlerGenerator> config{};
+  config.max_connections = 10;
+  config.host = ip;
+  config.port = port;
   auto poller = make_shared<DefaultPoller>();
   if (!poller->valid()) {
     SPDLOG_ERROR("Failed to create poller");
     return 1;
   }
+  config.poller = poller;
   auto handler_generator = make_shared<HandlerGenerator>();
-  TcpServer<Handler, HandlerGenerator> server{};
-  server.set_poller(poller);
-  server.set_handler_generator(handler_generator);
-  if (!server.serve(ip.c_str(), port)) {
+  config.handler_generator = handler_generator;
+  auto server = TcpServer<Handler, HandlerGenerator>::serve(config);
+  if (!server) {
     SPDLOG_ERROR("Failed to create server on {}:{}", ip, port);
     return 1;
   }

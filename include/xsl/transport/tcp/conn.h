@@ -52,17 +52,16 @@ concept HandlerGenerator = TcpHandler<H> && requires(T t, H h) {
 template <TcpHandler H>
 class TcpConn {
 public:
-  static wheel::unique_ptr<TcpConn<H>> make_tcp_conn(int fd, wheel::shared_ptr<sync::Poller> poller,
-                                                     H&& handler);
-  TcpConn(TcpConn&&);
-  // Don't directly use the constructor, use make_tcp_conn instead
-  TcpConn(wheel::shared_ptr<sync::Poller> poller, H&& handler);
+  TcpConn(int fd, wheel::shared_ptr<sync::Poller> poller, H&& handler);
+  TcpConn(TcpConn&&) = delete;
+  TcpConn(const TcpConn&) = delete;
   ~TcpConn();
   void send(int fd, sync::IOM_EVENTS events);
   void recv(int fd, sync::IOM_EVENTS events);
   bool valid();
 
 private:
+  int fd;
   wheel::shared_ptr<sync::Poller> poller;
   H handler;
   RecvTasks recv_tasks;
@@ -71,31 +70,12 @@ private:
   //   std::list < wheel::string send_buffer;
 };
 template <TcpHandler H>
-wheel::unique_ptr<TcpConn<H>> TcpConn<H>::make_tcp_conn(int fd,
-                                                        wheel::shared_ptr<sync::Poller> poller,
-                                                        H&& handler) {
-  auto conn = wheel::make_unique<TcpConn<H>>(poller, wheel::move(handler));
-  // we should pass the unique_ptr to the lambda, otherwise the conn will be deleted or moved
-  poller->subscribe(fd, sync::IOM_EVENTS::IN, [conn = conn.get()](int fd, sync::IOM_EVENTS events) {
-    conn->recv(fd, events);
-  });
-  return conn;
-}
-template <TcpHandler H>
-TcpConn<H>::TcpConn(wheel::shared_ptr<sync::Poller> poller, H&& handler)
-    : poller(poller), handler(wheel::move(handler)), events(sync::IOM_EVENTS::IN) {
+TcpConn<H>::TcpConn(int fd, wheel::shared_ptr<sync::Poller> poller, H&& handler)
+    : fd(fd), poller(poller), handler(wheel::move(handler)), events(sync::IOM_EVENTS::IN) {
+  poller->subscribe(fd, sync::IOM_EVENTS::IN,
+                    [this](int fd, sync::IOM_EVENTS events) { this->recv(fd, events); });
   auto cfg = this->handler.init();
   this->recv_tasks.splice_after(this->recv_tasks.before_begin(), cfg.recv_tasks);
-}
-template <TcpHandler H>
-TcpConn<H>::TcpConn(TcpConn&& other)
-    : poller(other.poller),
-      handler(wheel::move(other.handler)),
-      recv_tasks(wheel::move(other.recv_tasks)),
-      send_tasks(wheel::move(other.send_tasks)),
-      events(other.events) {
-  other.events = sync::IOM_EVENTS::NONE;
-  other.fd = -1;
 }
 
 template <TcpHandler H>

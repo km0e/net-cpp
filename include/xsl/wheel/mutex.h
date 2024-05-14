@@ -17,18 +17,6 @@ concept Lockable = requires(T t) {
 
 using Mutex = std::mutex;
 
-class TryLockGuard {
-public:
-  TryLockGuard(Mutex& m);
-  ~TryLockGuard();
-  bool is_locked();
-  bool try_lock();
-
-private:
-  Mutex& m;
-  bool locked;
-};
-
 using SharedMutex = std::shared_mutex;
 template <class T>
 class SharedLockGuard {

@@ -12,7 +12,6 @@ namespace xsl::wheel {
   using detail::Result;
   using detail::SharedLockGuard;
   using detail::SharedMutex;
-  using detail::TryLockGuard;
   using giant::array;
   using giant::same_as;
   using giant::move_constructible;

@@ -62,7 +62,9 @@ bool SendFile::exec(SendContext& ctx) {
   }
   return true;
 }
-SendString::SendString(wheel::string&& data) { this->data_buffer.emplace_back(wheel::move(data)); }
+SendString::SendString(wheel::string&& data) : data_buffer() {
+  this->data_buffer.emplace_back(wheel::move(data));
+}
 SendString::~SendString() {}
 bool SendString::exec(SendContext& ctx) {
   SPDLOG_TRACE("start send");

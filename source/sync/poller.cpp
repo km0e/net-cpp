@@ -15,7 +15,7 @@ IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b) {
   return a;
 }
 IOM_EVENTS operator~(IOM_EVENTS a) { return (IOM_EVENTS)(~(uint32_t)a); }
-DefaultPoller::DefaultPoller() {
+DefaultPoller::DefaultPoller() : fd(-1), handlers() {
   this->fd = epoll_create(1);
   SPDLOG_DEBUG("Poller fd: {}", this->fd);
 }

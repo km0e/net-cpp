@@ -2,14 +2,14 @@
 #ifndef _XSL_NET_TRANSPORT_TCP_CONTEXT_H_
 #  define _XSL_NET_TRANSPORT_TCP_CONTEXT_H_
 #  include "xsl/net/transport/tcp/def.h"
-#  include "xsl/wheel/wheel.h"
+#  include "xsl/wheel.h"
 TCP_NAMESPACE_BEGIN
 enum class RecvError {
   UNKNOWN,
   RECV_EOF,
 };
-wheel::string_view to_string(RecvError err);
-using RecvResult = wheel::Result<bool, RecvError>;
+string_view to_string(RecvError err);
+using RecvResult = Result<bool, RecvError>;
 class SendContext;
 class RecvContext;
 class SendTaskNode {
@@ -30,8 +30,8 @@ public:
   virtual RecvResult exec(RecvContext& ctx) = 0;
   virtual ~RecvTaskNode() = default;
 };
-using SendTasks = wheel::forward_list<wheel::unique_ptr<SendTaskNode>>;
-using RecvTasks = wheel::forward_list<wheel::unique_ptr<RecvTaskNode>>;
+using SendTasks = forward_list<unique_ptr<SendTaskNode>>;
+using RecvTasks = forward_list<unique_ptr<RecvTaskNode>>;
 class SendContext {
 public:
   SendContext(SendContext&&) = default;

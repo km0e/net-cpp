@@ -1,6 +1,6 @@
 #include "xsl/net/http/def.h"
 HTTP_NAMESPACE_BEGIN
-wheel::string method_cast(HttpMethod method) {
+string method_cast(HttpMethod method) {
   switch (method) {
     case HttpMethod::EXT:
       return "EXT";
@@ -24,7 +24,7 @@ wheel::string method_cast(HttpMethod method) {
       return "Unknown";
   }
 }
-HttpMethod method_cast(wheel::string_view method) {
+HttpMethod method_cast(string_view method) {
   if (method == "EXT") {
     return HttpMethod::EXT;
   } else if (method == "GET") {
@@ -47,7 +47,7 @@ HttpMethod method_cast(wheel::string_view method) {
     return HttpMethod::UNKNOWN;
   }
 }
-wheel::string version_cast(HttpVersion version) {
+string version_cast(HttpVersion version) {
   switch (version) {
     case HttpVersion::EXT:
       return "EXT";
@@ -61,7 +61,7 @@ wheel::string version_cast(HttpVersion version) {
       return "Unknown";
   }
 }
-HttpVersion version_cast(wheel::string_view version) {
+HttpVersion version_cast(string_view version) {
   if (version == "EXT") {
     return HttpVersion::EXT;
   } else if (version == "HTTP/1.0") {

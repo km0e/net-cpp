@@ -6,11 +6,13 @@
 #  include <array>
 #  include <atomic>
 #  include <concepts>
+#  include <cstdint>
 #  include <format>
 #  include <forward_list>
 #  include <functional>
 #  include <list>
 #  include <memory>
+#  include <numeric>
 #  include <optional>
 #  include <queue>
 #  include <string>
@@ -22,8 +24,10 @@
 #  include <vector>
 
 namespace xsl::wheel::giant {
+  using std::accumulate;
   using std::array;
   using std::atomic_flag;
+  using std::bind;
   using std::convertible_to;
   using std::derived_from;
   using std::format;
@@ -44,12 +48,12 @@ namespace xsl::wheel::giant {
   using std::queue;
   using std::runtime_error;
   using std::same_as;
-  using std::bind;
   using std::shared_ptr;
   using std::string;
   using std::string_view;
   using std::to_string;
   using std::tuple;
+  using std::uint8_t;
   using std::unique_ptr;
   using std::unordered_map;
   using std::variant;
@@ -58,5 +62,5 @@ namespace xsl::wheel::giant {
   // using dp::thread_pool;
   // using dp::details::default_function_type;
   using std::lock_guard;
-}  // namespace xsl::wheel::prelude
+}  // namespace xsl::wheel::giant
 #endif

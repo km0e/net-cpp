@@ -16,9 +16,9 @@ IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b) {
 }
 IOM_EVENTS operator~(IOM_EVENTS a) { return (IOM_EVENTS)(~(uint32_t)a); }
 DefaultPoller::DefaultPoller()
-    : DefaultPoller(wheel::make_shared<HandleProxy>([](wheel::function<void()>&& f) { f(); })) {}
-DefaultPoller::DefaultPoller(wheel::shared_ptr<HandleProxy>&& proxy)
-    : fd(-1), handlers(), proxy(wheel::move(proxy)) {
+    : DefaultPoller(make_shared<HandleProxy>([](function<void()>&& f) { f(); })) {}
+DefaultPoller::DefaultPoller(shared_ptr<HandleProxy>&& proxy)
+    : fd(-1), handlers(), proxy(xsl::move(proxy)) {
   this->fd = epoll_create(1);
   SPDLOG_DEBUG("Poller fd: {}", this->fd);
 }
@@ -34,7 +34,7 @@ bool DefaultPoller::subscribe(int fd, IOM_EVENTS events, PollHandler&& handler) 
   }
   SPDLOG_DEBUG("Handler registered for fd: {}", fd);
   // there should be a lock here?
-  this->handlers.lock()->try_emplace(fd, wheel::make_shared<PollHandler>(handler));
+  this->handlers.lock()->try_emplace(fd, make_shared<PollHandler>(handler));
   return true;
 }
 bool DefaultPoller::modify(int fd, IOM_EVENTS events) {
@@ -63,7 +63,7 @@ void DefaultPoller::poll() {
   SPDLOG_DEBUG("Polling {} events", n);
   for (int i = 0; i < n; i++) {
     auto handler = this->handlers.share()->at(events[i].data.fd);
-    (*this->proxy)(wheel::bind(*handler, (int)events[i].data.fd, (IOM_EVENTS)events[i].events));
+    (*this->proxy)(bind(*handler, (int)events[i].data.fd, (IOM_EVENTS)events[i].events));
   }
   SPDLOG_TRACE("Polling done");
 }

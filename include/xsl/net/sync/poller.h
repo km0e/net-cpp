@@ -2,7 +2,7 @@
 #ifndef _XSL_NET_POLLER_
 #  define _XSL_NET_POLLER_
 #  include "xsl/net/sync/def.h"
-#  include "xsl/wheel/wheel.h"
+#  include "xsl/wheel.h"
 
 #  include <sys/epoll.h>
 #  include <sys/socket.h>
@@ -34,7 +34,7 @@ IOM_EVENTS operator&(IOM_EVENTS a, IOM_EVENTS b);
 IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b);
 IOM_EVENTS operator~(IOM_EVENTS a);
 #  endif
-using PollHandler = wheel::function<void(int fd, IOM_EVENTS events)>;
+using PollHandler = function<void(int fd, IOM_EVENTS events)>;
 class Poller {
 public:
   virtual bool subscribe(int fd, IOM_EVENTS events, PollHandler&& handler) = 0;
@@ -44,11 +44,11 @@ public:
   virtual void shutdown() = 0;
   virtual ~Poller() = default;
 };
-using HandleProxy = wheel::function<void(wheel::function<void()>&&)>;
+using HandleProxy = function<void(function<void()>&&)>;
 class DefaultPoller : public Poller {
 public:
   DefaultPoller();
-  DefaultPoller(wheel::shared_ptr<HandleProxy>&& proxy);
+  DefaultPoller(shared_ptr<HandleProxy>&& proxy);
   ~DefaultPoller();
   bool valid();
   bool subscribe(int fd, IOM_EVENTS events, PollHandler&& handler) override;
@@ -59,8 +59,8 @@ public:
 
 private:
   int fd;
-  wheel::ConcurrentHashMap<int, wheel::shared_ptr<PollHandler>> handlers;
-  wheel::shared_ptr<HandleProxy> proxy;
+  ConcurrentHashMap<int, shared_ptr<PollHandler>> handlers;
+  shared_ptr<HandleProxy> proxy;
 };
 SYNC_NAMESPACE_END
 #endif

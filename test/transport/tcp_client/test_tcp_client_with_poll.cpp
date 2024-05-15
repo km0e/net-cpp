@@ -1,14 +1,10 @@
-#include "xsl/net/sync/poller.h"
-#include "xsl/net/sync/sync.h"
-#include "xsl/net/transport/tcp/tcp.h"
+#include "xsl/net.h"
 
 #include <CLI/CLI.hpp>
 #include <pthread.h>
 #include <spdlog/spdlog.h>
 #include <unistd.h>
-using namespace xsl::wheel;
-using namespace xsl::net::sync;
-using namespace xsl::net::transport::tcp;
+using namespace xsl;
 #define MAX_ECHO_CYCLES 10
 int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};

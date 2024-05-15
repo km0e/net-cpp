@@ -2,34 +2,32 @@
 #include "xsl/net/http/msg.h"
 #include "xsl/net/http/parse.h"
 #include "xsl/net/http/router.h"
-#include "xsl/wheel/wheel.h"
+#include "xsl/wheel.h"
 
 #include <spdlog/spdlog.h>
 
-#include <cstdint>
-
 HTTP_NAMESPACE_BEGIN
 RouteHandleError::RouteHandleError() : message("") {}
-RouteHandleError::RouteHandleError(wheel::string message) : message(message) {}
+RouteHandleError::RouteHandleError(string message) : message(message) {}
 RouteHandleError::~RouteHandleError() {}
-wheel::string RouteHandleError::to_string() const { return message; }
+string RouteHandleError::to_string() const { return message; }
 
 AddRouteError::AddRouteError(AddRouteErrorKind kind)
     : kind(kind), message(ADD_ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]) {}
-AddRouteError::AddRouteError(AddRouteErrorKind kind, wheel::string message)
+AddRouteError::AddRouteError(AddRouteErrorKind kind, string message)
     : kind(kind), message(message) {}
 AddRouteError::~AddRouteError() {}
 std::string AddRouteError::to_string() const {
-  return wheel::string{ADD_ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]} + ": " + message;
+  return string{ADD_ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]} + ": " + message;
 }
 
 RouteError::RouteError() : kind(RouteErrorKind::Unknown), message("") {}
 RouteError::RouteError(RouteErrorKind kind)
     : kind(kind), message(ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]) {}
-RouteError::RouteError(RouteErrorKind kind, wheel::string message) : kind(kind), message(message) {}
+RouteError::RouteError(RouteErrorKind kind, string message) : kind(kind), message(message) {}
 RouteError::~RouteError() {}
-wheel::string RouteError::to_string() const {
-  return wheel::string{ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]} + ": " + message;
+string RouteError::to_string() const {
+  return string{ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]} + ": " + message;
 }
 
 HttpParser::HttpParser() : view() {}
@@ -40,7 +38,7 @@ namespace router_details {
   HttpRouteNode::HttpRouteNode() : handlers(), children() {}
   HttpRouteNode::~HttpRouteNode() {}
 
-  AddRouteResult HttpRouteNode::add_route(HttpMethod method, wheel::string_view path,
+  AddRouteResult HttpRouteNode::add_route(HttpMethod method, string_view path,
                                           RouteHandler&& handler) {
     SPDLOG_DEBUG("Adding route: {}", path);
     if (path.empty()) {
@@ -52,7 +50,7 @@ namespace router_details {
         return AddRouteResult(AddRouteError(AddRouteErrorKind::Conflict, ""));
       }
       SPDLOG_DEBUG("Route added: {}", path);
-      old = wheel::make_unique<RouteHandler>(wheel::move(handler));
+      old = make_unique<RouteHandler>(xsl::move(handler));
       return AddRouteResult({});
     }
     if (path[0] != '/') {
@@ -60,9 +58,9 @@ namespace router_details {
     }
     auto pos = path.find('/', 1);
     auto sub = path.substr(1, pos);
-    auto res = children.lock()->try_emplace(sub, wheel::make_shared<HttpRouteNode>());
+    auto res = children.lock()->try_emplace(sub, make_shared<HttpRouteNode>());
     return res.first->second->add_route(method, path.substr(sub.length() + 1),
-                                        wheel::move(handler));
+                                        xsl::move(handler));
   }
 
   RouteResult HttpRouteNode::route(Context& ctx) {
@@ -113,17 +111,17 @@ namespace router_details {
   }
 }  // namespace router_details
 
-DefaultRouter::DefaultRouter() : root() {}
+HttpRouter::HttpRouter() : root() {}
 
-DefaultRouter::~DefaultRouter() {}
+HttpRouter::~HttpRouter() {}
 
-AddRouteResult DefaultRouter::add_route(HttpMethod method, wheel::string_view path,
+AddRouteResult HttpRouter::add_route(HttpMethod method, string_view path,
                                         RouteHandler&& handler) {
   SPDLOG_DEBUG("Adding route: {}", path);
-  return root.add_route(method, path, wheel::move(handler));
+  return root.add_route(method, path, xsl::move(handler));
 }
 
-RouteResult DefaultRouter::route(Context& ctx) {
+RouteResult HttpRouter::route(Context& ctx) {
   SPDLOG_DEBUG("Starting routing path: {}", ctx.current_path);
   if (ctx.request.method == HttpMethod::UNKNOWN) {
     return RouteResult(RouteError(RouteErrorKind::Unknown, ""));
@@ -131,15 +129,15 @@ RouteResult DefaultRouter::route(Context& ctx) {
   return root.route(ctx);
 }
 
-void DefaultRouter::error_handler(RouteErrorKind kind, RouteHandler&& handler) {
+void HttpRouter::error_handler(RouteErrorKind kind, RouteHandler&& handler) {
   if (kind == RouteErrorKind::NotFound) {
     this->error_handlers[static_cast<uint8_t>(kind)]
-        = wheel::make_shared<RouteHandler>(wheel::move(handler));
+        = make_shared<RouteHandler>(xsl::move(handler));
   } else if (kind == RouteErrorKind::Unimplemented) {
     this->error_handlers[static_cast<uint8_t>(kind)]
-        = wheel::make_shared<RouteHandler>(wheel::move(handler));
+        = make_shared<RouteHandler>(xsl::move(handler));
   } else {
-    this->error_handlers[0] = wheel::make_shared<RouteHandler>(wheel::move(handler));
+    this->error_handlers[0] = make_shared<RouteHandler>(xsl::move(handler));
   }
 }
 

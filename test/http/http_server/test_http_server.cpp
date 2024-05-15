@@ -1,8 +1,7 @@
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
 
-#include "xsl/net/http/http.h"
-#include "xsl/net/sync/sync.h"
-#include "xsl/wheel/wheel.h"
+#include "xsl/net.h"
+#include "xsl/wheel.h"
 
 #include <CLI/CLI.hpp>
 #include <pthread.h>
@@ -25,9 +24,7 @@ void sigterm_init() {
   sigaction(SIGTERM, &act, nullptr);
   sigaction(SIGINT, &act, nullptr);
 }
-using namespace xsl::net::http;
-using namespace xsl::wheel;
-using namespace xsl::net::sync;
+using namespace xsl;
 int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
   string ip = TEST_HOST;
@@ -38,11 +35,11 @@ int main(int argc, char **argv) {
   spdlog::set_level(spdlog::level::trace);
   sigterm_init();
 
-  DefaultServerConfig config{};
+  HttpServerConfig config{};
   config.max_connections = 10;
   config.host = ip;
   config.port = port;
-  auto router = make_shared<DefaultRouter>();
+  auto router = make_shared<HttpRouter>();
   router->add_route(HttpMethod::GET, "/",
                     create_static_handler("test/http/http_server/web/static/").unwrap());
   router->error_handler(
@@ -51,15 +48,15 @@ int main(int argc, char **argv) {
   router->error_handler(
       RouteErrorKind::Unimplemented,
       create_static_handler("test/http/http_server/web/static/501.html").unwrap());
-  auto handler_generator = make_shared<DefaultHandlerGenerator>(router);
+  auto handler_generator = make_shared<HttpHandlerGenerator>(router);
   config.handler_generator = handler_generator;
-  xsl::wheel::shared_ptr<DefaultPoller> poller = make_shared<DefaultPoller>();
+  shared_ptr<DefaultPoller> poller = make_shared<DefaultPoller>();
   if (!poller->valid()) {
     SPDLOG_ERROR("Failed to create poller");
     return 1;
   }
   config.poller = poller;
-  auto server = DefaultServer::serve(config);
+  auto server = HttpServer::serve(config);
   if (!server) {
     SPDLOG_ERROR("Failed to serve");
     return 1;

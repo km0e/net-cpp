@@ -3,7 +3,7 @@
 #  define _XSL_NET_TRANSPORT_TCP_HELPER_H_
 #  include "xsl/net/transport/tcp/context.h"
 #  include "xsl/net/transport/tcp/def.h"
-#  include "xsl/wheel/wheel.h"
+#  include "xsl/wheel.h"
 TCP_NAMESPACE_BEGIN
 // TODO: add FileHeaderGenerator
 // class FileInfor {
@@ -15,35 +15,35 @@ TCP_NAMESPACE_BEGIN
 
 class SendFile : public SendTaskNode {
 public:
-  SendFile(wheel::string&& path);
+  SendFile(string&& path);
   ~SendFile();
   bool exec(SendContext& ctx) override;
 
 protected:
-  wheel::list<wheel::string> path_buffer;
+  list<string> path_buffer;
 };
 
 class SendString : public SendTaskNode {
 public:
-  SendString(wheel::string&& data);
+  SendString(string&& data);
   SendString(SendString&&) = default;
   ~SendString();
   bool exec(SendContext& ctx) override;
 
 private:
-  wheel::list<wheel::string> data_buffer;
+  list<string> data_buffer;
 };
 const size_t MAX_SINGLE_RECV_SIZE = 1024;
 class RecvString : public RecvTaskNode {
 public:
-  static wheel::unique_ptr<RecvString> create(wheel::string& data);
+  static unique_ptr<RecvString> create(string& data);
   RecvString(RecvString&&) = default;
-  RecvString(wheel::string& data);
+  RecvString(string& data);
   ~RecvString();
   RecvResult exec(RecvContext& ctx) override;
 
 private:
-  wheel::string& data_buffer;
+  string& data_buffer;
 };
 TCP_NAMESPACE_END
 #endif

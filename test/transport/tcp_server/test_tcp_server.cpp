@@ -1,6 +1,6 @@
-#include "xsl/net/sync/sync.h"
-#include "xsl/net/transport/tcp/tcp.h"
-#include "xsl/wheel/wheel.h"
+#include "xsl/net/sync.h"
+#include "xsl/net/transport.h"
+#include "xsl/wheel.h"
 
 #include <CLI/CLI.hpp>
 #include <pthread.h>
@@ -23,8 +23,10 @@ void sigterm_init() {
   sigaction(SIGTERM, &act, nullptr);
   sigaction(SIGINT, &act, nullptr);
 }
+using namespace xsl::net;
+using namespace xsl::net::transport;
 using namespace xsl::net::transport::tcp;
-using namespace xsl::wheel;
+using namespace xsl;
 using namespace xsl::net::sync;
 class Handler {
 public:
@@ -39,7 +41,7 @@ public:
     return TcpHandleState(IOM_EVENTS::OUT, TcpHandleHint::WRITE);
   }
   TcpHandleState send(TcpSendTasks &tasks) {
-    tasks.emplace_front(make_unique<TcpSendString>(xsl::wheel::move(this->data)));
+    tasks.emplace_front(make_unique<TcpSendString>(xsl::move(this->data)));
     return TcpHandleState(IOM_EVENTS::NONE, TcpHandleHint::NONE);
   }
   string data;

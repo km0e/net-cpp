@@ -1,10 +1,10 @@
-#include "xsl/net/transport/tcp/tcp.h"
+#include "xsl/net/transport.h"
 
 #include <CLI/CLI.hpp>
 #include <spdlog/spdlog.h>
 #include <unistd.h>
-using xsl::wheel::string;
-using namespace xsl::net::transport::tcp;
+using namespace xsl;
+using namespace xsl::net;
 int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
   string ip = "127.0.0.1";

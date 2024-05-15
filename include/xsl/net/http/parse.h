@@ -3,7 +3,7 @@
 #  define _XSL_NET_HTTP_PARSE_H_
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
-#  include "xsl/wheel/wheel.h"
+#  include "xsl/wheel.h"
 HTTP_NAMESPACE_BEGIN
 enum class ParseErrorKind {
   Unknown,
@@ -11,7 +11,7 @@ enum class ParseErrorKind {
   InvalidFormat,
 };
 const int PARSE_ERROR_COUNT = 3;
-const wheel::array<wheel::string_view, PARSE_ERROR_COUNT> PARSE_ERROR_STRINGS = {
+const array<string_view, PARSE_ERROR_COUNT> PARSE_ERROR_STRINGS = {
     "Unknown",
     "Partial",
     "InvalidFormat",
@@ -19,19 +19,25 @@ const wheel::array<wheel::string_view, PARSE_ERROR_COUNT> PARSE_ERROR_STRINGS = 
 class ParseError {
 public:
   ParseError(ParseErrorKind kind);
-  ParseError(ParseErrorKind kind, wheel::string message);
+  ParseError(ParseErrorKind kind, string message);
   ~ParseError();
   ParseErrorKind kind;
-  wheel::string message;
+  string message;
   std::string to_string() const;
 };
-using ParseResult = wheel::Result<RequestView, ParseError>;
+using ParseResult = Result<RequestView, ParseError>;
 
 class HttpParser {
 public:
   HttpParser();
   HttpParser(HttpParser&&) = default;
   ~HttpParser();
+  // brief: parse the http request
+  // you should keep the memory of the view until the next parse
+  // @param data: the data to be parsed
+  // @param len: the length of the data, if there is a complete request, the len will be updated to
+  // the end of the request
+  // @return: the parsed request or the error
   ParseResult parse(const char* data, size_t& len);
   RequestView view;
 };

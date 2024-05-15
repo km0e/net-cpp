@@ -4,23 +4,22 @@
 #  include "xsl/net/http/context.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
-#  include "xsl/wheel/wheel.h"
+#  include "xsl/wheel.h"
 
-#  include <cstdint>
 HTTP_NAMESPACE_BEGIN
 
 class RouteHandleError {
 public:
   RouteHandleError();
-  RouteHandleError(wheel::string message);
+  RouteHandleError(string message);
   ~RouteHandleError();
-  wheel::string message;
-  wheel::string to_string() const;
+  string message;
+  string to_string() const;
 };
 
-using RouteHandleResult = wheel::Result<IntoSendTasksPtr, RouteHandleError>;
+using RouteHandleResult = Result<IntoSendTasksPtr, RouteHandleError>;
 
-using RouteHandler = wheel::function<RouteHandleResult(Context& ctx)>;
+using RouteHandler = function<RouteHandleResult(Context& ctx)>;
 
 enum class AddRouteErrorKind {
   Unknown,
@@ -28,7 +27,7 @@ enum class AddRouteErrorKind {
   Conflict,
 };
 const int ADD_ROUTE_ERROR_COUNT = 3;
-const wheel::array<wheel::string_view, ADD_ROUTE_ERROR_COUNT> ADD_ROUTE_ERROR_STRINGS = {
+const array<string_view, ADD_ROUTE_ERROR_COUNT> ADD_ROUTE_ERROR_STRINGS = {
     "Unknown",
     "InvalidPath",
     "Conflict",
@@ -36,10 +35,10 @@ const wheel::array<wheel::string_view, ADD_ROUTE_ERROR_COUNT> ADD_ROUTE_ERROR_ST
 class AddRouteError {
 public:
   AddRouteError(AddRouteErrorKind kind);
-  AddRouteError(AddRouteErrorKind kind, wheel::string message);
+  AddRouteError(AddRouteErrorKind kind, string message);
   ~AddRouteError();
   AddRouteErrorKind kind;
-  wheel::string message;
+  string message;
   std::string to_string() const;
 };
 
@@ -49,7 +48,7 @@ enum class RouteErrorKind : uint8_t {
   Unimplemented,
 };
 const int ROUTE_ERROR_COUNT = 3;
-const wheel::array<wheel::string_view, ROUTE_ERROR_COUNT> ROUTE_ERROR_STRINGS = {
+const array<string_view, ROUTE_ERROR_COUNT> ROUTE_ERROR_STRINGS = {
     "Unknown",
     "NotFound",
     "Unimplemented",
@@ -58,22 +57,22 @@ class RouteError {
 public:
   RouteError();
   RouteError(RouteErrorKind kind);
-  RouteError(RouteErrorKind kind, wheel::string message);
+  RouteError(RouteErrorKind kind, string message);
   ~RouteError();
   RouteErrorKind kind;
-  wheel::string message;
-  wheel::string to_string() const;
+  string message;
+  string to_string() const;
 };
 
-using AddRouteResult = wheel::Result<wheel::tuple<>, AddRouteError>;
+using AddRouteResult = Result<tuple<>, AddRouteError>;
 
-using RouteResult = wheel::Result<IntoSendTasksPtr, RouteError>;
+using RouteResult = Result<IntoSendTasksPtr, RouteError>;
 
 template <class R>
-concept Router = requires(R r, wheel::string_view path, RouteHandler&& handler, Context& ctx) {
-  { r.add_route(HttpMethod{}, path, wheel::move(handler)) } -> wheel::same_as<AddRouteResult>;
-  { r.route(ctx) } -> wheel::same_as<RouteResult>;
-  { r.error_handler(RouteErrorKind{}, wheel::move(handler)) };
+concept Router = requires(R r, string_view path, RouteHandler&& handler, Context& ctx) {
+  { r.add_route(HttpMethod{}, path, xsl::move(handler)) } -> same_as<AddRouteResult>;
+  { r.route(ctx) } -> same_as<RouteResult>;
+  { r.error_handler(RouteErrorKind{}, xsl::move(handler)) };
 };
 
 namespace router_details {
@@ -81,12 +80,12 @@ namespace router_details {
   public:
     HttpRouteNode();
     ~HttpRouteNode();
-    AddRouteResult add_route(HttpMethod method, wheel::string_view path, RouteHandler&& handler);
+    AddRouteResult add_route(HttpMethod method, string_view path, RouteHandler&& handler);
     RouteResult route(Context& ctx);
 
   private:
-    wheel::array<wheel::unique_ptr<RouteHandler>, METHOD_COUNT> handlers;
-    wheel::ConcurrentHashMap<wheel::string_view, wheel::shared_ptr<HttpRouteNode>> children;
+    array<unique_ptr<RouteHandler>, METHOD_COUNT> handlers;
+    ConcurrentHashMap<string_view, shared_ptr<HttpRouteNode>> children;
   };
 }  // namespace router_details
 
@@ -104,20 +103,19 @@ const RouteHandler UNIMPLEMENTED_HANDLER = []([[maybe_unused]] Context& ctx) -> 
       std::make_unique<ResponsePart>(501, "Not Implemented", HttpVersion::HTTP_1_1)};
 };
 
-class DefaultRouter {
+class HttpRouter {
 public:
-  DefaultRouter();
-  ~DefaultRouter();
-  AddRouteResult add_route(HttpMethod method, wheel::string_view path, RouteHandler&& handler);
+  HttpRouter();
+  ~HttpRouter();
+  AddRouteResult add_route(HttpMethod method, string_view path, RouteHandler&& handler);
   RouteResult route(Context& ctx);
   void error_handler(RouteErrorKind kind, RouteHandler&& handler);
 
 private:
   router_details::HttpRouteNode root;
-  wheel::array<wheel::shared_ptr<RouteHandler>, ROUTE_ERROR_COUNT> error_handlers
-      = {wheel::make_shared<RouteHandler>(UNKNOWN_HANDLER),
-         wheel::make_shared<RouteHandler>(NOT_FOUND_HANDLER),
-         wheel::make_shared<RouteHandler>(UNIMPLEMENTED_HANDLER)};
+  array<shared_ptr<RouteHandler>, ROUTE_ERROR_COUNT> error_handlers
+      = {make_shared<RouteHandler>(UNKNOWN_HANDLER), make_shared<RouteHandler>(NOT_FOUND_HANDLER),
+         make_shared<RouteHandler>(UNIMPLEMENTED_HANDLER)};
 };
 
 HTTP_NAMESPACE_END

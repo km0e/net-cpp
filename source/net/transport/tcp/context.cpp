@@ -1,6 +1,6 @@
 #include "xsl/net/transport/tcp/context.h"
 TCP_NAMESPACE_BEGIN
-wheel::string_view to_string(RecvError err) {
+string_view to_string(RecvError err) {
   switch (err) {
     case RecvError::UNKNOWN:
       return "UNKNOWN";

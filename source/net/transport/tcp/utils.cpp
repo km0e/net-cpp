@@ -5,7 +5,6 @@
 #include <netdb.h>
 #include <spdlog/spdlog.h>
 
-#include <cstring>
 TCP_NAMESPACE_BEGIN
 
 int create_tcp_client(const char *ip, const char *port) {
@@ -74,7 +73,7 @@ int create_tcp_server(const char *ip, int port, TcpConfig config) {
   return server_fd;
 }
 
-int read(int fd, wheel::string &data) {
+int read(int fd, string &data) {
   SPDLOG_TRACE("[read] Reading from fd: {}", fd);
   data.clear();
   data.reserve(1024);
@@ -98,7 +97,7 @@ int read(int fd, wheel::string &data) {
   }
   return 0;
 }
-int write(int fd, const wheel::string &data) {
+int write(int fd, const string &data) {
   SPDLOG_TRACE("[write] Writing to fd: {}", fd);
   ssize_t n = send(fd, data.c_str(), data.size(), 0);
   if (n == -1) {

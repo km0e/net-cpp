@@ -1,6 +1,6 @@
 #include "xsl/net/transport/tcp/context.h"
 #include "xsl/net/transport/tcp/helper.h"
-#include "xsl/wheel/wheel.h"
+#include "xsl/wheel.h"
 
 #include <fcntl.h>
 #include <spdlog/spdlog.h>
@@ -9,23 +9,21 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <cstddef>
-#include <numeric>
 TCP_NAMESPACE_BEGIN
 // TODO: add FileHeaderGenerator
 // FileInfor::FileInfor(size_t size) : size(size) {}
 //  class ReadySendFile {
 //    public:
-//      ReadySendFile(wheel::string&& path, FileHeaderGenerator&& generator);
+//      ReadySendFile(string&& path, FileHeaderGenerator&& generator);
 //      ~ReadySendFile();
 //      bool exec(SendContext& ctx);
 
 //   private:
-//     wheel::string path;
+//     string path;
 //     FileHeaderGenerator header_gen;
 // };
 
-SendFile::SendFile(wheel::string&& path) : path_buffer({wheel::move(path)}) {}
+SendFile::SendFile(string&& path) : path_buffer({xsl::move(path)}) {}
 SendFile::~SendFile() {}
 bool SendFile::exec(SendContext& ctx) {
   while (true) {
@@ -62,8 +60,8 @@ bool SendFile::exec(SendContext& ctx) {
   }
   return true;
 }
-SendString::SendString(wheel::string&& data) : data_buffer() {
-  this->data_buffer.emplace_back(wheel::move(data));
+SendString::SendString(string&& data) : data_buffer() {
+  this->data_buffer.emplace_back(xsl::move(data));
 }
 SendString::~SendString() {}
 bool SendString::exec(SendContext& ctx) {
@@ -87,16 +85,16 @@ bool SendString::exec(SendContext& ctx) {
   }
   return true;
 }
-wheel::unique_ptr<RecvString> RecvString::create(wheel::string& data) {
-  return wheel::make_unique<RecvString>(data);
+unique_ptr<RecvString> RecvString::create(string& data) {
+  return make_unique<RecvString>(data);
 }
 
-RecvString::RecvString(wheel::string& data) : data_buffer(data) {}
+RecvString::RecvString(string& data) : data_buffer(data) {}
 RecvString::~RecvString() {}
 
 RecvResult RecvString::exec(RecvContext& ctx) {
   SPDLOG_TRACE("start recv string");
-  wheel::vector<wheel::string> data;
+  vector<string> data;
   char buf[MAX_SINGLE_RECV_SIZE];
   ssize_t n;
   do {
@@ -121,7 +119,7 @@ RecvResult RecvString::exec(RecvContext& ctx) {
     }
     data.emplace_back(buf, n);
   } while (n == sizeof(buf));
-  this->data_buffer = std::accumulate(data.begin(), data.end(), wheel::string());
+  this->data_buffer = accumulate(data.begin(), data.end(), string());
   SPDLOG_DEBUG("data size: {}", this->data_buffer.size());
   return RecvResult{true};
 }

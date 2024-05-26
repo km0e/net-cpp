@@ -1,5 +1,0 @@
-includes("helper")
-target("http")
-    set_kind("static")
-    add_files("*.cpp")
-    add_deps("http_helper","transport")

@@ -19,7 +19,7 @@ public:
   Handler(shared_ptr<R> router) : parser{}, router{router}, recv_data{}, send_tasks{} {}
   Handler(Handler&&) = default;
   ~Handler() {}
-  TcpHandleConfig init() {
+  TcpHandleConfig init([[maybe_unused]]int fd) {
     SPDLOG_TRACE("");
     TcpHandleConfig cfg{};
     cfg.recv_tasks.emplace_front(make_unique<TcpRecvString>(this->recv_data));

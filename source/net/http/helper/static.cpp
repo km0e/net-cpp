@@ -4,8 +4,8 @@
 
 #include <sys/stat.h>
 
-HELPER_NAMESPACE_BEGIN
-using namespace http::detail;
+HTTP_HELPER_NAMESPACE_BEGIN
+using namespace http;
 class FileRouteHandler {
 public:
   FileRouteHandler(string&& path);
@@ -77,4 +77,4 @@ StaticCreateResult create_static_handler(string&& path) {
   return AddRouteError{AddRouteErrorKind::InvalidPath};
 }
 
-HELPER_NAMESPACE_END
+HTTP_HELPER_NAMESPACE_END

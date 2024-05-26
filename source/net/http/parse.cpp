@@ -21,6 +21,7 @@ ParseResult HttpParser::parse(const char* data, size_t& len) {
   while (pos < len) {
     size_t end = view.find("\r\n", pos);
     if (end == string_view::npos) {
+      len = pos;
       res = ParseError(ParseErrorKind::Partial);
       break;
     } else if (end == pos) {
@@ -29,7 +30,7 @@ ParseResult HttpParser::parse(const char* data, size_t& len) {
       this->view = RequestView();
       break;
     }
-    if (this->view.version.empty() || this->view.method.empty() || this->view.path.empty()) {
+    if (this->view.version.empty() || this->view.method.empty() || this->view.uri.empty()) {
       auto line = view.substr(pos, end - pos);
       size_t _1sp = line.find(' ');
       if (_1sp == string_view::npos) {
@@ -42,7 +43,7 @@ ParseResult HttpParser::parse(const char* data, size_t& len) {
         res = ParseError(ParseErrorKind::InvalidFormat);
         break;
       }
-      this->view.path = line.substr(_1sp + 1, _2sp - _1sp - 1);
+      this->view.uri = line.substr(_1sp + 1, _2sp - _1sp - 1);
       this->view.version = line.substr(_2sp + 1);
       pos = end + 2;
     } else {

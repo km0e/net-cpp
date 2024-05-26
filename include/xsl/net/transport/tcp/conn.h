@@ -38,14 +38,14 @@ public:
 //    - hint is WRITE and i is 0, send data
 //    - hint is READ and i is 1, read data
 template <class T>
-concept TcpHandler = move_constructible<T> && requires(T t, SendTasks& sts, RecvTasks& rts) {
-  { t.init() } -> same_as<HandleConfig>;
+concept TcpHandler = move_constructible<T> && requires(T t,int fd, SendTasks& sts, RecvTasks& rts) {
+  { t.init(fd) } -> same_as<HandleConfig>;
   { t.send(sts) } -> same_as<HandleState>;
   { t.recv(rts) } -> same_as<HandleState>;
 };
 
 template <class T, class H>
-concept HandlerGenerator = TcpHandler<H> && requires(T t, H h) {
+concept TcpHandlerGenerator = TcpHandler<H> && requires(T t, H h) {
   { t() } -> same_as<H>;
 };
 
@@ -78,7 +78,7 @@ TcpConn<H>::TcpConn(int fd, shared_ptr<Poller> poller, H&& handler)
       handler(move(handler)) {
   poller->subscribe(fd, IOM_EVENTS::IN,
                     [this](int fd, IOM_EVENTS events) { this->recv(fd, events); });
-  auto cfg = this->handler.init();
+  auto cfg = this->handler.init(fd);
   this->recv_tasks.splice_after(this->recv_tasks.before_begin(), cfg.recv_tasks);
 }
 
@@ -107,10 +107,15 @@ void TcpConn<H>::send(int fd, IOM_EVENTS events) {
   this->send_tasks = std::move(hl);
   SendContext ctx(fd, this->send_tasks);
   while (!this->send_tasks.empty()) {
-    if (this->send_tasks.front()->exec(ctx)) {
+    auto res = this->send_tasks.front()->exec(ctx);
+    if (res.is_ok()) {
+      if(!res.unwrap()) {
+        break;
+      }
       this->send_tasks.pop_front();
     } else {
-      break;
+      //TODO: handle send error
+      SPDLOG_ERROR("send error");
     }
   }
   if (state.events != this->events) {
@@ -126,13 +131,13 @@ void TcpConn<H>::recv(int fd, IOM_EVENTS events) {
     SPDLOG_ERROR("No recv task found");
     // this->events = IOM_EVENTS::NONE;
     // this->poller->unregister(fd);
-    return ;
+    return;
   }
   RecvContext ctx(fd, this->recv_tasks);
   while (true) {
     auto res = ctx.iter->get()->exec(ctx);
     if (res.is_ok()) {
-      if (res.unwrap()) {
+      if (!res.unwrap()) {
         break;
       }
       ctx.iter++;

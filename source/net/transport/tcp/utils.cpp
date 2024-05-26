@@ -1,5 +1,6 @@
 #include "xsl/net/transport/tcp/def.h"
 #include "xsl/net/transport/tcp/utils.h"
+#include "xsl/utils.h"
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -7,20 +8,22 @@
 
 TCP_NAMESPACE_BEGIN
 
-int create_tcp_client(const char *ip, const char *port) {
-  SPDLOG_TRACE("[TcpClient::connect] Connecting to {}:{}", ip, port);
+int create_tcp_client(const char *ip, const char *port, TcpClientSockConfig config) {
+  SPDLOG_DEBUG("Connecting to {}:{}", ip, port);
   addrinfo hints;
   addrinfo *result;
   int client_fd = -1;
+  SPDLOG_DEBUG("getaddrinfo");
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
   int res = getaddrinfo(ip, port, &hints, &result);
   if (res != 0) {
-    SPDLOG_WARN("[TcpClient::connect] getaddrinfo failed: {}", gai_strerror(res));
+    SPDLOG_WARN("getaddrinfo failed: {}", gai_strerror(res));
     return -1;
   }
+  SPDLOG_DEBUG("getaddrinfo success");
   addrinfo *rp;
   for (rp = result; rp != nullptr; rp = rp->ai_next) {
     int tmp_client_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -28,31 +31,47 @@ int create_tcp_client(const char *ip, const char *port) {
       continue;
     }
     if (::connect(tmp_client_fd, rp->ai_addr, rp->ai_addrlen) != -1) {
+      if (config.keep_alive && !set_keep_alive(tmp_client_fd, true)) {
+        SPDLOG_WARN("Failed to set keep alive");
+        close(tmp_client_fd);
+        continue;
+      }
+      if (config.non_blocking && !set_non_blocking(tmp_client_fd)) {
+        SPDLOG_WARN("Failed to set non-blocking");
+        close(tmp_client_fd);
+        continue;
+      }
       client_fd = tmp_client_fd;
       break;
     }
-    SPDLOG_WARN("[TcpClient::connect] Failed to connect to {}:{}", ip, port);
+    SPDLOG_WARN("Failed to connect to {}:{}", ip, port);
     close(tmp_client_fd);
   }
+  SPDLOG_DEBUG("Free addrinfo");
   freeaddrinfo(result);
   if (rp == nullptr) {
-    SPDLOG_WARN("[TcpClient::connect] Failed to connect to {}:{}", ip, port);
+    SPDLOG_WARN("Failed to connect to {}:{}", ip, port);
     return -1;
   }
+  SPDLOG_DEBUG("Connected to {}:{}", ip, port);
   return client_fd;
 }
 
-int create_tcp_server(const char *ip, int port, TcpConfig config) {
+int create_tcp_server(const char *ip, int port, TcpServerSockConfig config) {
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);
   SPDLOG_DEBUG("Server fd: {}", server_fd);
   if (server_fd == -1) {
     SPDLOG_ERROR("Failed to create socket");
     return -1;
   }
-  int opt = 1;
-  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+  if (config.keep_alive && !set_keep_alive(server_fd, true)) {
     close(server_fd);
-    SPDLOG_ERROR("Failed to set socket options");
+    SPDLOG_ERROR("Failed to set keep alive");
+    return -1;
+  }
+  if (config.non_blocking && !set_non_blocking(server_fd)) {
+    close(server_fd);
+    SPDLOG_ERROR("Failed to set non-blocking");
     return -1;
   }
   sockaddr addr;
@@ -72,43 +91,13 @@ int create_tcp_server(const char *ip, int port, TcpConfig config) {
   }
   return server_fd;
 }
-
-int read(int fd, string &data) {
-  SPDLOG_TRACE("[read] Reading from fd: {}", fd);
-  data.clear();
-  data.reserve(1024);
-  char buf[1024];
-  ssize_t n;
-  while ((n = recv(fd, buf, sizeof(buf), 0)) > 0) {
-    data.append(buf, n);
+bool set_keep_alive(int fd, bool keep_alive) {
+  int opt = keep_alive ? 1 : 0;
+  if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt))) {
+    SPDLOG_ERROR("Failed to set keep alive");
+    return false;
   }
-  SPDLOG_DEBUG("[read] data size: {}", data.size());
-  if (n == -1) {
-    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      SPDLOG_DEBUG("[read] recv over");
-      return 0;
-    } else {
-      SPDLOG_ERROR("[read] Failed to recv data");
-      return -1;
-    }
-  }
-  if (n == 0) {
-    SPDLOG_DEBUG("[read] recv over");
-  }
-  return 0;
-}
-int write(int fd, const string &data) {
-  SPDLOG_TRACE("[write] Writing to fd: {}", fd);
-  ssize_t n = send(fd, data.c_str(), data.size(), 0);
-  if (n == -1) {
-    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      SPDLOG_DEBUG("[write] send over");
-    } else {
-      SPDLOG_ERROR("[write] Failed to send data");
-    }
-    return 0;
-  }
-  return n;
+  return true;
 }
 
 TCP_NAMESPACE_END

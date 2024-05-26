@@ -85,7 +85,7 @@ namespace router_details {
 
   private:
     array<unique_ptr<RouteHandler>, METHOD_COUNT> handlers;
-    ConcurrentHashMap<string_view, shared_ptr<HttpRouteNode>> children;
+    ShareContainer<unordered_map<string_view, shared_ptr<HttpRouteNode>>> children;
   };
 }  // namespace router_details
 

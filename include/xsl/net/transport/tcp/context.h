@@ -4,6 +4,11 @@
 #  include "xsl/net/transport/tcp/def.h"
 #  include "xsl/wheel.h"
 TCP_NAMESPACE_BEGIN
+enum class SendError {
+  UNKNOWN,
+};
+string_view to_string(SendError err);
+using SendResult = Result<bool, SendError>;
 enum class RecvError {
   UNKNOWN,
   RECV_EOF,
@@ -14,19 +19,16 @@ class SendContext;
 class RecvContext;
 class SendTaskNode {
 public:
-  // - recv : return true if the task is done(recv all data)
-  //          return false if the task is done, but not recv all data, will call next task
-  //          if all tasks are done, but not recv all data, will call recv again
-  // - send : return true if the task is done(send all data)
-  virtual bool exec(SendContext& ctx) = 0;
+  // - send : return true if the task is done, and will call next task
+  //          return false if the task is done, but can't call next task
+  virtual SendResult exec(SendContext& ctx) = 0;
   virtual ~SendTaskNode() = default;
 };
 class RecvTaskNode {
 public:
-  // - recv : return true if the task is done(recv all data)
-  //          return false if the task is done, but not recv all data, will call next task
+  // - recv : return true if the task is done, and will call next task
+  //          return false if the task is done, but can't call next task
   //          if all tasks are done, but not recv all data, will call recv again
-  // - send : return true if the task is done(send all data)
   virtual RecvResult exec(RecvContext& ctx) = 0;
   virtual ~RecvTaskNode() = default;
 };

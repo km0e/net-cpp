@@ -2,10 +2,13 @@
 
 #ifndef _XSL_UTILS_WHEEL_GIANT_H_
 #  define _XSL_UTILS_WHEEL_GIANT_H_
+#  include <sys/types.h>
+
 #  include <algorithm>
 #  include <array>
 #  include <atomic>
 #  include <concepts>
+#  include <cstddef>
 #  include <cstdint>
 #  include <format>
 #  include <forward_list>
@@ -15,6 +18,7 @@
 #  include <numeric>
 #  include <optional>
 #  include <queue>
+#  include <ranges>
 #  include <string>
 #  include <string_view>
 #  include <tuple>
@@ -28,6 +32,8 @@ namespace xsl::wheel::giant {
   using std::array;
   using std::atomic_flag;
   using std::bind;
+  using ssize_t = ::ssize_t;
+  using std::byte;
   using std::convertible_to;
   using std::derived_from;
   using std::format;
@@ -38,8 +44,11 @@ namespace xsl::wheel::giant {
   using std::holds_alternative;
   using std::list;
   using std::make_optional;
+  using std::make_pair;
   using std::make_shared;
   using std::make_unique;
+  using std::max;
+  using std::min;
   using std::move;
   using std::move_constructible;
   using std::nullopt;
@@ -49,6 +58,7 @@ namespace xsl::wheel::giant {
   using std::runtime_error;
   using std::same_as;
   using std::shared_ptr;
+  using std::size_t;
   using std::string;
   using std::string_view;
   using std::to_string;
@@ -57,6 +67,8 @@ namespace xsl::wheel::giant {
   using std::unique_ptr;
   using std::unordered_map;
   using std::variant;
+  using std::ranges::views::all;
+  using std::ranges::views::_All;
 
   using std::vector;
   // using dp::thread_pool;

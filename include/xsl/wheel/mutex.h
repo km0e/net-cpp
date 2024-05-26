@@ -2,6 +2,7 @@
 #ifndef _XSL_WHEEL_MUTEX_H_
 #  define _XSL_WHEEL_MUTEX_H_
 #  include "xsl/wheel/def.h"
+
 #  include <spdlog/spdlog.h>
 
 #  include <mutex>
@@ -33,12 +34,12 @@ private:
 
 template <class T>
 SharedLockGuard<T>::SharedLockGuard(SharedMutex& m, T& t) : m(m), t(t) {
-  SPDLOG_TRACE("");
+  // SPDLOG_TRACE("");
   m.lock_shared();
 }
 template <class T>
 SharedLockGuard<T>::~SharedLockGuard() {
-  SPDLOG_TRACE("");
+  // SPDLOG_TRACE("");
   m.unlock_shared();
 }
 template <class T>
@@ -65,12 +66,12 @@ private:
 
 template <Lockable T, class V>
 LockGuard<T, V>::LockGuard(T& m, V& v) : m(m), v(v) {
-  SPDLOG_TRACE("");
+  // SPDLOG_TRACE("");
   m.lock();
 }
 template <Lockable T, class V>
 LockGuard<T, V>::~LockGuard() {
-  SPDLOG_TRACE("");
+  // SPDLOG_TRACE("");
   m.unlock();
 }
 template <Lockable T, class V>
@@ -81,6 +82,17 @@ template <Lockable T, class V>
 V& LockGuard<T, V>::operator*() {
   return v;
 }
+template <class C>
+class ShareContainer {
+public:
+  ShareContainer() : container(), mutex() {}
+  ~ShareContainer() {}
+  SharedLockGuard<C> lock_shared() { return SharedLockGuard<C>(mutex, container); }
+  LockGuard<SharedMutex, C> lock() { return LockGuard<SharedMutex, C>(mutex, container); }
 
+private:
+  C container;
+  SharedMutex mutex;
+};
 WHEEL_NAMESPACE_END
 #endif

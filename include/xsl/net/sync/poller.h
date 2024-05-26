@@ -34,6 +34,10 @@ IOM_EVENTS operator&(IOM_EVENTS a, IOM_EVENTS b);
 IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b);
 IOM_EVENTS operator~(IOM_EVENTS a);
 #  endif
+template <class T>
+concept Handler = requires(T t) {
+  { t(0, IOM_EVENTS::NONE) };
+};
 using PollHandler = function<void(int fd, IOM_EVENTS events)>;
 class Poller {
 public:
@@ -59,8 +63,22 @@ public:
 
 private:
   int fd;
-  ConcurrentHashMap<int, shared_ptr<PollHandler>> handlers;
+  ShareContainer<unordered_map<int, shared_ptr<PollHandler>>> handlers;
   shared_ptr<HandleProxy> proxy;
 };
+template <Handler T, class... Args>
+unique_ptr<T> sub_unique(shared_ptr<Poller> poller, int fd, IOM_EVENTS events, Args&&... args) {
+  auto handler = make_unique<T>(forward<Args>(args)...);
+  poller->subscribe(
+      fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) { (*handler)(fd, events); });
+  return handler;
+}
+template <Handler T, class... Args>
+shared_ptr<T> sub_shared(shared_ptr<Poller> poller, int fd, IOM_EVENTS events, Args&&... args) {
+  auto handler = make_shared<T>(forward<Args>(args)...);
+  poller->subscribe(
+      fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) { (*handler)(fd, events); });
+  return handler;
+}
 SYNC_NAMESPACE_END
 #endif

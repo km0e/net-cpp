@@ -62,7 +62,8 @@ void DefaultPoller::poll() {
   }
   SPDLOG_DEBUG("Polling {} events", n);
   for (int i = 0; i < n; i++) {
-    auto handler = this->handlers.share()->at(events[i].data.fd);
+    auto handler = this->handlers.lock_shared()->at(events[i].data.fd);
+    SPDLOG_DEBUG("Handling event for fd: {}", (int)events[i].data.fd);
     (*this->proxy)(bind(*handler, (int)events[i].data.fd, (IOM_EVENTS)events[i].events));
   }
   SPDLOG_TRACE("Polling done");

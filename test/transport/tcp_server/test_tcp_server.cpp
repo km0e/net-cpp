@@ -1,5 +1,4 @@
-#include "xsl/net/sync.h"
-#include "xsl/net/transport.h"
+#include "xsl/net.h"
 #include "xsl/wheel.h"
 
 #include <CLI/CLI.hpp>
@@ -23,17 +22,13 @@ void sigterm_init() {
   sigaction(SIGTERM, &act, nullptr);
   sigaction(SIGINT, &act, nullptr);
 }
-using namespace xsl::net;
-using namespace xsl::net::transport;
-using namespace xsl::net::transport::tcp;
 using namespace xsl;
-using namespace xsl::net::sync;
 class Handler {
 public:
-  TcpHandleConfig init() {
+  TcpHandleConfig init([[maybe_unused]]int fd) {
     TcpHandleConfig config{};
     SPDLOG_DEBUG("[T][Handler::init] Pushing recv task");
-    config.recv_tasks.push_front(TcpRecvString::create(this->data));
+    config.recv_tasks.push_front(make_unique<TcpRecvString>(this->data));
     return config;
   }
   TcpHandleState recv([[maybe_unused]] TcpRecvTasks &tasks) {

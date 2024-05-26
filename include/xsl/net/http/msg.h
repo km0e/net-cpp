@@ -5,13 +5,42 @@
 #  include "xsl/net/transport.h"
 #  include "xsl/wheel.h"
 HTTP_NAMESPACE_BEGIN
+enum class HttpMethod : uint8_t {
+  EXT,
+  GET,
+  POST,
+  PUT,
+  DELETE,
+  HEAD,
+  OPTIONS,
+  TRACE,
+  CONNECT,
+  UNKNOWN = 0xff,
+};
+const int METHOD_COUNT = 9;
+const array<string_view, METHOD_COUNT> HTTP_METHOD_STRINGS = {
+    "EXT", "GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "TRACE", "CONNECT",
+};
+string method_cast(HttpMethod method);
+HttpMethod method_cast(string_view method);
+
+enum class HttpVersion : uint8_t {
+  EXT,
+  HTTP_1_0,
+  HTTP_1_1,
+  HTTP_2_0,
+  UNKNOWN = 0xff,
+};
+
+string http_version_cast(HttpVersion method);
+HttpVersion http_version_cast(string_view method);
 using namespace transport::tcp;
 class RequestView {
 public:
   RequestView();
   ~RequestView();
   string_view method;
-  string_view path;
+  string_view uri;
   string_view version;
   unordered_map<string_view, string_view> headers;
 };
@@ -57,6 +86,7 @@ public:
   unordered_map<string, string> headers;
   unique_ptr<TcpSendString> into_send_task_ptr();
   TcpSendTasks into_send_tasks();
+  string to_string();
 };
 
 template <class B>

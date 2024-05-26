@@ -1,5 +1,0 @@
-target("wheel")
-    set_kind("static")
-    add_files("*.cpp")
-    -- add_packages("boost")
-    -- add_packages("abseil")

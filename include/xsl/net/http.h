@@ -9,18 +9,23 @@
 #  include "xsl/net/http/router.h"
 #  include "xsl/net/http/server.h"
 NET_NAMESPACE_BEGIN
-using http::detail::create_static_handler;
-using http::detail::DefaultResponse;
-using http::detail::HttpHandlerGenerator;
-using http::detail::HttpMethod;
-using http::detail::HttpParser;
-using http::detail::HttpRouter;
-using http::detail::HttpServer;
-using http::detail::HttpServerConfig;
-using http::detail::HttpVersion;
-using http::detail::Request;
-using http::detail::ResponsePart;
-using http::detail::RouteErrorKind;
-using http::detail::StaticCreateResult;
+using http::create_static_handler;
+using http::DefaultResponse;
+using http::HttpHandlerGenerator;
+using http::HttpMethod;
+using http::HttpParser;
+using http::HttpRouter;
+using http::HttpServer;
+using HttpRequestView = http::RequestView;
+using http::HTTP_METHOD_STRINGS;
+using http::HttpServerConfig;
+using http::HttpVersion;
+using http::http_version_cast;
+using http::Request;
+using HttpResponsePart = http::ResponsePart;
+using http::RouteErrorKind;
+using http::StaticCreateResult;
+using HttpParseError = http::ParseError;
+using HttpParseResult = http::ParseResult;
 NET_NAMESPACE_END
 #endif

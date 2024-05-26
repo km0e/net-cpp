@@ -83,8 +83,8 @@ namespace router_details {
     auto pos = ctx.current_path.find('/', 1);
     auto sub = ctx.current_path.substr(1, pos);
     // TODO: find and check is not thread safe
-    auto iter = this->children.share()->find(sub);
-    if (iter != this->children.share()->end()) {
+    auto iter = this->children.lock_shared()->find(sub);
+    if (iter != this->children.lock_shared()->end()) {
       SPDLOG_DEBUG("Routing to child: {}", sub);
       auto current_path = ctx.current_path;
       ctx.current_path = ctx.current_path.substr(sub.length() + 1);
@@ -102,8 +102,8 @@ namespace router_details {
       ctx.is_ok = false;
     }
     SPDLOG_DEBUG("Routing to default child");
-    iter = this->children.share()->find("");
-    if (iter != this->children.share()->end()) {
+    iter = this->children.lock_shared()->find("");
+    if (iter != this->children.lock_shared()->end()) {
       ctx.is_ok = true;
       return iter->second->route(ctx);
     }

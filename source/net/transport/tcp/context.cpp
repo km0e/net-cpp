@@ -1,5 +1,14 @@
 #include "xsl/net/transport/tcp/context.h"
 TCP_NAMESPACE_BEGIN
+string_view to_string(SendError err) {
+  switch (err) {
+    case SendError::UNKNOWN:
+      return "UNKNOWN";
+    default:
+      return "UNKNOWN";
+  }
+}
+
 string_view to_string(RecvError err) {
   switch (err) {
     case RecvError::UNKNOWN:

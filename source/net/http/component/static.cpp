@@ -1,7 +1,9 @@
-#include "xsl/net/http/helper/static.h"
+#include "xsl/net/http/component/static.h"
+#include "xsl/net/http/proto.h"
 #include "xsl/net/http/router.h"
 #include "xsl/wheel.h"
 
+#include <spdlog/spdlog.h>
 #include <sys/stat.h>
 
 HTTP_HELPER_NAMESPACE_BEGIN
@@ -12,8 +14,15 @@ public:
   ~FileRouteHandler();
   RouteHandleResult operator()(Context& ctx);
   string path;
+  ContentType content_type;
 };
-FileRouteHandler::FileRouteHandler(string&& path) : path(path) {}
+FileRouteHandler::FileRouteHandler(string&& path)
+    : path(path), content_type(content_type::MediaType{}, Charset::UTF_8) {
+  if (auto point = path.rfind('.'); point != string::npos) {
+    auto ext = string_view(path).substr(point + 1);
+    this->content_type.media_type = content_type::MediaType::from_extension(ext);
+  }
+}
 
 FileRouteHandler::~FileRouteHandler() {}
 
@@ -26,10 +35,11 @@ RouteHandleResult FileRouteHandler::operator()(Context& ctx) {
     return RouteHandleResult(RouteHandleError("stat failed"));
   }
   TcpSendTasks tasks;
-  tasks.emplace_after(tasks.before_begin(),
-                      make_unique<TcpSendFile>(xsl::move(this->path)));
-  return RouteHandleResult{make_unique<Response<TcpSendTasks>>(
-      ResponsePart{200, "OK", HttpVersion::HTTP_1_1}, xsl::move(tasks))};
+  tasks.emplace_after(tasks.before_begin(), make_unique<TcpSendFile>(xsl::move(this->path)));
+  auto resp = make_unique<Response<TcpSendTasks>>(ResponsePart{200, "OK", HttpVersion::HTTP_1_1},
+                                                  xsl::move(tasks));
+  resp->part.headers.emplace("Content-Type", to_string(this->content_type));
+  return RouteHandleResult{std::move(resp)};
 }
 
 class FolderRouteHandler {
@@ -42,6 +52,7 @@ public:
 FolderRouteHandler::FolderRouteHandler(string&& path) : path(path) {}
 FolderRouteHandler::~FolderRouteHandler() {}
 RouteHandleResult FolderRouteHandler::operator()(Context& ctx) {
+  SPDLOG_DEBUG("FolderRouteHandler: {}", ctx.current_path);
   string full_path = this->path;
   full_path.append(ctx.current_path.substr(1));
   struct stat buf;
@@ -51,14 +62,26 @@ RouteHandleResult FolderRouteHandler::operator()(Context& ctx) {
     return NOT_FOUND_HANDLER(ctx);
   }
   if (S_ISDIR(buf.st_mode)) {
+    SPDLOG_DEBUG("FolderRouteHandler: is dir");
     return RouteHandleResult(NOT_FOUND_HANDLER(ctx));
   }
   TcpSendTasks tasks;
-  tasks.emplace_after(tasks.before_begin(),
-                      make_unique<TcpSendFile>(xsl::move(full_path)));
-  return RouteHandleResult{make_unique<Response<TcpSendTasks>>(
-      ResponsePart{200, "OK", HttpVersion::HTTP_1_1}, xsl::move(tasks))};
+  tasks.emplace_after(tasks.before_begin(), make_unique<TcpSendFile>(xsl::move(full_path)));
+  auto resp = make_unique<Response<TcpSendTasks>>(ResponsePart{200, "OK", HttpVersion::HTTP_1_1},
+                                                  xsl::move(tasks));
+  if (auto point = ctx.current_path.rfind('.'); point != string::npos) {
+    auto ext = ctx.current_path.substr(point + 1);
+    resp->part.headers.emplace(
+        "Content-Type",
+        to_string(ContentType{content_type::MediaType::from_extension(ext), Charset::UTF_8}));
+    SPDLOG_DEBUG("FolderRouteHandler: Content-Type: {}", resp->part.headers["Content-Type"]);
+  }
+  return RouteHandleResult{std::move(resp)};
 }
+// @brief Create a static handler for a file or folder.
+// @param path The path of the file or folder.
+// @return A static handler for the file or folder.
+
 StaticCreateResult create_static_handler(string&& path) {
   if (path.empty()) {
     return AddRouteError{AddRouteErrorKind::InvalidPath};

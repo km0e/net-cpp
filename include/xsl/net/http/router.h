@@ -1,4 +1,5 @@
 #pragma once
+#include "xsl/net/http/proto.h"
 #ifndef _XSL_NET_HTTP_ROUTER_H_
 #  define _XSL_NET_HTTP_ROUTER_H_
 #  include "xsl/net/http/context.h"
@@ -84,7 +85,7 @@ namespace router_details {
     RouteResult route(Context& ctx);
 
   private:
-    array<unique_ptr<RouteHandler>, METHOD_COUNT> handlers;
+    array<unique_ptr<RouteHandler>, HTTP_METHOD_COUNT> handlers;
     ShareContainer<unordered_map<string_view, shared_ptr<HttpRouteNode>>> children;
   };
 }  // namespace router_details

@@ -1,7 +1,4 @@
-link_libraries(
-    xsl_wheel
-    xsl_sync
-)
+
 
 add_executable(try_lock_guard try_lock_guard.cpp)
 

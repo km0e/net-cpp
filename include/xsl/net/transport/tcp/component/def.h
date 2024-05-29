@@ -1,20 +1,13 @@
 #pragma once
-#ifndef _XSL_NET_TRANSPORT_TCP_CONTEXT_H_
-#  define _XSL_NET_TRANSPORT_TCP_CONTEXT_H_
-#  include "xsl/net/transport/tcp/def.h"
+#ifndef _XSL_NET_TRANSPORT_TCP_HELPER_DEF_H_
+#  define _XSL_NET_TRANSPORT_TCP_HELPER_DEF_H_
+
+#  define TCP_COMPONENTS_NAMESPACE_BEGIN namespace xsl::net::transport::tcp::component {
+#  define TCP_COMPONENTS_NAMESPACE_END }
+#  include "xsl/net/transport/tcp/utils.h"
 #  include "xsl/wheel.h"
-TCP_NAMESPACE_BEGIN
-enum class SendError {
-  UNKNOWN,
-};
-string_view to_string(SendError err);
-using SendResult = Result<bool, SendError>;
-enum class RecvError {
-  UNKNOWN,
-  RECV_EOF,
-};
-string_view to_string(RecvError err);
-using RecvResult = Result<bool, RecvError>;
+TCP_COMPONENTS_NAMESPACE_BEGIN
+
 class SendContext;
 class RecvContext;
 class SendTaskNode {
@@ -29,7 +22,7 @@ public:
   // - recv : return true if the task is done, and will call next task
   //          return false if the task is done, but can't call next task
   //          if all tasks are done, but not recv all data, will call recv again
-  virtual RecvResult exec(RecvContext& ctx) = 0;
+  virtual Result<bool, RecvError> exec(RecvContext& ctx) = 0;
   virtual ~RecvTaskNode() = default;
 };
 using SendTasks = forward_list<unique_ptr<SendTaskNode>>;
@@ -51,5 +44,16 @@ public:
   RecvTasks& tasks;
   RecvTasks::iterator iter;
 };
-TCP_NAMESPACE_END
+class SendTasksProxy {
+public:
+  SendTasksProxy();
+  SendTasksProxy(SendTasksProxy&&) = default;
+  SendTasksProxy& operator=(SendTasksProxy&&) = default;
+  SendTasksProxy(SendTasksProxy&) = delete;
+  SendTasksProxy& operator=(SendTasksProxy&) = delete;
+  ~SendTasksProxy();
+  SendResult exec(int fd);
+  SendTasks tasks;
+};
+TCP_COMPONENTS_NAMESPACE_END
 #endif

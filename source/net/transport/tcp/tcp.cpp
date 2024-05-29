@@ -5,6 +5,4 @@
 #include <sys/stat.h>
 #include <unistd.h>
 TCP_NAMESPACE_BEGIN
-HandleConfig::HandleConfig() : recv_tasks() {}
-HandleConfig::~HandleConfig() {}
 TCP_NAMESPACE_END

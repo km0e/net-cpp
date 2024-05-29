@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <spdlog/spdlog.h>
+#include <sys/types.h>
 
 TCP_NAMESPACE_BEGIN
 
@@ -98,6 +99,89 @@ bool set_keep_alive(int fd, bool keep_alive) {
     return false;
   }
   return true;
+}
+
+string_view to_string(SendError err) {
+  switch (err) {
+    case SendError::Unknown:
+      return "Unknown";
+    default:
+      return "Unknown";
+  }
+}
+
+string_view to_string(RecvError err) {
+  switch (err) {
+    case RecvError::Unknown:
+      return "Unknown";
+    case RecvError::Eof:
+      return "Eof";
+    default:
+      return "Unknown";
+  }
+}
+
+RecvResult recv(int fd) {
+  SPDLOG_TRACE("start recv string");
+  vector<string> data;
+  char buf[MAX_SINGLE_RECV_SIZE];
+  ssize_t n;
+  do {
+    n = ::recv(fd, buf, sizeof(buf), 0);
+    SPDLOG_DEBUG("recv n: {}", n);
+    if (n == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        if (data.empty()) {
+          SPDLOG_DEBUG("recv eof");
+          return {RecvError::Eof};
+        }
+        SPDLOG_DEBUG("recv over");
+        break;
+      } else {
+        SPDLOG_ERROR("Failed to recv data, err : {}", strerror(errno));
+        // TODO: handle recv error
+        return {RecvError::Unknown};
+      }
+    } else if (n == 0) {
+      SPDLOG_DEBUG("recv eof");
+      return {RecvError::Eof};
+      break;
+    }
+    data.emplace_back(buf, n);
+  } while (n == sizeof(buf));
+  return {accumulate(data.begin(), data.end(), string())};
+}
+SendResult send(int fd, string_view data) {
+  ssize_t n = write(fd, data.data(), data.size());
+  if (n == -1) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      return {0};
+    } else {
+      return {SendError::Unknown};
+    }
+  } else if (n == 0) {
+    return {0};
+  } else if (static_cast<size_t>(n) == data.size()) {
+    return {static_cast<size_t>(n)};
+  }
+  data = data.substr(n);
+  while (true) {
+    ssize_t tmp = write(fd, data.data(), data.size());
+    if (tmp == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        return {static_cast<size_t>(n)};
+      } else {
+        return {SendError::Unknown};
+      }
+    } else if (tmp == 0) {
+      return {static_cast<size_t>(n)};
+    } else if (static_cast<size_t>(tmp) == data.size()) {
+      return {static_cast<size_t>(n + tmp)};
+    }
+    data = data.substr(tmp);
+    n += tmp;
+  }
+  return {SendError::Unknown};
 }
 
 TCP_NAMESPACE_END

@@ -11,6 +11,8 @@ project(
 
 set(CMAKE_CXX_STANDARD 20)
 
+set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build)
+
 # ---- Include guards ----
 if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
   message(
@@ -43,8 +45,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions(_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING)
   endif()
 endif()
-
-add_subdirectory(include)
 
 include_directories(${XSL_INC_DIR})
 

@@ -1,3 +1,4 @@
+#include "xsl/feature.h"
 #include "xsl/net.h"
 #include "xsl/wheel.h"
 
@@ -25,21 +26,28 @@ void sigterm_init() {
 using namespace xsl;
 class Handler {
 public:
-  TcpHandleConfig init([[maybe_unused]]int fd) {
-    TcpHandleConfig config{};
-    SPDLOG_DEBUG("[T][Handler::init] Pushing recv task");
-    config.recv_tasks.push_front(make_unique<TcpRecvString>(this->data));
-    return config;
+  PollHandleHint recv(int fd) {
+    auto res = recv_task.exec(fd);
+    if (res.is_err()) {
+      SPDLOG_ERROR("recv error: {}", to_string(res.unwrap_err()));
+      return {PollHandleHintTag::DELETE};
+    }
+    SPDLOG_INFO("[T][Handler::recv] Received data: {}", this->recv_task.data_buffer);
+    this->send_tasks.tasks.emplace_after(
+        this->send_tasks.tasks.before_begin(),
+        make_unique<TcpSendString<feature::node>>(xsl::move(this->recv_task.data_buffer)));
+    this->send_tasks.exec(fd);
+    return {PollHandleHintTag::NONE};
   }
-  TcpHandleState recv([[maybe_unused]] TcpRecvTasks &tasks) {
-    SPDLOG_INFO("[T][Handler::recv] Received data: {}", this->data);
-    return TcpHandleState(IOM_EVENTS::OUT, TcpHandleHint::WRITE);
-  }
-  TcpHandleState send(TcpSendTasks &tasks) {
-    tasks.emplace_front(make_unique<TcpSendString>(xsl::move(this->data)));
-    return TcpHandleState(IOM_EVENTS::NONE, TcpHandleHint::NONE);
+  PollHandleHint send([[maybe_unused]] int fd) { return {PollHandleHintTag::NONE}; }
+  PollHandleHint other(int fd, [[maybe_unused]] IOM_EVENTS events) {
+    SPDLOG_INFO("[T][Handler::other]");
+    this->send_tasks.exec(fd);
+    return {PollHandleHintTag::NONE};
   }
   string data;
+  TcpRecvString<> recv_task;
+  TcpSendTasksProxy send_tasks;
 };
 class HandlerGenerator {
 public:

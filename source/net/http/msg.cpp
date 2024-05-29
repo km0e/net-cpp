@@ -1,84 +1,16 @@
+#include "xsl/feature.h"
 #include "xsl/net/http/msg.h"
+#include "xsl/net/http/proto.h"
 #include "xsl/wheel.h"
+
+#include <spdlog/spdlog.h>
+
 HTTP_NAMESPACE_BEGIN
-string method_cast(HttpMethod method) {
-  switch (method) {
-    case HttpMethod::EXT:
-      return "EXT";
-    case HttpMethod::GET:
-      return "GET";
-    case HttpMethod::POST:
-      return "POST";
-    case HttpMethod::PUT:
-      return "PUT";
-    case HttpMethod::DELETE:
-      return "DELETE";
-    case HttpMethod::HEAD:
-      return "HEAD";
-    case HttpMethod::OPTIONS:
-      return "OPTIONS";
-    case HttpMethod::TRACE:
-      return "TRACE";
-    case HttpMethod::CONNECT:
-      return "CONNECT";
-    default:
-      return "Unknown";
-  }
-}
-HttpMethod method_cast(string_view method) {
-  if (method == "EXT") {
-    return HttpMethod::EXT;
-  } else if (method == "GET") {
-    return HttpMethod::GET;
-  } else if (method == "POST") {
-    return HttpMethod::POST;
-  } else if (method == "PUT") {
-    return HttpMethod::PUT;
-  } else if (method == "DELETE") {
-    return HttpMethod::DELETE;
-  } else if (method == "HEAD") {
-    return HttpMethod::HEAD;
-  } else if (method == "OPTIONS") {
-    return HttpMethod::OPTIONS;
-  } else if (method == "TRACE") {
-    return HttpMethod::TRACE;
-  } else if (method == "CONNECT") {
-    return HttpMethod::CONNECT;
-  } else {
-    return HttpMethod::UNKNOWN;
-  }
-}
-string http_version_cast(HttpVersion version) {
-  switch (version) {
-    case HttpVersion::EXT:
-      return "EXT";
-    case HttpVersion::HTTP_1_0:
-      return "HTTP/1.0";
-    case HttpVersion::HTTP_1_1:
-      return "HTTP/1.1";
-    case HttpVersion::HTTP_2_0:
-      return "HTTP/2.0";
-    default:
-      return "Unknown";
-  }
-}
-HttpVersion http_version_cast(string_view version) {
-  if (version == "EXT") {
-    return HttpVersion::EXT;
-  } else if (version == "HTTP/1.0") {
-    return HttpVersion::HTTP_1_0;
-  } else if (version == "HTTP/1.1") {
-    return HttpVersion::HTTP_1_1;
-  } else if (version == "HTTP/2.0") {
-    return HttpVersion::HTTP_2_0;
-  } else {
-    return HttpVersion::UNKNOWN;
-  }
-}
+
 RequestView::RequestView() : method(), uri(), version(), headers() {}
 RequestView::~RequestView() {}
 Request::Request(string&& raw, RequestView view)
-    : method(method_cast(view.method)), view(view), raw(xsl::move(raw)) {}
+    : method(wheel::from_string<HttpMethod>(view.method)), view(view), raw(xsl::move(raw)) {}
 Request::~Request() {}
 ResponseError::ResponseError(int code, string_view message) : code(code), message(message) {}
 ResponseError::~ResponseError() {}
@@ -91,10 +23,11 @@ ResponsePart::ResponsePart(int status_code, string&& status_message, HttpVersion
       version(version),
       headers() {}
 ResponsePart::~ResponsePart() {}
-unique_ptr<TcpSendString> ResponsePart::into_send_task_ptr() {
-  return make_unique<TcpSendString>(xsl::move(this->to_string()));
+unique_ptr<TcpSendString<feature::node>> ResponsePart::into_send_task_ptr() {
+  return make_unique<TcpSendString<feature::node>>(this->to_string());
 }
 TcpSendTasks ResponsePart::into_send_tasks() {
+  SPDLOG_DEBUG("ResponsePart::into_send_tasks");
   TcpSendTasks tasks;
   tasks.emplace_after(tasks.before_begin(), into_send_task_ptr());
   return tasks;
@@ -102,7 +35,7 @@ TcpSendTasks ResponsePart::into_send_tasks() {
 string ResponsePart::to_string() {
   string res;
   res.reserve(1024);
-  res += http_version_cast(version);
+  res += http::to_string_view(version);
   res += " ";
   res += xsl::to_string(status_code);
   res += " ";
@@ -112,6 +45,17 @@ string ResponsePart::to_string() {
     res += key;
     res += ": ";
     res += value;
+    res += "\r\n";
+  }
+  if (!headers.contains("Date")) {
+    res += "Date: ";
+    res += format("{:%a, %d %b %Y %T %Z}",
+                  chrono::time_point_cast<chrono::seconds>(chrono::utc_clock::now()));
+    res += "\r\n";
+  }
+  if (!headers.contains("Server")) {
+    res += "Server: ";
+    res += SERVER;
     res += "\r\n";
   }
   res += "\r\n";
@@ -130,7 +74,8 @@ Response<string>::Response(ResponsePart&& part, string&& body) : part(part), bod
 Response<string>::~Response() {}
 TcpSendTasks Response<string>::into_send_tasks() {
   TcpSendTasks tasks;
-  tasks.emplace_after(tasks.before_begin(), make_unique<TcpSendString>(xsl::move(body)));
+  tasks.emplace_after(tasks.before_begin(),
+                      make_unique<TcpSendString<feature::node>>(xsl::move(body)));
   tasks.emplace_after(tasks.before_begin(), part.into_send_task_ptr());
   return tasks;
 }

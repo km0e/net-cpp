@@ -1,9 +1,3 @@
-
-link_libraries(
-    xsl_transport
-    xsl_wheel
-)
-
 # use nc to test
 find_program(TEST_TOOL_NCAT ncat)
 find_program(TEST_TOOL_CAT cat)

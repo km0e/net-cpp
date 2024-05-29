@@ -4,24 +4,10 @@
 #  define _XSL_UTILS_WHEEL_RESULT_H_
 #  include "xsl/wheel/def.h"
 #  include "xsl/wheel/giant.h"
+#  include "xsl/wheel/str.h"
 
 WHEEL_NAMESPACE_BEGIN
 
-template <typename T>
-concept ToString = requires(T t) {
-  { to_string(t) } -> giant::convertible_to<giant::string_view>;
-} || requires(T t) {
-  { t.to_string() } -> giant::convertible_to<giant::string_view>;
-};
-
-template <ToString T>
-giant::string to_string(const T& t) {
-  if constexpr (requires { t.to_string(); }) {
-    return t.to_string();
-  } else {
-    return to_string(t);
-  }
-}
 
 template <typename T, ToString E>
 class RefResult {

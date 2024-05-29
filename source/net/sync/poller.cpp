@@ -15,8 +15,21 @@ IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b) {
   return a;
 }
 IOM_EVENTS operator~(IOM_EVENTS a) { return (IOM_EVENTS)(~(uint32_t)a); }
+string_view to_string(PollHandleHintTag tag) {
+  switch (tag) {
+    case PollHandleHintTag::NONE:
+      return "NONE";
+    case PollHandleHintTag::MODIFY:
+      return "MODIFY";
+    case PollHandleHintTag::DELETE:
+      return "DELETE";
+    default:
+      return "UNKNOWN";
+  }
+}
+
 DefaultPoller::DefaultPoller()
-    : DefaultPoller(make_shared<HandleProxy>([](function<void()>&& f) { f(); })) {}
+    : DefaultPoller(make_shared<HandleProxy>([](function<PollHandleHint()>&& f) { return f(); })) {}
 DefaultPoller::DefaultPoller(shared_ptr<HandleProxy>&& proxy)
     : fd(-1), handlers(), proxy(xsl::move(proxy)) {
   this->fd = epoll_create(1);
@@ -63,8 +76,19 @@ void DefaultPoller::poll() {
   SPDLOG_DEBUG("Polling {} events", n);
   for (int i = 0; i < n; i++) {
     auto handler = this->handlers.lock_shared()->at(events[i].data.fd);
-    SPDLOG_DEBUG("Handling event for fd: {}", (int)events[i].data.fd);
-    (*this->proxy)(bind(*handler, (int)events[i].data.fd, (IOM_EVENTS)events[i].events));
+    PollHandleHint hint
+        = (*this->proxy)(bind(*handler, (int)events[i].data.fd, (IOM_EVENTS)events[i].events));
+    SPDLOG_DEBUG("Handling {} for fd: {}", to_string(hint.tag), (int)events[i].data.fd);
+    switch (hint.tag) {
+      case PollHandleHintTag::DELETE:
+        this->unregister(events[i].data.fd);
+        break;
+      case PollHandleHintTag::MODIFY:
+        this->modify(events[i].data.fd, hint.data.events);
+        break;
+      default:
+        break;
+    }
   }
   SPDLOG_TRACE("Polling done");
 }

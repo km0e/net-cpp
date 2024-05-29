@@ -7,6 +7,7 @@
 #include <spdlog/spdlog.h>
 
 HTTP_NAMESPACE_BEGIN
+
 RouteHandleError::RouteHandleError() : message("") {}
 RouteHandleError::RouteHandleError(string message) : message(message) {}
 RouteHandleError::~RouteHandleError() {}
@@ -42,7 +43,7 @@ namespace router_details {
                                           RouteHandler&& handler) {
     SPDLOG_DEBUG("Adding route: {}", path);
     if (path.empty()) {
-      SPDLOG_DEBUG("for Method: {} Path: {}", method_cast(method), path);
+      SPDLOG_DEBUG("for Method: {} Path: {}", to_string_view(method), path);
       auto& old = handlers[static_cast<uint8_t>(method)];
       SPDLOG_DEBUG("old");
       if (old) {
@@ -73,8 +74,10 @@ namespace router_details {
       }
       RouteHandleResult res = (*handler)(ctx);
       if (res.is_ok()) {
+        SPDLOG_DEBUG("Route ok");
         return RouteResult(res.unwrap());
       }
+      SPDLOG_ERROR("Route error: {}", res.unwrap_err().to_string());
       return RouteResult(RouteError(RouteErrorKind::Unknown, ""));
     }
     if (ctx.current_path[0] != '/') {

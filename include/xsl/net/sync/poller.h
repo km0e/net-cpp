@@ -38,7 +38,28 @@ template <class T>
 concept Handler = requires(T t) {
   { t(0, IOM_EVENTS::NONE) };
 };
-using PollHandler = function<void(int fd, IOM_EVENTS events)>;
+
+enum class PollHandleHintTag : uint8_t {
+  NONE = 0,
+  MODIFY = 1,
+  DELETE = 2,
+};
+
+string_view to_string(PollHandleHintTag tag);
+
+class PollHandleHint {
+public:
+  PollHandleHintTag tag;
+  union {
+    IOM_EVENTS events;
+  } data;
+  PollHandleHint() : tag(PollHandleHintTag::NONE), data{IOM_EVENTS::NONE} {}
+  PollHandleHint(PollHandleHintTag tag) : tag(tag), data{IOM_EVENTS::NONE} {}
+  PollHandleHint(PollHandleHintTag tag, IOM_EVENTS events) : tag(tag), data{events} {}
+};
+
+using PollHandler = function<PollHandleHint(int fd, IOM_EVENTS events)>;
+
 class Poller {
 public:
   virtual bool subscribe(int fd, IOM_EVENTS events, PollHandler&& handler) = 0;
@@ -48,7 +69,7 @@ public:
   virtual void shutdown() = 0;
   virtual ~Poller() = default;
 };
-using HandleProxy = function<void(function<void()>&&)>;
+using HandleProxy = function<PollHandleHint(function<PollHandleHint()>&&)>;
 class DefaultPoller : public Poller {
 public:
   DefaultPoller();
@@ -70,14 +91,14 @@ template <Handler T, class... Args>
 unique_ptr<T> sub_unique(shared_ptr<Poller> poller, int fd, IOM_EVENTS events, Args&&... args) {
   auto handler = make_unique<T>(forward<Args>(args)...);
   poller->subscribe(
-      fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) { (*handler)(fd, events); });
+      fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) { return (*handler)(fd, events); });
   return handler;
 }
 template <Handler T, class... Args>
 shared_ptr<T> sub_shared(shared_ptr<Poller> poller, int fd, IOM_EVENTS events, Args&&... args) {
   auto handler = make_shared<T>(forward<Args>(args)...);
   poller->subscribe(
-      fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) { (*handler)(fd, events); });
+      fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) { return (*handler)(fd, events); });
   return handler;
 }
 SYNC_NAMESPACE_END

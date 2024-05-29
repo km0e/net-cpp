@@ -1,4 +1,5 @@
 #include "xsl/net.h"
+#include "xsl/net/sync/poller.h"
 
 #include <CLI/CLI.hpp>
 #include <pthread.h>
@@ -34,26 +35,26 @@ int main(int argc, char **argv) {
     return 1;
   }
   int echo_cycles = 0;
-  poller.subscribe(fd, IOM_EVENTS::IN, [&echo_cycles](int fd, IOM_EVENTS events) -> IOM_EVENTS {
+  poller.subscribe(fd, IOM_EVENTS::IN, [&echo_cycles](int fd, IOM_EVENTS events) -> PollHandleHint {
     if ((events & IOM_EVENTS::IN) == IOM_EVENTS::IN) {
       char buf[1024];
       int res = read(fd, buf, sizeof(buf));
       if (res < 0) {
-        return IOM_EVENTS::NONE;
+        return {PollHandleHintTag::DELETE};
       }
       buf[res] = 0;
       string expected = "Cycle " + to_string(echo_cycles) + ": Hello, world!";
       if (string(buf) != expected) {
-        return IOM_EVENTS::NONE;
+        return PollHandleHintTag::DELETE;
       }
       echo_cycles++;
       string msg = "Cycle " + to_string(echo_cycles) + ": Hello, world!";
       res = write(fd, msg.c_str(), msg.size());
       if (res < 0) {
-        return IOM_EVENTS::NONE;
+        return PollHandleHintTag::DELETE;
       }
     }
-    return IOM_EVENTS::IN;
+    return PollHandleHintTag::NONE;
   });
   string msg = "Cycle " + to_string(echo_cycles) + ": Hello, world!";
   int res = write(fd, msg.c_str(), msg.size());

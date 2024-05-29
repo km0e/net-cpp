@@ -1,39 +1,14 @@
 #pragma once
 #ifndef _XSL_NET_HTTP_MSG_H_
 #  define _XSL_NET_HTTP_MSG_H_
+#  include "xsl/feature.h"
 #  include "xsl/net/http/def.h"
+#  include "xsl/net/http/proto.h"
 #  include "xsl/net/transport.h"
 #  include "xsl/wheel.h"
 HTTP_NAMESPACE_BEGIN
-enum class HttpMethod : uint8_t {
-  EXT,
-  GET,
-  POST,
-  PUT,
-  DELETE,
-  HEAD,
-  OPTIONS,
-  TRACE,
-  CONNECT,
-  UNKNOWN = 0xff,
-};
-const int METHOD_COUNT = 9;
-const array<string_view, METHOD_COUNT> HTTP_METHOD_STRINGS = {
-    "EXT", "GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "TRACE", "CONNECT",
-};
-string method_cast(HttpMethod method);
-HttpMethod method_cast(string_view method);
 
-enum class HttpVersion : uint8_t {
-  EXT,
-  HTTP_1_0,
-  HTTP_1_1,
-  HTTP_2_0,
-  UNKNOWN = 0xff,
-};
 
-string http_version_cast(HttpVersion method);
-HttpVersion http_version_cast(string_view method);
 using namespace transport::tcp;
 class RequestView {
 public:
@@ -70,10 +45,26 @@ public:
 
 using IntoSendTasksPtr = unique_ptr<IntoSendTasks>;
 
-// class Response {
-// public:
-//   virtual TcpSendTasks to_send_tasks() = 0;
-// };
+const int DEFAULT_HEADER_COUNT = 16;
+
+const array<pair<string_view, string_view>, DEFAULT_HEADER_COUNT> DEFAULT_HEADERS = {
+    pair{"Server", "XSL/0.1"},
+    pair{"Content-Type", "text/plain"},
+    pair{"Connection", "close"},
+    pair{"Date", "Sun, 06 Nov 1994 08:49:37 GMT"},
+    pair{"Last-Modified", "Sun, 06 Nov 1994 08:49:37 GMT"},
+    pair{"Accept-Ranges", "bytes"},
+    pair{"ETag", "\"359670651\""},
+    pair{"Content-Length", "12345"},
+    pair{"Cache-Control", "no-cache"},
+    pair{"Expires", "Sun, 06 Nov 1994 08:49:37 GMT"},
+    pair{"Pragma", "no-cache"},
+    pair{"Content-Encoding", "gzip"},
+    pair{"Vary", "Accept-Encoding"},
+    pair{"X-Content-Type-Options", "nosniff"},
+    pair{"X-Frame-Options", "DENY"},
+    pair{"X-XSS-Protection", "1; mode=block"},
+};
 
 class ResponsePart : public IntoSendTasks {
 public:
@@ -84,7 +75,7 @@ public:
   string status_message;
   HttpVersion version;
   unordered_map<string, string> headers;
-  unique_ptr<TcpSendString> into_send_task_ptr();
+  unique_ptr<TcpSendString<feature::node>> into_send_task_ptr();
   TcpSendTasks into_send_tasks();
   string to_string();
 };

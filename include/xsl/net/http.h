@@ -1,9 +1,9 @@
 #pragma once
-#ifndef _XSL_NET_HTTP_CONFIG_H_
-#  define _XSL_NET_HTTP_CONFIG_H_
+#ifndef _XSL_NET_HTTP_H_
+#  define _XSL_NET_HTTP_H_
 #  include "xsl/net/def.h"
+#  include "xsl/net/http/component.h"
 #  include "xsl/net/http/def.h"
-#  include "xsl/net/http/helper.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/parse.h"
 #  include "xsl/net/http/router.h"
@@ -20,8 +20,8 @@ using HttpRequestView = http::RequestView;
 using http::HTTP_METHOD_STRINGS;
 using http::HttpServerConfig;
 using http::HttpVersion;
-using http::http_version_cast;
 using http::Request;
+using http::to_string_view;
 using HttpResponsePart = http::ResponsePart;
 using http::RouteErrorKind;
 using http::StaticCreateResult;

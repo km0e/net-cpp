@@ -1,6 +1,5 @@
-#include "xsl/net/transport/tcp/context.h"
-#include "xsl/net/transport/tcp/helper/def.h"
-#include "xsl/net/transport/tcp/helper/file.h"
+#include "xsl/net/transport/tcp/component/def.h"
+#include "xsl/net/transport/tcp/component/file.h"
 #include "xsl/wheel.h"
 
 #include <fcntl.h>
@@ -10,11 +9,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-TCP_HELPER_NAMESPACE_BEGIN
+TCP_COMPONENTS_NAMESPACE_BEGIN
 
 SendFile::SendFile(string&& path) : path_buffer({xsl::move(path)}) {}
 SendFile::~SendFile() {}
-tcp::SendResult SendFile::exec(tcp::SendContext& ctx) {
+SendResult SendFile::exec(SendContext& ctx) {
   while (true) {
     int ffd = open(this->path_buffer.front().c_str(), O_RDONLY);
     if (ffd == -1) {
@@ -34,7 +33,7 @@ tcp::SendResult SendFile::exec(tcp::SendContext& ctx) {
       } else {
         SPDLOG_ERROR("[sendfile] Failed to send file");
         close(ffd);
-        return {tcp::SendError::UNKNOWN};
+        return {SendError::Unknown};
       }
     } else if (n < st.st_size) {
       SPDLOG_DEBUG("[sendfile] send {} bytes", n);
@@ -49,4 +48,4 @@ tcp::SendResult SendFile::exec(tcp::SendContext& ctx) {
   }
   return {true};
 }
-TCP_HELPER_NAMESPACE_END
+TCP_COMPONENTS_NAMESPACE_END

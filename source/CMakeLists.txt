@@ -1,25 +1,17 @@
+add_library(xsl STATIC)
 
-add_subdirectory(wheel)
-
-add_subdirectory(utils)
-
-add_subdirectory(sync)
-
-add_subdirectory(transport)
-
-add_subdirectory(http)
-
-add_library(Xsl STATIC)
-
-target_sources(Xsl
-    PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/xsl.cpp
+file(GLOB_RECURSE XSL_SOURCE_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 )
 
-target_link_libraries(Xsl
+target_sources(
+    xsl
+    PRIVATE
+    ${XSL_SOURCE_FILES}
+)
+
+target_include_directories(
+    xsl
     PUBLIC
-    xsl_utils
-    xsl_sync
-    xsl_transport
-    xsl_http
+    ${PROJECT_SOURCE_DIR}/include
 )

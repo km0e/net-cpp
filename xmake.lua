@@ -9,7 +9,7 @@ add_rules("mode.debug", "mode.release", "mode.coverage")
 set_warnings("everything")
 -- set_warnings("all", "error", 'pedantic', 'extra')
 
-set_languages("c++20")
+set_languages("cxx20")
 
 
 add_requires("thread-pool", "spdlog", "cli11", "fmt")
@@ -32,6 +32,6 @@ set_values("none", "trace", "debug", "info", "warn", "error", "critical")
 option_end()
 
 xsl_sources = "$(projectdir)/source/**.cpp"
-xsl_headers = "$(projectdir)/include/**.h"
-includes("include", "source", "test")
+xsl_headers = "$(projectdir)/include/(**.h)"
+includes("source", "test")
 

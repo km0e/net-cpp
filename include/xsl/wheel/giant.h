@@ -19,6 +19,7 @@
 #  include <optional>
 #  include <queue>
 #  include <ranges>
+#  include <stack>
 #  include <string>
 #  include <string_view>
 #  include <tuple>
@@ -32,6 +33,8 @@ namespace xsl::wheel::giant {
   using std::array;
   using std::atomic_flag;
   using std::bind;
+  using std::get_if;
+  using std::stack;
   using ssize_t = ::ssize_t;
   using std::byte;
   using std::convertible_to;
@@ -66,8 +69,8 @@ namespace xsl::wheel::giant {
   using std::unique_ptr;
   using std::unordered_map;
   using std::variant;
-  using std::ranges::views::all;
   using std::ranges::views::_All;
+  using std::ranges::views::all;
 
   using std::vector;
   // using dp::thread_pool;

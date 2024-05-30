@@ -34,7 +34,7 @@ concept TcpHandler = move_constructible<T> && requires(T t, int fd, IOM_EVENTS e
   { t.send(fd) } -> same_as<sync::PollHandleHint>;
   { t.recv(fd) } -> same_as<sync::PollHandleHint>;
   { t.other(fd, events) } -> same_as<sync::PollHandleHint>;
-};
+}; 
 
 template <class T, class H>
 concept TcpHandlerGenerator = TcpHandler<H> && requires(T t, H h) {

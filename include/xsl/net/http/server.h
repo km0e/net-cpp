@@ -78,11 +78,13 @@ private:
 
 using HttpHandler = Handler<HttpRouter>;
 
-template <Router R, TcpHandler H>
+template <Router R, TcpHandlerLike H>
 class HandlerGenerator {
 public:
   HandlerGenerator(shared_ptr<R> router) : router(router) {}
-  H operator()() { return Handler<R>{this->router}; }
+  unique_ptr<Handler<R>> operator()([[maybe_unused]] int fd) {
+    return make_unique<Handler<R>>(this->router);
+  }
 
 private:
   shared_ptr<R> router;

@@ -30,7 +30,7 @@ using net::RouteErrorKind;
 using net::sub_shared;
 using net::sub_unique;
 using net::TcpHandleHint;
-using net::TcpHandlerGenerator;
+using net::TcpHandlerGeneratorLike;
 using net::TcpHandleState;
 using net::TcpRecvError;
 using net::TcpRecvString;

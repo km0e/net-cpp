@@ -13,10 +13,16 @@
 #  include <unistd.h>
 
 TCP_NAMESPACE_BEGIN
-template <TcpHandler H, TcpHandlerGenerator<H> HG>
+
+template <class T, class H>
+concept TcpHandlerGeneratorLike = TcpHandlerLike<H> && requires(T t, H h, int fd) {
+  { t(fd) } -> same_as<unique_ptr<H>>;
+};
+
+template <TcpHandlerLike H, TcpHandlerGeneratorLike<H> HG>
 class TcpServerConfig {
 public:
-  TcpServerConfig();
+  TcpServerConfig() : host("0.0.0.0"), port(8080), poller(nullptr), handler_generator(nullptr) {}
   int max_connections = MAX_CONNECTIONS;
   string_view host;
   int port;
@@ -24,15 +30,20 @@ public:
   shared_ptr<Poller> poller;
   shared_ptr<HG> handler_generator;
 };
-template <TcpHandler H, TcpHandlerGenerator<H> HG>
-TcpServerConfig<H, HG>::TcpServerConfig()
-    : host("0.0.0.0"), port(8080), poller(nullptr), handler_generator(nullptr) {
-}
-
-template <TcpHandler H, TcpHandlerGenerator<H> HG>
+template <TcpHandlerLike H, TcpHandlerGeneratorLike<H> HG>
 class TcpServer {
 public:
-  static unique_ptr<TcpServer<H, HG>> serve(TcpServerConfig<H, HG> config);
+  static unique_ptr<TcpServer<H, HG>> serve(TcpServerConfig<H, HG> config) {
+    TcpServerSockConfig cfg{};
+    cfg.max_connections = config.max_connections;
+    int server_fd = create_tcp_server(config.host.data(), config.port, cfg);
+    if (server_fd == -1) {
+      SPDLOG_ERROR("Failed to create server");
+      return nullptr;
+    }
+    config.fd = server_fd;
+    return sub_unique<TcpServer<H, HG>>(config.poller, server_fd, sync::IOM_EVENTS::IN, config);
+  }
   TcpServer(TcpServer&&) = delete;
   TcpServer(TcpServerConfig<H, HG> config) : config(config), handlers() {}
   ~TcpServer() {
@@ -55,8 +66,9 @@ public:
         close(client_fd);
         return {PollHandleHintTag::NONE};
       }
-      auto tcp_conn = sub_unique<TcpConn<H>>(this->config.poller, client_fd, IOM_EVENTS::IN,
-                                             client_fd, (*this->config.handler_generator)());
+      auto tcp_conn
+          = sub_unique<TcpConn<H>>(this->config.poller, client_fd, IOM_EVENTS::IN, client_fd,
+                                   (*this->config.handler_generator)(client_fd));
       this->handlers.lock()->emplace(client_fd, std::move(tcp_conn));
       SPDLOG_TRACE("accept done");
       return {PollHandleHintTag::NONE};
@@ -73,19 +85,5 @@ private:
 
   ShareContainer<unordered_map<int, unique_ptr<TcpConn<H>>>> handlers;
 };
-
-template <TcpHandler H, TcpHandlerGenerator<H> HG>
-unique_ptr<TcpServer<H, HG>> TcpServer<H, HG>::serve(TcpServerConfig<H, HG> config) {
-  TcpServerSockConfig cfg{};
-  cfg.max_connections = config.max_connections;
-  int server_fd = create_tcp_server(config.host.data(), config.port, cfg);
-  if (server_fd == -1) {
-    SPDLOG_ERROR("Failed to create server");
-    return nullptr;
-  }
-  config.fd = server_fd;
-  return sub_unique<TcpServer<H, HG>>(config.poller, server_fd, sync::IOM_EVENTS::IN, config);
-}
-
 TCP_NAMESPACE_END
 #endif

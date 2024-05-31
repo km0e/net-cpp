@@ -9,8 +9,8 @@
 #  include "xsl/net/transport/tcp/utils.h"
 TRANSPORT_NAMESPACE_BEGIN
 using TcpHandleHint = tcp::HandleHint;
-using tcp::TcpHandler;
-using tcp::TcpHandlerGenerator;
+using tcp::TcpHandlerLike;
+using tcp::TcpHandlerGeneratorLike;
 using TcpHandleState = tcp::HandleState;
 using tcp::TcpRecvString;
 using TcpSendTaskNode = tcp::SendTaskNode;

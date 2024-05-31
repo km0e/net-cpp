@@ -26,6 +26,7 @@ void sigterm_init() {
 using namespace xsl;
 class Handler {
 public:
+  Handler() : data(), recv_task(), send_tasks() {}
   PollHandleHint recv(int fd) {
     auto res = recv_task.exec(fd);
     if (res.is_err()) {
@@ -53,7 +54,7 @@ class HandlerGenerator {
 public:
   HandlerGenerator() : data("Hello, world!") {}
   ~HandlerGenerator() {}
-  Handler operator()() { return {}; }
+  unique_ptr<Handler> operator()([[maybe_unused]] int fd) { return make_unique<Handler>(); }
 
 private:
   string data;

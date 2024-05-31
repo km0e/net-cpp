@@ -32,6 +32,7 @@ using wheel::giant::forward;
 using wheel::giant::forward_list;
 using wheel::giant::function;
 using wheel::giant::get_if;
+using wheel::giant::holds_alternative;
 using wheel::giant::list;
 using wheel::giant::make_optional;
 using wheel::giant::make_pair;

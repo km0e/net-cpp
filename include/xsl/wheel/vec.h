@@ -52,6 +52,11 @@ public:
   const T& operator[](size_t index) const { return this->data[index]; }
   size_t size() const { return this->_size; }
 
+  T* begin() { return this->data.get(); }
+  const T* begin() const { return this->data.get(); }
+  T* end() { return this->data.get() + this->_size; }
+  const T* end() const { return this->data.get() + this->_size; }
+
 private:
   size_t _size;
   giant::unique_ptr<T[]> data;

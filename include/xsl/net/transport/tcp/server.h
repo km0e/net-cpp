@@ -27,8 +27,6 @@ public:
 template <TcpHandler H, TcpHandlerGenerator<H> HG>
 TcpServerConfig<H, HG>::TcpServerConfig()
     : host("0.0.0.0"), port(8080), poller(nullptr), handler_generator(nullptr) {
-  // for debug
-  spdlog::set_pattern("[%D-%T][%^%l%$][c%t][%!] %v");
 }
 
 template <TcpHandler H, TcpHandlerGenerator<H> HG>

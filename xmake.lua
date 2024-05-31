@@ -24,14 +24,8 @@ add_rules("plugin.compile_commands.autoupdate", { outputdir = "build" })
 
 add_includedirs("$(projectdir)/include", { public = true })
 
-option("log")
-set_default("none")
-set_showmenu(true)
-set_description("Enable log")
-set_values("none", "trace", "debug", "info", "warn", "error", "critical")
-option_end()
+set_config("log", "none")
 
 xsl_sources = "$(projectdir)/source/**.cpp"
 xsl_headers = "$(projectdir)/include/(**.h)"
 includes("source", "test")
-

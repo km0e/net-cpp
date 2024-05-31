@@ -1,9 +1,10 @@
 #pragma once
-#include <compare>
 #ifndef _XSL_WHEEL_STR_H_
 #  define _XSL_WHEEL_STR_H_
 #  include "xsl/wheel/def.h"
 #  include "xsl/wheel/giant.h"
+
+#  include <compare>
 
 WHEEL_NAMESPACE_BEGIN
 using std::to_string;
@@ -112,6 +113,7 @@ public:
     }
     return i == this->size() && other[i] == '\0';
   }
+  giant::string to_string() const { return giant::string(this->data(), this->size()); }
 
 private:
   size_t _size;

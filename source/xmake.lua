@@ -1,3 +1,4 @@
+includes("net")
 target("xsl")
 do
     set_kind("static")

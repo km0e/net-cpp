@@ -18,7 +18,8 @@ add_packages("toml++")
 
 add_requires("thread-pool", "cli11", "fmt", "gtest")
 
-add_requires("spdlog", {system = false, configs = {header_only = true}})
+add_requires("spdlog", {system = false, configs = {fmt_external = true}})
+
 -- add_requires("boost")
 
 -- add_requires("abseil")

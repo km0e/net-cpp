@@ -6,6 +6,9 @@
 #include <spdlog/spdlog.h>
 #include <sys/stat.h>
 
+#include <filesystem>
+#include <system_error>
+
 HTTP_HELPER_NAMESPACE_BEGIN
 using namespace http;
 class FileRouteHandler {
@@ -17,9 +20,9 @@ public:
   ContentType content_type;
 };
 FileRouteHandler::FileRouteHandler(string&& path)
-    : path(path), content_type(content_type::MediaType{}, Charset::UTF_8) {
-  if (auto point = path.rfind('.'); point != string::npos) {
-    auto ext = string_view(path).substr(point + 1);
+    : path(std::move(path)), content_type(content_type::MediaType{}, Charset::UTF_8) {
+  if (auto point = this->path.rfind('.'); point != string::npos) {
+    auto ext = string_view(this->path).substr(point + 1);
     this->content_type.media_type = content_type::MediaType::from_extension(ext);
   }
 }
@@ -36,8 +39,8 @@ RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
   }
   TcpSendTasks tasks;
   tasks.emplace_after(tasks.before_begin(), make_unique<TcpSendFile>(xsl::move(this->path)));
-  auto resp = make_unique<HttpResponse<TcpSendTasks>>(ResponsePart{200, "OK", HttpVersion::HTTP_1_1},
-                                                  xsl::move(tasks));
+  auto resp = make_unique<HttpResponse<TcpSendTasks>>(
+      ResponsePart{200, "OK", HttpVersion::HTTP_1_1}, xsl::move(tasks));
   resp->part.headers.emplace("Content-Type", to_string(this->content_type));
   return RouteHandleResult{std::move(resp)};
 }
@@ -49,7 +52,7 @@ public:
   RouteHandleResult operator()(RouteContext& ctx);
   string path;
 };
-FolderRouteHandler::FolderRouteHandler(string&& path) : path(path) {}
+FolderRouteHandler::FolderRouteHandler(string&& path) : path(std::move(path)) {}
 FolderRouteHandler::~FolderRouteHandler() {}
 RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
   SPDLOG_DEBUG("FolderRouteHandler: {}", ctx.current_path);
@@ -67,8 +70,8 @@ RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
   }
   TcpSendTasks tasks;
   tasks.emplace_after(tasks.before_begin(), make_unique<TcpSendFile>(xsl::move(full_path)));
-  auto resp = make_unique<HttpResponse<TcpSendTasks>>(ResponsePart{200, "OK", HttpVersion::HTTP_1_1},
-                                                  xsl::move(tasks));
+  auto resp = make_unique<HttpResponse<TcpSendTasks>>(
+      ResponsePart{200, "OK", HttpVersion::HTTP_1_1}, xsl::move(tasks));
   if (auto point = ctx.current_path.rfind('.'); point != string::npos) {
     auto ext = ctx.current_path.substr(point + 1);
     resp->part.headers.emplace(
@@ -82,15 +85,15 @@ StaticCreateResult create_static_handler(string&& path) {
   if (path.empty()) {
     return AddRouteError{AddRouteErrorKind::InvalidPath};
   }
-  struct stat buf;
-  int res = stat(path.c_str(), &buf);
-  if (res == -1) {
-    SPDLOG_ERROR("stat failed: {}", strerror(errno));
+  std::error_code ec;
+  auto status = std::filesystem::status(path, ec);
+  if (ec) {
+    SPDLOG_ERROR("filesystem::status failed: {}", ec.message());
     return AddRouteError{AddRouteErrorKind::InvalidPath};
   }
-  if (path.back() == '/' && S_ISDIR(buf.st_mode)) {
+  if (status.type() == std::filesystem::file_type::directory) {
     return RouteHandler{FolderRouteHandler{xsl::move(path)}};
-  } else if (S_ISREG(buf.st_mode)) {
+  } else if (status.type() == std::filesystem::file_type::regular) {
     return RouteHandler{FileRouteHandler{xsl::move(path)}};
   }
   return AddRouteError{AddRouteErrorKind::InvalidPath};

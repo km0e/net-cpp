@@ -1,6 +1,6 @@
-add_deps("xsl_for_test")
-
-includes("http_server")
+add_deps("xsl_http","xsl")
+add_packages("gtest","fmt")
+includes("http_server","component")
 
 for _, file in ipairs(os.files("test_*.cpp")) do
     local name = path.basename(file)

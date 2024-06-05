@@ -1,4 +1,4 @@
-includes("net")
+includes("net","utils","wheel")
 target("xsl")
 do
     set_kind("static")

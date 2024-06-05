@@ -1,9 +1,12 @@
-#include "xsl/net/transport.h"
+#include "xsl/net/transport/tcp.h"
 
 #include <CLI/CLI.hpp>
 #include <spdlog/spdlog.h>
 #include <unistd.h>
-using namespace xsl;
+
+#include <string>
+
+using namespace std;
 using namespace xsl::net;
 int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
@@ -13,7 +16,7 @@ int main(int argc, char **argv) {
   app.add_option("-p,--port", port, "Port to connect to")->required();
   CLI11_PARSE(app, argc, argv);
 
-  int fd = create_tcp_client(ip.data(), port.data());
+  int fd = transport::create_tcp_client(ip.data(), port.data());
   if (fd < 0) {
     return 1;
   }

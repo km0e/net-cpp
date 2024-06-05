@@ -1,5 +1,6 @@
 #include "xsl/feature.h"
-#include "xsl/net.h"
+#include "xsl/net/sync.h"
+#include "xsl/net/transport/tcp.h"
 #include "xsl/wheel.h"
 
 #include <CLI/CLI.hpp>
@@ -24,6 +25,8 @@ void sigterm_init() {
   sigaction(SIGINT, &act, nullptr);
 }
 using namespace xsl;
+using namespace xsl::net;
+using namespace xsl::net::transport;
 class Handler {
 public:
   Handler() : data(), recv_task(), send_tasks() {}
@@ -41,7 +44,7 @@ public:
     return TcpHandleState::NONE;
   }
   TcpHandleState send([[maybe_unused]] int fd) { return TcpHandleState::NONE; }
-  void close([[maybe_unused]]int fd){};
+  void close([[maybe_unused]] int fd){};
   TcpHandleState other(int fd, [[maybe_unused]] IOM_EVENTS events) {
     SPDLOG_INFO("[T][Handler::other]");
     this->send_tasks.exec(fd);

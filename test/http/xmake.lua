@@ -1,4 +1,4 @@
-add_deps("xsl_http","xsl")
+add_deps("xsl_http")
 add_packages("gtest","fmt")
 includes("http_server","component")
 

@@ -1,8 +1,7 @@
-target("xsl_tcp")do
+target("xsl_wheel")do
     set_kind("static")
     set_default(false)
     add_files("**.cpp")
     add_defines("SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE",{public = true})
-    add_deps("xsl_utils","xsl_sync")
     on_package(function(package) end)
 end

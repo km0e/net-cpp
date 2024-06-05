@@ -14,7 +14,7 @@ target("tcp_client_test")
     set_kind("phony")
     add_deps(test_list)
     on_test(function (target)
-        test_files = {}
+        local test_files = {}
         for _, test in ipairs(test_list) do
             test_files[#test_files+1] = target:dep(test):targetfile()
         end

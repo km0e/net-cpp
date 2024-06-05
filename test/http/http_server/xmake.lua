@@ -3,6 +3,5 @@ do
     set_kind("binary")
     set_default(false)
     add_files("*.cpp")
-    add_deps("xsl_for_test")
     add_defines("SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE", { public = true })
 end

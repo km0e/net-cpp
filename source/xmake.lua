@@ -3,6 +3,7 @@ do
     set_kind("static")
     add_files(xsl_sources)
     add_headerfiles(xsl_headers)
+    -- add_defines("SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG")
     on_load(function(target)
         if get_config("log") == "none" then
             target:add("defines", "SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_OFF")

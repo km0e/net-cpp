@@ -37,7 +37,7 @@ DefaultPoller::DefaultPoller(shared_ptr<HandleProxy>&& proxy)
 }
 bool DefaultPoller::valid() { return this->fd != -1; }
 
-bool DefaultPoller::subscribe(int fd, IOM_EVENTS events, PollHandler&& handler) {
+bool DefaultPoller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
   SPDLOG_TRACE("");
   epoll_event event;
   event.events = (uint32_t)events;
@@ -50,7 +50,7 @@ bool DefaultPoller::subscribe(int fd, IOM_EVENTS events, PollHandler&& handler) 
   this->handlers.lock()->try_emplace(fd, make_shared<PollHandler>(handler));
   return true;
 }
-bool DefaultPoller::modify(int fd, IOM_EVENTS events) {
+bool DefaultPoller::modify(int fd, IOM_EVENTS events, optional<PollHandler>&& handler) {
   SPDLOG_TRACE("");
   epoll_event event;
   event.events = (uint32_t)events;
@@ -58,9 +58,15 @@ bool DefaultPoller::modify(int fd, IOM_EVENTS events) {
   if (epoll_ctl(this->fd, EPOLL_CTL_MOD, fd, &event) == -1) {
     return false;
   }
+  if (handler.has_value()) {
+    this->handlers.lock()->insert_or_assign(fd, make_shared<PollHandler>(handler.value()));
+  }
   return true;
 }
 void DefaultPoller::poll() {
+  if (!this->valid()) {
+    return;
+  }
   SPDLOG_TRACE("Start polling");
   epoll_event events[10];
   sigset_t mask;
@@ -81,10 +87,10 @@ void DefaultPoller::poll() {
     SPDLOG_DEBUG("Handling {} for fd: {}", to_string(hint.tag), (int)events[i].data.fd);
     switch (hint.tag) {
       case PollHandleHintTag::DELETE:
-        this->unregister(events[i].data.fd);
+        this->remove(events[i].data.fd);
         break;
       case PollHandleHintTag::MODIFY:
-        this->modify(events[i].data.fd, hint.data.events);
+        this->modify(events[i].data.fd, hint.data.events, nullopt);
         break;
       default:
         break;
@@ -92,10 +98,20 @@ void DefaultPoller::poll() {
   }
   SPDLOG_TRACE("Polling done");
 }
-void DefaultPoller::unregister(int fd) {
+void DefaultPoller::remove(int fd) {
   epoll_ctl(this->fd, EPOLL_CTL_DEL, fd, nullptr);
   (*this->handlers.lock()).erase(fd);
 }
-void DefaultPoller::shutdown() { close(this->fd); }
+void DefaultPoller::shutdown() {
+  if (!this->valid()) {
+    return;
+  }
+  for (auto& [key, value] : *this->handlers.lock()) {
+    close(key);
+  }
+  this->handlers.lock()->clear();
+  close(this->fd);
+  this->fd = -1;
+}
 DefaultPoller::~DefaultPoller() { this->shutdown(); }
 SYNC_NAMESPACE_END

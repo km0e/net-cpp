@@ -12,8 +12,13 @@ set_warnings("everything")
 set_languages("cxx20")
 
 
-add_requires("thread-pool", "spdlog", "cli11", "fmt")
+add_requires("toml++", {configs = {header_only = true}})
 
+add_packages("toml++")
+
+add_requires("thread-pool", "cli11", "fmt", "gtest")
+
+add_requires("spdlog", {system = false, configs = {header_only = true}})
 -- add_requires("boost")
 
 -- add_requires("abseil")

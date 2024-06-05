@@ -6,11 +6,11 @@
 NET_NAMESPACE_BEGIN
 using sync::DefaultPoller;
 using sync::IOM_EVENTS;
+using sync::poll_add_shared;
+using sync::poll_add_unique;
 using sync::Poller;
 using sync::PollHandleHint;
 using sync::PollHandleHintTag;
 using sync::PollHandler;
-using sync::sub_shared;
-using sync::sub_unique;
 NET_NAMESPACE_END
 #endif

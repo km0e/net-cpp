@@ -27,24 +27,25 @@ using namespace xsl;
 class Handler {
 public:
   Handler() : data(), recv_task(), send_tasks() {}
-  PollHandleHint recv(int fd) {
+  TcpHandleState recv(int fd) {
     auto res = recv_task.exec(fd);
     if (res.is_err()) {
       SPDLOG_ERROR("recv error: {}", to_string(res.unwrap_err()));
-      return {PollHandleHintTag::DELETE};
+      return TcpHandleState::CLOSE;
     }
     SPDLOG_INFO("[T][Handler::recv] Received data: {}", this->recv_task.data_buffer);
     this->send_tasks.tasks.emplace_after(
         this->send_tasks.tasks.before_begin(),
         make_unique<TcpSendString<feature::node>>(xsl::move(this->recv_task.data_buffer)));
     this->send_tasks.exec(fd);
-    return {PollHandleHintTag::NONE};
+    return TcpHandleState::NONE;
   }
-  PollHandleHint send([[maybe_unused]] int fd) { return {PollHandleHintTag::NONE}; }
-  PollHandleHint other(int fd, [[maybe_unused]] IOM_EVENTS events) {
+  TcpHandleState send([[maybe_unused]] int fd) { return TcpHandleState::NONE; }
+  void close([[maybe_unused]]int fd){};
+  TcpHandleState other(int fd, [[maybe_unused]] IOM_EVENTS events) {
     SPDLOG_INFO("[T][Handler::other]");
     this->send_tasks.exec(fd);
-    return {PollHandleHintTag::NONE};
+    return TcpHandleState::NONE;
   }
   string data;
   TcpRecvString<> recv_task;
@@ -64,7 +65,7 @@ int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
   string ip = "localhost";
   app.add_option("-i,--ip", ip, "Ip to connect to")->required();
-  int port = 8080;
+  string port = "8080";
   app.add_option("-p,--port", port, "Port to connect to")->required();
   CLI11_PARSE(app, argc, argv);
 
@@ -73,8 +74,7 @@ int main(int argc, char **argv) {
   spdlog::set_level(spdlog::level::trace);
   TcpServerConfig<Handler, HandlerGenerator> config{};
   config.max_connections = 10;
-  config.host = ip;
-  config.port = port;
+  config.sa4 = SockAddrV4View(ip, port);
   auto poller = make_shared<DefaultPoller>();
   if (!poller->valid()) {
     SPDLOG_ERROR("Failed to create poller");

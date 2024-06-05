@@ -1,4 +1,6 @@
 #include "xsl/utils/def.h"
+#include "xsl/utils/fd.h"
+
 #include <fcntl.h>
 UTILS_NAMESPACE_BEGIN
 bool set_non_blocking(int fd) {

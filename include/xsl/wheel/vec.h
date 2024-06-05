@@ -13,18 +13,12 @@ public:
     std::copy(arr, arr + size, this->data.get());
   }
   FixedVec(const FixedVec& other) : _size(other._size), data() {
-    if (this == &other) {
-      return;
-    }
     if (other.data) {
       this->data = giant::make_unique<T[]>(this->_size);
       std::copy(other.data.get(), other.data.get() + this->_size, this->data.get());
     }
   }
   FixedVec(FixedVec&& other) : _size(other._size), data() {
-    if (this == &other) {
-      return;
-    }
     this->data = std::move(other.data);
   }
   FixedVec& operator=(const FixedVec& other) {

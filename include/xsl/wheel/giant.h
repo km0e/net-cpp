@@ -18,12 +18,14 @@
 #  include <numeric>
 #  include <optional>
 #  include <queue>
+#  include <random>
 #  include <ranges>
 #  include <stack>
 #  include <string>
 #  include <string_view>
 #  include <tuple>
 #  include <unordered_map>
+#  include <unordered_set>
 #  include <utility>
 #  include <variant>
 #  include <vector>
@@ -33,9 +35,17 @@ namespace xsl::wheel::giant {
   using std::array;
   using std::atomic_flag;
   using std::bind;
+  using std::default_random_engine;
   using std::get_if;
+  using std::make_optional;
+  using std::monostate;
+  using std::random_device;
   using std::stack;
+  using std::uniform_int_distribution;
+  using std::unordered_set;
   using ssize_t = ::ssize_t;
+  using std::atomic_int32_t;
+  using std::atomic_uint32_t;
   using std::byte;
   using std::convertible_to;
   using std::derived_from;
@@ -69,6 +79,7 @@ namespace xsl::wheel::giant {
   using std::unique_ptr;
   using std::unordered_map;
   using std::variant;
+  using std::visit;
   using std::ranges::views::_All;
   using std::ranges::views::all;
 

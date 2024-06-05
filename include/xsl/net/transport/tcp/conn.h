@@ -7,6 +7,7 @@
 #  include "xsl/wheel.h"
 
 #  include <spdlog/spdlog.h>
+#  include <sys/timerfd.h>
 TCP_NAMESPACE_BEGIN
 enum class HandleHint {
   NONE = 0,
@@ -14,13 +15,12 @@ enum class HandleHint {
   WRITE = 2,
 };
 
-class HandleState {
-public:
-  HandleState();
-  HandleState(IOM_EVENTS events, HandleHint hint);
-  ~HandleState();
-  IOM_EVENTS events;
-  HandleHint hint;
+enum class HandleState {
+  NONE = 0,
+  //
+  CLOSE = 1,
+  //
+  // KEEP_ALIVE = 2,
 };
 
 // Handler is a function that takes an int and a forward_list of TaskNode and returns a HandleState
@@ -30,17 +30,34 @@ public:
 //    - hint is WRITE and i is 0, send data
 //    - hint is READ and i is 1, read data
 template <class T>
-concept TcpHandlerLike = move_constructible<T> && requires(T t, int fd, IOM_EVENTS events) {
-  { t.send(fd) } -> same_as<sync::PollHandleHint>;
-  { t.recv(fd) } -> same_as<sync::PollHandleHint>;
-  { t.other(fd, events) } -> same_as<sync::PollHandleHint>;
+concept TcpHandlerLike = requires(T t, int fd, IOM_EVENTS events) {
+  { t.send(fd) } -> same_as<HandleState>;
+  { t.recv(fd) } -> same_as<HandleState>;
+  { t.close(fd) } -> same_as<void>;
+  { t.other(fd, events) } -> same_as<HandleState>;
 };
 
+class TcpHandler {
+public:
+  virtual ~TcpHandler() {}
+  virtual HandleState send(int fd) = 0;
+  virtual HandleState recv(int fd) = 0;
+  virtual void close(int fd) = 0;
+  virtual HandleState other(int fd, IOM_EVENTS events) = 0;
+};
+
+class TcpConnFlag {
+public:
+  TcpConnFlag() : close(false), timeout(false), keep_alive(false) {}
+  bool close;
+  bool timeout;
+  bool keep_alive;
+};
 template <TcpHandlerLike H>
 class TcpConn {
 public:
   TcpConn(int fd, unique_ptr<H>&& handler)
-      : fd(fd), events(IOM_EVENTS::IN), handler(move(handler)) {}
+      : fd(fd), events(IOM_EVENTS::IN), handler(move(handler)), flags() {}
 
   TcpConn(TcpConn&&) = delete;
   TcpConn(const TcpConn&) = delete;
@@ -50,21 +67,132 @@ public:
     }
   }
   sync::PollHandleHint operator()(int fd, IOM_EVENTS events) {
-    sync::PollHandleHint hint{};
-    if (events == IOM_EVENTS::IN) {
-      hint = handler->recv(fd);
-    } else if (events == IOM_EVENTS::OUT) {
-      hint = handler->send(fd);
+    PollHandleHint hint{};
+    if ((events & IOM_EVENTS::HUP) == IOM_EVENTS::HUP) {
+      handler->close(fd);
+      this->flags.close = true;
+      hint = {PollHandleHintTag::DELETE};
+    } else if ((events & IOM_EVENTS::IN) == IOM_EVENTS::IN) {
+      this->flags.timeout = false;
+      auto state = handler->recv(fd);
+      hint = map_hint(state);
+    } else if ((events & IOM_EVENTS::OUT) == IOM_EVENTS::OUT) {
+      auto state = handler->send(fd);
+      hint = map_hint(state);
     } else {
-      hint = handler->other(fd, events);
+      auto state = handler->other(fd, events);
+      hint = map_hint(state);
     }
     return hint;
   }
+  PollHandleHint map_hint(HandleState state) {
+    switch (state) {
+      case HandleState::CLOSE:
+        this->flags.close = true;
+        return {PollHandleHintTag::DELETE};
+      default:
+        return {PollHandleHintTag::NONE};
+    }
+  }
+  bool valid() { return this->fd != -1; }
 
-private:
   int fd;
   IOM_EVENTS events;
   unique_ptr<H> handler;
+  TcpConnFlag flags;
+};
+class TcpConnManagerConfig {
+public:
+  shared_ptr<Poller> poller;
+  int recv_timeout = RECV_TIMEOUT;
+};
+template <TcpHandlerLike H>
+class TcpConnManager {
+public:
+  TcpConnManager(TcpConnManagerConfig config) : config(config), handlers(), timer_cnt() {
+    this->setup_timer();
+  }
+  TcpConnManager(TcpConnManager&&) = delete;
+  TcpConnManager(const TcpConnManager&) = delete;
+  TcpConnManager& operator=(TcpConnManager&&) = delete;
+  TcpConnManager& operator=(const TcpConnManager&) = delete;
+  ~TcpConnManager() {
+    for (auto& [_, handler] : *handlers.lock()) {
+      this->config.poller->remove(handler->fd);
+    }
+  }
+  void add(int fd, unique_ptr<H>&& handler) {
+    this->handlers.lock()->emplace(
+        fd, poll_add_unique<TcpConn<H>>(this->config.poller, fd, IOM_EVENTS::IN, fd,
+                                        std::move(handler)));
+  }
+  void remove(int fd) { handlers.lock()->erase(fd); }
+  void clear() { handlers.lock()->clear(); }
+  PollHandleHint operator()([[maybe_unused]] int fd, [[maybe_unused]] IOM_EVENTS events) {
+    uint64_t exp;
+    ssize_t s = read(fd, &exp, sizeof(uint64_t));
+    if (s == -1) {
+      SPDLOG_ERROR("Failed to read timerfd, error: {}", strerror(errno));
+      return {PollHandleHintTag::NONE};
+    }
+    vector<int> timeout, closed;
+    {
+      auto guard = handlers.lock();
+      for (auto& [fd, conn] : *guard) {
+        if (conn->flags.close) {
+          closed.push_back(fd);
+        } else if (!conn->flags.keep_alive) {
+          if (conn->flags.timeout) {
+            timeout.push_back(fd);
+            conn->handler->close(fd);
+          } else {
+            conn->flags.timeout = true;
+          }
+        }
+      }
+      for (auto fd : closed) {
+        guard->erase(fd);
+        this->config.poller->remove(fd);
+      }
+      for (auto fd : timeout) {
+        guard->erase(fd);
+        this->config.poller->remove(fd);
+      }
+    }
+    // this->timer_cnt++;
+    // if (this->timer_cnt == RECV_RESET_COUNT) {
+    //   this->timer_cnt = 0;
+    //   this->reset_timer(fd);
+    // }
+    return {PollHandleHintTag::NONE};
+  }
+
+private:
+  TcpConnManagerConfig config;
+  ShareContainer<unordered_map<int, unique_ptr<TcpConn<H>>>> handlers;
+
+  // timer cnt
+  int timer_cnt;
+  void setup_timer() {
+    int timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+    if (timer_fd == -1) {
+      SPDLOG_ERROR("Failed to create timerfd, error: {}", strerror(errno));
+      return;
+    }
+    this->config.poller->add(timer_fd, IOM_EVENTS::IN,
+                             [this](int fd, IOM_EVENTS events) { return (*this)(fd, events); });
+    struct itimerspec new_value;
+    new_value.it_value.tv_sec = config.recv_timeout / 1000;
+    new_value.it_value.tv_nsec = (config.recv_timeout % 1000) * 1000000;
+    new_value.it_interval.tv_sec = config.recv_timeout / 1000;
+    new_value.it_interval.tv_nsec = (config.recv_timeout % 1000) * 1000000;
+    SPDLOG_TRACE("tcp conn manager reset timer to {}:{} {}:{}", new_value.it_value.tv_sec,
+                 new_value.it_value.tv_nsec, new_value.it_interval.tv_sec,
+                 new_value.it_interval.tv_nsec);
+    if (timerfd_settime(timer_fd, 0, &new_value, nullptr) == -1) {
+      SPDLOG_ERROR("Failed to set timerfd, error: {}", strerror(errno));
+    }
+  }
 };
 TCP_NAMESPACE_END
 

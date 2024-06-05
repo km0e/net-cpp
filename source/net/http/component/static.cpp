@@ -12,7 +12,7 @@ class FileRouteHandler {
 public:
   FileRouteHandler(string&& path);
   ~FileRouteHandler();
-  RouteHandleResult operator()(Context& ctx);
+  RouteHandleResult operator()(RouteContext& ctx);
   string path;
   ContentType content_type;
 };
@@ -26,7 +26,7 @@ FileRouteHandler::FileRouteHandler(string&& path)
 
 FileRouteHandler::~FileRouteHandler() {}
 
-RouteHandleResult FileRouteHandler::operator()(Context& ctx) {
+RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
   (void)ctx;
   struct stat buf;
   int res = stat(this->path.c_str(), &buf);
@@ -36,7 +36,7 @@ RouteHandleResult FileRouteHandler::operator()(Context& ctx) {
   }
   TcpSendTasks tasks;
   tasks.emplace_after(tasks.before_begin(), make_unique<TcpSendFile>(xsl::move(this->path)));
-  auto resp = make_unique<Response<TcpSendTasks>>(ResponsePart{200, "OK", HttpVersion::HTTP_1_1},
+  auto resp = make_unique<HttpResponse<TcpSendTasks>>(ResponsePart{200, "OK", HttpVersion::HTTP_1_1},
                                                   xsl::move(tasks));
   resp->part.headers.emplace("Content-Type", to_string(this->content_type));
   return RouteHandleResult{std::move(resp)};
@@ -46,12 +46,12 @@ class FolderRouteHandler {
 public:
   FolderRouteHandler(string&& path);
   ~FolderRouteHandler();
-  RouteHandleResult operator()(Context& ctx);
+  RouteHandleResult operator()(RouteContext& ctx);
   string path;
 };
 FolderRouteHandler::FolderRouteHandler(string&& path) : path(path) {}
 FolderRouteHandler::~FolderRouteHandler() {}
-RouteHandleResult FolderRouteHandler::operator()(Context& ctx) {
+RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
   SPDLOG_DEBUG("FolderRouteHandler: {}", ctx.current_path);
   string full_path = this->path;
   full_path.append(ctx.current_path.substr(1));
@@ -67,7 +67,7 @@ RouteHandleResult FolderRouteHandler::operator()(Context& ctx) {
   }
   TcpSendTasks tasks;
   tasks.emplace_after(tasks.before_begin(), make_unique<TcpSendFile>(xsl::move(full_path)));
-  auto resp = make_unique<Response<TcpSendTasks>>(ResponsePart{200, "OK", HttpVersion::HTTP_1_1},
+  auto resp = make_unique<HttpResponse<TcpSendTasks>>(ResponsePart{200, "OK", HttpVersion::HTTP_1_1},
                                                   xsl::move(tasks));
   if (auto point = ctx.current_path.rfind('.'); point != string::npos) {
     auto ext = ctx.current_path.substr(point + 1);
@@ -78,10 +78,6 @@ RouteHandleResult FolderRouteHandler::operator()(Context& ctx) {
   }
   return RouteHandleResult{std::move(resp)};
 }
-// @brief Create a static handler for a file or folder.
-// @param path The path of the file or folder.
-// @return A static handler for the file or folder.
-
 StaticCreateResult create_static_handler(string&& path) {
   if (path.empty()) {
     return AddRouteError{AddRouteErrorKind::InvalidPath};

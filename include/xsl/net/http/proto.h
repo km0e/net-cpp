@@ -1,9 +1,12 @@
 #pragma once
-#include "xsl/wheel.h"
-#include "xsl/wheel/def.h"
 #ifndef _XSL_NET_HTTP_PROTO_H_
 #  define _XSL_NET_HTTP_PROTO_H_
 #  include "xsl/net/http/def.h"
+#  include "xsl/wheel.h"
+#  include "xsl/wheel/def.h"
+
+#  include <regex>
+
 HTTP_NAMESPACE_BEGIN
 
 enum class HttpVersion : uint8_t {
@@ -21,6 +24,8 @@ const array<string_view, HTTP_VERSION_COUNT> HTTP_VERSION_STRINGS = {
     "HTTP/1.1",
     "HTTP/2.0",
 };
+
+const std::regex HTTP_VERSION_REGEX = std::regex(R"(HTTP/(\d)\.(\d))");
 
 string_view to_string_view(const HttpVersion& method);
 

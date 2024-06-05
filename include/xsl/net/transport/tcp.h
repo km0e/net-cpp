@@ -9,8 +9,8 @@
 #  include "xsl/net/transport/tcp/utils.h"
 TRANSPORT_NAMESPACE_BEGIN
 using TcpHandleHint = tcp::HandleHint;
-using tcp::TcpHandlerLike;
 using tcp::TcpHandlerGeneratorLike;
+using tcp::TcpHandlerLike;
 using TcpHandleState = tcp::HandleState;
 using tcp::TcpRecvString;
 using TcpSendTaskNode = tcp::SendTaskNode;
@@ -31,8 +31,13 @@ using TcpRecvContext = tcp::RecvContext;
 using TcpSendTasks = tcp::SendTasks;
 using tcp::create_tcp_client;
 using tcp::create_tcp_server;
+using tcp::recv;
+using tcp::send;
+using tcp::SockAddrV4;
+using tcp::SockAddrV4View;
 using tcp::TcpClient;
 using tcp::TcpClientSockConfig;
+using tcp::TcpHandler;
 using tcp::TcpServer;
 using tcp::TcpServerSockConfig;
 using tcp::to_string;

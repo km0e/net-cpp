@@ -1,4 +1,3 @@
-#include "xsl/net/http/context.h"
 #include "xsl/net/http/msg.h"
 #include "xsl/net/http/parse.h"
 #include "xsl/net/http/router.h"
@@ -7,6 +6,9 @@
 #include <spdlog/spdlog.h>
 
 HTTP_NAMESPACE_BEGIN
+RouteContext::RouteContext(Request&& request)
+    : current_path(request.view.url), request(std::move(request)), is_ok(false) {}
+RouteContext::~RouteContext() {}
 
 RouteHandleError::RouteHandleError() : message("") {}
 RouteHandleError::RouteHandleError(string message) : message(message) {}
@@ -58,13 +60,12 @@ namespace router_details {
       return AddRouteResult(AddRouteError(AddRouteErrorKind::InvalidPath, ""));
     }
     auto pos = path.find('/', 1);
-    auto sub = path.substr(1, pos);
+    auto sub = path.substr(1, pos == string_view::npos ? pos : pos - 1);
     auto res = children.lock()->try_emplace(sub, make_shared<HttpRouteNode>());
-    return res.first->second->add_route(method, path.substr(sub.length() + 1),
-                                        xsl::move(handler));
+    return res.first->second->add_route(method, path.substr(sub.length() + 1), xsl::move(handler));
   }
 
-  RouteResult HttpRouteNode::route(Context& ctx) {
+  RouteResult HttpRouteNode::route(RouteContext& ctx) {
     SPDLOG_TRACE("Routing path: {}", ctx.current_path);
     if (ctx.is_ok) {
       SPDLOG_DEBUG("Request already routed");
@@ -84,8 +85,9 @@ namespace router_details {
       return RouteResult(RouteError(RouteErrorKind::NotFound, ""));
     }
     auto pos = ctx.current_path.find('/', 1);
-    auto sub = ctx.current_path.substr(1, pos);
+    auto sub = ctx.current_path.substr(1, pos == string_view::npos ? pos : pos - 1);
     // TODO: find and check is not thread safe
+    SPDLOG_DEBUG("Finding child: {}", sub);
     auto iter = this->children.lock_shared()->find(sub);
     if (iter != this->children.lock_shared()->end()) {
       SPDLOG_DEBUG("Routing to child: {}", sub);
@@ -118,13 +120,12 @@ HttpRouter::HttpRouter() : root() {}
 
 HttpRouter::~HttpRouter() {}
 
-AddRouteResult HttpRouter::add_route(HttpMethod method, string_view path,
-                                        RouteHandler&& handler) {
+AddRouteResult HttpRouter::add_route(HttpMethod method, string_view path, RouteHandler&& handler) {
   SPDLOG_DEBUG("Adding route: {}", path);
   return root.add_route(method, path, xsl::move(handler));
 }
 
-RouteResult HttpRouter::route(Context& ctx) {
+RouteResult HttpRouter::route(RouteContext& ctx) {
   SPDLOG_DEBUG("Starting routing path: {}", ctx.current_path);
   if (ctx.request.method == HttpMethod::UNKNOWN) {
     return RouteResult(RouteError(RouteErrorKind::Unknown, ""));

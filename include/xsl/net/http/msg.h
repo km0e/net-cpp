@@ -15,9 +15,12 @@ public:
   RequestView();
   ~RequestView();
   string_view method;
-  string_view uri;
+  string_view url;
+  unordered_map<string_view, string_view> query;
   string_view version;
   unordered_map<string_view, string_view> headers;
+
+  void clear();
 };
 
 class Request {
@@ -81,31 +84,31 @@ public:
 };
 
 template <class B>
-class Response;
+class HttpResponse;
 
 template <derived_from<IntoSendTasks> B>
-class Response<B> : public IntoSendTasks {
+class HttpResponse<B> : public IntoSendTasks {
 public:
-  Response();
-  Response(ResponsePart&& part);
-  Response(ResponsePart&& part, B&& body);
-  ~Response();
+  HttpResponse();
+  HttpResponse(ResponsePart&& part);
+  HttpResponse(ResponsePart&& part, B&& body);
+  ~HttpResponse();
   ResponsePart part;
   optional<B> body;
   TcpSendTasks to_send_tasks();
 };
 
 template <derived_from<IntoSendTasks> B>
-Response<B>::Response() {}
+HttpResponse<B>::HttpResponse() {}
 template <derived_from<IntoSendTasks> B>
-Response<B>::Response(ResponsePart&& part) : part(xsl::move(part)), body(nullopt) {}
+HttpResponse<B>::HttpResponse(ResponsePart&& part) : part(xsl::move(part)), body(nullopt) {}
 template <derived_from<IntoSendTasks> B>
-Response<B>::Response(ResponsePart&& part, B&& body)
+HttpResponse<B>::HttpResponse(ResponsePart&& part, B&& body)
     : part(xsl::move(part)), body(make_optional(move(body))) {}
 template <derived_from<IntoSendTasks> B>
-Response<B>::~Response() {}
+HttpResponse<B>::~HttpResponse() {}
 template <derived_from<IntoSendTasks> B>
-TcpSendTasks Response<B>::to_send_tasks() {
+TcpSendTasks HttpResponse<B>::to_send_tasks() {
   TcpSendTasks tasks;
   auto head = tasks.emplace_after(tasks.before_begin(), part.into_send_task_ptr());
   if (body) {
@@ -115,28 +118,28 @@ TcpSendTasks Response<B>::to_send_tasks() {
 }
 
 template <>
-class Response<TcpSendTasks> : public IntoSendTasks {
+class HttpResponse<TcpSendTasks> : public IntoSendTasks {
 public:
-  Response();
-  Response(ResponsePart&& part, TcpSendTasks&& tasks);
-  ~Response();
+  HttpResponse();
+  HttpResponse(ResponsePart&& part, TcpSendTasks&& tasks);
+  ~HttpResponse();
   ResponsePart part;
   TcpSendTasks tasks;
   TcpSendTasks into_send_tasks();
 };
 
 template <>
-class Response<string> : public IntoSendTasks {
+class HttpResponse<string> : public IntoSendTasks {
 public:
-  Response();
-  Response(ResponsePart&& part, string&& body);
-  ~Response();
+  HttpResponse();
+  HttpResponse(ResponsePart&& part, string&& body);
+  ~HttpResponse();
   ResponsePart part;
   string body;
   TcpSendTasks into_send_tasks();
 };
 
-using DefaultResponse = Response<string>;
+using DefaultResponse = HttpResponse<string>;
 
 // using ResponseResult = Result<Response, ResponseError>;
 

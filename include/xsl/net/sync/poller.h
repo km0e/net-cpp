@@ -62,10 +62,10 @@ using PollHandler = function<PollHandleHint(int fd, IOM_EVENTS events)>;
 
 class Poller {
 public:
-  virtual bool subscribe(int fd, IOM_EVENTS events, PollHandler&& handler) = 0;
-  virtual bool modify(int fd, IOM_EVENTS events) = 0;
+  virtual bool add(int fd, IOM_EVENTS events, PollHandler&& handler) = 0;
+  virtual bool modify(int fd, IOM_EVENTS events, optional<PollHandler>&& handler) = 0;
   virtual void poll() = 0;  // NOLINT [runtime/references
-  virtual void unregister(int fd) = 0;
+  virtual void remove(int fd) = 0;
   virtual void shutdown() = 0;
   virtual ~Poller() = default;
 };
@@ -76,10 +76,10 @@ public:
   DefaultPoller(shared_ptr<HandleProxy>&& proxy);
   ~DefaultPoller();
   bool valid();
-  bool subscribe(int fd, IOM_EVENTS events, PollHandler&& handler) override;
-  bool modify(int fd, IOM_EVENTS events) override;
+  bool add(int fd, IOM_EVENTS events, PollHandler&& handler) override;
+  bool modify(int fd, IOM_EVENTS events, optional<PollHandler>&& handler) override;
   void poll() override;
-  void unregister(int fd) override;
+  void remove(int fd) override;
   void shutdown() override;
 
 private:
@@ -88,17 +88,19 @@ private:
   shared_ptr<HandleProxy> proxy;
 };
 template <Handler T, class... Args>
-unique_ptr<T> sub_unique(shared_ptr<Poller> poller, int fd, IOM_EVENTS events, Args&&... args) {
+unique_ptr<T> poll_add_unique(shared_ptr<Poller> poller, int fd, IOM_EVENTS events, Args&&... args) {
   auto handler = make_unique<T>(forward<Args>(args)...);
-  poller->subscribe(
-      fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) { return (*handler)(fd, events); });
+  poller->add(fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) {
+    return (*handler)(fd, events);
+  });
   return handler;
 }
 template <Handler T, class... Args>
-shared_ptr<T> sub_shared(shared_ptr<Poller> poller, int fd, IOM_EVENTS events, Args&&... args) {
+shared_ptr<T> poll_add_shared(shared_ptr<Poller> poller, int fd, IOM_EVENTS events, Args&&... args) {
   auto handler = make_shared<T>(forward<Args>(args)...);
-  poller->subscribe(
-      fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) { return (*handler)(fd, events); });
+  poller->add(fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) {
+    return (*handler)(fd, events);
+  });
   return handler;
 }
 SYNC_NAMESPACE_END

@@ -11,7 +11,7 @@
 #  define TEST_HOST "127.0.0.1"
 #endif
 #ifndef TEST_PORT
-#  define TEST_PORT 12345
+#  define TEST_PORT "12345"
 #endif
 void sigterm_init() {
   struct sigaction act;
@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
   string ip = TEST_HOST;
   app.add_option("-i,--ip", ip, "Ip to connect to");
-  int port = TEST_PORT;
+  string port = TEST_PORT;
   app.add_option("-p,--port", port, "Port to connect to");
   CLI11_PARSE(app, argc, argv);
   spdlog::set_level(spdlog::level::trace);
@@ -35,8 +35,7 @@ int main(int argc, char **argv) {
 
   HttpServerConfig config{};
   config.max_connections = 10;
-  config.host = ip;
-  config.port = port;
+  config.sa4 = SockAddrV4View{ip, port};
   auto router = make_shared<HttpRouter>();
   router->add_route(HttpMethod::GET, "/",
                     create_static_handler("test/http/http_server/web/static/").unwrap());

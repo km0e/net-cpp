@@ -7,8 +7,17 @@
 
 HTTP_NAMESPACE_BEGIN
 
-RequestView::RequestView() : method(), uri(), version(), headers() {}
+RequestView::RequestView() : method(), url(), query(), version(), headers() {}
+
 RequestView::~RequestView() {}
+void RequestView::clear() {
+  method = string_view{};
+  url = string_view{};
+  query.clear();
+  version = string_view{};
+  headers.clear();
+}
+
 Request::Request(string&& raw, RequestView view)
     : method(wheel::from_string<HttpMethod>(view.method)), view(view), raw(xsl::move(raw)) {}
 Request::~Request() {}
@@ -61,18 +70,18 @@ string ResponsePart::to_string() {
   res += "\r\n";
   return res;
 }
-Response<TcpSendTasks>::Response() : part(), tasks() {}
-Response<TcpSendTasks>::Response(ResponsePart&& part, TcpSendTasks&& tasks)
+HttpResponse<TcpSendTasks>::HttpResponse() : part(), tasks() {}
+HttpResponse<TcpSendTasks>::HttpResponse(ResponsePart&& part, TcpSendTasks&& tasks)
     : part(xsl::move(part)), tasks(xsl::move(tasks)) {}
-Response<TcpSendTasks>::~Response() {}
-TcpSendTasks Response<TcpSendTasks>::into_send_tasks() {
+HttpResponse<TcpSendTasks>::~HttpResponse() {}
+TcpSendTasks HttpResponse<TcpSendTasks>::into_send_tasks() {
   this->tasks.emplace_after(this->tasks.before_begin(), this->part.into_send_task_ptr());
   return xsl::move(this->tasks);
 }
-Response<string>::Response() : part(), body() {}
-Response<string>::Response(ResponsePart&& part, string&& body) : part(part), body(body) {}
-Response<string>::~Response() {}
-TcpSendTasks Response<string>::into_send_tasks() {
+HttpResponse<string>::HttpResponse() : part(), body() {}
+HttpResponse<string>::HttpResponse(ResponsePart&& part, string&& body) : part(part), body(body) {}
+HttpResponse<string>::~HttpResponse() {}
+TcpSendTasks HttpResponse<string>::into_send_tasks() {
   TcpSendTasks tasks;
   tasks.emplace_after(tasks.before_begin(),
                       make_unique<TcpSendString<feature::node>>(xsl::move(body)));

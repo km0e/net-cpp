@@ -20,12 +20,17 @@ using HttpRequestView = http::RequestView;
 using http::HTTP_METHOD_STRINGS;
 using http::HttpServerConfig;
 using http::HttpVersion;
+using HttpRouteHandleResult = http::RouteHandleResult;
+using HttpRouteResult = http::RouteResult;
+using HttpRouteContext = http::RouteContext;
 using http::Request;
 using http::to_string_view;
 using HttpResponsePart = http::ResponsePart;
+using http::HttpResponse;
 using http::RouteErrorKind;
 using http::StaticCreateResult;
 using HttpParseError = http::ParseError;
+using HttpParseErrorKind = http::ParseErrorKind;
 using HttpParseResult = http::ParseResult;
 NET_NAMESPACE_END
 #endif

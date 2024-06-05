@@ -30,12 +30,12 @@ int main(int argc, char **argv) {
         return nullptr;
       },
       &poller);
-  int fd = create_tcp_client(ip.c_str(), port.c_str());
+  int fd = create_tcp_client(ip.data(), port.data());
   if (fd < 0) {
     return 1;
   }
   int echo_cycles = 0;
-  poller.subscribe(fd, IOM_EVENTS::IN, [&echo_cycles](int fd, IOM_EVENTS events) -> PollHandleHint {
+  poller.add(fd, IOM_EVENTS::IN, [&echo_cycles](int fd, IOM_EVENTS events) -> PollHandleHint {
     if ((events & IOM_EVENTS::IN) == IOM_EVENTS::IN) {
       char buf[1024];
       int res = read(fd, buf, sizeof(buf));

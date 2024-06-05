@@ -1,13 +1,21 @@
 #pragma once
-#include "xsl/net/http/proto.h"
 #ifndef _XSL_NET_HTTP_ROUTER_H_
 #  define _XSL_NET_HTTP_ROUTER_H_
-#  include "xsl/net/http/context.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
+#  include "xsl/net/http/proto.h"
 #  include "xsl/wheel.h"
 
 HTTP_NAMESPACE_BEGIN
+
+class RouteContext {
+public:
+  RouteContext(Request&& request);
+  ~RouteContext();
+  string_view current_path;
+  Request request;
+  bool is_ok;
+};
 
 class RouteHandleError {
 public:
@@ -20,7 +28,7 @@ public:
 
 using RouteHandleResult = Result<IntoSendTasksPtr, RouteHandleError>;
 
-using RouteHandler = function<RouteHandleResult(Context& ctx)>;
+using RouteHandler = function<RouteHandleResult(RouteContext& ctx)>;
 
 enum class AddRouteErrorKind {
   Unknown,
@@ -70,7 +78,7 @@ using AddRouteResult = Result<tuple<>, AddRouteError>;
 using RouteResult = Result<IntoSendTasksPtr, RouteError>;
 
 template <class R>
-concept Router = requires(R r, string_view path, RouteHandler&& handler, Context& ctx) {
+concept Router = requires(R r, string_view path, RouteHandler&& handler, RouteContext& ctx) {
   { r.add_route(HttpMethod{}, path, xsl::move(handler)) } -> same_as<AddRouteResult>;
   { r.route(ctx) } -> same_as<RouteResult>;
   { r.error_handler(RouteErrorKind{}, xsl::move(handler)) };
@@ -82,7 +90,7 @@ namespace router_details {
     HttpRouteNode();
     ~HttpRouteNode();
     AddRouteResult add_route(HttpMethod method, string_view path, RouteHandler&& handler);
-    RouteResult route(Context& ctx);
+    RouteResult route(RouteContext& ctx);
 
   private:
     array<unique_ptr<RouteHandler>, HTTP_METHOD_COUNT> handlers;
@@ -90,16 +98,16 @@ namespace router_details {
   };
 }  // namespace router_details
 
-const RouteHandler UNKNOWN_HANDLER = []([[maybe_unused]] Context& ctx) -> RouteHandleResult {
+const RouteHandler UNKNOWN_HANDLER = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
   return RouteHandleResult{
       std::make_unique<ResponsePart>(500, "Internal Server Error", HttpVersion::HTTP_1_1)};
 };
 
-const RouteHandler NOT_FOUND_HANDLER = []([[maybe_unused]] Context& ctx) -> RouteHandleResult {
+const RouteHandler NOT_FOUND_HANDLER = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
   return RouteHandleResult{std::make_unique<ResponsePart>(404, "Not Found", HttpVersion::HTTP_1_1)};
 };
 
-const RouteHandler UNIMPLEMENTED_HANDLER = []([[maybe_unused]] Context& ctx) -> RouteHandleResult {
+const RouteHandler UNIMPLEMENTED_HANDLER = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
   return RouteHandleResult{
       std::make_unique<ResponsePart>(501, "Not Implemented", HttpVersion::HTTP_1_1)};
 };
@@ -109,7 +117,7 @@ public:
   HttpRouter();
   ~HttpRouter();
   AddRouteResult add_route(HttpMethod method, string_view path, RouteHandler&& handler);
-  RouteResult route(Context& ctx);
+  RouteResult route(RouteContext& ctx);
   void error_handler(RouteErrorKind kind, RouteHandler&& handler);
 
 private:

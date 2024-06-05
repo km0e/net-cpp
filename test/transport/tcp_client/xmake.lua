@@ -28,4 +28,4 @@ target("tcp_client_test")
         end
         return true
     end)
-add_tests("tcp_client_test")
+add_tests("tcp_client_test",{run_timeout=1000})

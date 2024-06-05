@@ -8,7 +8,6 @@
 #  include "xsl/net/http/router.h"
 #  include "xsl/net/sync.h"
 #  include "xsl/net/transport.h"
-#  include "xsl/wheel.h"
 
 #  include <spdlog/spdlog.h>
 
@@ -17,7 +16,7 @@ HTTP_NAMESPACE_BEGIN
 template <Router R>
 class Handler {
 public:
-  Handler(shared_ptr<R> router)
+  Handler(std::shared_ptr<R> router)
       : parser(), router(router), recv_task(), send_proxy(), keep_alive(false) {}
   Handler(Handler&&) = default;
   ~Handler() {}
@@ -55,7 +54,7 @@ public:
       return TcpHandleState::CLOSE;
     }
     auto tasks = rtres.unwrap()->into_send_tasks();
-    tasks.splice_after(tasks.before_begin(), xsl::move(this->send_proxy.tasks));
+    tasks.splice_after(tasks.before_begin(), std::move(this->send_proxy.tasks));
     this->send_proxy.tasks = move(tasks);
     return this->send(fd);
   }
@@ -79,7 +78,7 @@ public:
 
 private:
   HttpParser parser;
-  shared_ptr<R> router;
+  std::shared_ptr<R> router;
   TcpRecvString<> recv_task;
   SendTasksProxy send_proxy;
   bool keep_alive;
@@ -90,13 +89,13 @@ using HttpHandler = Handler<HttpRouter>;
 template <Router R, TcpHandlerLike H>
 class HandlerGenerator {
 public:
-  HandlerGenerator(shared_ptr<R> router) : router(router) {}
-  unique_ptr<Handler<R>> operator()([[maybe_unused]] int fd) {
+  HandlerGenerator(std::shared_ptr<R> router) : router(router) {}
+  std::unique_ptr<Handler<R>> operator()([[maybe_unused]] int fd) {
     return make_unique<Handler<R>>(this->router);
   }
 
 private:
-  shared_ptr<R> router;
+  std::shared_ptr<R> router;
 };
 
 using HttpHandlerGenerator = HandlerGenerator<HttpRouter, HttpHandler>;

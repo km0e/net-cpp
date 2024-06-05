@@ -8,30 +8,30 @@ class SockAddrV4View {
 public:
   SockAddrV4View() = default;
   SockAddrV4View(const char *ip, const char *port);
-  //eg: "0.0.0.1:80"
+  // eg: "0.0.0.1:80"
   SockAddrV4View(const char *sa4);
-  SockAddrV4View(string_view sa4);
-  SockAddrV4View(string_view ip, string_view port);
+  SockAddrV4View(std::string_view sa4);
+  SockAddrV4View(std::string_view ip, std::string_view port);
   bool operator==(const SockAddrV4View &rhs) const;
   const char *ip() const;
   const char *port() const;
-  string to_string() const;
-  string_view _ip;
-  string_view _port;
+  std::string to_string() const;
+  std::string_view _ip;
+  std::string_view _port;
 };
 
 class SockAddrV4 {
 public:
   SockAddrV4(int fd);
   SockAddrV4(const char *ip, const char *port);
-  SockAddrV4(string_view ip, string_view port);
+  SockAddrV4(std::string_view ip, std::string_view port);
   SockAddrV4(SockAddrV4View sa4);
   SockAddrV4View view() const;
   bool operator==(const SockAddrV4View &rhs) const;
   bool operator==(const SockAddrV4 &rhs) const;
-  string to_string() const;
-  string _ip;
-  string _port;
+  std::string to_string() const;
+  std::string _ip;
+  std::string _port;
 };
 
 class TcpClientSockConfig {
@@ -60,16 +60,16 @@ enum class SendError {
   Unknown,
 };
 
-string_view to_string(SendError err);
+std::string_view to_string(SendError err);
 using SendResult = Result<size_t, SendError>;
 enum class RecvError {
   Unknown,
   Eof,
   NoData,
 };
-string_view to_string(RecvError err);
-using RecvResult = Result<string, RecvError>;
-SendResult send(int fd, string_view data);
+std::string_view to_string(RecvError err);
+using RecvResult = Result<std::string, RecvError>;
+SendResult send(int fd, std::string_view data);
 RecvResult recv(int fd);
 TCP_NAMESPACE_END
 #endif  // _XSL_NET_TRANSPORT_UTILS_H_

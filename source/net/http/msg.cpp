@@ -11,28 +11,28 @@ RequestView::RequestView() : method(), url(), query(), version(), headers() {}
 
 RequestView::~RequestView() {}
 void RequestView::clear() {
-  method = string_view{};
-  url = string_view{};
+  method = std::string_view{};
+  url = std::string_view{};
   query.clear();
-  version = string_view{};
+  version = std::string_view{};
   headers.clear();
 }
 
-Request::Request(string&& raw, RequestView view)
-    : method(wheel::from_string<HttpMethod>(view.method)), view(view), raw(xsl::move(raw)) {}
+Request::Request(std::string&& raw, RequestView view)
+    : method(wheel::from_string<HttpMethod>(view.method)), view(view), raw(std::move(raw)) {}
 Request::~Request() {}
-ResponseError::ResponseError(int code, string_view message) : code(code), message(message) {}
+ResponseError::ResponseError(int code, std::string_view message) : code(code), message(message) {}
 ResponseError::~ResponseError() {}
 
 ResponsePart::ResponsePart()
     : status_code(0), status_message(), version(HttpVersion::UNKNOWN), headers() {}
-ResponsePart::ResponsePart(int status_code, string&& status_message, HttpVersion version)
+ResponsePart::ResponsePart(int status_code, std::string&& status_message, HttpVersion version)
     : status_code(status_code),
-      status_message(xsl::move(status_message)),
+      status_message(std::move(status_message)),
       version(version),
       headers() {}
 ResponsePart::~ResponsePart() {}
-unique_ptr<TcpSendString<feature::node>> ResponsePart::into_send_task_ptr() {
+std::unique_ptr<TcpSendString<feature::node>> ResponsePart::into_send_task_ptr() {
   return make_unique<TcpSendString<feature::node>>(this->to_string());
 }
 TcpSendTasks ResponsePart::into_send_tasks() {
@@ -41,8 +41,8 @@ TcpSendTasks ResponsePart::into_send_tasks() {
   tasks.emplace_after(tasks.before_begin(), into_send_task_ptr());
   return tasks;
 }
-string ResponsePart::to_string() {
-  string res;
+std::string ResponsePart::to_string() {
+  std::string res;
   res.reserve(1024);
   res += http::to_string_view(version);
   res += " ";
@@ -58,8 +58,8 @@ string ResponsePart::to_string() {
   }
   if (!headers.contains("Date")) {
     res += "Date: ";
-    res += format("{:%a, %d %b %Y %T %Z}",
-                  chrono::time_point_cast<chrono::seconds>(chrono::utc_clock::now()));
+    res += format("{:%a, %d %b %Y %T %Z}", std::chrono::time_point_cast<std::chrono::seconds>(
+                                               std::chrono::utc_clock::now()));
     res += "\r\n";
   }
   if (!headers.contains("Server")) {
@@ -72,19 +72,20 @@ string ResponsePart::to_string() {
 }
 HttpResponse<TcpSendTasks>::HttpResponse() : part(), tasks() {}
 HttpResponse<TcpSendTasks>::HttpResponse(ResponsePart&& part, TcpSendTasks&& tasks)
-    : part(xsl::move(part)), tasks(xsl::move(tasks)) {}
+    : part(std::move(part)), tasks(std::move(tasks)) {}
 HttpResponse<TcpSendTasks>::~HttpResponse() {}
 TcpSendTasks HttpResponse<TcpSendTasks>::into_send_tasks() {
   this->tasks.emplace_after(this->tasks.before_begin(), this->part.into_send_task_ptr());
-  return xsl::move(this->tasks);
+  return std::move(this->tasks);
 }
-HttpResponse<string>::HttpResponse() : part(), body() {}
-HttpResponse<string>::HttpResponse(ResponsePart&& part, string&& body) : part(part), body(body) {}
-HttpResponse<string>::~HttpResponse() {}
-TcpSendTasks HttpResponse<string>::into_send_tasks() {
+HttpResponse<std::string>::HttpResponse() : part(), body() {}
+HttpResponse<std::string>::HttpResponse(ResponsePart&& part, std::string&& body)
+    : part(part), body(body) {}
+HttpResponse<std::string>::~HttpResponse() {}
+TcpSendTasks HttpResponse<std::string>::into_send_tasks() {
   TcpSendTasks tasks;
   tasks.emplace_after(tasks.before_begin(),
-                      make_unique<TcpSendString<feature::node>>(xsl::move(body)));
+                      make_unique<TcpSendString<feature::node>>(std::move(body)));
   tasks.emplace_after(tasks.before_begin(), part.into_send_task_ptr());
   return tasks;
 }

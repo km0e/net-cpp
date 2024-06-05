@@ -7,7 +7,6 @@
 #  include "xsl/net/transport/tcp/def.h"
 #  include "xsl/net/transport/tcp/utils.h"
 #  include "xsl/utils.h"
-#  include "xsl/wheel.h"
 
 #  include <spdlog/spdlog.h>
 #  include <unistd.h>
@@ -16,7 +15,7 @@ TCP_NAMESPACE_BEGIN
 
 template <class T, class H>
 concept TcpHandlerGeneratorLike = TcpHandlerLike<H> && requires(T t, H h, int fd) {
-  { t(fd) } -> same_as<unique_ptr<H>>;
+  { t(fd) } -> std::same_as<std::unique_ptr<H>>;
 };
 
 template <TcpHandlerLike H, TcpHandlerGeneratorLike<H> HG>
@@ -25,8 +24,8 @@ public:
   TcpServerConfig() : sa4("0.0.0.0", "0"), fd(-1), poller(nullptr), handler_generator(nullptr) {}
   SockAddrV4View sa4;
   int fd = -1;
-  shared_ptr<Poller> poller;
-  shared_ptr<HG> handler_generator;
+  std::shared_ptr<Poller> poller;
+  std::shared_ptr<HG> handler_generator;
   int max_connections = MAX_CONNECTIONS;
   bool keep_alive = false;
   int recv_timeout = RECV_TIMEOUT;
@@ -34,7 +33,7 @@ public:
 template <TcpHandlerLike H, TcpHandlerGeneratorLike<H> HG>
 class TcpServer {
 public:
-  static unique_ptr<TcpServer<H, HG>> serve(TcpServerConfig<H, HG> config) {
+  static std::unique_ptr<TcpServer<H, HG>> serve(TcpServerConfig<H, HG> config) {
     TcpServerSockConfig cfg{};
     cfg.max_connections = config.max_connections;
     cfg.keep_alive = config.keep_alive;
@@ -44,7 +43,8 @@ public:
       return nullptr;
     }
     config.fd = server_fd;
-    return poll_add_unique<TcpServer<H, HG>>(config.poller, server_fd, sync::IOM_EVENTS::IN, config);
+    return poll_add_unique<TcpServer<H, HG>>(config.poller, server_fd, sync::IOM_EVENTS::IN,
+                                             config);
   }
   TcpServer(TcpServer&&) = delete;
   TcpServer(TcpServerConfig<H, HG> config)

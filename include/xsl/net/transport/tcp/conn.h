@@ -31,10 +31,10 @@ enum class HandleState {
 //    - hint is READ and i is 1, read data
 template <class T>
 concept TcpHandlerLike = requires(T t, int fd, IOM_EVENTS events) {
-  { t.send(fd) } -> same_as<HandleState>;
-  { t.recv(fd) } -> same_as<HandleState>;
-  { t.close(fd) } -> same_as<void>;
-  { t.other(fd, events) } -> same_as<HandleState>;
+  { t.send(fd) } -> std::same_as<HandleState>;
+  { t.recv(fd) } -> std::same_as<HandleState>;
+  { t.close(fd) } -> std::same_as<void>;
+  { t.other(fd, events) } -> std::same_as<HandleState>;
 };
 
 class TcpHandler {
@@ -56,7 +56,7 @@ public:
 template <TcpHandlerLike H>
 class TcpConn {
 public:
-  TcpConn(int fd, unique_ptr<H>&& handler)
+  TcpConn(int fd, std::unique_ptr<H>&& handler)
       : fd(fd), events(IOM_EVENTS::IN), handler(move(handler)), flags() {}
 
   TcpConn(TcpConn&&) = delete;
@@ -98,12 +98,12 @@ public:
 
   int fd;
   IOM_EVENTS events;
-  unique_ptr<H> handler;
+  std::unique_ptr<H> handler;
   TcpConnFlag flags;
 };
 class TcpConnManagerConfig {
 public:
-  shared_ptr<Poller> poller;
+  std::shared_ptr<Poller> poller;
   int recv_timeout = RECV_TIMEOUT;
 };
 template <TcpHandlerLike H>
@@ -121,7 +121,7 @@ public:
       this->config.poller->remove(handler->fd);
     }
   }
-  void add(int fd, unique_ptr<H>&& handler) {
+  void add(int fd, std::unique_ptr<H>&& handler) {
     this->handlers.lock()->emplace(
         fd, poll_add_unique<TcpConn<H>>(this->config.poller, fd, IOM_EVENTS::IN, fd,
                                         std::move(handler)));
@@ -135,7 +135,7 @@ public:
       SPDLOG_ERROR("Failed to read timerfd, error: {}", strerror(errno));
       return {PollHandleHintTag::NONE};
     }
-    vector<int> timeout, closed;
+    std::vector<int> timeout, closed;
     {
       auto guard = handlers.lock();
       for (auto& [fd, conn] : *guard) {
@@ -169,7 +169,7 @@ public:
 
 private:
   TcpConnManagerConfig config;
-  ShareContainer<unordered_map<int, unique_ptr<TcpConn<H>>>> handlers;
+  ShareContainer<std::unordered_map<int, std::unique_ptr<TcpConn<H>>>> handlers;
 
   // timer cnt
   int timer_cnt;

@@ -1,6 +1,5 @@
 #include "xsl/net/transport/tcp/component/def.h"
 #include "xsl/net/transport/tcp/component/file.h"
-#include "xsl/wheel.h"
 
 #include <fcntl.h>
 #include <spdlog/spdlog.h>
@@ -11,7 +10,7 @@
 
 TCP_COMPONENTS_NAMESPACE_BEGIN
 
-SendFile::SendFile(string&& path) : path_buffer({xsl::move(path)}) {}
+SendFile::SendFile(std::string&& path) : path_buffer({std::move(path)}) {}
 SendFile::~SendFile() {}
 SendResult SendFile::exec(SendContext& ctx) {
   while (true) {

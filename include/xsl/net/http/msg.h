@@ -5,39 +5,37 @@
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/proto.h"
 #  include "xsl/net/transport.h"
-#  include "xsl/wheel.h"
 HTTP_NAMESPACE_BEGIN
-
 
 using namespace transport::tcp;
 class RequestView {
 public:
   RequestView();
   ~RequestView();
-  string_view method;
-  string_view url;
-  unordered_map<string_view, string_view> query;
-  string_view version;
-  unordered_map<string_view, string_view> headers;
+  std::string_view method;
+  std::string_view url;
+  std::unordered_map<std::string_view, std::string_view> query;
+  std::string_view version;
+  std::unordered_map<std::string_view, std::string_view> headers;
 
   void clear();
 };
 
 class Request {
 public:
-  Request(string&& raw, RequestView view);
+  Request(std::string&& raw, RequestView view);
   ~Request();
   HttpMethod method;
   RequestView view;
-  string raw;
+  std::string raw;
 };
 
 class ResponseError {
 public:
-  ResponseError(int code, string_view message);
+  ResponseError(int code, std::string_view message);
   ~ResponseError();
   int code;
-  string_view message;
+  std::string_view message;
 };
 
 class IntoSendTasks {
@@ -46,47 +44,48 @@ public:
   virtual ~IntoSendTasks() = default;
 };
 
-using IntoSendTasksPtr = unique_ptr<IntoSendTasks>;
+using IntoSendTasksPtr = std::unique_ptr<IntoSendTasks>;
 
 const int DEFAULT_HEADER_COUNT = 16;
 
-const array<pair<string_view, string_view>, DEFAULT_HEADER_COUNT> DEFAULT_HEADERS = {
-    pair{"Server", "XSL/0.1"},
-    pair{"Content-Type", "text/plain"},
-    pair{"Connection", "close"},
-    pair{"Date", "Sun, 06 Nov 1994 08:49:37 GMT"},
-    pair{"Last-Modified", "Sun, 06 Nov 1994 08:49:37 GMT"},
-    pair{"Accept-Ranges", "bytes"},
-    pair{"ETag", "\"359670651\""},
-    pair{"Content-Length", "12345"},
-    pair{"Cache-Control", "no-cache"},
-    pair{"Expires", "Sun, 06 Nov 1994 08:49:37 GMT"},
-    pair{"Pragma", "no-cache"},
-    pair{"Content-Encoding", "gzip"},
-    pair{"Vary", "Accept-Encoding"},
-    pair{"X-Content-Type-Options", "nosniff"},
-    pair{"X-Frame-Options", "DENY"},
-    pair{"X-XSS-Protection", "1; mode=block"},
+const std::array<std::pair<std::string_view, std::string_view>, DEFAULT_HEADER_COUNT>
+    DEFAULT_HEADERS = {
+        std::pair{"Server", "XSL/0.1"},
+        std::pair{"Content-Type", "text/plain"},
+        std::pair{"Connection", "close"},
+        std::pair{"Date", "Sun, 06 Nov 1994 08:49:37 GMT"},
+        std::pair{"Last-Modified", "Sun, 06 Nov 1994 08:49:37 GMT"},
+        std::pair{"Accept-Ranges", "bytes"},
+        std::pair{"ETag", "\"359670651\""},
+        std::pair{"Content-Length", "12345"},
+        std::pair{"Cache-Control", "no-cache"},
+        std::pair{"Expires", "Sun, 06 Nov 1994 08:49:37 GMT"},
+        std::pair{"Pragma", "no-cache"},
+        std::pair{"Content-Encoding", "gzip"},
+        std::pair{"Vary", "Accept-Encoding"},
+        std::pair{"X-Content-Type-Options", "nosniff"},
+        std::pair{"X-Frame-Options", "DENY"},
+        std::pair{"X-XSS-Protection", "1; mode=block"},
 };
 
 class ResponsePart : public IntoSendTasks {
 public:
   ResponsePart();
-  ResponsePart(int status_code, string&& status_message, HttpVersion version);
+  ResponsePart(int status_code, std::string&& status_message, HttpVersion version);
   ~ResponsePart();
   int status_code;
-  string status_message;
+  std::string status_message;
   HttpVersion version;
-  unordered_map<string, string> headers;
-  unique_ptr<TcpSendString<feature::node>> into_send_task_ptr();
+  std::unordered_map<std::string, std::string> headers;
+  std::unique_ptr<TcpSendString<feature::node>> into_send_task_ptr();
   TcpSendTasks into_send_tasks();
-  string to_string();
+  std::string to_string();
 };
 
 template <class B>
 class HttpResponse;
 
-template <derived_from<IntoSendTasks> B>
+template <std::derived_from<IntoSendTasks> B>
 class HttpResponse<B> : public IntoSendTasks {
 public:
   HttpResponse();
@@ -94,20 +93,20 @@ public:
   HttpResponse(ResponsePart&& part, B&& body);
   ~HttpResponse();
   ResponsePart part;
-  optional<B> body;
+  std::optional<B> body;
   TcpSendTasks to_send_tasks();
 };
 
-template <derived_from<IntoSendTasks> B>
+template <std::derived_from<IntoSendTasks> B>
 HttpResponse<B>::HttpResponse() {}
-template <derived_from<IntoSendTasks> B>
-HttpResponse<B>::HttpResponse(ResponsePart&& part) : part(xsl::move(part)), body(nullopt) {}
-template <derived_from<IntoSendTasks> B>
+template <std::derived_from<IntoSendTasks> B>
+HttpResponse<B>::HttpResponse(ResponsePart&& part) : part(std::move(part)), body(std::nullopt) {}
+template <std::derived_from<IntoSendTasks> B>
 HttpResponse<B>::HttpResponse(ResponsePart&& part, B&& body)
-    : part(xsl::move(part)), body(make_optional(move(body))) {}
-template <derived_from<IntoSendTasks> B>
+    : part(std::move(part)), body(make_optional(move(body))) {}
+template <std::derived_from<IntoSendTasks> B>
 HttpResponse<B>::~HttpResponse() {}
-template <derived_from<IntoSendTasks> B>
+template <std::derived_from<IntoSendTasks> B>
 TcpSendTasks HttpResponse<B>::to_send_tasks() {
   TcpSendTasks tasks;
   auto head = tasks.emplace_after(tasks.before_begin(), part.into_send_task_ptr());
@@ -129,17 +128,17 @@ public:
 };
 
 template <>
-class HttpResponse<string> : public IntoSendTasks {
+class HttpResponse<std::string> : public IntoSendTasks {
 public:
   HttpResponse();
-  HttpResponse(ResponsePart&& part, string&& body);
+  HttpResponse(ResponsePart&& part, std::string&& body);
   ~HttpResponse();
   ResponsePart part;
-  string body;
+  std::string body;
   TcpSendTasks into_send_tasks();
 };
 
-using DefaultResponse = HttpResponse<string>;
+using DefaultResponse = HttpResponse<std::string>;
 
 // using ResponseResult = Result<Response, ResponseError>;
 

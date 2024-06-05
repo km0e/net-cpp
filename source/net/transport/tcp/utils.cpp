@@ -1,7 +1,6 @@
 #include "xsl/net/transport/tcp/def.h"
 #include "xsl/net/transport/tcp/utils.h"
 #include "xsl/utils.h"
-#include "xsl/wheel.h"
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -9,12 +8,13 @@
 #include <sys/types.h>
 
 #include <cstdlib>
+#include <numeric>
 
 TCP_NAMESPACE_BEGIN
 SockAddrV4View::SockAddrV4View(const char *sa4) : _ip(), _port() {
-  string_view sa4_view(sa4);
+  std::string_view sa4_view(sa4);
   size_t pos = sa4_view.find(':');
-  if (pos == string_view::npos) {
+  if (pos == std::string_view::npos) {
     _ip = sa4_view;
     _port = "";
   } else {
@@ -22,9 +22,9 @@ SockAddrV4View::SockAddrV4View(const char *sa4) : _ip(), _port() {
     _port = sa4_view.substr(pos + 1);
   }
 }
-SockAddrV4View::SockAddrV4View(string_view sa4) : _ip(), _port() {
+SockAddrV4View::SockAddrV4View(std::string_view sa4) : _ip(), _port() {
   size_t pos = sa4.find(':');
-  if (pos == string_view::npos) {
+  if (pos == std::string_view::npos) {
     _ip = sa4;
     _port = "";
   } else {
@@ -33,14 +33,14 @@ SockAddrV4View::SockAddrV4View(string_view sa4) : _ip(), _port() {
   }
 }
 SockAddrV4View::SockAddrV4View(const char *ip, const char *port) : _ip(ip), _port(port) {}
-SockAddrV4View::SockAddrV4View(string_view ip, string_view port) : _ip(ip), _port(port) {}
+SockAddrV4View::SockAddrV4View(std::string_view ip, std::string_view port) : _ip(ip), _port(port) {}
 bool SockAddrV4View::operator==(const SockAddrV4View &rhs) const {
   return _ip == rhs._ip && _port == rhs._port;
 }
 
 const char *SockAddrV4View::ip() const { return _ip.data(); }
 const char *SockAddrV4View::port() const { return _port.data(); }
-string SockAddrV4View::to_string() const { return format("{}:{}", _ip, _port); }
+std::string SockAddrV4View::to_string() const { return format("{}:{}", _ip, _port); }
 SockAddrV4::SockAddrV4(int fd) : _ip(), _port() {
   sockaddr addr;
   socklen_t len = sizeof(addr);
@@ -50,7 +50,7 @@ SockAddrV4::SockAddrV4(int fd) : _ip(), _port() {
   _port = std::to_string(ntohs(addr_in->sin_port));
 }
 SockAddrV4::SockAddrV4(const char *ip, const char *port) : _ip(ip), _port(port) {}
-SockAddrV4::SockAddrV4(string_view ip, string_view port) : _ip(ip), _port(port) {}
+SockAddrV4::SockAddrV4(std::string_view ip, std::string_view port) : _ip(ip), _port(port) {}
 SockAddrV4::SockAddrV4(SockAddrV4View sa4) : _ip(sa4._ip), _port(sa4._port) {}
 SockAddrV4View SockAddrV4::view() const { return SockAddrV4View(_ip, _port); }
 
@@ -61,7 +61,7 @@ bool SockAddrV4::operator==(const SockAddrV4View &rhs) const {
 bool SockAddrV4::operator==(const SockAddrV4 &rhs) const {
   return _ip == rhs._ip && _port == rhs._port;
 }
-string SockAddrV4::to_string() const { return format("{}:{}", _ip, _port); }
+std::string SockAddrV4::to_string() const { return format("{}:{}", _ip, _port); }
 
 int create_tcp_client(const char *ip, const char *port, TcpClientSockConfig config) {
   SPDLOG_DEBUG("Connecting to {}:{}", ip, port);
@@ -166,7 +166,7 @@ bool set_keep_alive(int fd, bool keep_alive) {
   return true;
 }
 
-string_view to_string(SendError err) {
+std::string_view to_string(SendError err) {
   switch (err) {
     case SendError::Unknown:
       return "Unknown";
@@ -175,7 +175,7 @@ string_view to_string(SendError err) {
   }
 }
 
-string_view to_string(RecvError err) {
+std::string_view to_string(RecvError err) {
   switch (err) {
     case RecvError::Unknown:
       return "Unknown";
@@ -188,7 +188,7 @@ string_view to_string(RecvError err) {
 
 RecvResult recv(int fd) {
   SPDLOG_TRACE("start recv string");
-  vector<string> data;
+  std::vector<std::string> data;
   char buf[MAX_SINGLE_RECV_SIZE];
   ssize_t n;
   do {
@@ -214,9 +214,9 @@ RecvResult recv(int fd) {
     }
     data.emplace_back(buf, n);
   } while (n == sizeof(buf));
-  return {accumulate(data.begin(), data.end(), string())};
+  return {std::accumulate(data.begin(), data.end(), std::string())};
 }
-SendResult send(int fd, string_view data) {
+SendResult send(int fd, std::string_view data) {
   ssize_t n = write(fd, data.data(), data.size());
   if (n == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {

@@ -11,6 +11,7 @@
 #  include <spdlog/spdlog.h>
 #  include <sys/socket.h>
 
+#  include <list>
 #  include <ranges>
 
 TCP_COMPONENTS_NAMESPACE_BEGIN
@@ -21,20 +22,20 @@ namespace impl {
   class TcpSendString<feature::placeholder> {
   public:
     TcpSendString(TcpSendString&&) = default;
-    TcpSendString(string&& data) : data_buffer() {
-      this->data_buffer.emplace_back(xsl::move(data), 0);
+    TcpSendString(std::string&& data) : data_buffer() {
+      this->data_buffer.emplace_back(std::move(data), 0);
     }
-    TcpSendString(list<string>&& data) : data_buffer() {
-      auto buf = data | std::views::transform([](string& s) {
-                   return pair<string, size_t>{xsl::move(s), 0};
+    TcpSendString(std::list<std::string>&& data) : data_buffer() {
+      auto buf = data | std::views::transform([](std::string& s) {
+                   return std::pair<std::string, size_t>{std::move(s), 0};
                  });
-      this->data_buffer = list<pair<string, size_t>>(buf.begin(), buf.end());
+      this->data_buffer = std::list<std::pair<std::string, size_t>>(buf.begin(), buf.end());
     }
     ~TcpSendString() {}
     SendResult exec(int fd) {
       while (!this->data_buffer.empty()) {
         auto& data = this->data_buffer.front();
-        auto res = send(fd, string_view(data.first).substr(data.second));
+        auto res = send(fd, std::string_view(data.first).substr(data.second));
         if (res.is_err()) {
           return {res.unwrap_err()};
         }
@@ -46,7 +47,7 @@ namespace impl {
       }
       return {true};
     }
-    list<pair<string, size_t>> data_buffer;
+    std::list<std::pair<std::string, size_t>> data_buffer;
   };
   template <>
   class TcpSendString<feature::node> : public SendTaskNode, TcpSendString<feature::placeholder> {
@@ -85,7 +86,7 @@ namespace impl {
       this->data_buffer += res.unwrap();
       return {true};
     }
-    string data_buffer;
+    std::string data_buffer;
   };
   template <>
   class TcpRecvString<feature::node> : public RecvTaskNode, TcpRecvString<feature::placeholder> {

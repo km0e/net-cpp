@@ -13,12 +13,12 @@ int32_t i32_from_bytes(const char* bytes) {
 void bool_to_bytes(bool value, char* bytes) { bytes[0] = value ? 1 : 0; }
 bool bool_from_bytes(const char* bytes) { return bytes[0] == 1; }
 std::strong_ordering operator<=>(const FixedString& lhs, const FixedString& rhs) {
-  return lhs.compare(giant::string_view(rhs.data(), rhs.size())) <=> 0;
+  return lhs.compare(std::string_view(rhs.data(), rhs.size())) <=> 0;
 }
-std::strong_ordering operator<=>(const FixedString& lhs, giant::string_view rhs) {
+std::strong_ordering operator<=>(const FixedString& lhs, std::string_view rhs) {
   return lhs.compare(rhs) <=> 0;
 }
 std::strong_ordering operator<=>(const FixedString& lhs, const char* rhs) {
-  return lhs.compare(giant::string_view(rhs)) <=> 0;
+  return lhs.compare(std::string_view(rhs)) <=> 0;
 }
 WHEEL_NAMESPACE_END

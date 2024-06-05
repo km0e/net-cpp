@@ -2,31 +2,33 @@
 #ifndef _XSL_WHEEL_STR_H_
 #  define _XSL_WHEEL_STR_H_
 #  include "xsl/wheel/def.h"
-#  include "xsl/wheel/giant.h"
 
 #  include <compare>
 #  include <cstring>
+#  include <memory>
+#  include <string>
+#  include <string_view>
 
 WHEEL_NAMESPACE_BEGIN
 using std::to_string;
 template <typename T>
 concept ToString = requires(T t) {
-  { to_string(t) } -> giant::convertible_to<giant::string_view>;
+  { to_string(t) } -> std::convertible_to<std::string_view>;
 } || requires(T t) {
-  { t.to_string() } -> giant::convertible_to<giant::string_view>;
+  { t.to_string() } -> std::convertible_to<std::string_view>;
 };
 
 template <typename T>
 concept Stringable = requires(T t) {
-  { t.to_string() } -> giant::convertible_to<giant::string_view>;
+  { t.to_string() } -> std::convertible_to<std::string_view>;
 };
 
 template <Stringable T>
-giant::string to_string(T t) {
+std::string to_string(T t) {
   return t.to_string();
 }
 template <typename T>
-T from_string(giant::string_view str);
+T from_string(std::string_view str);
 
 void i32_to_bytes(int32_t value, char* bytes);
 
@@ -47,20 +49,20 @@ public:
     std::copy(str, str + size, this->_data.get());
   }
   FixedString(const char* str) : FixedString(str, std::strlen(str)) {}
-  FixedString(giant::string_view str) : FixedString(str.data(), str.size()) {}
+  FixedString(std::string_view str) : FixedString(str.data(), str.size()) {}
   FixedString(const FixedString& other) : FixedString(other.data(), other.size()) {}
   FixedString(FixedString&& other) : _size(other._size), _data() {
     this->_data = std::move(other._data);
   }
-  FixedString(giant::string&& str) : FixedString(str.data(), str.size()) {}
-  FixedString(const giant::string& str) : FixedString(str.data(), str.size()) {}
+  FixedString(std::string&& str) : FixedString(str.data(), str.size()) {}
+  FixedString(const std::string& str) : FixedString(str.data(), str.size()) {}
   FixedString& operator=(const FixedString& other) {
     if (this == &other) {
       return *this;
     }
     if (this->_size != other._size) {
       this->_size = other._size;
-      this->_data = giant::make_unique<char[]>(this->_size);
+      this->_data = std::make_unique<char[]>(this->_size);
     }
     if (other._data) {
       std::copy(other._data.get(), other._data.get() + this->_size, this->_data.get());
@@ -81,7 +83,7 @@ public:
       return *this;
     }
     if (!this->_data) {
-      this->_data = giant::make_unique<char[]>(this->_size);
+      this->_data = std::make_unique<char[]>(this->_size);
     }
     std::copy(str, str + this->_size, this->_data.get());
     return *this;
@@ -91,7 +93,7 @@ public:
   char& operator[](size_t index) { return this->at(index); }
   const char& operator[](size_t index) const { return this->at(index); }
   size_t size() const { return this->_size; }
-  int compare(const giant::string_view& other) const {
+  int compare(const std::string_view& other) const {
     auto min_size = std::min(this->size(), other.size());
     for (size_t i = 0; i < min_size; ++i) {
       if (this->at(i) < other[i]) {
@@ -103,7 +105,7 @@ public:
     return this->size() > other.size() ? 1 : (this->size() < other.size() ? -1 : 0);
   }
   int compare(const FixedString& other) const {
-    return this->compare(giant::string_view(other.data(), other.size()));
+    return this->compare(std::string_view(other.data(), other.size()));
   }
   char* data() { return this->_data.get(); }
   const char* data() const { return this->_data.get(); }
@@ -116,18 +118,16 @@ public:
     }
     return i == this->size() && other[i] == '\0';
   }
-  giant::string to_string() const { return giant::string(this->data(), this->size()); }
-  giant::string_view to_string_view() const {
-    return giant::string_view(this->data(), this->size());
-  }
+  std::string to_string() const { return std::string(this->data(), this->size()); }
+  std::string_view to_string_view() const { return std::string_view(this->data(), this->size()); }
 
 private:
   size_t _size;
-  giant::unique_ptr<char[]> _data;
+  std::unique_ptr<char[]> _data;
 };
 
-inline giant::string_view to_string_view(const FixedString& str) {
-  return giant::string_view(str.data(), str.size());
+inline std::string_view to_string_view(const FixedString& str) {
+  return std::string_view(str.data(), str.size());
 }
 
 // @brief compare two FixedString
@@ -136,7 +136,7 @@ inline giant::string_view to_string_view(const FixedString& str) {
 // @return true if lhs is equal to rhs, otherwise false
 
 std::strong_ordering operator<=>(const FixedString& lhs, const FixedString& rhs);
-std::strong_ordering operator<=>(const FixedString& lhs, giant::string_view rhs);
+std::strong_ordering operator<=>(const FixedString& lhs, std::string_view rhs);
 std::strong_ordering operator<=>(const FixedString& lhs, const char* rhs);
 WHEEL_NAMESPACE_END
 #endif

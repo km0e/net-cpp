@@ -19,12 +19,12 @@ public:
     // spdlog::set_pattern("[%D-%T][%^%l%$][%t][%!] %v");
   }
   int max_connections = MAX_CONNECTIONS;
-  shared_ptr<Poller> poller;
+  std::shared_ptr<Poller> poller;
 };
 template <TcpHandlerLike H>
 class TcpClient {
 public:
-  static unique_ptr<TcpClient<H>> dial(TcpClientConfig<H> config) {
+  static std::unique_ptr<TcpClient<H>> dial(TcpClientConfig<H> config) {
     return make_unique<TcpClient<H>>(config);
   }
   TcpClient(TcpClient&&) = delete;
@@ -53,7 +53,7 @@ private:
   // Handler is a function that takes a shared pointer to a Poller, an int, and an IOM_EVENTS enum
   // and returns a bool The handler is called when the server receives a connection
   TcpClientConfig<H> config;
-  ShareContainer<unordered_map<int, unique_ptr<TcpConn<H>>>> handlers;
+  ShareContainer<std::unordered_map<int, std::unique_ptr<TcpConn<H>>>> handlers;
 };
 
 TCP_NAMESPACE_END

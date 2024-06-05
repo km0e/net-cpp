@@ -12,7 +12,7 @@ using StaticCreateResult = Result<http::RouteHandler, http::AddRouteError>;
 // @param path The path of the file or folder.
 // @return A static handler for the file or folder.
 
-StaticCreateResult create_static_handler(string&& path);
+StaticCreateResult create_static_handler(std::string&& path);
 
 HTTP_HELPER_NAMESPACE_END
 #endif  // _XSL_NET_HTTP_HELPER_STATIC_H_

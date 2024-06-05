@@ -7,6 +7,8 @@
 #  include <sys/epoll.h>
 #  include <sys/socket.h>
 #  include <sys/types.h>
+
+#  include <functional>
 SYNC_NAMESPACE_BEGIN
 #  define USE_EPOLL
 #  ifdef USE_EPOLL
@@ -45,7 +47,7 @@ enum class PollHandleHintTag : uint8_t {
   DELETE = 2,
 };
 
-string_view to_string(PollHandleHintTag tag);
+std::string_view to_string(PollHandleHintTag tag);
 
 class PollHandleHint {
 public:
@@ -58,45 +60,47 @@ public:
   PollHandleHint(PollHandleHintTag tag, IOM_EVENTS events) : tag(tag), data{events} {}
 };
 
-using PollHandler = function<PollHandleHint(int fd, IOM_EVENTS events)>;
+using PollHandler = std::function<PollHandleHint(int fd, IOM_EVENTS events)>;
 
 class Poller {
 public:
   virtual bool add(int fd, IOM_EVENTS events, PollHandler&& handler) = 0;
-  virtual bool modify(int fd, IOM_EVENTS events, optional<PollHandler>&& handler) = 0;
+  virtual bool modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) = 0;
   virtual void poll() = 0;  // NOLINT [runtime/references
   virtual void remove(int fd) = 0;
   virtual void shutdown() = 0;
   virtual ~Poller() = default;
 };
-using HandleProxy = function<PollHandleHint(function<PollHandleHint()>&&)>;
+using HandleProxy = std::function<PollHandleHint(std::function<PollHandleHint()>&&)>;
 class DefaultPoller : public Poller {
 public:
   DefaultPoller();
-  DefaultPoller(shared_ptr<HandleProxy>&& proxy);
+  DefaultPoller(std::shared_ptr<HandleProxy>&& proxy);
   ~DefaultPoller();
   bool valid();
   bool add(int fd, IOM_EVENTS events, PollHandler&& handler) override;
-  bool modify(int fd, IOM_EVENTS events, optional<PollHandler>&& handler) override;
+  bool modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) override;
   void poll() override;
   void remove(int fd) override;
   void shutdown() override;
 
 private:
   int fd;
-  ShareContainer<unordered_map<int, shared_ptr<PollHandler>>> handlers;
-  shared_ptr<HandleProxy> proxy;
+  ShareContainer<std::unordered_map<int, std::shared_ptr<PollHandler>>> handlers;
+  std::shared_ptr<HandleProxy> proxy;
 };
 template <Handler T, class... Args>
-unique_ptr<T> poll_add_unique(shared_ptr<Poller> poller, int fd, IOM_EVENTS events, Args&&... args) {
-  auto handler = make_unique<T>(forward<Args>(args)...);
+std::unique_ptr<T> poll_add_unique(std::shared_ptr<Poller> poller, int fd, IOM_EVENTS events,
+                                   Args&&... args) {
+  auto handler = std::make_unique<T>(std::forward<Args>(args)...);
   poller->add(fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) {
     return (*handler)(fd, events);
   });
   return handler;
 }
 template <Handler T, class... Args>
-shared_ptr<T> poll_add_shared(shared_ptr<Poller> poller, int fd, IOM_EVENTS events, Args&&... args) {
+std::shared_ptr<T> poll_add_shared(std::shared_ptr<Poller> poller, int fd, IOM_EVENTS events,
+                                   Args&&... args) {
   auto handler = make_shared<T>(forward<Args>(args)...);
   poller->add(fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) {
     return (*handler)(fd, events);

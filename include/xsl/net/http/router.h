@@ -12,7 +12,7 @@ class RouteContext {
 public:
   RouteContext(Request&& request);
   ~RouteContext();
-  string_view current_path;
+  std::string_view current_path;
   Request request;
   bool is_ok;
 };
@@ -20,15 +20,15 @@ public:
 class RouteHandleError {
 public:
   RouteHandleError();
-  RouteHandleError(string message);
+  RouteHandleError(std::string message);
   ~RouteHandleError();
-  string message;
-  string to_string() const;
+  std::string message;
+  std::string to_string() const;
 };
 
 using RouteHandleResult = Result<IntoSendTasksPtr, RouteHandleError>;
 
-using RouteHandler = function<RouteHandleResult(RouteContext& ctx)>;
+using RouteHandler = std::function<RouteHandleResult(RouteContext& ctx)>;
 
 enum class AddRouteErrorKind {
   Unknown,
@@ -36,7 +36,7 @@ enum class AddRouteErrorKind {
   Conflict,
 };
 const int ADD_ROUTE_ERROR_COUNT = 3;
-const array<string_view, ADD_ROUTE_ERROR_COUNT> ADD_ROUTE_ERROR_STRINGS = {
+const std::array<std::string_view, ADD_ROUTE_ERROR_COUNT> ADD_ROUTE_ERROR_STRINGS = {
     "Unknown",
     "InvalidPath",
     "Conflict",
@@ -44,10 +44,10 @@ const array<string_view, ADD_ROUTE_ERROR_COUNT> ADD_ROUTE_ERROR_STRINGS = {
 class AddRouteError {
 public:
   AddRouteError(AddRouteErrorKind kind);
-  AddRouteError(AddRouteErrorKind kind, string message);
+  AddRouteError(AddRouteErrorKind kind, std::string message);
   ~AddRouteError();
   AddRouteErrorKind kind;
-  string message;
+  std::string message;
   std::string to_string() const;
 };
 
@@ -57,7 +57,7 @@ enum class RouteErrorKind : uint8_t {
   Unimplemented,
 };
 const int ROUTE_ERROR_COUNT = 3;
-const array<string_view, ROUTE_ERROR_COUNT> ROUTE_ERROR_STRINGS = {
+const std::array<std::string_view, ROUTE_ERROR_COUNT> ROUTE_ERROR_STRINGS = {
     "Unknown",
     "NotFound",
     "Unimplemented",
@@ -66,22 +66,22 @@ class RouteError {
 public:
   RouteError();
   RouteError(RouteErrorKind kind);
-  RouteError(RouteErrorKind kind, string message);
+  RouteError(RouteErrorKind kind, std::string message);
   ~RouteError();
   RouteErrorKind kind;
-  string message;
-  string to_string() const;
+  std::string message;
+  std::string to_string() const;
 };
 
-using AddRouteResult = Result<tuple<>, AddRouteError>;
+using AddRouteResult = Result<std::tuple<>, AddRouteError>;
 
 using RouteResult = Result<IntoSendTasksPtr, RouteError>;
 
 template <class R>
-concept Router = requires(R r, string_view path, RouteHandler&& handler, RouteContext& ctx) {
-  { r.add_route(HttpMethod{}, path, xsl::move(handler)) } -> same_as<AddRouteResult>;
-  { r.route(ctx) } -> same_as<RouteResult>;
-  { r.error_handler(RouteErrorKind{}, xsl::move(handler)) };
+concept Router = requires(R r, std::string_view path, RouteHandler&& handler, RouteContext& ctx) {
+  { r.add_route(HttpMethod{}, path, std::move(handler)) } -> std::same_as<AddRouteResult>;
+  { r.route(ctx) } -> std::same_as<RouteResult>;
+  { r.error_handler(RouteErrorKind{}, std::move(handler)) };
 };
 
 namespace router_details {
@@ -89,12 +89,12 @@ namespace router_details {
   public:
     HttpRouteNode();
     ~HttpRouteNode();
-    AddRouteResult add_route(HttpMethod method, string_view path, RouteHandler&& handler);
+    AddRouteResult add_route(HttpMethod method, std::string_view path, RouteHandler&& handler);
     RouteResult route(RouteContext& ctx);
 
   private:
-    array<unique_ptr<RouteHandler>, HTTP_METHOD_COUNT> handlers;
-    ShareContainer<unordered_map<string_view, shared_ptr<HttpRouteNode>>> children;
+    std::array<std::unique_ptr<RouteHandler>, HTTP_METHOD_COUNT> handlers;
+    ShareContainer<std::unordered_map<std::string_view, std::shared_ptr<HttpRouteNode>>> children;
   };
 }  // namespace router_details
 
@@ -107,7 +107,8 @@ const RouteHandler NOT_FOUND_HANDLER = []([[maybe_unused]] RouteContext& ctx) ->
   return RouteHandleResult{std::make_unique<ResponsePart>(404, "Not Found", HttpVersion::HTTP_1_1)};
 };
 
-const RouteHandler UNIMPLEMENTED_HANDLER = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
+const RouteHandler UNIMPLEMENTED_HANDLER
+    = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
   return RouteHandleResult{
       std::make_unique<ResponsePart>(501, "Not Implemented", HttpVersion::HTTP_1_1)};
 };
@@ -116,13 +117,13 @@ class HttpRouter {
 public:
   HttpRouter();
   ~HttpRouter();
-  AddRouteResult add_route(HttpMethod method, string_view path, RouteHandler&& handler);
+  AddRouteResult add_route(HttpMethod method, std::string_view path, RouteHandler&& handler);
   RouteResult route(RouteContext& ctx);
   void error_handler(RouteErrorKind kind, RouteHandler&& handler);
 
 private:
   router_details::HttpRouteNode root;
-  array<shared_ptr<RouteHandler>, ROUTE_ERROR_COUNT> error_handlers
+  std::array<std::shared_ptr<RouteHandler>, ROUTE_ERROR_COUNT> error_handlers
       = {make_shared<RouteHandler>(UNKNOWN_HANDLER), make_shared<RouteHandler>(NOT_FOUND_HANDLER),
          make_shared<RouteHandler>(UNIMPLEMENTED_HANDLER)};
 };

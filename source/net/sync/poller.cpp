@@ -15,7 +15,7 @@ IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b) {
   return a;
 }
 IOM_EVENTS operator~(IOM_EVENTS a) { return (IOM_EVENTS)(~(uint32_t)a); }
-string_view to_string(PollHandleHintTag tag) {
+std::string_view to_string(PollHandleHintTag tag) {
   switch (tag) {
     case PollHandleHintTag::NONE:
       return "NONE";
@@ -29,9 +29,10 @@ string_view to_string(PollHandleHintTag tag) {
 }
 
 DefaultPoller::DefaultPoller()
-    : DefaultPoller(make_shared<HandleProxy>([](function<PollHandleHint()>&& f) { return f(); })) {}
-DefaultPoller::DefaultPoller(shared_ptr<HandleProxy>&& proxy)
-    : fd(-1), handlers(), proxy(xsl::move(proxy)) {
+    : DefaultPoller(
+        std::make_shared<HandleProxy>([](std::function<PollHandleHint()>&& f) { return f(); })) {}
+DefaultPoller::DefaultPoller(std::shared_ptr<HandleProxy>&& proxy)
+    : fd(-1), handlers(), proxy(std::move(proxy)) {
   this->fd = epoll_create(1);
   SPDLOG_DEBUG("Poller fd: {}", this->fd);
 }
@@ -50,7 +51,7 @@ bool DefaultPoller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
   this->handlers.lock()->try_emplace(fd, make_shared<PollHandler>(handler));
   return true;
 }
-bool DefaultPoller::modify(int fd, IOM_EVENTS events, optional<PollHandler>&& handler) {
+bool DefaultPoller::modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) {
   SPDLOG_TRACE("");
   epoll_event event;
   event.events = (uint32_t)events;
@@ -90,7 +91,7 @@ void DefaultPoller::poll() {
         this->remove(events[i].data.fd);
         break;
       case PollHandleHintTag::MODIFY:
-        this->modify(events[i].data.fd, hint.data.events, nullopt);
+        this->modify(events[i].data.fd, hint.data.events, std::nullopt);
         break;
       default:
         break;

@@ -2,7 +2,11 @@
 #ifndef _XSL_WHEEL_VEC_H_
 #  define _XSL_WHEEL_VEC_H_
 #  include "xsl/wheel/def.h"
-#  include "xsl/wheel/giant.h"
+
+#  include <algorithm>
+#  include <cstddef>
+#  include <memory>
+
 WHEEL_NAMESPACE_BEGIN
 template <typename T>
 class FixedVec {
@@ -14,20 +18,18 @@ public:
   }
   FixedVec(const FixedVec& other) : _size(other._size), data() {
     if (other.data) {
-      this->data = giant::make_unique<T[]>(this->_size);
+      this->data = std::make_unique<T[]>(this->_size);
       std::copy(other.data.get(), other.data.get() + this->_size, this->data.get());
     }
   }
-  FixedVec(FixedVec&& other) : _size(other._size), data() {
-    this->data = std::move(other.data);
-  }
+  FixedVec(FixedVec&& other) : _size(other._size), data() { this->data = std::move(other.data); }
   FixedVec& operator=(const FixedVec& other) {
     if (this == &other) {
       return *this;
     }
     if (this->_size != other._size) {
       this->_size = other._size;
-      this->data = giant::make_unique<T[]>(this->_size);
+      this->data = std::make_unique<T[]>(this->_size);
     }
     if (other.data) {
       std::copy(other.data.get(), other.data.get() + this->_size, this->data.get());
@@ -53,7 +55,7 @@ public:
 
 private:
   size_t _size;
-  giant::unique_ptr<T[]> data;
+  std::unique_ptr<T[]> data;
 };
 WHEEL_NAMESPACE_END
 #endif

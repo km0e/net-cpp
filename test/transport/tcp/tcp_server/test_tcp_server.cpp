@@ -1,7 +1,6 @@
 #include "xsl/feature.h"
 #include "xsl/net/sync.h"
 #include "xsl/net/transport/tcp.h"
-#include "xsl/wheel.h"
 
 #include <CLI/CLI.hpp>
 #include <pthread.h>
@@ -39,7 +38,7 @@ public:
     SPDLOG_INFO("[T][Handler::recv] Received data: {}", this->recv_task.data_buffer);
     this->send_tasks.tasks.emplace_after(
         this->send_tasks.tasks.before_begin(),
-        make_unique<TcpSendString<feature::node>>(xsl::move(this->recv_task.data_buffer)));
+        make_unique<TcpSendString<feature::node>>(std::move(this->recv_task.data_buffer)));
     this->send_tasks.exec(fd);
     return TcpHandleState::NONE;
   }
@@ -50,7 +49,7 @@ public:
     this->send_tasks.exec(fd);
     return TcpHandleState::NONE;
   }
-  string data;
+  std::string data;
   TcpRecvString<> recv_task;
   TcpSendTasksProxy send_tasks;
 };
@@ -58,17 +57,19 @@ class HandlerGenerator {
 public:
   HandlerGenerator() : data("Hello, world!") {}
   ~HandlerGenerator() {}
-  unique_ptr<Handler> operator()([[maybe_unused]] int fd) { return make_unique<Handler>(); }
+  std::unique_ptr<Handler> operator()([[maybe_unused]] int fd) {
+    return std::make_unique<Handler>();
+  }
 
 private:
-  string data;
+  std::string data;
 };
 
 int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
-  string ip = "localhost";
+  std::string ip = "localhost";
   app.add_option("-i,--ip", ip, "Ip to connect to")->required();
-  string port = "8080";
+  std::string port = "8080";
   app.add_option("-p,--port", port, "Port to connect to")->required();
   CLI11_PARSE(app, argc, argv);
 
@@ -78,13 +79,13 @@ int main(int argc, char **argv) {
   TcpServerConfig<Handler, HandlerGenerator> config{};
   config.max_connections = 10;
   config.sa4 = SockAddrV4View(ip, port);
-  auto poller = make_shared<DefaultPoller>();
+  auto poller = std::make_shared<DefaultPoller>();
   if (!poller->valid()) {
     SPDLOG_ERROR("Failed to create poller");
     return 1;
   }
   config.poller = poller;
-  auto handler_generator = make_shared<HandlerGenerator>();
+  auto handler_generator = std::make_shared<HandlerGenerator>();
   config.handler_generator = handler_generator;
   auto server = TcpServer<Handler, HandlerGenerator>::serve(config);
   if (!server) {

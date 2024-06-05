@@ -6,6 +6,8 @@
 #  define TCP_COMPONENTS_NAMESPACE_END }
 #  include "xsl/net/transport/tcp/utils.h"
 #  include "xsl/wheel.h"
+
+#  include <forward_list>
 TCP_COMPONENTS_NAMESPACE_BEGIN
 
 class SendContext;
@@ -25,8 +27,8 @@ public:
   virtual Result<bool, RecvError> exec(RecvContext& ctx) = 0;
   virtual ~RecvTaskNode() = default;
 };
-using SendTasks = forward_list<unique_ptr<SendTaskNode>>;
-using RecvTasks = forward_list<unique_ptr<RecvTaskNode>>;
+using SendTasks = std::forward_list<std::unique_ptr<SendTaskNode>>;
+using RecvTasks = std::forward_list<std::unique_ptr<RecvTaskNode>>;
 class SendContext {
 public:
   SendContext(SendContext&&) = default;

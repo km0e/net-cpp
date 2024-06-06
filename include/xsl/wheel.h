@@ -7,6 +7,7 @@
 #  include "xsl/wheel/result.h"
 #  include "xsl/wheel/str.h"
 #  include "xsl/wheel/type_traits.h"
+#  include "xsl/wheel/utils.h"
 #  include "xsl/wheel/vec.h"
 XSL_NAMESPACE_BEGIN
 using wheel::bool_from_bytes;
@@ -22,6 +23,7 @@ using wheel::Result;
 using wheel::ShareContainer;
 using wheel::SharedLockGuard;
 using wheel::SharedMutex;
+using wheel::sumap;
 using wheel::to_string;
 using wheel::ToString;
 XSL_NAMESPACE_END

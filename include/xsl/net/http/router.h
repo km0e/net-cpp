@@ -6,6 +6,8 @@
 #  include "xsl/net/http/proto.h"
 #  include "xsl/wheel.h"
 
+#  include <string_view>
+
 HTTP_NAMESPACE_BEGIN
 
 class RouteContext {
@@ -14,7 +16,6 @@ public:
   ~RouteContext();
   std::string_view current_path;
   Request request;
-  bool is_ok;
 };
 
 class RouteHandleError {
@@ -88,13 +89,17 @@ namespace router_details {
   class HttpRouteNode {
   public:
     HttpRouteNode();
+    HttpRouteNode(HttpMethod method, RouteHandler&& handler);
     ~HttpRouteNode();
     AddRouteResult add_route(HttpMethod method, std::string_view path, RouteHandler&& handler);
     RouteResult route(RouteContext& ctx);
 
   private:
-    std::array<std::unique_ptr<RouteHandler>, HTTP_METHOD_COUNT> handlers;
-    ShareContainer<std::unordered_map<std::string_view, std::shared_ptr<HttpRouteNode>>> children;
+    std::array<RouteHandler, HTTP_METHOD_COUNT> handlers;
+    ShareContainer<sumap<HttpRouteNode>> children;
+
+    bool add(HttpMethod method, RouteHandler&& handler);
+    RouteResult direct_route(RouteContext& ctx);
   };
 }  // namespace router_details
 

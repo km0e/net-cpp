@@ -32,6 +32,5 @@ add_includedirs("$(projectdir)/include", { public = true })
 
 set_config("log", "none")
 
-xsl_sources = "$(projectdir)/source/**.cpp"
 xsl_headers = "$(projectdir)/include/(**.h)"
 includes("src", "test")

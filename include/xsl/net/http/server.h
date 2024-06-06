@@ -2,6 +2,7 @@
 
 #ifndef _XSL_NET_HTTP_SERVER_H_
 #  define _XSL_NET_HTTP_SERVER_H_
+#  include "xsl/convert.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/parse.h"
@@ -50,7 +51,7 @@ public:
     auto rtres = this->router->route(ctx);
     if (rtres.is_err()) {
       // TODO: handle route error
-      SPDLOG_ERROR("route error: {}", wheel::to_string(rtres.unwrap_err()));
+      SPDLOG_ERROR("route error: {}", xsl::to_string(rtres.unwrap_err()));
       return TcpHandleState::CLOSE;
     }
     auto tasks = rtres.unwrap()->into_send_tasks();

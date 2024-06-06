@@ -66,7 +66,7 @@ public:
       close(this->fd);
     }
   }
-  sync::PollHandleHint operator()(int fd, IOM_EVENTS events) {
+  PollHandleHint operator()(int fd, IOM_EVENTS events) {
     PollHandleHint hint{};
     if ((events & IOM_EVENTS::HUP) == IOM_EVENTS::HUP) {
       handler->close(fd);

@@ -10,25 +10,6 @@
 #  include <string_view>
 
 WHEEL_NAMESPACE_BEGIN
-using std::to_string;
-template <typename T>
-concept ToString = requires(T t) {
-  { to_string(t) } -> std::convertible_to<std::string_view>;
-} || requires(T t) {
-  { t.to_string() } -> std::convertible_to<std::string_view>;
-};
-
-template <typename T>
-concept Stringable = requires(T t) {
-  { t.to_string() } -> std::convertible_to<std::string_view>;
-};
-
-template <Stringable T>
-std::string to_string(T t) {
-  return t.to_string();
-}
-template <typename T>
-T from_string(std::string_view str);
 
 void i32_to_bytes(int32_t value, char* bytes);
 

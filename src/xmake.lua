@@ -1,8 +1,15 @@
 includes("net","utils","wheel")
+target("xsl_convert")do
+    set_kind("static")
+    set_default(false)
+    add_files("convert.cpp")
+    add_defines("SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE",{public = true})
+    on_package(function(package) end)
+end
 target("xsl")
 do
     set_kind("static")
-    add_files(xsl_sources)
+    add_files("**.cpp")
     add_headerfiles(xsl_headers)
     -- add_defines("SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG")
     on_load(function(target)

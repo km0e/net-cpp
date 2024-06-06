@@ -134,16 +134,4 @@ std::string& operator+=(std::string& lhs, const ContentType& rhs);
 
 HTTP_NAMESPACE_END
 
-WHEEL_NAMESPACE_BEGIN
-template <>
-net::http::HttpVersion from_string(std::string_view type);
-template <>
-net::http::HttpMethod from_string(std::string_view type);
-template <>
-net::http::content_type::Type from_string(std::string_view type);
-template <>
-net::http::content_type::SubType from_string(std::string_view type);
-template <>
-net::http::content_type::MediaType from_string(std::string_view type);
-WHEEL_NAMESPACE_END
 #endif

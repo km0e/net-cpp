@@ -14,7 +14,6 @@ using wheel::bool_from_bytes;
 using wheel::bool_to_bytes;
 using wheel::FixedString;
 using wheel::FixedVec;
-using wheel::from_string;
 using wheel::i32_from_bytes;
 using wheel::i32_to_bytes;
 using wheel::LockGuard;
@@ -24,7 +23,5 @@ using wheel::ShareContainer;
 using wheel::SharedLockGuard;
 using wheel::SharedMutex;
 using wheel::sumap;
-using wheel::to_string;
-using wheel::ToString;
 XSL_NAMESPACE_END
 #endif  // _XSL_UTILS_WHEEL_H_

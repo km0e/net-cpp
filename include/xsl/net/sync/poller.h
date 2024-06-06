@@ -36,10 +36,6 @@ IOM_EVENTS operator&(IOM_EVENTS a, IOM_EVENTS b);
 IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b);
 IOM_EVENTS operator~(IOM_EVENTS a);
 #  endif
-template <class T>
-concept Handler = requires(T t) {
-  { t(0, IOM_EVENTS::NONE) };
-};
 
 enum class PollHandleHintTag : uint8_t {
   NONE = 0,
@@ -58,6 +54,10 @@ public:
   PollHandleHint() : tag(PollHandleHintTag::NONE), data{IOM_EVENTS::NONE} {}
   PollHandleHint(PollHandleHintTag tag) : tag(tag), data{IOM_EVENTS::NONE} {}
   PollHandleHint(PollHandleHintTag tag, IOM_EVENTS events) : tag(tag), data{events} {}
+};
+template <class T>
+concept Handler = requires(T t) {
+  { t(0, IOM_EVENTS::NONE) } -> std::same_as<PollHandleHint>;
 };
 
 using PollHandler = std::function<PollHandleHint(int fd, IOM_EVENTS events)>;

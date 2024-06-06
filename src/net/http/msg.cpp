@@ -1,7 +1,6 @@
 #include "xsl/feature.h"
 #include "xsl/net/http/msg.h"
 #include "xsl/net/http/proto.h"
-#include "xsl/wheel.h"
 
 #include <spdlog/spdlog.h>
 
@@ -19,7 +18,7 @@ void RequestView::clear() {
 }
 
 Request::Request(std::string&& raw, RequestView view)
-    : method(wheel::from_string<HttpMethod>(view.method)), view(view), raw(std::move(raw)) {}
+    : method(xsl::from_string<HttpMethod>(view.method)), view(view), raw(std::move(raw)) {}
 Request::~Request() {}
 ResponseError::ResponseError(int code, std::string_view message) : code(code), message(message) {}
 ResponseError::~ResponseError() {}
@@ -46,7 +45,7 @@ std::string ResponsePart::to_string() {
   res.reserve(1024);
   res += http::to_string_view(version);
   res += " ";
-  res += xsl::to_string(status_code);
+  res += std::to_string(status_code);
   res += " ";
   res += status_message;
   res += "\r\n";

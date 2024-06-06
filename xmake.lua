@@ -34,4 +34,4 @@ set_config("log", "none")
 
 xsl_sources = "$(projectdir)/source/**.cpp"
 xsl_headers = "$(projectdir)/include/(**.h)"
-includes("source", "test")
+includes("src", "test")

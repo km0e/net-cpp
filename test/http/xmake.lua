@@ -10,4 +10,5 @@ for _, file in ipairs(os.files("test_*.cpp")) do
         add_files(name .. ".cpp")
         add_tests("http" .. name)
         add_defines("SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE",{public = true})
+        on_package(function(package) end)
 end

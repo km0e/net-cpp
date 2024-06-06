@@ -1,6 +1,4 @@
 #include "xsl/net.h"
-#include "xsl/wheel.h"
-
 #include <CLI/CLI.hpp>
 #include <pthread.h>
 #include <spdlog/spdlog.h>
@@ -25,9 +23,9 @@ void sigterm_init() {
 using namespace xsl;
 int main(int argc, char **argv) {
   CLI::App app{"TCP Client"};
-  string ip = TEST_HOST;
+  std::string ip = TEST_HOST;
   app.add_option("-i,--ip", ip, "Ip to connect to");
-  string port = TEST_PORT;
+  std::string port = TEST_PORT;
   app.add_option("-p,--port", port, "Port to connect to");
   CLI11_PARSE(app, argc, argv);
   spdlog::set_level(spdlog::level::trace);
@@ -36,7 +34,7 @@ int main(int argc, char **argv) {
   HttpServerConfig config{};
   config.max_connections = 10;
   config.sa4 = SockAddrV4View{ip, port};
-  auto router = make_shared<HttpRouter>();
+  auto router = std::make_shared<HttpRouter>();
   router->add_route(HttpMethod::GET, "/",
                     create_static_handler("test/http/http_server/web/static/").unwrap());
   router->error_handler(
@@ -47,7 +45,7 @@ int main(int argc, char **argv) {
       create_static_handler("test/http/http_server/web/static/501.html").unwrap());
   auto handler_generator = make_shared<HttpHandlerGenerator>(router);
   config.handler_generator = handler_generator;
-  shared_ptr<DefaultPoller> poller = make_shared<DefaultPoller>();
+  auto poller = std::make_shared<DefaultPoller>();
   if (!poller->valid()) {
     SPDLOG_ERROR("Failed to create poller");
     return 1;

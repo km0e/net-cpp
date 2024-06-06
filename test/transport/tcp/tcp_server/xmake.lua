@@ -8,6 +8,7 @@ for _, file in ipairs(os.files("test_*.cpp")) do
         add_files(name .. ".cpp")
         add_defines("SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE",{public = true})
         test_list[#test_list+1] = name
+        on_package(function(package) end)
 end
 target("tcp_server_test")
     set_kind("phony")

@@ -101,7 +101,7 @@ std::unique_ptr<T> poll_add_unique(std::shared_ptr<Poller> poller, int fd, IOM_E
 template <Handler T, class... Args>
 std::shared_ptr<T> poll_add_shared(std::shared_ptr<Poller> poller, int fd, IOM_EVENTS events,
                                    Args&&... args) {
-  auto handler = make_shared<T>(forward<Args>(args)...);
+  auto handler = std::make_shared<T>(std::forward<Args>(args)...);
   poller->add(fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) {
     return (*handler)(fd, events);
   });

@@ -20,15 +20,13 @@ enum class HandleState {
   //
   CLOSE = 1,
   //
-  // KEEP_ALIVE = 2,
+  KEEP_ALIVE = 2,
 };
 
-// Handler is a function that takes an int and a forward_list of TaskNode and returns a HandleState
-// i is the cmd, 0 for read, 1 for write
-// while return a HandleState
-// - first check hint
-//    - hint is WRITE and i is 0, send data
-//    - hint is READ and i is 1, read data
+/**
+  * @brief TcpHandlerLike concept
+  * @tparam T type
+ */
 template <class T>
 concept TcpHandlerLike = requires(T t, int fd, IOM_EVENTS events) {
   { t.send(fd) } -> std::same_as<HandleState>;
@@ -90,6 +88,9 @@ public:
       case HandleState::CLOSE:
         this->flags.close = true;
         return {PollHandleHintTag::DELETE};
+      case HandleState::KEEP_ALIVE:
+        this->flags.keep_alive = true;
+        return {PollHandleHintTag::NONE};
       default:
         return {PollHandleHintTag::NONE};
     }

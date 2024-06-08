@@ -3,7 +3,6 @@
 #  define _XSL_NET_HTTP_H_
 #  include "xsl/net/def.h"
 #  include "xsl/net/http/component.h"
-#  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/parse.h"
 #  include "xsl/net/http/router.h"
@@ -18,7 +17,6 @@ using http::HttpRouter;
 using http::HttpServer;
 using HttpRequestView = http::RequestView;
 using http::HTTP_METHOD_STRINGS;
-using http::HttpServerConfig;
 using http::HttpVersion;
 using HttpRouteHandleResult = http::RouteHandleResult;
 using HttpRouteResult = http::RouteResult;

@@ -8,6 +8,8 @@
 #include <sys/signal.h>
 #include <unistd.h>
 
+#include <memory>
+
 #ifndef TEST_HOST
 #  define TEST_HOST "127.0.0.1"
 #endif
@@ -76,22 +78,26 @@ int main(int argc, char **argv) {
   sigterm_init();
 
   spdlog::set_level(spdlog::level::trace);
-  TcpServerConfig<Handler, HandlerGenerator> config{};
-  config.max_connections = 10;
-  config.sa4 = SockAddrV4View(ip, port);
+  SockAddrV4 sa4(ip, port);
+  int fd = create_tcp_server(sa4);
   auto poller = std::make_shared<DefaultPoller>();
   if (!poller->valid()) {
     SPDLOG_ERROR("Failed to create poller");
     return 1;
   }
-  config.poller = poller;
   auto handler_generator = std::make_shared<HandlerGenerator>();
-  config.handler_generator = handler_generator;
-  auto server = TcpServer<Handler, HandlerGenerator>::serve(config);
+  TcpConnManagerConfig config;
+  config.poller = poller;
+  auto server = std::make_unique<TcpServer<Handler, HandlerGenerator>>(handler_generator, config);
   if (!server) {
     SPDLOG_ERROR("Failed to create server on {}:{}", ip, port);
     return 1;
   }
+  poller->add(fd, IOM_EVENTS::IN,
+              [server = server.get()]([[maybe_unused]] int fd, IOM_EVENTS events) {
+                return (*server)(fd, events);
+              });
+
   pthread_t poller_thread;
   pthread_create(
       &poller_thread, nullptr,

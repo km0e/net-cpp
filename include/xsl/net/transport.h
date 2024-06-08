@@ -11,6 +11,7 @@ using transport::send;
 using transport::SockAddrV4;
 using transport::SockAddrV4View;
 using transport::TcpClientSockConfig;
+using transport::TcpConnManagerConfig;
 using transport::TcpHandleHint;
 using transport::TcpHandler;
 using transport::TcpHandlerGeneratorLike;
@@ -25,7 +26,6 @@ using transport::TcpSendString;
 using transport::TcpSendTasks;
 using transport::TcpSendTasksProxy;
 using transport::TcpServer;
-using transport::TcpServerConfig;
 using transport::TcpServerSockConfig;
 NET_NAMESPACE_END
 #endif  // _XSL_NET_TRANSPORT_H_

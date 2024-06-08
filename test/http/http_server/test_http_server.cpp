@@ -1,4 +1,5 @@
 #include "xsl/net.h"
+
 #include <CLI/CLI.hpp>
 #include <pthread.h>
 #include <spdlog/spdlog.h>
@@ -31,9 +32,6 @@ int main(int argc, char **argv) {
   spdlog::set_level(spdlog::level::trace);
   sigterm_init();
 
-  HttpServerConfig config{};
-  config.max_connections = 10;
-  config.sa4 = SockAddrV4View{ip, port};
   auto router = std::make_shared<HttpRouter>();
   router->add_route(HttpMethod::GET, "/",
                     create_static_handler("test/http/http_server/web/static/").unwrap());
@@ -43,15 +41,16 @@ int main(int argc, char **argv) {
   router->error_handler(
       RouteErrorKind::Unimplemented,
       create_static_handler("test/http/http_server/web/static/501.html").unwrap());
+  SockAddrV4 ip_port{ip, port};
   auto handler_generator = make_shared<HttpHandlerGenerator>(router);
-  config.handler_generator = handler_generator;
   auto poller = std::make_shared<DefaultPoller>();
   if (!poller->valid()) {
     SPDLOG_ERROR("Failed to create poller");
     return 1;
   }
+  TcpConnManagerConfig config;
   config.poller = poller;
-  auto server = HttpServer::serve(config);
+  auto server = make_unique<HttpServer>(handler_generator, config);
   if (!server) {
     SPDLOG_ERROR("Failed to serve");
     return 1;

@@ -22,6 +22,7 @@ public:
 
 class SockAddrV4 {
 public:
+  SockAddrV4() = default;
   SockAddrV4(int fd);
   SockAddrV4(const char *ip, const char *port);
   SockAddrV4(std::string_view ip, std::string_view port);
@@ -41,7 +42,7 @@ public:
 };
 
 int create_tcp_client(const char *ip, const char *port, TcpClientSockConfig config = {});
-int create_tcp_client(SockAddrV4View sa4, TcpClientSockConfig config = {});
+int create_tcp_client(const SockAddrV4 &sa4, TcpClientSockConfig config = {});
 class TcpServerSockConfig {
 public:
   int max_connections = MAX_CONNECTIONS;
@@ -50,7 +51,7 @@ public:
   bool reuse_addr = true;
 };
 int create_tcp_server(const char *ip, int port, TcpServerSockConfig config = {});
-int create_tcp_server(SockAddrV4View sa4, TcpServerSockConfig config = {});
+int create_tcp_server(const SockAddrV4 &sa4, TcpServerSockConfig config = {});
 
 bool set_keep_alive(int fd, bool keep_alive = true);
 

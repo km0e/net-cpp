@@ -20,7 +20,6 @@ using net::HttpRouteHandleResult;
 using net::HttpRouter;
 using net::HttpRouteResult;
 using net::HttpServer;
-using net::HttpServerConfig;
 using net::HttpVersion;
 using net::IOM_EVENTS;
 using net::poll_add_shared;
@@ -35,6 +34,7 @@ using net::send;
 using net::SockAddrV4;
 using net::SockAddrV4View;
 using net::TcpClientSockConfig;
+using net::TcpConnManagerConfig;
 using net::TcpHandleHint;
 using net::TcpHandler;
 using net::TcpHandlerGeneratorLike;
@@ -47,7 +47,6 @@ using net::TcpSendString;
 using net::TcpSendTasks;
 using net::TcpSendTasksProxy;
 using net::TcpServer;
-using net::TcpServerConfig;
 using net::to_string_view;
 XSL_NAMESPACE_END
 #endif

@@ -107,8 +107,8 @@ int create_tcp_client(const char *ip, const char *port, TcpClientSockConfig conf
   }
   return client_fd;
 }
-int create_tcp_client(SockAddrV4View sa4, TcpClientSockConfig config) {
-  return create_tcp_client(sa4.ip(), sa4.port(), config);
+int create_tcp_client(const SockAddrV4 &sa4, TcpClientSockConfig config) {
+  return create_tcp_client(sa4._ip.data(), sa4._port.data(), config);
 }
 
 int create_tcp_server(const char *ip, int port, TcpServerSockConfig config) {
@@ -153,8 +153,8 @@ int create_tcp_server(const char *ip, int port, TcpServerSockConfig config) {
   }
   return server_fd;
 }
-int create_tcp_server(SockAddrV4View sa4, TcpServerSockConfig config) {
-  return create_tcp_server(sa4.ip(), strtol(sa4.port(), nullptr, 10), config);
+int create_tcp_server(const SockAddrV4 &sa4, TcpServerSockConfig config) {
+  return create_tcp_server(sa4._ip.data(), strtol(sa4._port.data(), nullptr, 10), config);
 }
 
 bool set_keep_alive(int fd, bool keep_alive) {

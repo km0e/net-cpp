@@ -103,7 +103,6 @@ private:
 using HttpHandlerGenerator = HandlerGenerator<HttpRouter, HttpHandler>;
 
 using HttpServer = TcpServer<Handler<HttpRouter>, HttpHandlerGenerator>;
-using HttpServerConfig = TcpServerConfig<Handler<HttpRouter>, HttpHandlerGenerator>;
 
 HTTP_NAMESPACE_END
 #endif

@@ -5,7 +5,6 @@
 
 #  include <spdlog/spdlog.h>
 
-#  include <mutex>
 #  include <shared_mutex>
 WHEEL_NAMESPACE_BEGIN
 
@@ -16,38 +15,35 @@ concept Lockable = requires(T t) {
   { t.try_lock() } -> std::same_as<bool>;
 };
 
-using Mutex = std::mutex;
-
-using SharedMutex = std::shared_mutex;
 template <class T>
-class SharedLockGuard {
+class ShrdGuard {
 public:
-  SharedLockGuard(SharedMutex& m, T& t);
-  ~SharedLockGuard();
+  ShrdGuard(std::shared_mutex& m, T& t);
+  ~ShrdGuard();
   T* operator->();
   T& operator*();
 
 private:
-  SharedMutex& m;
+  std::shared_mutex& m;
   T& t;
 };
 
 template <class T>
-SharedLockGuard<T>::SharedLockGuard(SharedMutex& m, T& t) : m(m), t(t) {
+ShrdGuard<T>::ShrdGuard(std::shared_mutex& m, T& t) : m(m), t(t) {
   // SPDLOG_TRACE("");
   m.lock_shared();
 }
 template <class T>
-SharedLockGuard<T>::~SharedLockGuard() {
+ShrdGuard<T>::~ShrdGuard() {
   // SPDLOG_TRACE("");
   m.unlock_shared();
 }
 template <class T>
-T* SharedLockGuard<T>::operator->() {
+T* ShrdGuard<T>::operator->() {
   return &t;
 }
 template <class T>
-T& SharedLockGuard<T>::operator*() {
+T& ShrdGuard<T>::operator*() {
   return t;
 }
 
@@ -83,16 +79,16 @@ V& LockGuard<T, V>::operator*() {
   return v;
 }
 template <class C>
-class ShareContainer {
+class ShrdRes {//rename to SharedResource
 public:
-  ShareContainer() : container(), mutex() {}
-  ~ShareContainer() {}
-  SharedLockGuard<C> lock_shared() { return SharedLockGuard<C>(mutex, container); }
-  LockGuard<SharedMutex, C> lock() { return LockGuard<SharedMutex, C>(mutex, container); }
+  ShrdRes() : container(), mutex() {}
+  ~ShrdRes() {}
+  ShrdGuard<C> lock_shared() { return ShrdGuard<C>(mutex, container); }
+  LockGuard<std::shared_mutex, C> lock() { return LockGuard<std::shared_mutex, C>(mutex, container); }
 
 private:
   C container;
-  SharedMutex mutex;
+  std::shared_mutex mutex;
 };
 WHEEL_NAMESPACE_END
 #endif

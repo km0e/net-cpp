@@ -178,7 +178,7 @@ public:
 
 private:
   TcpConnManagerConfig config;
-  ShareContainer<std::unordered_map<int, std::unique_ptr<TcpConn<H>>>> handlers;
+  ShrdRes<std::unordered_map<int, std::unique_ptr<TcpConn<H>>>> handlers;
 
   // timer cnt
   int timer_cnt;

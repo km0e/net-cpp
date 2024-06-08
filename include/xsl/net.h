@@ -7,7 +7,7 @@
 #  include "xsl/net/transport.h"
 XSL_NAMESPACE_BEGIN
 using net::create_static_handler;
-using net::create_tcp_client;
+using net::new_tcp_client;
 using net::DefaultPoller;
 using net::HTTP_METHOD_STRINGS;
 using net::HttpHandlerGenerator;

@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
 
   spdlog::set_level(spdlog::level::trace);
   SockAddrV4 sa4(ip, port);
-  int fd = create_tcp_server(sa4);
+  int fd = new_tcp_server(sa4);
   auto poller = std::make_shared<DefaultPoller>();
   if (!poller->valid()) {
     SPDLOG_ERROR("Failed to create poller");

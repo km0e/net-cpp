@@ -4,8 +4,8 @@
 #  include "xsl/net/def.h"
 #  include "xsl/net/transport/tcp.h"
 NET_NAMESPACE_BEGIN
-using transport::create_tcp_client;
-using transport::create_tcp_server;
+using transport::new_tcp_client;
+using transport::new_tcp_server;
 using transport::recv;
 using transport::send;
 using transport::SockAddrV4;

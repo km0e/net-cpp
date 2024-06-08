@@ -35,7 +35,7 @@ public:
 
   bool send(const char* ip, const char* port, H&& handler) {
     SPDLOG_TRACE("");
-    int fd = create_tcp_client(ip, port);
+    int fd = new_tcp_client(ip, port);
     if (fd == -1) {
       SPDLOG_ERROR("Failed to create tcp client");
       return false;
@@ -53,7 +53,7 @@ private:
   // Handler is a function that takes a shared pointer to a Poller, an int, and an IOM_EVENTS enum
   // and returns a bool The handler is called when the server receives a connection
   TcpClientConfig<H> config;
-  ShareContainer<std::unordered_map<int, std::unique_ptr<TcpConn<H>>>> handlers;
+  ShrdRes<std::unordered_map<int, std::unique_ptr<TcpConn<H>>>> handlers;
 };
 
 TCP_NAMESPACE_END

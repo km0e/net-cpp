@@ -96,7 +96,7 @@ namespace router_details {
 
   private:
     std::array<RouteHandler, HTTP_METHOD_COUNT> handlers;
-    ShareContainer<sumap<HttpRouteNode>> children;
+    ShrdRes<sumap<HttpRouteNode>> children;
 
     bool add(HttpMethod method, RouteHandler&& handler);
     RouteResult direct_route(RouteContext& ctx);

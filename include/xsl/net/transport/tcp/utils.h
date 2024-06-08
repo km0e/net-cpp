@@ -41,8 +41,8 @@ public:
   bool non_blocking = false;
 };
 
-int create_tcp_client(const char *ip, const char *port, TcpClientSockConfig config = {});
-int create_tcp_client(const SockAddrV4 &sa4, TcpClientSockConfig config = {});
+int new_tcp_client(const char *ip, const char *port, TcpClientSockConfig config = {});
+int new_tcp_client(const SockAddrV4 &sa4, TcpClientSockConfig config = {});
 class TcpServerSockConfig {
 public:
   int max_connections = MAX_CONNECTIONS;
@@ -50,8 +50,8 @@ public:
   bool non_blocking = false;
   bool reuse_addr = true;
 };
-int create_tcp_server(const char *ip, int port, TcpServerSockConfig config = {});
-int create_tcp_server(const SockAddrV4 &sa4, TcpServerSockConfig config = {});
+int new_tcp_server(const char *ip, int port, TcpServerSockConfig config = {});
+int new_tcp_server(const SockAddrV4 &sa4, TcpServerSockConfig config = {});
 
 bool set_keep_alive(int fd, bool keep_alive = true);
 

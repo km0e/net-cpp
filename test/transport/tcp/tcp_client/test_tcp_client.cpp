@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
   app.add_option("-p,--port", port, "Port to connect to")->required();
   CLI11_PARSE(app, argc, argv);
 
-  int fd = transport::create_tcp_client(ip.data(), port.data());
+  int fd = transport::new_tcp_client(ip.data(), port.data());
   if (fd < 0) {
     return 1;
   }

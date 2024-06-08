@@ -63,7 +63,7 @@ bool SockAddrV4::operator==(const SockAddrV4 &rhs) const {
 }
 std::string SockAddrV4::to_string() const { return format("{}:{}", _ip, _port); }
 
-int create_tcp_client(const char *ip, const char *port, TcpClientSockConfig config) {
+int new_tcp_client(const char *ip, const char *port, TcpClientSockConfig config) {
   SPDLOG_DEBUG("Connecting to {}:{}", ip, port);
   addrinfo hints;
   addrinfo *result;
@@ -107,11 +107,11 @@ int create_tcp_client(const char *ip, const char *port, TcpClientSockConfig conf
   }
   return client_fd;
 }
-int create_tcp_client(const SockAddrV4 &sa4, TcpClientSockConfig config) {
-  return create_tcp_client(sa4._ip.data(), sa4._port.data(), config);
+int new_tcp_client(const SockAddrV4 &sa4, TcpClientSockConfig config) {
+  return new_tcp_client(sa4._ip.data(), sa4._port.data(), config);
 }
 
-int create_tcp_server(const char *ip, int port, TcpServerSockConfig config) {
+int new_tcp_server(const char *ip, int port, TcpServerSockConfig config) {
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);
   SPDLOG_DEBUG("Server fd: {}", server_fd);
   if (server_fd == -1) {
@@ -153,8 +153,8 @@ int create_tcp_server(const char *ip, int port, TcpServerSockConfig config) {
   }
   return server_fd;
 }
-int create_tcp_server(const SockAddrV4 &sa4, TcpServerSockConfig config) {
-  return create_tcp_server(sa4._ip.data(), strtol(sa4._port.data(), nullptr, 10), config);
+int new_tcp_server(const SockAddrV4 &sa4, TcpServerSockConfig config) {
+  return new_tcp_server(sa4._ip.data(), strtol(sa4._port.data(), nullptr, 10), config);
 }
 
 bool set_keep_alive(int fd, bool keep_alive) {

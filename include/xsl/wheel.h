@@ -17,11 +17,9 @@ using wheel::FixedVec;
 using wheel::i32_from_bytes;
 using wheel::i32_to_bytes;
 using wheel::LockGuard;
-using wheel::Mutex;
 using wheel::Result;
-using wheel::ShareContainer;
-using wheel::SharedLockGuard;
-using wheel::SharedMutex;
+using wheel::ShrdRes;
+using wheel::ShrdGuard;
 using wheel::sumap;
 XSL_NAMESPACE_END
 #endif  // _XSL_UTILS_WHEEL_H_

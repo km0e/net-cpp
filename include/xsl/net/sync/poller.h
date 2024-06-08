@@ -86,7 +86,7 @@ public:
 
 private:
   int fd;
-  ShareContainer<std::unordered_map<int, std::shared_ptr<PollHandler>>> handlers;
+  ShrdRes<std::unordered_map<int, std::shared_ptr<PollHandler>>> handlers;
   std::shared_ptr<HandleProxy> proxy;
 };
 template <Handler T, class... Args>

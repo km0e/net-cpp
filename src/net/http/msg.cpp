@@ -25,7 +25,7 @@ ResponseError::~ResponseError() {}
 
 ResponsePart::ResponsePart()
     : status_code(0), status_message(), version(HttpVersion::UNKNOWN), headers() {}
-ResponsePart::ResponsePart(int status_code, std::string&& status_message, HttpVersion version)
+ResponsePart::ResponsePart(HttpVersion version, int status_code, std::string&& status_message)
     : status_code(status_code),
       status_message(std::move(status_message)),
       version(version),
@@ -63,7 +63,7 @@ std::string ResponsePart::to_string() {
   }
   if (!headers.contains("Server")) {
     res += "Server: ";
-    res += SERVER;
+    res += SERVER_VERSION;
     res += "\r\n";
   }
   res += "\r\n";

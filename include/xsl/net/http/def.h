@@ -6,6 +6,6 @@
 #  define HTTP_NAMESPACE_BEGIN namespace xsl::net::http {
 #  define HTTP_NAMESPACE_END }
 HTTP_NAMESPACE_BEGIN
-const std::string_view SERVER = "XSL/0.1";
+const std::string_view SERVER_VERSION = "XSL/0.1";
 HTTP_NAMESPACE_END
 #endif

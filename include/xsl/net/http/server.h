@@ -48,6 +48,7 @@ public:
       len += content_len;
     }
     auto ctx = RouteContext{Request{this->recv_task.data_buffer.substr(0, len), req.unwrap()}};
+    recv_task.data_buffer.erase(0, len);
     auto rtres = this->router->route(ctx);
     if (rtres.is_err()) {
       // TODO: handle route error

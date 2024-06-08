@@ -105,17 +105,17 @@ namespace router_details {
 
 const RouteHandler UNKNOWN_HANDLER = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
   return RouteHandleResult{
-      std::make_unique<ResponsePart>(500, "Internal Server Error", HttpVersion::HTTP_1_1)};
+      std::make_unique<ResponsePart>(HttpVersion::HTTP_1_1, 500, "Internal Server Error")};
 };
 
 const RouteHandler NOT_FOUND_HANDLER = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
-  return RouteHandleResult{std::make_unique<ResponsePart>(404, "Not Found", HttpVersion::HTTP_1_1)};
+  return RouteHandleResult{std::make_unique<ResponsePart>(HttpVersion::HTTP_1_1, 404, "Not Found")};
 };
 
 const RouteHandler UNIMPLEMENTED_HANDLER
     = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
   return RouteHandleResult{
-      std::make_unique<ResponsePart>(501, "Not Implemented", HttpVersion::HTTP_1_1)};
+      std::make_unique<ResponsePart>(HttpVersion::HTTP_1_1, 501, "Not Implemented")};
 };
 
 class HttpRouter {

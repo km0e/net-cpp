@@ -39,7 +39,7 @@ RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
   TcpSendTasks tasks;
   tasks.emplace_after(tasks.before_begin(), make_unique<TcpSendFile>(std::move(this->path)));
   auto resp = make_unique<HttpResponse<TcpSendTasks>>(
-      ResponsePart{200, "OK", HttpVersion::HTTP_1_1}, std::move(tasks));
+      ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(tasks));
   resp->part.headers.emplace("Content-Type", to_string(this->content_type));
   return RouteHandleResult{std::move(resp)};
 }
@@ -70,7 +70,7 @@ RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
   TcpSendTasks tasks;
   tasks.emplace_after(tasks.before_begin(), make_unique<TcpSendFile>(std::move(full_path)));
   auto resp = make_unique<HttpResponse<TcpSendTasks>>(
-      ResponsePart{200, "OK", HttpVersion::HTTP_1_1}, std::move(tasks));
+      ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(tasks));
   if (auto point = ctx.current_path.rfind('.'); point != std::string::npos) {
     auto ext = ctx.current_path.substr(point + 1);
     resp->part.headers.emplace(

@@ -1,6 +1,5 @@
 #include "xsl/net/http/def.h"
 #include "xsl/net/http/proto.h"
-#include "xsl/wheel/def.h"
 HTTP_NAMESPACE_BEGIN
 
 std::string_view to_string_view(const HttpVersion& version) {

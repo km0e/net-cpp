@@ -2,8 +2,6 @@
 #ifndef _XSL_NET_HTTP_PROTO_H_
 #  define _XSL_NET_HTTP_PROTO_H_
 #  include "xsl/net/http/def.h"
-#  include "xsl/wheel/def.h"
-#  include "xsl/wheel/str.h"
 
 #  include <array>
 #  include <regex>

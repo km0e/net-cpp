@@ -12,37 +12,37 @@ TEST(http_router, add_route) {
   auto router = make_unique<http::HttpRouter>();
   auto res = router->add_route(HttpMethod::GET, "/hello", [](http::RouteContext&) {
     return http::RouteHandleResult{make_unique<http::HttpResponse<string>>(
-        http::ResponsePart{200, "OK", http::HttpVersion::HTTP_1_1}, "hello")};
+        http::ResponsePart{http::HttpVersion::HTTP_1_1, 200, "OK"}, "hello")};
   });
   ASSERT_TRUE(res.is_ok());
   auto res2 = router->add_route(HttpMethod::GET, "/hello", [](http::RouteContext&) {
     return http::RouteHandleResult{make_unique<http::HttpResponse<string>>(
-        http::ResponsePart{200, "OK", http::HttpVersion::HTTP_1_1}, "hello")};
+        http::ResponsePart{http::HttpVersion::HTTP_1_1, 200, "OK"}, "hello")};
   });
   ASSERT_TRUE(res2.is_err() && res2.unwrap_err().kind == http::AddRouteErrorKind::Conflict);
   auto res3 = router->add_route(HttpMethod::GET, "hello", [](http::RouteContext&) {
     return http::RouteHandleResult{make_unique<http::HttpResponse<string>>(
-        http::ResponsePart{200, "OK", http::HttpVersion::HTTP_1_1}, "hello")};
+        http::ResponsePart{http::HttpVersion::HTTP_1_1, 200, "OK"}, "hello")};
   });
   ASSERT_TRUE(res3.is_err() && res3.unwrap_err().kind == http::AddRouteErrorKind::InvalidPath);
   auto res4 = router->add_route(HttpMethod::POST, "/hello", [](http::RouteContext&) {
     return http::RouteHandleResult{make_unique<http::HttpResponse<string>>(
-        http::ResponsePart{200, "OK", http::HttpVersion::HTTP_1_1}, "hello")};
+        http::ResponsePart{http::HttpVersion::HTTP_1_1, 200, "OK"}, "hello")};
   });
   ASSERT_TRUE(res4.is_ok());
   auto res5 = router->add_route(HttpMethod::POST, "/hello/world", [](http::RouteContext&) {
     return http::RouteHandleResult{make_unique<http::HttpResponse<string>>(
-        http::ResponsePart{200, "OK", http::HttpVersion::HTTP_1_1}, "hello")};
+        http::ResponsePart{http::HttpVersion::HTTP_1_1, 200, "OK"}, "hello")};
   });
   ASSERT_TRUE(res5.is_ok());
   auto res6 = router->add_route(HttpMethod::POST, "/", [](http::RouteContext&) {
     return http::RouteHandleResult{make_unique<http::HttpResponse<string>>(
-        http::ResponsePart{200, "OK", http::HttpVersion::HTTP_1_1}, "hello")};
+        http::ResponsePart{http::HttpVersion::HTTP_1_1, 200, "OK"}, "hello")};
   });
   ASSERT_TRUE(res6.is_ok());
   auto res7 = router->add_route(HttpMethod::POST, "", [](http::RouteContext&) {
     return http::RouteHandleResult{make_unique<http::HttpResponse<string>>(
-        http::ResponsePart{200, "OK", http::HttpVersion::HTTP_1_1}, "hello")};
+        http::ResponsePart{http::HttpVersion::HTTP_1_1, 200, "OK"}, "hello")};
   });
   ASSERT_TRUE(res7.is_err() && res7.unwrap_err().kind == http::AddRouteErrorKind::InvalidPath);
 }
@@ -52,17 +52,17 @@ TEST(http_router, route) {
   auto router = make_unique<http::HttpRouter>();
   auto res1 = router->add_route(HttpMethod::GET, "/hello", [](http::RouteContext&) {
     return http::RouteHandleResult{make_unique<http::HttpResponse<string>>(
-        http::ResponsePart{200, "OK", http::HttpVersion::HTTP_1_1}, "hello")};
+        http::ResponsePart{http::HttpVersion::HTTP_1_1, 200, "OK"}, "hello")};
   });
   ASSERT_TRUE(res1.is_ok());
   auto res2 = router->add_route(HttpMethod::GET, "/world/", [](http::RouteContext& ctx) {
     return http::RouteHandleResult{make_unique<http::HttpResponse<string>>(
-        http::ResponsePart{200, "OK", http::HttpVersion::HTTP_1_1}, string{ctx.current_path})};
+        http::ResponsePart{http::HttpVersion::HTTP_1_1, 200, "OK"}, string{ctx.current_path})};
   });
   ASSERT_TRUE(res2.is_ok());
   auto res3 = router->add_route(HttpMethod::GET, "/world/name", [](http::RouteContext& ctx) {
     return http::RouteHandleResult{make_unique<http::HttpResponse<string>>(
-        http::ResponsePart{200, "OK", http::HttpVersion::HTTP_1_1}, string{ctx.current_path})};
+        http::ResponsePart{http::HttpVersion::HTTP_1_1, 200, "OK"}, string{ctx.current_path})};
   });
   ASSERT_TRUE(res3.is_ok());
   HttpParser parser;

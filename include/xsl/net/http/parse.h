@@ -6,6 +6,7 @@
 #  include "xsl/wheel.h"
 
 #  include <array>
+#  include <string>
 HTTP_NAMESPACE_BEGIN
 enum class ParseErrorKind {
   Unknown,
@@ -34,22 +35,30 @@ public:
   HttpParser();
   HttpParser(HttpParser&&) = default;
   ~HttpParser();
-  // @brief: parse the http request
-  // you should keep the memory of the view until the next parse
-  // @param data: the data to be parsed
-  // @param len: the length of the data, will be updated to the last position of the correct request
-  // @return: the parsed request or the error
-  // @note: if the return value is an error and the kind is InvalidFormat, will update the len to
-  // the last correct position eg. if the data is GET / HTTP/1.1\r\n Host= localhost:8080\r\n #
-  // should be ":", not "=", so the len will be updated to 16 \r\n
+  /**
+   * @brief parse the http request
+   * @param data: the data to be parsed
+   * @param len: the length of the data, will be updated to the last position of the correct request
+   * @return the parsed request or the error
+   * @note if the return value is an error and the kind is InvalidFormat, will update the len to the
+   * last correct position
+   * @par Example
+   * @details
+   * "GET / HTTP/1.1"
+   * "Host= localhost:8080" # should be ":", not "=", so the len will be updated to 16
+   */
   ParseResult parse(const char* data, size_t& len);
-  // @brief: parse the http request
-  // @param data: the data to be parsed, will be updated to rest of the data
-  // @return: the parsed request or the error
-  // @note: if the return value is an error and the kind is InvalidFormat, will update the data to
-  // the rest of the data, including the error part eg. if the data is GET / HTTP/1.1\r\n Host=
-  // localhost:8080\r\n # should be ":", not "=", so the data will be updated to "Host=
-  // localhost:8080\r\n\r\n" \r\n
+  /**
+   * @brief parse the http request
+   * @param data: the data to be parsed
+   * @return the parsed request or the error
+   * @note if the return value is an error and the kind is InvalidFormat, will update the len to the
+   * last correct position
+   * @par Example
+   * @details
+   * "GET / HTTP/1.1"
+   * "Host= localhost:8080" # should be ":", not "=", so the len will be updated to 16
+   */
   ParseResult parse(std::string_view& data);
   RequestView view;
   void clear();

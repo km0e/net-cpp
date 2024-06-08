@@ -71,7 +71,7 @@ const std::array<std::pair<std::string_view, std::string_view>, DEFAULT_HEADER_C
 class ResponsePart : public IntoSendTasks {
 public:
   ResponsePart();
-  ResponsePart(int status_code, std::string&& status_message, HttpVersion version);
+  ResponsePart(HttpVersion version, int status_code, std::string&& status_message);
   ~ResponsePart();
   int status_code;
   std::string status_message;
@@ -82,7 +82,7 @@ public:
   std::string to_string();
 };
 
-template <class B>
+template <class B = void>
 class HttpResponse;
 
 template <std::derived_from<IntoSendTasks> B>

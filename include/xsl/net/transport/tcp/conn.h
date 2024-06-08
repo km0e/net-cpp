@@ -8,6 +8,8 @@
 
 #  include <spdlog/spdlog.h>
 #  include <sys/timerfd.h>
+
+#  include <cstddef>
 TCP_NAMESPACE_BEGIN
 enum class HandleHint {
   NONE = 0,
@@ -46,10 +48,11 @@ public:
 
 class TcpConnFlag {
 public:
-  TcpConnFlag() : close(false), timeout(false), keep_alive(false) {}
+  TcpConnFlag() : close(false), timeout(false), keep_alive(false), keep_alive_count(0) {}
   bool close;
   bool timeout;
   bool keep_alive;
+  size_t keep_alive_count;
 };
 template <TcpHandlerLike H>
 class TcpConn {
@@ -65,13 +68,14 @@ public:
     }
   }
   PollHandleHint operator()(int fd, IOM_EVENTS events) {
+    this->flags.timeout = false;
+    this->flags.keep_alive_count = 0;
     PollHandleHint hint{};
     if ((events & IOM_EVENTS::HUP) == IOM_EVENTS::HUP) {
       handler->close(fd);
       this->flags.close = true;
       hint = {PollHandleHintTag::DELETE};
     } else if ((events & IOM_EVENTS::IN) == IOM_EVENTS::IN) {
-      this->flags.timeout = false;
       auto state = handler->recv(fd);
       hint = map_hint(state);
     } else if ((events & IOM_EVENTS::OUT) == IOM_EVENTS::OUT) {
@@ -143,13 +147,21 @@ public:
       for (auto& [fd, conn] : *guard) {
         if (conn->flags.close) {
           closed.push_back(fd);
-        } else if (!conn->flags.keep_alive) {
-          if (conn->flags.timeout) {
+          continue;
+        }
+        if (conn->flags.keep_alive) {
+          conn->flags.keep_alive_count++;
+          if (conn->flags.keep_alive_count == KEEP_ALIVE_TIMEOUT_COUNT) {
             timeout.push_back(fd);
             conn->handler->close(fd);
-          } else {
-            conn->flags.timeout = true;
           }
+          continue;
+        }
+        if (conn->flags.timeout) {
+          timeout.push_back(fd);
+          conn->handler->close(fd);
+        } else {
+          conn->flags.timeout = true;
         }
       }
       for (auto fd : closed) {
@@ -161,11 +173,6 @@ public:
         this->config.poller->remove(fd);
       }
     }
-    // this->timer_cnt++;
-    // if (this->timer_cnt == RECV_RESET_COUNT) {
-    //   this->timer_cnt = 0;
-    //   this->reset_timer(fd);
-    // }
     return {PollHandleHintTag::NONE};
   }
 

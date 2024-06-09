@@ -39,7 +39,6 @@ DefaultPoller::DefaultPoller(std::shared_ptr<HandleProxy>&& proxy)
 bool DefaultPoller::valid() { return this->fd != -1; }
 
 bool DefaultPoller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
-  SPDLOG_TRACE("");
   epoll_event event;
   event.events = (uint32_t)events;
   event.data.fd = fd;
@@ -52,7 +51,6 @@ bool DefaultPoller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
   return true;
 }
 bool DefaultPoller::modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) {
-  SPDLOG_TRACE("");
   epoll_event event;
   event.events = (uint32_t)events;
   event.data.fd = fd;

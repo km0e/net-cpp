@@ -34,7 +34,6 @@ public:
   }
 
   bool send(const char* ip, const char* port, H&& handler) {
-    SPDLOG_TRACE("");
     int fd = new_tcp_client(ip, port);
     if (fd == -1) {
       SPDLOG_ERROR("Failed to create tcp client");

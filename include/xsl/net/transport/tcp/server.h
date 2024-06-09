@@ -27,7 +27,6 @@ public:
       : handler_generator(handler_generator), tcp_conn_manager(conn_manager_config) {}
   ~TcpServer() {}
   PollHandleHint operator()(int fd, IOM_EVENTS events) {
-    SPDLOG_TRACE("start accept");
     if ((events & IOM_EVENTS::IN) == IOM_EVENTS::IN) {
       sockaddr addr;
       socklen_t addr_len = sizeof(addr);
@@ -47,7 +46,6 @@ public:
         return {PollHandleHintTag::NONE};
       }
       this->tcp_conn_manager.add(client_fd, std::move(handler));
-      SPDLOG_TRACE("accept done");
       return {PollHandleHintTag::NONE};
     }
     SPDLOG_TRACE("there is no IN event");

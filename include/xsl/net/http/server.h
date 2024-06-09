@@ -22,7 +22,6 @@ public:
   Handler(Handler&&) = default;
   ~Handler() {}
   TcpHandleState recv(int fd) {
-    SPDLOG_TRACE("");
     auto res = recv_task.exec(fd);
     if (res.is_err()) {
       if (res.as_ref().unwrap_err() == RecvError::Eof) {
@@ -61,7 +60,6 @@ public:
     return this->send(fd);
   }
   TcpHandleState send(int fd) {
-    SPDLOG_TRACE("");
     auto res = send_proxy.exec(fd);
     if (res.is_err()) {
       SPDLOG_ERROR("send error: {}", to_string(res.unwrap_err()));

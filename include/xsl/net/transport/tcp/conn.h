@@ -195,9 +195,6 @@ private:
     new_value.it_value.tv_nsec = (config.recv_timeout % 1000) * 1000000;
     new_value.it_interval.tv_sec = config.recv_timeout / 1000;
     new_value.it_interval.tv_nsec = (config.recv_timeout % 1000) * 1000000;
-    SPDLOG_TRACE("tcp conn manager reset timer to {}:{} {}:{}", new_value.it_value.tv_sec,
-                 new_value.it_value.tv_nsec, new_value.it_interval.tv_sec,
-                 new_value.it_interval.tv_nsec);
     if (timerfd_settime(timer_fd, 0, &new_value, nullptr) == -1) {
       SPDLOG_ERROR("Failed to set timerfd, error: {}", strerror(errno));
     }

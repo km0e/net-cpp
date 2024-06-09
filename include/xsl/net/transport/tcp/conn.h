@@ -9,7 +9,9 @@
 #  include <spdlog/spdlog.h>
 #  include <sys/timerfd.h>
 
-#  include <cstddef>
+#  include <cstdint>
+#  include <memory>
+
 TCP_NAMESPACE_BEGIN
 enum class HandleHint {
   NONE = 0,
@@ -19,10 +21,12 @@ enum class HandleHint {
 
 enum class HandleState {
   NONE = 0,
-  //
+  // active close
   CLOSE = 1,
-  //
+  // hint that the connection should be kept alive
   KEEP_ALIVE = 2,
+  // zero size read
+  ZERO_SIZE_READ = 3,
 };
 
 /**
@@ -45,20 +49,32 @@ public:
   virtual void close(int fd) = 0;
   virtual HandleState other(int fd, IOM_EVENTS events) = 0;
 };
+class TcpConnLimit {
+public:
+  int recv_timeout;
+  uint8_t keep_alive_timeout_count;
+  uint8_t zero_size_read_count;
+};
 
 class TcpConnFlag {
 public:
-  TcpConnFlag() : close(false), timeout(false), keep_alive(false), keep_alive_count(0) {}
+  TcpConnFlag()
+      : close(false),
+        timeout(false),
+        keep_alive(false),
+        keep_alive_count(0),
+        zero_size_read_count(0) {}
   bool close;
   bool timeout;
   bool keep_alive;
-  size_t keep_alive_count;
+  uint8_t keep_alive_count;
+  uint8_t zero_size_read_count;
 };
 template <TcpHandlerLike H>
 class TcpConn {
 public:
-  TcpConn(int fd, std::unique_ptr<H>&& handler)
-      : fd(fd), events(IOM_EVENTS::IN), handler(move(handler)), flags() {}
+  TcpConn(int fd, const TcpConnLimit& limit, std::unique_ptr<H>&& handler)
+      : fd(fd), events(IOM_EVENTS::IN), handler(move(handler)), flags(), limit(limit) {}
 
   TcpConn(TcpConn&&) = delete;
   TcpConn(const TcpConn&) = delete;
@@ -71,17 +87,32 @@ public:
     this->flags.timeout = false;
     this->flags.keep_alive_count = 0;
     PollHandleHint hint{};
-    if ((events & IOM_EVENTS::HUP) == IOM_EVENTS::HUP) {
+    if ((events & IOM_EVENTS::IN) == IOM_EVENTS::IN) {
+      auto state = handler->recv(fd);
+      hint = map_hint(state);
+      events &= ~IOM_EVENTS::IN;
+    }
+    if ((events & IOM_EVENTS::OUT) == IOM_EVENTS::OUT) {
+      auto state = handler->send(fd);
+      hint = map_hint(state);
+      events &= ~IOM_EVENTS::OUT;
+    }
+    if ((events & IOM_EVENTS::RDHUP) == IOM_EVENTS::RDHUP) {
+      auto state = handler->recv(fd);
+      hint = map_hint(state);
+      if (!this->flags.close) {
+        handler->close(fd);
+        this->flags.close = true;
+      }
+      hint = {PollHandleHintTag::DELETE};
+      events &= ~IOM_EVENTS::RDHUP;
+    } else if ((events & IOM_EVENTS::HUP) == IOM_EVENTS::HUP) {
       handler->close(fd);
       this->flags.close = true;
       hint = {PollHandleHintTag::DELETE};
-    } else if ((events & IOM_EVENTS::IN) == IOM_EVENTS::IN) {
-      auto state = handler->recv(fd);
-      hint = map_hint(state);
-    } else if ((events & IOM_EVENTS::OUT) == IOM_EVENTS::OUT) {
-      auto state = handler->send(fd);
-      hint = map_hint(state);
-    } else {
+      events &= ~IOM_EVENTS::HUP;
+    }
+    if (events != IOM_EVENTS::NONE) {
       auto state = handler->other(fd, events);
       hint = map_hint(state);
     }
@@ -95,6 +126,13 @@ public:
       case HandleState::KEEP_ALIVE:
         this->flags.keep_alive = true;
         return {PollHandleHintTag::NONE};
+      case HandleState::ZERO_SIZE_READ:
+        this->flags.zero_size_read_count++;
+        if (this->flags.zero_size_read_count == limit.zero_size_read_count) {
+          this->flags.close = true;
+          return {PollHandleHintTag::DELETE};
+        }
+        return {PollHandleHintTag::NONE};
       default:
         return {PollHandleHintTag::NONE};
     }
@@ -105,17 +143,24 @@ public:
   IOM_EVENTS events;
   std::unique_ptr<H> handler;
   TcpConnFlag flags;
+  const TcpConnLimit& limit;
 };
 class TcpConnManagerConfig {
 public:
   TcpConnManagerConfig() : poller(nullptr) {}
   std::shared_ptr<Poller> poller;
   int recv_timeout = RECV_TIMEOUT;
+  uint8_t keep_alive_timeout_count = KEEP_ALIVE_TIMEOUT_COUNT;
+  uint8_t zero_size_read_count = ZERO_SIZE_READ_COUNT;
 };
 template <TcpHandlerLike H>
 class TcpConnManager {
 public:
-  TcpConnManager(TcpConnManagerConfig config) : config(config), handlers(), timer_cnt() {
+  TcpConnManager(TcpConnManagerConfig config)
+      : poller(config.poller),
+        limit(config.recv_timeout, config.keep_alive_timeout_count, config.zero_size_read_count),
+        handlers(),
+        timer_cnt() {
     this->setup_timer();
   }
   TcpConnManager(TcpConnManager&&) = delete;
@@ -124,13 +169,12 @@ public:
   TcpConnManager& operator=(const TcpConnManager&) = delete;
   ~TcpConnManager() {
     for (auto& [_, handler] : *handlers.lock()) {
-      this->config.poller->remove(handler->fd);
+      this->poller->remove(handler->fd);
     }
   }
   void add(int fd, std::unique_ptr<H>&& handler) {
-    this->handlers.lock()->emplace(
-        fd, poll_add_unique<TcpConn<H>>(this->config.poller, fd, IOM_EVENTS::IN, fd,
-                                        std::move(handler)));
+    this->handlers.lock()->emplace(fd, poll_add_unique<TcpConn<H>>(this->poller, fd, IOM_EVENTS::IN,
+                                                                   fd, limit, std::move(handler)));
   }
   void remove(int fd) { handlers.lock()->erase(fd); }
   void clear() { handlers.lock()->clear(); }
@@ -151,7 +195,7 @@ public:
         }
         if (conn->flags.keep_alive) {
           conn->flags.keep_alive_count++;
-          if (conn->flags.keep_alive_count == KEEP_ALIVE_TIMEOUT_COUNT) {
+          if (conn->flags.keep_alive_count == limit.keep_alive_timeout_count) {
             timeout.push_back(fd);
             conn->handler->close(fd);
           }
@@ -166,18 +210,20 @@ public:
       }
       for (auto fd : closed) {
         guard->erase(fd);
-        this->config.poller->remove(fd);
+        this->poller->remove(fd);
       }
       for (auto fd : timeout) {
         guard->erase(fd);
-        this->config.poller->remove(fd);
+        this->poller->remove(fd);
       }
     }
     return {PollHandleHintTag::NONE};
   }
 
 private:
-  TcpConnManagerConfig config;
+  std::shared_ptr<Poller> poller;
+  TcpConnLimit limit;
+
   ShrdRes<std::unordered_map<int, std::unique_ptr<TcpConn<H>>>> handlers;
 
   // timer cnt
@@ -188,13 +234,13 @@ private:
       SPDLOG_ERROR("Failed to create timerfd, error: {}", strerror(errno));
       return;
     }
-    this->config.poller->add(timer_fd, IOM_EVENTS::IN,
-                             [this](int fd, IOM_EVENTS events) { return (*this)(fd, events); });
+    this->poller->add(timer_fd, IOM_EVENTS::IN,
+                      [this](int fd, IOM_EVENTS events) { return (*this)(fd, events); });
     struct itimerspec new_value;
-    new_value.it_value.tv_sec = config.recv_timeout / 1000;
-    new_value.it_value.tv_nsec = (config.recv_timeout % 1000) * 1000000;
-    new_value.it_interval.tv_sec = config.recv_timeout / 1000;
-    new_value.it_interval.tv_nsec = (config.recv_timeout % 1000) * 1000000;
+    new_value.it_value.tv_sec = limit.recv_timeout / 1000;
+    new_value.it_value.tv_nsec = (limit.recv_timeout % 1000) * 1000000;
+    new_value.it_interval.tv_sec = limit.recv_timeout / 1000;
+    new_value.it_interval.tv_nsec = (limit.recv_timeout % 1000) * 1000000;
     if (timerfd_settime(timer_fd, 0, &new_value, nullptr) == -1) {
       SPDLOG_ERROR("Failed to set timerfd, error: {}", strerror(errno));
     }

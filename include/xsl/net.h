@@ -7,7 +7,6 @@
 #  include "xsl/net/transport.h"
 XSL_NAMESPACE_BEGIN
 using net::create_static_handler;
-using net::new_tcp_client;
 using net::DefaultPoller;
 using net::HTTP_METHOD_STRINGS;
 using net::HttpHandlerGenerator;
@@ -22,6 +21,7 @@ using net::HttpRouteResult;
 using net::HttpServer;
 using net::HttpVersion;
 using net::IOM_EVENTS;
+using net::new_tcp_client;
 using net::poll_add_shared;
 using net::poll_add_unique;
 using net::Poller;
@@ -34,6 +34,7 @@ using net::send;
 using net::SockAddrV4;
 using net::SockAddrV4View;
 using net::TcpClientSockConfig;
+using net::TcpConnManager;
 using net::TcpConnManagerConfig;
 using net::TcpHandleHint;
 using net::TcpHandler;

@@ -41,6 +41,11 @@ concept TcpHandlerLike = requires(T t, int fd, IOM_EVENTS events) {
   { t.other(fd, events) } -> std::same_as<HandleState>;
 };
 
+template <class T, class H>
+concept TcpHandlerGeneratorLike = TcpHandlerLike<H> && requires(T t, H h, int fd) {
+  { t(fd) } -> std::same_as<std::unique_ptr<H>>;
+};
+
 class TcpHandler {
 public:
   virtual ~TcpHandler() {}
@@ -129,6 +134,7 @@ public:
       case HandleState::ZERO_SIZE_READ:
         this->flags.zero_size_read_count++;
         if (this->flags.zero_size_read_count == limit.zero_size_read_count) {
+          this->handler->close(this->fd);
           this->flags.close = true;
           return {PollHandleHintTag::DELETE};
         }
@@ -147,7 +153,11 @@ public:
 };
 class TcpConnManagerConfig {
 public:
-  TcpConnManagerConfig() : poller(nullptr) {}
+  TcpConnManagerConfig(std::shared_ptr<Poller> poller)
+      : poller(poller),
+        recv_timeout(RECV_TIMEOUT),
+        keep_alive_timeout_count(KEEP_ALIVE_TIMEOUT_COUNT),
+        zero_size_read_count(ZERO_SIZE_READ_COUNT) {}
   std::shared_ptr<Poller> poller;
   int recv_timeout = RECV_TIMEOUT;
   uint8_t keep_alive_timeout_count = KEEP_ALIVE_TIMEOUT_COUNT;

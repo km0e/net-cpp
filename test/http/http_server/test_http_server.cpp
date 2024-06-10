@@ -48,8 +48,7 @@ int main(int argc, char **argv) {
     SPDLOG_ERROR("Failed to create poller");
     return 1;
   }
-  TcpConnManagerConfig config;
-  config.poller = poller;
+  TcpConnManagerConfig config{poller};
   auto server = make_unique<HttpServer>(handler_generator, config);
   if (!server) {
     SPDLOG_ERROR("Failed to serve");

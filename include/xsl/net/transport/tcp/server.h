@@ -14,11 +14,6 @@
 
 TCP_NAMESPACE_BEGIN
 
-template <class T, class H>
-concept TcpHandlerGeneratorLike = TcpHandlerLike<H> && requires(T t, H h, int fd) {
-  { t(fd) } -> std::same_as<std::unique_ptr<H>>;
-};
-
 template <TcpHandlerLike H, TcpHandlerGeneratorLike<H> HG>
 class TcpServer {
 public:
@@ -55,7 +50,6 @@ public:
 
   std::shared_ptr<HG> handler_generator;
 
-private:
   TcpConnManager<H> tcp_conn_manager;
 };
 

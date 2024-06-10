@@ -2,7 +2,6 @@
 #ifndef _XSL_NET_TRANSPORT_TCP_H_
 #  define _XSL_NET_TRANSPORT_TCP_H_
 #  include "xsl/net/transport/def.h"
-#  include "xsl/net/transport/tcp/client.h"
 #  include "xsl/net/transport/tcp/component.h"
 #  include "xsl/net/transport/tcp/conn.h"
 #  include "xsl/net/transport/tcp/server.h"
@@ -15,7 +14,6 @@ using TcpHandleState = tcp::HandleState;
 using tcp::TcpRecvString;
 using TcpSendTaskNode = tcp::SendTaskNode;
 using TcpRecvTaskNode = tcp::RecvTaskNode;
-using tcp::TcpClientConfig;
 using TcpRecvTasks = tcp::RecvTasks;
 using TcpSendFile = tcp::SendFile;
 using tcp::TcpRecvString;
@@ -34,8 +32,8 @@ using tcp::recv;
 using tcp::send;
 using tcp::SockAddrV4;
 using tcp::SockAddrV4View;
-using tcp::TcpClient;
 using tcp::TcpClientSockConfig;
+using tcp::TcpConnManager;
 using tcp::TcpConnManagerConfig;
 using tcp::TcpHandler;
 using tcp::TcpServer;

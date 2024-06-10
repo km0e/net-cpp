@@ -11,6 +11,7 @@ using transport::send;
 using transport::SockAddrV4;
 using transport::SockAddrV4View;
 using transport::TcpClientSockConfig;
+using transport::TcpConnManager;
 using transport::TcpConnManagerConfig;
 using transport::TcpHandleHint;
 using transport::TcpHandler;

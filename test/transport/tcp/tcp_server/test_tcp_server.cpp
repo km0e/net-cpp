@@ -86,8 +86,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   auto handler_generator = std::make_shared<HandlerGenerator>();
-  TcpConnManagerConfig config;
-  config.poller = poller;
+  TcpConnManagerConfig config{poller};
   auto server = std::make_unique<TcpServer<Handler, HandlerGenerator>>(handler_generator, config);
   if (!server) {
     SPDLOG_ERROR("Failed to create server on {}:{}", ip, port);

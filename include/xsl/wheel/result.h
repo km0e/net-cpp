@@ -1,15 +1,18 @@
 #pragma once
 
+#include "xsl/wheel/str.h"
 #ifndef _XSL_UTILS_WHEEL_RESULT_H_
 #  define _XSL_UTILS_WHEEL_RESULT_H_
 #  include "xsl/convert.h"
 #  include "xsl/wheel/def.h"
 
+#  include <stdexcept>
 #  include <variant>
 
 WHEEL_NAMESPACE_BEGIN
 
-template <typename T, ToString E>
+template <typename T, class E>
+  requires ToString<E> || ToStringView<E>
 class RefResult {
 public:
   RefResult(const std::variant<T, E>& value) : value(value) {}
@@ -21,7 +24,8 @@ public:
 private:
   const std::variant<T, E>& value;
 };
-template <typename T, ToString E>
+template <typename T, class E>
+  requires ToString<E> || ToStringView<E>
 class Result {
 public:
   Result(T&& value) : value(std::forward<T>(value)) {}
@@ -30,7 +34,11 @@ public:
   constexpr bool is_err() const { return std::holds_alternative<E>(value); }
   T unwrap() {
     if (is_err()) {
-      throw std::runtime_error(format("unwrap error: {}", to_string(std::get<E>(value))));
+      if constexpr (ToString<E>) {
+        throw std::runtime_error(format("unwrap error: {}", to_string(std::get<E>(value))));
+      } else {
+        throw std::runtime_error(format("unwrap error: {}", to_string_view(std::get<E>(value))));
+      }
     }
     return std::move(std::get<T>(value));
   }

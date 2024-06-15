@@ -166,7 +166,7 @@ bool set_keep_alive(int fd, bool keep_alive) {
   return true;
 }
 
-std::string_view to_string(SendError err) {
+std::string_view to_string_view(SendError err) {
   switch (err) {
     case SendError::Unknown:
       return "Unknown";
@@ -175,7 +175,7 @@ std::string_view to_string(SendError err) {
   }
 }
 
-std::string_view to_string(RecvError err) {
+std::string_view to_string_view(RecvError err) {
   switch (err) {
     case RecvError::Unknown:
       return "Unknown";

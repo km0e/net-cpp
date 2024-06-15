@@ -38,6 +38,6 @@ using tcp::TcpConnManagerConfig;
 using tcp::TcpHandler;
 using tcp::TcpServer;
 using tcp::TcpServerSockConfig;
-using tcp::to_string;
+using tcp::to_string_view;
 TRANSPORT_NAMESPACE_END
 #endif

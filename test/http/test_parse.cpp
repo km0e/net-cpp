@@ -1,3 +1,4 @@
+#include "xsl/convert.h"
 #include "xsl/net/http.h"
 
 #include <gtest/gtest.h>
@@ -9,9 +10,9 @@ TEST(http_parse, complete) {
   auto res = parser.parse(data, len);
   ASSERT_TRUE(res.is_ok());
   auto view = res.unwrap();
-  ASSERT_EQ(xsl::from_string<HttpMethod>(view.method), HttpMethod::GET);
+  ASSERT_EQ(xsl::from_string_view<HttpMethod>(view.method), HttpMethod::GET);
   ASSERT_EQ(view.url, "/");
-  ASSERT_EQ(xsl::from_string<HttpVersion>(view.version), HttpVersion::HTTP_1_1);
+  ASSERT_EQ(xsl::from_string_view<HttpVersion>(view.version), HttpVersion::HTTP_1_1);
   ASSERT_EQ(view.headers.size(), 1);
   ASSERT_EQ(view.headers["Host"], "localhost:8080");
 }

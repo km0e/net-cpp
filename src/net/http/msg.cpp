@@ -1,3 +1,4 @@
+#include "xsl/convert.h"
 #include "xsl/feature.h"
 #include "xsl/net/http/msg.h"
 #include "xsl/net/http/proto.h"
@@ -18,7 +19,7 @@ void RequestView::clear() {
 }
 
 Request::Request(std::string&& raw, RequestView view)
-    : method(xsl::from_string<HttpMethod>(view.method)), view(view), raw(std::move(raw)) {}
+    : method(xsl::from_string_view<HttpMethod>(view.method)), view(view), raw(std::move(raw)) {}
 Request::~Request() {}
 ResponseError::ResponseError(int code, std::string_view message) : code(code), message(message) {}
 ResponseError::~ResponseError() {}

@@ -3,13 +3,13 @@ set_xmakever("2.5.1")
 set_version("0.1.0", { build = "%Y%m%d%H%M" })
 
 -- add release , debug and coverage modes
-add_rules("mode.debug", "mode.release", "mode.coverage")
+add_rules("mode.debug", "mode.release", "mode.coverage", "mode.valgrind")
 
 
 set_warnings("everything")
 -- set_warnings("all", "error", 'pedantic', 'extra')
 
-set_languages("cxx20")
+set_languages("cxxlatest")
 
 
 add_requires("toml++", {configs = {header_only = true}})

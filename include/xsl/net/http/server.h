@@ -27,7 +27,7 @@ public:
       if (res.as_ref().unwrap_err() == RecvError::Eof) {
         return TcpHandleState::NONE;
       }
-      SPDLOG_ERROR("recv error: {}", to_string(res.unwrap_err()));
+      SPDLOG_ERROR("recv error: {}", to_string_view(res.unwrap_err()));
       return TcpHandleState::CLOSE;
     }
     size_t len = this->recv_task.data_buffer.size();
@@ -62,7 +62,7 @@ public:
   TcpHandleState send(int fd) {
     auto res = send_proxy.exec(fd);
     if (res.is_err()) {
-      SPDLOG_ERROR("send error: {}", to_string(res.unwrap_err()));
+      SPDLOG_ERROR("send error: {}", to_string_view(res.unwrap_err()));
       return TcpHandleState::CLOSE;
     }
     if (!this->keep_alive) {

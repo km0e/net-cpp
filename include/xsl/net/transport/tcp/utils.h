@@ -61,14 +61,14 @@ enum class SendError {
   Unknown,
 };
 
-std::string_view to_string(SendError err);
+std::string_view to_string_view(SendError err);
 using SendResult = Result<size_t, SendError>;
 enum class RecvError {
   Unknown,
   Eof,
   NoData,
 };
-std::string_view to_string(RecvError err);
+std::string_view to_string_view(RecvError err);
 using RecvResult = Result<std::string, RecvError>;
 SendResult send(int fd, std::string_view data);
 RecvResult recv(int fd);

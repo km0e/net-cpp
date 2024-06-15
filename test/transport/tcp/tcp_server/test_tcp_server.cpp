@@ -34,7 +34,7 @@ public:
   TcpHandleState recv(int fd) {
     auto res = recv_task.exec(fd);
     if (res.is_err()) {
-      SPDLOG_ERROR("recv error: {}", to_string(res.unwrap_err()));
+      SPDLOG_ERROR("recv error: {}", to_string_view(res.unwrap_err()));
       return TcpHandleState::CLOSE;
     }
     SPDLOG_INFO("[T][Handler::recv] Received data: {}", this->recv_task.data_buffer);

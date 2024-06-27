@@ -2,50 +2,42 @@
 #ifndef XSL_CORO_AWAIT
 #  define XSL_CORO_AWAIT
 #  include "xsl/coro/def.h"
-#  include "xsl/coro/executor.h"
+
+#  include <spdlog/spdlog.h>
 
 #  include <coroutine>
-#  include <memory>
+#  include <functional>
+#  include <optional>
 
 XSL_CORO_NAMESPACE_BEGIN
 
-template <typename Awaiter, typename R = typename Awaiter::ResultType,
-          typename Executor = NoopExecutor>
-class AwaiterProxy {
+template <typename ResultType>
+class CallbackAwaiter {
 public:
-  using ResultType = R;
-  AwaiterProxy(std::shared_ptr<Executor> executor, Awaiter awaiter)
-      : _executor(executor), _awaiter(awaiter) {}
-
-  void resume() {
-    _executor->execute([this]() { this->_handle.resume(); });
+  CallbackAwaiter(std::function<void(std::function<void(ResultType)>)> func)
+      : _func(func), _result(std::nullopt) {}
+  bool await_ready() const noexcept {
+    SPDLOG_DEBUG("");
+    return false;
+  }
+  template <class Promise>
+  void await_suspend(std::coroutine_handle<Promise> handle) noexcept {
+    SPDLOG_DEBUG("");
+    _func([this, handle](ResultType result) {
+      _result = result;
+      SPDLOG_DEBUG("result: {}", *_result);
+      handle.promise().dispatch([handle]() { handle.resume(); });
+    });
+  }
+  ResultType await_resume() noexcept {
+    SPDLOG_DEBUG("");
+    return *_result;
   }
 
 private:
-  std::shared_ptr<Executor> _executor;
-  Awaiter _awaiter;
-  std::coroutine_handle<> _handle;
+  std::function<void(std::function<void(ResultType)>)> _func;
+  std::optional<ResultType> _result;
 };
 
-// template <typename Awaiter, typename R = typename Awaiter::ResultType,
-//           typename Executor = NoopExecutor>
-// class AwaiterProxy {
-// public:
-//   using ResultType = R;
-//   AwaiterProxy(std::shared_ptr<Executor> executor, Awaiter awaiter)
-//       : _executor(executor), _awaiter(awaiter) {}
-
-//   bool await_ready() const { return _awaiter.await_ready(); }
-
-//   void await_suspend(std::coroutine_handle<> handle) { _awaiter.await_suspend(handle); }
-
-//   R await_resume() {
-//     this->_executor->execute([this]() { this->_awaiter.resume(); });
-//   }
-
-// private:
-//   std::shared_ptr<Executor> _executor;
-//   Awaiter _awaiter;
-// };
 XSL_CORO_NAMESPACE_END
 #endif  // XSL_CORO_AWAIT

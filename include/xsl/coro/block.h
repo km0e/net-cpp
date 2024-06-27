@@ -23,7 +23,7 @@ public:
 
   Block(Block &) = delete;
 
-  Block &operator=(Block &) = delete;
+  Block &operator=(Block &) = delete; 
 
   ~Block() {
     SPDLOG_DEBUG("~Block");

@@ -35,30 +35,37 @@ public:
   TaskAwaiter(const TaskAwaiter &) = delete;
   TaskAwaiter &operator=(const TaskAwaiter &) = delete;
   ~TaskAwaiter() {
+    SPDLOG_DEBUG("destructor");
     assert(_handle.done());
     _handle.destroy();
   }
+
   bool await_ready() const {
+    SPDLOG_DEBUG("awaiter");
     _handle();
     return _handle.done();
   }
 
   template <class Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) {
+    SPDLOG_DEBUG("awaiter");
     if constexpr (!std::is_same_v<typename promise_traits<Promise>::executor_type, Executor>) {
-      this->_handle.promise().next(this->_handle);
+      this->_handle.promise().next(handle);
     } else {
-      if (handle.promise().executor()) {
-        this->_handle.promise().next(this->_handle);
+      if (this->_handle.promise().executor()) {
+        this->_handle.promise().next(handle);
       } else if (auto executor = handle.promise().executor(); executor) {
-        this->_handle.promise().by(executor).next(this->_handle);
+        this->_handle.promise().by(executor).next(handle);
       } else {
-        this->_handle.promise().next(this->_handle);
+        this->_handle.promise().next(handle);
       }
     }
   }
 
-  ResultType await_resume() { return *_handle.promise(); }
+  ResultType await_resume() {
+    SPDLOG_DEBUG("awaiter");
+    return *_handle.promise();
+  }
 
 private:
   std::coroutine_handle<promise_type> _handle;

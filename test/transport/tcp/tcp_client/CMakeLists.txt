@@ -1,4 +1,5 @@
 # use nc to test
+link_libraries(clilib)
 find_program(TEST_TOOL_NCAT ncat)
 find_program(TEST_TOOL_CAT cat)
 find_package(Python3 COMPONENTS Interpreter)

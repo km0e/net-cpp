@@ -1,8 +1,8 @@
+#include "xsl/logctl.h"
 #include "xsl/net.h"
 
 #include <CLI/CLI.hpp>
 #include <pthread.h>
-#include <spdlog/spdlog.h>
 #include <sys/signal.h>
 #include <unistd.h>
 
@@ -15,7 +15,7 @@
 void sigterm_init() {
   struct sigaction act;
   act.sa_handler = [](int sig) -> void {
-    SPDLOG_INFO("Received signal {}", sig);
+    INFO("Received signal {}", sig);
     exit(0);
   };
   sigaction(SIGTERM, &act, nullptr);
@@ -29,7 +29,6 @@ int main(int argc, char **argv) {
   std::string port = TEST_PORT;
   app.add_option("-p,--port", port, "Port to connect to");
   CLI11_PARSE(app, argc, argv);
-  spdlog::set_level(spdlog::level::trace);
   sigterm_init();
 
   auto router = std::make_shared<HttpRouter>();
@@ -45,13 +44,13 @@ int main(int argc, char **argv) {
   auto handler_generator = make_shared<HttpHandlerGenerator>(router);
   auto poller = std::make_shared<DefaultPoller>();
   if (!poller->valid()) {
-    SPDLOG_ERROR("Failed to create poller");
+    ERROR("Failed to create poller");
     return 1;
   }
   TcpConnManagerConfig config{poller};
   auto server = make_unique<HttpServer>(handler_generator, config);
   if (!server) {
-    SPDLOG_ERROR("Failed to serve");
+    ERROR("Failed to serve");
     return 1;
   }
   pthread_t poller_thread;

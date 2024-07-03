@@ -3,12 +3,13 @@
 #  define XSL_CORO_BLOCK
 #  include "xsl/coro/def.h"
 #  include "xsl/coro/result.h"
+#  include "xsl/logctl.h"
 
-#  include <spdlog/spdlog.h>
-
+#  include <condition_variable>
 #  include <coroutine>
 #  include <cstddef>
 #  include <mutex>
+#  include <utility>
 XSL_CORO_NAMESPACE_BEGIN
 template <class ResultType>
 class BlockPromise;
@@ -23,10 +24,10 @@ public:
 
   Block(Block &) = delete;
 
-  Block &operator=(Block &) = delete; 
+  Block &operator=(Block &) = delete;
 
   ~Block() {
-    SPDLOG_DEBUG("~Block");
+    DEBUG( "~Block");
     if (_handle) _handle.destroy();
   }
 
@@ -44,12 +45,12 @@ namespace detail {
     using executor_type = no_executor;
     BlockPromiseBase() : _result(std::nullopt), _fin_lock(), _fin_cv() {}
     std::suspend_never initial_suspend() {
-      SPDLOG_DEBUG("initial_suspend");
+      DEBUG( "initial_suspend");
       return {};
     }
 
     std::suspend_always final_suspend() noexcept {
-      SPDLOG_DEBUG("final_suspend");
+      DEBUG( "final_suspend");
       _fin_cv.notify_all();
       return {};
     }
@@ -57,7 +58,7 @@ namespace detail {
     void unhandled_exception() { _result = Result<ResultType>(std::current_exception()); }
 
     ResultType operator*() {
-      SPDLOG_DEBUG("operator*");
+      DEBUG( "operator*");
       std::unique_lock<std::mutex> lock(_fin_lock);
       if (!_result.has_value()) _fin_cv.wait(lock);
       return _result->get_or_throw();
@@ -83,7 +84,7 @@ public:
   }
 
   void return_value(ResultType value) {
-    SPDLOG_DEBUG("return_value");
+    DEBUG( "return_value");
     _result = Result<ResultType>(std::move(value));
   }
 };
@@ -97,7 +98,7 @@ public:
     return Block{std::coroutine_handle<BlockPromise>::from_promise(*this)};
   }
   void return_void() {
-    SPDLOG_DEBUG("return_value");
+    DEBUG( "return_value");
     _result = Result<void>();
   }
 };

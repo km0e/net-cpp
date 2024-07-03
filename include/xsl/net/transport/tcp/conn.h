@@ -1,12 +1,12 @@
 #pragma once
 #ifndef _XSL_NET_TRANSPORT_TCP_CONN_H_
 #  define _XSL_NET_TRANSPORT_TCP_CONN_H_
+#  include "xsl/logctl.h"
 #  include "xsl/net/sync.h"
 #  include "xsl/net/sync/poller.h"
 #  include "xsl/net/transport/tcp/def.h"
 #  include "xsl/wheel.h"
 
-#  include <spdlog/spdlog.h>
 #  include <sys/timerfd.h>
 
 #  include <cstdint>
@@ -192,7 +192,7 @@ public:
     uint64_t exp;
     ssize_t s = read(fd, &exp, sizeof(uint64_t));
     if (s == -1) {
-      SPDLOG_ERROR("Failed to read timerfd, error: {}", strerror(errno));
+      ERROR( "Failed to read timerfd, error: {}", strerror(errno));
       return {PollHandleHintTag::NONE};
     }
     std::vector<int> timeout, closed;
@@ -241,7 +241,7 @@ private:
   void setup_timer() {
     int timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
     if (timer_fd == -1) {
-      SPDLOG_ERROR("Failed to create timerfd, error: {}", strerror(errno));
+      ERROR( "Failed to create timerfd, error: {}", strerror(errno));
       return;
     }
     this->poller->add(timer_fd, IOM_EVENTS::IN,
@@ -252,7 +252,7 @@ private:
     new_value.it_interval.tv_sec = limit.recv_timeout / 1000;
     new_value.it_interval.tv_nsec = (limit.recv_timeout % 1000) * 1000000;
     if (timerfd_settime(timer_fd, 0, &new_value, nullptr) == -1) {
-      SPDLOG_ERROR("Failed to set timerfd, error: {}", strerror(errno));
+      ERROR( "Failed to set timerfd, error: {}", strerror(errno));
     }
   }
 };

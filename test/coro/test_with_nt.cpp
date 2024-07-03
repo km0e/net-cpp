@@ -1,9 +1,9 @@
-#include "tool.h"
+#include "coro/tool.h"
 #include "xsl/coro/executor.h"
 #include "xsl/coro/task.h"
+#include "xsl/logctl.h"
 
 #include <gtest/gtest.h>
-#include <spdlog/spdlog.h>
 
 #include <thread>
 using namespace xsl::coro;
@@ -28,7 +28,6 @@ TEST(Task, just_throw) {
                std::runtime_error);
 
   ASSERT_THROW(return_exception_task<NewThreadExecutor>().by(executor).block(), std::runtime_error);
-
 }
 
 TEST(Task, async_task) {
@@ -98,7 +97,7 @@ TEST(Task, async_exception_task) {
 }
 
 int main(int argc, char **argv) {
+  xsl::no_log();
   testing::InitGoogleTest(&argc, argv);
-  spdlog::set_level(spdlog::level::trace);
   return RUN_ALL_TESTS();
 }

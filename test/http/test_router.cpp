@@ -1,3 +1,4 @@
+#include "xsl/logctl.h"
 #include "xsl/net/http.h"
 #include "xsl/net/http/msg.h"
 #include "xsl/net/http/router.h"
@@ -6,6 +7,8 @@
 
 #include <memory>
 #include <string>
+
+
 using namespace std;
 TEST(http_router, add_route) {
   using namespace xsl::net;
@@ -104,6 +107,7 @@ TEST(http_router, route) {
 }
 
 int main() {
+  xsl::no_log();
   ::testing::InitGoogleTest();
   return RUN_ALL_TESTS();
 }

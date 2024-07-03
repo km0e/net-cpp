@@ -3,6 +3,7 @@
 #  define _XSL_FEATURE_H_
 #  include "xsl/def.h"
 #  include "xsl/wheel/type_traits.h"
+
 XSL_NAMESPACE_BEGIN
 namespace feature {
   class placeholder;

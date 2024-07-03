@@ -3,14 +3,13 @@
 #ifndef _XSL_NET_HTTP_SERVER_H_
 #  define _XSL_NET_HTTP_SERVER_H_
 #  include "xsl/convert.h"
+#  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/parse.h"
 #  include "xsl/net/http/router.h"
 #  include "xsl/net/sync.h"
 #  include "xsl/net/transport.h"
-
-#  include <spdlog/spdlog.h>
 
 HTTP_NAMESPACE_BEGIN
 
@@ -27,7 +26,7 @@ public:
       if (res.as_ref().unwrap_err() == RecvError::Eof) {
         return TcpHandleState::NONE;
       }
-      SPDLOG_ERROR("recv error: {}", to_string_view(res.unwrap_err()));
+      ERROR("recv error: {}", to_string_view(res.unwrap_err()));
       return TcpHandleState::CLOSE;
     }
     size_t len = this->recv_task.data_buffer.size();
@@ -51,7 +50,7 @@ public:
     auto rtres = this->router->route(ctx);
     if (rtres.is_err()) {
       // TODO: handle route error
-      SPDLOG_ERROR("route error: {}", xsl::to_string(rtres.unwrap_err()));
+      ERROR("route error: {}", xsl::to_string(rtres.unwrap_err()));
       return TcpHandleState::CLOSE;
     }
     auto tasks = rtres.unwrap()->into_send_tasks();
@@ -62,7 +61,7 @@ public:
   TcpHandleState send(int fd) {
     auto res = send_proxy.exec(fd);
     if (res.is_err()) {
-      SPDLOG_ERROR("send error: {}", to_string_view(res.unwrap_err()));
+      ERROR("send error: {}", to_string_view(res.unwrap_err()));
       return TcpHandleState::CLOSE;
     }
     if (!this->keep_alive) {
@@ -70,9 +69,9 @@ public:
     }
     return TcpHandleState::NONE;
   }
-  void close([[maybe_unused]] int fd) { SPDLOG_TRACE(""); }
+  void close([[maybe_unused]] int fd) { TRACE(""); }
   TcpHandleState other([[maybe_unused]] int fd, [[maybe_unused]] IOM_EVENTS events) {
-    SPDLOG_ERROR("Unexpected events");
+    ERROR("Unexpected events");
     return TcpHandleState::CLOSE;
   }
 

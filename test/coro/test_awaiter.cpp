@@ -1,8 +1,8 @@
 #include "xsl/coro/await.h"
 #include "xsl/coro/task.h"
+#include "xsl/logctl.h"
 
 #include <gtest/gtest.h>
-#include <spdlog/spdlog.h>
 
 #include <thread>
 using namespace xsl::coro;
@@ -24,8 +24,7 @@ TEST(CallbackAwaiterTest, CallbackAwaiter) {
 }
 
 int main(int argc, char **argv) {
+  xsl::no_log();
   testing::InitGoogleTest(&argc, argv);
-  // spdlog::set_level(spdlog::level::debug);
-  spdlog::set_pattern("%D-%T|%-5l|%-8s|%!|%v");
   return RUN_ALL_TESTS();
 }

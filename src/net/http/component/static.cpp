@@ -1,8 +1,8 @@
+#include "xsl/logctl.h"
 #include "xsl/net/http/component/static.h"
 #include "xsl/net/http/proto.h"
 #include "xsl/net/http/router.h"
 
-#include <spdlog/spdlog.h>
 #include <sys/stat.h>
 
 #include <filesystem>
@@ -33,7 +33,7 @@ RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
   struct stat buf;
   int res = stat(this->path.c_str(), &buf);
   if (res == -1) {
-    SPDLOG_ERROR("stat failed: {}", strerror(errno));
+    ERROR( "stat failed: {}", strerror(errno));
     return RouteHandleResult(RouteHandleError("stat failed"));
   }
   TcpSendTasks tasks;
@@ -54,17 +54,17 @@ public:
 FolderRouteHandler::FolderRouteHandler(std::string&& path) : path(std::move(path)) {}
 FolderRouteHandler::~FolderRouteHandler() {}
 RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
-  SPDLOG_DEBUG("FolderRouteHandler: {}", ctx.current_path);
+  DEBUG( "FolderRouteHandler: {}", ctx.current_path);
   std::string full_path = this->path;
   full_path.append(ctx.current_path.substr(1));
   struct stat buf;
   int res = stat(full_path.c_str(), &buf);
   if (res == -1) {
-    SPDLOG_ERROR("stat failed: path: {} error: {}", full_path, strerror(errno));
+    ERROR( "stat failed: path: {} error: {}", full_path, strerror(errno));
     return NOT_FOUND_HANDLER(ctx);
   }
   if (S_ISDIR(buf.st_mode)) {
-    SPDLOG_DEBUG("FolderRouteHandler: is dir");
+    DEBUG( "FolderRouteHandler: is dir");
     return RouteHandleResult(NOT_FOUND_HANDLER(ctx));
   }
   TcpSendTasks tasks;
@@ -76,7 +76,7 @@ RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
     resp->part.headers.emplace(
         "Content-Type",
         to_string(ContentType{content_type::MediaType::from_extension(ext), Charset::UTF_8}));
-    SPDLOG_DEBUG("FolderRouteHandler: Content-Type: {}", resp->part.headers["Content-Type"]);
+    DEBUG( "FolderRouteHandler: Content-Type: {}", resp->part.headers["Content-Type"]);
   }
   return RouteHandleResult{std::move(resp)};
 }
@@ -87,7 +87,7 @@ StaticCreateResult create_static_handler(std::string&& path) {
   std::error_code ec;
   auto status = std::filesystem::status(path, ec);
   if (ec) {
-    SPDLOG_ERROR("filesystem::status failed: {}", ec.message());
+    ERROR("filesystem::status failed: {}", ec.message());
     return AddRouteError{AddRouteErrorKind::InvalidPath};
   }
   if (status.type() == std::filesystem::file_type::directory) {

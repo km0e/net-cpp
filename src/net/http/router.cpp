@@ -1,10 +1,9 @@
+#include "xsl/logctl.h"
 #include "xsl/net/http/msg.h"
 #include "xsl/net/http/parse.h"
 #include "xsl/net/http/proto.h"
 #include "xsl/net/http/router.h"
 #include "xsl/wheel.h"
-
-#include <spdlog/spdlog.h>
 
 HTTP_NAMESPACE_BEGIN
 RouteContext::RouteContext(Request&& request)
@@ -47,7 +46,7 @@ namespace router_details {
 
   AddRouteResult HttpRouteNode::add_route(HttpMethod method, std::string_view path,
                                           RouteHandler&& handler) {
-    SPDLOG_DEBUG("Adding route: {}", path);
+    DEBUG("Adding route: {}", path);
     if (path[0] != '/') {
       return AddRouteResult(AddRouteError(AddRouteErrorKind::InvalidPath, ""));
     }
@@ -77,7 +76,7 @@ namespace router_details {
   }
 
   RouteResult HttpRouteNode::route(RouteContext& ctx) {
-    SPDLOG_TRACE("Routing path: {}", ctx.current_path);
+    TRACE("Routing path: {}", ctx.current_path);
     if (ctx.current_path[0] != '/') {
       return RouteResult(RouteError(RouteErrorKind::NotFound, ""));
     }
@@ -114,7 +113,7 @@ namespace router_details {
         return dr_res;
       }
     } while (false);
-    SPDLOG_DEBUG("Routing to default child");
+    DEBUG("Routing to default child");
     auto iter = this->children.lock_shared()->find("");  // find default child
     if (iter != this->children.lock_shared()->end()) {
       return iter->second.direct_route(ctx);
@@ -132,17 +131,17 @@ namespace router_details {
     return true;
   }
   RouteResult HttpRouteNode::direct_route(RouteContext& ctx) {
-    SPDLOG_DEBUG("Direct routing path: {}", ctx.current_path);
+    DEBUG("Direct routing path: {}", ctx.current_path);
     auto& handler = handlers[static_cast<uint8_t>(ctx.request.method)];
     if (handler == nullptr) {
       return RouteResult(RouteError(RouteErrorKind::Unimplemented, ""));
     }
     RouteHandleResult res = handler(ctx);
     if (res.is_ok()) {
-      SPDLOG_DEBUG("Route ok");
+      DEBUG("Route ok");
       return RouteResult(res.unwrap());
     }
-    SPDLOG_ERROR("Route error: {}", res.unwrap_err().to_string());
+    ERROR("Route error: {}", res.unwrap_err().to_string());
     return RouteResult(RouteError(RouteErrorKind::Unknown, ""));
   }
 
@@ -154,12 +153,12 @@ HttpRouter::~HttpRouter() {}
 
 AddRouteResult HttpRouter::add_route(HttpMethod method, std::string_view path,
                                      RouteHandler&& handler) {
-  SPDLOG_DEBUG("Adding route: {}", path);
+  DEBUG("Adding route: {}", path);
   return root.add_route(method, path, std::move(handler));
 }
 
 RouteResult HttpRouter::route(RouteContext& ctx) {
-  SPDLOG_DEBUG("Starting routing path: {}", ctx.current_path);
+  DEBUG("Starting routing path: {}", ctx.current_path);
   if (ctx.request.method == HttpMethod::UNKNOWN) {
     return RouteResult(RouteError(RouteErrorKind::Unknown, ""));
   }

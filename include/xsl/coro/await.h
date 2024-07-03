@@ -2,8 +2,7 @@
 #ifndef XSL_CORO_AWAIT
 #  define XSL_CORO_AWAIT
 #  include "xsl/coro/def.h"
-
-#  include <spdlog/spdlog.h>
+#  include "xsl/logctl.h"
 
 #  include <coroutine>
 #  include <functional>
@@ -17,20 +16,20 @@ public:
   CallbackAwaiter(std::function<void(std::function<void(ResultType)>)> func)
       : _func(func), _result(std::nullopt) {}
   bool await_ready() const noexcept {
-    SPDLOG_DEBUG("");
+    DEBUG( "");
     return false;
   }
   template <class Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) noexcept {
-    SPDLOG_DEBUG("");
+    DEBUG( "");
     _func([this, handle](ResultType result) {
       _result = result;
-      SPDLOG_DEBUG("result: {}", *_result);
+      DEBUG( "result: {}", *_result);
       handle.promise().dispatch([handle]() { handle.resume(); });
     });
   }
   ResultType await_resume() noexcept {
-    SPDLOG_DEBUG("");
+    DEBUG( "");
     return *_result;
   }
 

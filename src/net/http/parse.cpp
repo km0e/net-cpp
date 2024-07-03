@@ -1,8 +1,6 @@
 #include "xsl/net/http/parse.h"
 #include "xsl/net/http/proto.h"
 
-#include <spdlog/spdlog.h>
-
 #include <regex>
 
 HTTP_NAMESPACE_BEGIN

@@ -1,4 +1,4 @@
-add_packages("spdlog", "fmt", "gtest")
+add_deps("xsl_log_ctl")
 
 if is_mode("coverage") then
     add_cxxflags("-O0", "-g", "-fprofile-arcs", "-ftest-coverage")

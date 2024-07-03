@@ -3,8 +3,6 @@
 #  define _XSL_WHEEL_MUTEX_H_
 #  include "xsl/wheel/def.h"
 
-#  include <spdlog/spdlog.h>
-
 #  include <shared_mutex>
 WHEEL_NAMESPACE_BEGIN
 
@@ -30,12 +28,12 @@ private:
 
 template <class T>
 ShrdGuard<T>::ShrdGuard(std::shared_mutex& m, T& t) : m(m), t(t) {
-  // SPDLOG_TRACE("");
+  // LOG_TRACE_L3(logger,"");
   m.lock_shared();
 }
 template <class T>
 ShrdGuard<T>::~ShrdGuard() {
-  // SPDLOG_TRACE("");
+  // LOG_TRACE_L3(logger,"");
   m.unlock_shared();
 }
 template <class T>
@@ -62,12 +60,12 @@ private:
 
 template <Lockable T, class V>
 LockGuard<T, V>::LockGuard(T& m, V& v) : m(m), v(v) {
-  // SPDLOG_TRACE("");
+  // LOG_TRACE_L3(logger,"");
   m.lock();
 }
 template <Lockable T, class V>
 LockGuard<T, V>::~LockGuard() {
-  // SPDLOG_TRACE("");
+  // LOG_TRACE_L3(logger,"");
   m.unlock();
 }
 template <Lockable T, class V>
@@ -79,12 +77,14 @@ V& LockGuard<T, V>::operator*() {
   return v;
 }
 template <class C>
-class ShrdRes {//rename to SharedResource
+class ShrdRes {  // rename to SharedResource
 public:
   ShrdRes() : container(), mutex() {}
   ~ShrdRes() {}
   ShrdGuard<C> lock_shared() { return ShrdGuard<C>(mutex, container); }
-  LockGuard<std::shared_mutex, C> lock() { return LockGuard<std::shared_mutex, C>(mutex, container); }
+  LockGuard<std::shared_mutex, C> lock() {
+    return LockGuard<std::shared_mutex, C>(mutex, container);
+  }
 
 private:
   C container;

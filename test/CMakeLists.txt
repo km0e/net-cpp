@@ -1,25 +1,3 @@
-add_library(xsl_for_test STATIC)
-
-target_compile_definitions(xsl_for_test
-    PRIVATE
-    SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
-)
-
-file(GLOB_RECURSE XSL_SOURCE_FILES
-    ${PROJECT_SOURCE_DIR}/source/*.cpp
-)
-
-target_sources(xsl_for_test
-    PRIVATE
-    ${XSL_SOURCE_FILES}
-)
-
-target_include_directories(
-    xsl_for_test
-    PUBLIC
-    ${PROJECT_SOURCE_DIR}/include
-)
-
 # ---- Options ----
 option(ENABLE_TEST_COVERAGE "Enable test coverage" ON)
 
@@ -31,11 +9,11 @@ if(ENABLE_TEST_COVERAGE)
 endif()
 
 # ---- Add libraries ----
-link_libraries(
-    xsl_for_test
-)
+link_libraries(xsl_log_ctl)
+link_libraries(testlib)
 
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 # ---- Add Subdirectories ----
+add_subdirectory(coro)
 add_subdirectory(http)
-add_subdirectory(sync)
 add_subdirectory(transport)

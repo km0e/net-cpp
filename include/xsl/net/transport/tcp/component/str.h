@@ -1,6 +1,7 @@
 #pragma once
 #ifndef _XSL_NET_TRANSPORT_TCP_HELPER_STR_H_
 #  define _XSL_NET_TRANSPORT_TCP_HELPER_STR_H_
+#  include "xsl/logctl.h"
 #  include "xsl/feature.h"
 #  include "xsl/net/transport/tcp/component/def.h"
 #  include "xsl/net/transport/tcp/utils.h"
@@ -8,7 +9,6 @@
 #  include "xsl/wheel/result.h"
 #  include "xsl/wheel/type_traits.h"
 
-#  include <spdlog/spdlog.h>
 #  include <sys/socket.h>
 
 #  include <list>
@@ -56,7 +56,7 @@ namespace impl {
     using Base::Base;
     ~TcpSendString() {}
     SendResult exec(SendContext& ctx) override {
-      SPDLOG_DEBUG("compontent send");
+      DEBUG( "compontent send");
       return Base::exec(ctx.sfd);
     }
   };

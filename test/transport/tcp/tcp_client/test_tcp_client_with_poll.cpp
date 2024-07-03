@@ -1,9 +1,9 @@
+#include "xsl/logctl.h"
 #include "xsl/net/sync.h"
 #include "xsl/net/transport/tcp.h"
 
 #include <CLI/CLI.hpp>
 #include <pthread.h>
-#include <spdlog/spdlog.h>
 #include <unistd.h>
 
 #include <string>
@@ -11,6 +11,7 @@ using namespace std;
 using namespace xsl::net;
 #define MAX_ECHO_CYCLES 10
 int main(int argc, char **argv) {
+  xsl::no_log();
   CLI::App app{"TCP Client"};
   string ip = "127.0.0.1";
   app.add_option("-i,--ip", ip, "Ip to connect to")->required();

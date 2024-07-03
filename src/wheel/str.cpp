@@ -1,5 +1,6 @@
 #include "xsl/wheel/def.h"
 #include "xsl/wheel/str.h"
+
 WHEEL_NAMESPACE_BEGIN
 void i32_to_bytes(int32_t value, char* bytes) {
   bytes[0] = (value >> 24) & 0xFF;

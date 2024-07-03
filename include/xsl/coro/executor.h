@@ -5,7 +5,6 @@
 #  include "xsl/coro/def.h"
 
 #  include <functional>
-#  include <thread>
 XSL_CORO_NAMESPACE_BEGIN
 
 template <class T>
@@ -15,12 +14,12 @@ concept Executor = requires(T t, std::move_only_function<void()> func) {
 
 class NoopExecutor {
 public:
-  void schedule(std::move_only_function<void()> &&func) { func(); }
+  void schedule(std::move_only_function<void()> &&func);
 };
 
 class NewThreadExecutor {
 public:
-  void schedule(std::move_only_function<void()> &&func) { std::thread(std::move(func)).detach(); }
+  void schedule(std::move_only_function<void()> &&func);
 };
 
 XSL_CORO_NAMESPACE_END

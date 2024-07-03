@@ -6,7 +6,6 @@
 #  include "xsl/wheel/mutex.h"
 #  include "xsl/wheel/result.h"
 #  include "xsl/wheel/str.h"
-#  include "xsl/wheel/type_traits.h"
 #  include "xsl/wheel/utils.h"
 #  include "xsl/wheel/vec.h"
 XSL_NAMESPACE_BEGIN

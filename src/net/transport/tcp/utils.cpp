@@ -1,10 +1,10 @@
+#include "xsl/logctl.h"
 #include "xsl/net/transport/tcp/def.h"
 #include "xsl/net/transport/tcp/utils.h"
 #include "xsl/utils.h"
 
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <spdlog/spdlog.h>
 #include <sys/types.h>
 
 #include <cstdlib>
@@ -64,7 +64,7 @@ bool SockAddrV4::operator==(const SockAddrV4 &rhs) const {
 std::string SockAddrV4::to_string() const { return format("{}:{}", _ip, _port); }
 
 int new_tcp_client(const char *ip, const char *port, TcpClientSockConfig config) {
-  SPDLOG_DEBUG("Connecting to {}:{}", ip, port);
+  DEBUG("Connecting to {}:{}", ip, port);
   addrinfo hints;
   addrinfo *result;
   int client_fd = -1;
@@ -74,7 +74,7 @@ int new_tcp_client(const char *ip, const char *port, TcpClientSockConfig config)
   hints.ai_protocol = IPPROTO_TCP;
   int res = getaddrinfo(ip, port, &hints, &result);
   if (res != 0) {
-    SPDLOG_WARN("getaddrinfo failed: {}", gai_strerror(res));
+    WARNING("getaddrinfo failed: {}", gai_strerror(res));
     return -1;
   }
   addrinfo *rp;
@@ -85,24 +85,24 @@ int new_tcp_client(const char *ip, const char *port, TcpClientSockConfig config)
     }
     if (::connect(tmp_client_fd, rp->ai_addr, rp->ai_addrlen) != -1) {
       if (config.keep_alive && !set_keep_alive(tmp_client_fd, true)) {
-        SPDLOG_WARN("Failed to set keep alive");
+        WARNING("Failed to set keep alive");
         close(tmp_client_fd);
         continue;
       }
       if (config.non_blocking && !set_non_blocking(tmp_client_fd)) {
-        SPDLOG_WARN("Failed to set non-blocking");
+        WARNING("Failed to set non-blocking");
         close(tmp_client_fd);
         continue;
       }
       client_fd = tmp_client_fd;
       break;
     }
-    SPDLOG_WARN("Failed to connect to {}:{}", ip, port);
+    WARNING("Failed to connect to {}:{}", ip, port);
     close(tmp_client_fd);
   }
   freeaddrinfo(result);
   if (rp == nullptr) {
-    SPDLOG_WARN("Failed to connect to {}:{}", ip, port);
+    WARNING("Failed to connect to {}:{}", ip, port);
     return -1;
   }
   return client_fd;
@@ -113,26 +113,26 @@ int new_tcp_client(const SockAddrV4 &sa4, TcpClientSockConfig config) {
 
 int new_tcp_server(const char *ip, int port, TcpServerSockConfig config) {
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-  SPDLOG_DEBUG("Server fd: {}", server_fd);
+  DEBUG("Server fd: {}", server_fd);
   if (server_fd == -1) {
-    SPDLOG_ERROR("Failed to create socket");
+    ERROR("Failed to create socket");
     return -1;
   }
   if (config.keep_alive && !set_keep_alive(server_fd, true)) {
     close(server_fd);
-    SPDLOG_ERROR("Failed to set keep alive");
+    ERROR("Failed to set keep alive");
     return -1;
   }
   if (config.non_blocking && !set_non_blocking(server_fd)) {
     close(server_fd);
-    SPDLOG_ERROR("Failed to set non-blocking");
+    ERROR("Failed to set non-blocking");
     return -1;
   }
   if (config.reuse_addr) {
     int opt = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
       close(server_fd);
-      SPDLOG_ERROR("Failed to set reuse addr");
+      ERROR("Failed to set reuse addr");
       return -1;
     }
   }
@@ -143,12 +143,12 @@ int new_tcp_server(const char *ip, int port, TcpServerSockConfig config) {
   addr_in->sin_addr.s_addr = inet_addr(ip);
   if (bind(server_fd, &addr, sizeof(addr)) == -1) {
     close(server_fd);
-    SPDLOG_ERROR("Failed to bind on {}:{}", ip, port);
+    ERROR("Failed to bind on {}:{}", ip, port);
     return -1;
   }
   if (listen(server_fd, config.max_connections) == -1) {
     close(server_fd);
-    SPDLOG_ERROR("Failed to listen on {}:{}", ip, port);
+    ERROR("Failed to listen on {}:{}", ip, port);
     return -1;
   }
   return server_fd;
@@ -160,7 +160,7 @@ int new_tcp_server(const SockAddrV4 &sa4, TcpServerSockConfig config) {
 bool set_keep_alive(int fd, bool keep_alive) {
   int opt = keep_alive ? 1 : 0;
   if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt))) {
-    SPDLOG_ERROR("Failed to set keep alive");
+    ERROR("Failed to set keep alive");
     return false;
   }
   return true;
@@ -187,28 +187,28 @@ std::string_view to_string_view(RecvError err) {
 }
 
 RecvResult recv(int fd) {
-  SPDLOG_TRACE("start recv string");
+  TRACE("start recv string");
   std::vector<std::string> data;
   char buf[MAX_SINGLE_RECV_SIZE];
   ssize_t n;
   do {
     n = ::recv(fd, buf, sizeof(buf), 0);
-    SPDLOG_DEBUG("recv n: {}", n);
+    DEBUG("recv n: {}", n);
     if (n == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         if (data.empty()) {
-          SPDLOG_DEBUG("recv eof");
+          DEBUG("recv eof");
           return {RecvError::Eof};
         }
-        SPDLOG_DEBUG("recv over");
+        DEBUG("recv over");
         break;
       } else {
-        SPDLOG_ERROR("Failed to recv data, err : {}", strerror(errno));
+        ERROR("Failed to recv data, err : {}", strerror(errno));
         // TODO: handle recv error
         return {RecvError::Unknown};
       }
     } else if (n == 0) {
-      SPDLOG_DEBUG("recv eof");
+      DEBUG("recv eof");
       return {RecvError::Eof};
       break;
     }

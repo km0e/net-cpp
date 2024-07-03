@@ -1,8 +1,7 @@
-#include "tool.h"
+#include "coro/tool.h"
 #include "xsl/coro/task.h"
 
 #include <gtest/gtest.h>
-#include <spdlog/spdlog.h>
 using namespace xsl::coro;
 
 TEST(Task, just_return) {
@@ -93,7 +92,7 @@ TEST(Task, async_exception_task) {
 }
 
 int main(int argc, char **argv) {
+  xsl::no_log();
   testing::InitGoogleTest(&argc, argv);
-  spdlog::set_level(spdlog::level::trace);
   return RUN_ALL_TESTS();
 }

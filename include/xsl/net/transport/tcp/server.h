@@ -1,13 +1,13 @@
 #pragma once
 #ifndef _XSL_NET_TRANSPORT_TCP_SERVER_H_
 #  define _XSL_NET_TRANSPORT_TCP_SERVER_H_
+#  include "xsl/logctl.h"
 #  include "xsl/net/sync.h"
 #  include "xsl/net/sync/poller.h"
 #  include "xsl/net/transport/tcp/conn.h"
 #  include "xsl/net/transport/tcp/def.h"
 #  include "xsl/utils.h"
 
-#  include <spdlog/spdlog.h>
 #  include <unistd.h>
 
 #  include <memory>
@@ -30,20 +30,20 @@ public:
         return {PollHandleHintTag::NONE};
       }
       if (!set_non_blocking(client_fd)) {
-        SPDLOG_WARN("[TcpServer::<lambda::handler>] Failed to set non-blocking");
+        WARNING("[TcpServer::<lambda::handler>] Failed to set non-blocking");
         close(client_fd);
         return {PollHandleHintTag::NONE};
       }
       auto handler = (*this->handler_generator)(client_fd);
       if (!handler) {
-        SPDLOG_WARN("[TcpServer::<lambda::handler>] Failed to create handler");
+        WARNING("[TcpServer::<lambda::handler>] Failed to create handler");
         close(client_fd);
         return {PollHandleHintTag::NONE};
       }
       this->tcp_conn_manager.add(client_fd, std::move(handler));
       return {PollHandleHintTag::NONE};
     }
-    SPDLOG_TRACE("there is no IN event");
+    TRACE("there is no IN event");
     return {PollHandleHintTag::NONE};
   }
   bool stop() { return true; }

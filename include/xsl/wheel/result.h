@@ -1,6 +1,5 @@
 #pragma once
 
-#include "xsl/wheel/str.h"
 #ifndef _XSL_UTILS_WHEEL_RESULT_H_
 #  define _XSL_UTILS_WHEEL_RESULT_H_
 #  include "xsl/convert.h"

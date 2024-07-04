@@ -40,7 +40,7 @@ function open_log(target)
     }
     target:add("defines", log_level_map[log_level])
 end
-    
+
 -- flags
 add_ldflags("-fuse-ld=mold")
 

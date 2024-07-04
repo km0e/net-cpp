@@ -8,6 +8,8 @@ target_sources(
 
 target_link_libraries(xsl_log_ctl loglib)
 
+set_log_level(xsl_log_ctl)
+
 link_libraries(xsl_log_ctl)
 
 add_subdirectory(net)

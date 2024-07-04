@@ -14,8 +14,25 @@ TEST(type_traits, origanize_feature_flags_t) {
   using FullFlags2 = _n<>;
   ASSERT_TRUE((std::is_same_v<origanize_feature_flags_t<Flags2, FullFlags2>, _n<>>));
 };
+
+TEST(log, log){
+  DEBUG("err");
+  INFO("ok");
+  WARNING("ok");
+  xsl::set_log_level(xsl::LogLevel::DEBUG);
+  ERROR("{}",QUILL_COMPILE_ACTIVE_LOG_LEVEL);
+  DEBUG("err");
+  INFO("ok");
+  WARNING("ok");
+  xsl::set_log_level(xsl::LogLevel::WARNING);
+  DEBUG("err");
+  INFO("err");
+  WARNING("ok");
+  ASSERT_TRUE(false);
+}
+
+
 int main() {
-  xsl::no_log();
   ::testing::InitGoogleTest();
   return RUN_ALL_TESTS();
 };

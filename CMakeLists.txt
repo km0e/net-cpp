@@ -22,6 +22,7 @@ if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 endif()
 
 Include(FetchContent)
+
 find_package(quill QUIET)
 if (NOT quill_FOUND)
   message(STATUS "quill not found, Fetching quill")
@@ -65,7 +66,34 @@ add_library(testlib ALIAS gtest_main)
 add_link_options(-fuse-ld=mold)
 
 # --- Logging ----
+# set(LOG_LEVEL "INFO" CACHE STRING "Set the log level (NONE, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL)")
+set(LOG_LEVEL "OFF")
+set(LOG_LEVEL CACHE STRING "Set the log level (OFF, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL)")
 
+set_property(CACHE LOG_LEVEL PROPERTY STRINGS OFF  TRACE  DEBUG  INFO  WARNING  ERROR  CRITICAL)
+# 打印选项值
+message(STATUS "LOG_LEVEL: ${LOG_LEVEL}")
+
+# 定义一个函数来为目标设置日志级别
+function(set_log_level target)
+    if(LOG_LEVEL STREQUAL "OFF")
+        target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=8)
+    elseif(LOG_LEVEL STREQUAL "TRACE")
+        target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_TRACE_L3)
+    elseif(LOG_LEVEL STREQUAL "DEBUG")
+        target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_DEBUG)
+    elseif(LOG_LEVEL STREQUAL "INFO")
+        target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_INFO)
+    elseif(LOG_LEVEL STREQUAL "WARNING")
+        target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_WARNING)
+    elseif(LOG_LEVEL STREQUAL "ERROR")
+        target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_ERROR)
+    elseif(LOG_LEVEL STREQUAL "CRITICAL")
+        target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_CRITICAL)
+    else()
+        message(STATUS "Unknown log level: ${LOG_LEVEL}")
+    endif()
+endfunction()
 
 # --- Import tools ----
 # enable compiler warnings if is debug build

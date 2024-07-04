@@ -1,6 +1,8 @@
 #include "xsl/convert.h"
 #include "xsl/def.h"
 #include "xsl/net/http/proto.h"
+
+#include <system_error>
 XSL_NAMESPACE_BEGIN
 template <>
 net::http::HttpVersion from_string_view<net::http::HttpVersion>(std::string_view version) {
@@ -42,4 +44,9 @@ net::http::content_type::MediaType from_string_view(std::string_view type) {
   auto sub_type_enum = from_string_view<net::http::content_type::SubType>(sub_type_str);
   return net::http::content_type::MediaType{type_enum, sub_type_enum};
 }
+
+std::string to_string(const std::error_code& ec) { return ec.message(); }
+
+std::string to_string(const std::errc& ec) { return std::make_error_code(ec).message(); }
+
 XSL_NAMESPACE_END

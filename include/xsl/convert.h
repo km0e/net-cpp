@@ -5,6 +5,7 @@
 #  include "xsl/net/http/proto.h"
 
 #  include <string_view>
+#  include <system_error>
 #  include <utility>
 XSL_NAMESPACE_BEGIN
 
@@ -68,5 +69,10 @@ net::http::content_type::SubType from_string_view(std::string_view type);
 template <>
 net::http::content_type::MediaType from_string_view(std::string_view type);
 
+// for std::error_code
+std::string to_string(const std::error_code& ec);
+
+// for std::errc
+std::string to_string(const std::errc& ec);
 XSL_NAMESPACE_END
 #endif  // _XSL_CONVERT_H_

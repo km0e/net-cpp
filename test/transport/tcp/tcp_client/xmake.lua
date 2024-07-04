@@ -6,7 +6,6 @@ for _, file in ipairs(os.files("test_*.cpp")) do
         set_kind("binary")
         set_default(false)
         add_files(name .. ".cpp")
-        -- after_load(open_log)
         add_deps("xsl_tcp")
         add_packages("cli11")
         test_list[#test_list+1] = name

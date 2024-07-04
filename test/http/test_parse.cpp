@@ -67,6 +67,7 @@ TEST(http_parse, test_query_empty) {
 }
 
 int main() {
+  xsl::no_log();
   testing::InitGoogleTest();
   return RUN_ALL_TESTS();
 }

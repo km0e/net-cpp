@@ -37,7 +37,7 @@ public:
       ERROR("recv error: {}", to_string_view(res.unwrap_err()));
       return TcpHandleState::CLOSE;
     }
-    INFO( "[T][Handler::recv] Received data: {}", this->recv_task.data_buffer);
+    INFO("[T][Handler::recv] Received data: {}", this->recv_task.data_buffer);
     this->send_tasks.tasks.emplace_after(
         this->send_tasks.tasks.before_begin(),
         make_unique<TcpSendString<feature::node>>(std::move(this->recv_task.data_buffer)));
@@ -47,7 +47,7 @@ public:
   TcpHandleState send([[maybe_unused]] int fd) { return TcpHandleState::NONE; }
   void close([[maybe_unused]] int fd){};
   TcpHandleState other(int fd, [[maybe_unused]] IOM_EVENTS events) {
-    INFO( "[T][Handler::other]");
+    INFO("[T][Handler::other]");
     this->send_tasks.exec(fd);
     return TcpHandleState::NONE;
   }
@@ -97,17 +97,11 @@ int main(int argc, char **argv) {
                 return (*server)(fd, events);
               });
 
-  pthread_t poller_thread;
-  pthread_create(
-      &poller_thread, nullptr,
-      [](void *arg) -> void * {
-        DefaultPoller *poller = (DefaultPoller *)arg;
-        while (true) {
-          poller->poll();
-        }
-        return nullptr;
-      },
-      poller.get());
+  auto poll_thread = std::thread([&poller] {
+    while (true) {
+      poller->poll();
+    }
+  });
   while (true) {
     sleep(1);
   }

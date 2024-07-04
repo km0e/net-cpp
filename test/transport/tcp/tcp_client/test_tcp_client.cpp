@@ -14,7 +14,6 @@ int main(int argc, char **argv) {
   string ip = "127.0.0.1";
   app.add_option("-i,--ip", ip, "Ip to connect to");
   string port = "12346";
-  // string port = "8080";
   app.add_option("-p,--port", port, "Port to connect to");
   CLI11_PARSE(app, argc, argv);
 
@@ -22,27 +21,27 @@ int main(int argc, char **argv) {
   if (fd < 0) {
     return 1;
   }
-  // string msg = "Hello, world!";
-  // int res = write(fd, msg.c_str(), msg.size());
-  // if (res < 0) {
-  //   close(fd);
-  //   ERROR("Failed to write to {}:{}", ip, port);
-  //   return 1;
-  // }
-  // char buf[1024];
-  // res = read(fd, buf, sizeof(buf));
-  // if (res < 0) {
-  //   close(fd);
-  //   ERROR("Failed to read from {}:{}", ip, port);
-  //   return 1;
-  // }
-  // buf[res] = 0;
-  // string expected = "Hello, world!";
-  // if (string(buf) != expected) {
-  //   close(fd);
-  //   ERROR("Expected {} but got {}", expected, buf);
-  //   return 1;
-  // }
-  // close(fd);
+  string msg = "Hello, world!";
+  int res = write(fd, msg.c_str(), msg.size());
+  if (res < 0) {
+    close(fd);
+    ERROR("Failed to write to {}:{}", ip, port);
+    return 1;
+  }
+  char buf[1024];
+  res = read(fd, buf, sizeof(buf));
+  if (res < 0) {
+    close(fd);
+    ERROR("Failed to read from {}:{}", ip, port);
+    return 1;
+  }
+  buf[res] = 0;
+  string expected = "Hello, world!";
+  if (string(buf) != expected) {
+    close(fd);
+    ERROR("Expected {} but got {}", expected, buf);
+    return 1;
+  }
+  close(fd);
   return 0;
 }

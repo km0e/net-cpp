@@ -5,7 +5,6 @@
 #  define TCP_COMPONENTS_NAMESPACE_BEGIN namespace xsl::net::transport::tcp::component {
 #  define TCP_COMPONENTS_NAMESPACE_END }
 #  include "xsl/net/transport/tcp/utils.h"
-#  include "xsl/wheel.h"
 
 #  include <forward_list>
 TCP_COMPONENTS_NAMESPACE_BEGIN

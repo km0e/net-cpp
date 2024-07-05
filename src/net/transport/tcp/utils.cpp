@@ -2,7 +2,6 @@
 #include "xsl/logctl.h"
 #include "xsl/net/transport/tcp/def.h"
 #include "xsl/net/transport/tcp/utils.h"
-#include "xsl/utils.h"
 #include "xsl/utils/fd.h"
 
 #include <arpa/inet.h>
@@ -166,7 +165,6 @@ ListenResult listen(Socket &skt, int max_connections) {
   }
   return {};
 }
-
 
 bool set_keep_alive(int fd, bool keep_alive) {
   int opt = keep_alive ? 1 : 0;

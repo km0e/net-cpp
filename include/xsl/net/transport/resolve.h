@@ -3,7 +3,6 @@
 #  define XSL_NET_TRANSPORT_RESOLVE
 #  include "xsl/feature.h"
 #  include "xsl/net/transport/def.h"
-#  include "xsl/wheel.h"
 #  include "xsl/wheel/type_traits.h"
 
 #  include <netdb.h>
@@ -12,13 +11,13 @@
 #  include <cstdint>
 #  include <cstring>
 #  include <expected>
+#  include <string>
 #  include <tuple>
 #  include <utility>
 
 TRANSPORT_NAMESPACE_BEGIN
 namespace impl {
 
-  // template <class... Flags>
   class AddrInfo {
   public:
     AddrInfo(addrinfo *info) : info(info) {}
@@ -101,10 +100,10 @@ namespace impl {
     }
     /**
      * @brief Resolve the service to an address, typically used for bind
-     * 
+     *
      * @param serv The service name or port number
      * @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG | AI_PASSIVE
-     * @return ResolveResult 
+     * @return ResolveResult
      */
     static ResolveResult resolve(const char *serv, int flags = AI_ADDRCONFIG | AI_PASSIVE) {
       return impl::resolve<IpV, Proto>(nullptr, serv, flags);

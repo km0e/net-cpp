@@ -1,6 +1,4 @@
-#include "xsl/coro/task.h"
 #include "xsl/logctl.h"
-#include "xsl/net/sync.h"
 #include "xsl/net/transport/resolve.h"
 #include "xsl/net/transport/tcp.h"
 
@@ -9,7 +7,6 @@
 
 #include <cstdint>
 #include <string>
-#include <thread>
 using namespace xsl::coro;
 // there should have a echo server
 uint16_t port = 12347;

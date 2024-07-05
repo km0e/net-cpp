@@ -74,7 +74,7 @@ public:
   std::string to_string() const;
 };
 
-using AddRouteResult = Result<std::tuple<>, AddRouteError>;
+using AddRouteResult = Result<void, AddRouteError>;
 
 using RouteResult = Result<IntoSendTasksPtr, RouteError>;
 

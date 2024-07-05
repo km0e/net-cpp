@@ -167,6 +167,7 @@ ListenResult listen(Socket &skt, int max_connections) {
   return {};
 }
 
+
 bool set_keep_alive(int fd, bool keep_alive) {
   int opt = keep_alive ? 1 : 0;
   if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt))) {

@@ -16,7 +16,6 @@ using wheel::FixedVec;
 using wheel::i32_from_bytes;
 using wheel::i32_to_bytes;
 using wheel::LockGuard;
-using wheel::Result;
 using wheel::ShrdRes;
 using wheel::ShrdGuard;
 using wheel::sumap;

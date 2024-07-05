@@ -23,12 +23,16 @@ class ParseError {
 public:
   ParseError(ParseErrorKind kind);
   ParseError(ParseErrorKind kind, std::string message);
+  ParseError(ParseError&&) = default;
+  ParseError& operator=(ParseError&&) = default;
+  ParseError(const ParseError&) = default;
+  ParseError& operator=(const ParseError&) = default;
   ~ParseError();
   ParseErrorKind kind;
   std::string message;
   std::string to_string() const;
 };
-using ParseResult = Result<RequestView, ParseError>;
+using ParseResult = std::expected<RequestView, ParseError>;
 
 class HttpParser {
 public:

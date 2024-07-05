@@ -4,13 +4,10 @@
 #  include "xsl/net/def.h"
 #  include "xsl/net/transport/tcp.h"
 NET_NAMESPACE_BEGIN
-using transport::new_tcp_client;
-using transport::new_tcp_server;
 using transport::recv;
 using transport::send;
 using transport::SockAddrV4;
 using transport::SockAddrV4View;
-using transport::TcpClientSockConfig;
 using transport::TcpConnManager;
 using transport::TcpConnManagerConfig;
 using transport::TcpHandleHint;
@@ -27,6 +24,5 @@ using transport::TcpSendString;
 using transport::TcpSendTasks;
 using transport::TcpSendTasksProxy;
 using transport::TcpServer;
-using transport::TcpServerSockConfig;
 NET_NAMESPACE_END
 #endif  // _XSL_NET_TRANSPORT_H_

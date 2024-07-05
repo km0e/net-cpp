@@ -33,8 +33,8 @@ public:
   Handler() : data(), recv_task(), send_tasks() {}
   TcpHandleState recv(int fd) {
     auto res = recv_task.exec(fd);
-    if (res.is_err()) {
-      ERROR("recv error: {}", to_string_view(res.unwrap_err()));
+    if (!res.has_value()) {
+      ERROR("recv error: {}", to_string_view(res.error()));
       return TcpHandleState::CLOSE;
     }
     INFO("[T][Handler::recv] Received data: {}", this->recv_task.data_buffer);

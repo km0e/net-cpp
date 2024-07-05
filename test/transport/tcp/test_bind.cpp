@@ -7,40 +7,29 @@
 #include <CLI/CLI.hpp>
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <string>
 #include <thread>
 using namespace xsl::coro;
 // there should have a echo server
-std::string host = "127.0.0.1";
-std::string port = "12347";
+uint16_t port = 12347;
 
-TEST(connect, connect) {
+TEST(bind, create) {
   using namespace xsl::net::transport::tcp;
   using namespace xsl::net::transport;
   using namespace xsl;
-  auto res = Resolver<feature::ip<4>, feature::tcp>::resolve(host.c_str(), port.c_str());
+  auto res = Resolver<feature::ip<4>, feature::tcp>::resolve(port);
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());
-  auto poller = std::make_shared<net::DefaultPoller>();
-  std::thread t([&poller]() {
-    while (poller->valid()) {
-      poller->poll();
-    }
-    DEBUG("Poller shutdown");
-  });
-  auto sock = connect(ai, poller);
-  auto skt = sock.block();
+  auto skt = bind(ai);
   EXPECT_TRUE(skt.has_value());
   EXPECT_NE(skt.value().raw_fd(), 0);
-  poller->shutdown();
-  t.join();
 }
 
 int main(int argc, char **argv) {
   xsl::no_log();
 
-  CLI::App app{"TCP Client"};
-  app.add_option("-i,--ip", host, "Ip to connect to");
+  CLI::App app{"TCP Server"};
   app.add_option("-p,--port", port, "Port to connect to");
   CLI11_PARSE(app, argc, argv);
 

@@ -22,46 +22,46 @@ public:
   ~Handler() {}
   TcpHandleState recv(int fd) {
     auto res = recv_task.exec(fd);
-    if (res.is_err()) {
-      if (res.as_ref().unwrap_err() == RecvError::Eof) {
+    if (!res.has_value()) {
+      if (res.error() == RecvError::Eof) {
         return TcpHandleState::NONE;
       }
-      ERROR("recv error: {}", to_string_view(res.unwrap_err()));
+      ERROR("recv error: {}", to_string_view(res.error()));
       return TcpHandleState::CLOSE;
     }
     size_t len = this->recv_task.data_buffer.size();
     // TODO: handle parse error
     auto req = this->parser.parse(this->recv_task.data_buffer.c_str(), len);
-    if (req.is_err()) {
-      if (req.unwrap_err().kind == ParseErrorKind::Partial) {
+    if (!req.has_value()) {
+      if (req.error().kind == ParseErrorKind::Partial) {
         return TcpHandleState::NONE;
       } else {
         // TODO: handle request error
         return TcpHandleState::CLOSE;
       }
     }
-    RequestView view = req.unwrap();
+    RequestView view = req.value();
     if (auto it = view.headers.find("Content-Length"); it != view.headers.end()) {
       size_t content_len = std::strtoul(it->second.data(), nullptr, 10);
       len += content_len;
     }
-    auto ctx = RouteContext{Request{this->recv_task.data_buffer.substr(0, len), req.unwrap()}};
+    auto ctx = RouteContext{Request{this->recv_task.data_buffer.substr(0, len), req.value()}};
     recv_task.data_buffer.erase(0, len);
     auto rtres = this->router->route(ctx);
     if (rtres.is_err()) {
       // TODO: handle route error
-      ERROR("route error: {}", xsl::to_string(rtres.unwrap_err()));
+      ERROR("route error: {}", xsl::to_string(rtres.error()));
       return TcpHandleState::CLOSE;
     }
-    auto tasks = rtres.unwrap()->into_send_tasks();
+    auto tasks = rtres.value()->into_send_tasks();
     tasks.splice_after(tasks.before_begin(), std::move(this->send_proxy.tasks));
     this->send_proxy.tasks = move(tasks);
     return this->send(fd);
   }
   TcpHandleState send(int fd) {
     auto res = send_proxy.exec(fd);
-    if (res.is_err()) {
-      ERROR("send error: {}", to_string_view(res.unwrap_err()));
+    if (!res.has_value()) {
+      ERROR("send error: {}", to_string_view(res.error()));
       return TcpHandleState::CLOSE;
     }
     if (!this->keep_alive) {

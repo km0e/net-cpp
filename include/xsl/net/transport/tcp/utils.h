@@ -6,6 +6,9 @@
 #  include "xsl/net/transport/resolve.h"
 #  include "xsl/net/transport/tcp/def.h"
 #  include "xsl/wheel.h"
+
+#  include <expected>
+
 TCP_NAMESPACE_BEGIN
 class SockAddrV4View {
 public:
@@ -38,27 +41,17 @@ public:
   std::string _port;
 };
 
-class TcpClientSockConfig {
-public:
-  bool keep_alive = false;
-  bool non_blocking = false;
-};
-
-using ConnectResult = Result<Socket, std::error_code>;
+using ConnectResult = std::expected<Socket, std::error_code>;
 
 coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> poller);
 
-int new_tcp_client(const char *ip, const char *port, TcpClientSockConfig config = {});
-int new_tcp_client(const SockAddrV4 &sa4, TcpClientSockConfig config = {});
-class TcpServerSockConfig {
-public:
-  int max_connections = MAX_CONNECTIONS;
-  bool keep_alive = false;
-  bool non_blocking = false;
-  bool reuse_addr = true;
-};
-int new_tcp_server(const char *ip, int port, TcpServerSockConfig config = {});
-int new_tcp_server(const SockAddrV4 &sa4, TcpServerSockConfig config = {});
+using BindResult = std::expected<Socket, std::error_code>;
+
+BindResult bind(const AddrInfo &ai);
+
+using ListenResult = std::expected<void, std::error_code>;
+
+ListenResult listen(Socket &skt, int max_connections = MAX_CONNECTIONS);
 
 bool set_keep_alive(int fd, bool keep_alive = true);
 
@@ -69,14 +62,14 @@ enum class SendError {
 };
 
 std::string_view to_string_view(SendError err);
-using SendResult = Result<size_t, SendError>;
+using SendResult = std::expected<bool, SendError>;
 enum class RecvError {
   Unknown,
   Eof,
   NoData,
 };
 std::string_view to_string_view(RecvError err);
-using RecvResult = Result<std::string, RecvError>;
+using RecvResult = std::expected<std::string, RecvError>;
 SendResult send(int fd, std::string_view data);
 RecvResult recv(int fd);
 TCP_NAMESPACE_END

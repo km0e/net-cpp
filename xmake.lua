@@ -12,6 +12,9 @@ set_warnings("everything")
 
 set_languages("cxxlatest")
 
+-- for support <expected> 
+-- add_defines("__cpp_concepts=202002")
+
 -- dependency
 add_requires("toml++", {configs = {header_only = true}})
 

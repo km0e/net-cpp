@@ -1,5 +1,5 @@
 add_deps("xsl_tcp")
-includes("tcp_server","tcp_client")
+-- includes("tcp_server")
 
 target("test_tcp_connect")
     set_kind("binary")
@@ -20,5 +20,12 @@ target("test_tcp_connect")
         return true
     end)
 
+target("test_tcp_bind")
+    set_kind("binary")
+    set_default(false)
+    add_files("test_bind.cpp")
+    add_packages("cli11","gtest")
+    on_package(function(package) end)
 
-add_tests("test_tcp_connect",{run_timeout=1000})
+
+add_tests("test_tcp_connect",{run_timeout=1000},"test_tcp_bind")

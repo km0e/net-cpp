@@ -24,7 +24,7 @@ public:
   // - recv : return true if the task is done, and will call next task
   //          return false if the task is done, but can't call next task
   //          if all tasks are done, but not recv all data, will call recv again
-  virtual Result<bool, RecvError> exec(RecvContext& ctx) = 0;
+  virtual std::expected<bool, RecvError> exec(RecvContext& ctx) = 0;
   virtual ~RecvTaskNode() = default;
 };
 using SendTasks = std::forward_list<std::unique_ptr<SendTaskNode>>;

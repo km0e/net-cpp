@@ -48,7 +48,7 @@ namespace router_details {
                                           RouteHandler&& handler) {
     DEBUG("Adding route: {}", path);
     if (path[0] != '/') {
-      return AddRouteResult(AddRouteError(AddRouteErrorKind::InvalidPath, ""));
+      return std::unexpected(AddRouteError(AddRouteErrorKind::InvalidPath, ""));
     }
     auto pos = path.find('/', 1);
 
@@ -67,18 +67,18 @@ namespace router_details {
 
     if (child == children.lock()->end()) {
       children.lock()->try_emplace(std::string{sub_path}, method, std::move(handler));
-      return AddRouteResult({});
+      return AddRouteResult();
     }
     if (child->second.add(method, std::move(handler))) {
-      return AddRouteResult({});
+      return AddRouteResult();
     }
-    return AddRouteResult(AddRouteError(AddRouteErrorKind::Conflict, ""));
+    return std::unexpected(AddRouteError(AddRouteErrorKind::Conflict, ""));
   }
 
   RouteResult HttpRouteNode::route(RouteContext& ctx) {
     TRACE("Routing path: {}", ctx.current_path);
     if (ctx.current_path[0] != '/') {
-      return RouteResult(RouteError(RouteErrorKind::NotFound, ""));
+      return std::unexpected(RouteError(RouteErrorKind::NotFound, ""));
     }
     auto pos = ctx.current_path.find('/', 1);
     do {
@@ -89,11 +89,11 @@ namespace router_details {
           auto current_path = ctx.current_path;        // save current path
           ctx.current_path = ctx.current_path.substr(sub.length() + 1);
           auto res = child->second.route(ctx);
-          if (res.is_ok()) {  // if handled
+          if (res.has_value()) {  // if handled
             return res;
           }
-          if (res.is_err()
-              && res.unwrap_err().kind != RouteErrorKind::NotFound) {  // if error but not found
+          if ((!res.has_value())
+              && res.error().kind != RouteErrorKind::NotFound) {  // if error but not found
             return res;
           }
           ctx.current_path = current_path;  // restore current path
@@ -106,10 +106,10 @@ namespace router_details {
       }
       ctx.current_path = "";  // set current path to empty
       auto dr_res = child->second.direct_route(ctx);
-      if (dr_res.is_ok()) {
+      if (dr_res.has_value()) {
         return dr_res;
       }
-      if (dr_res.is_err() && dr_res.unwrap_err().kind != RouteErrorKind::NotFound) {
+      if ((!dr_res.has_value()) && dr_res.error().kind != RouteErrorKind::NotFound) {
         return dr_res;
       }
     } while (false);
@@ -118,7 +118,7 @@ namespace router_details {
     if (iter != this->children.lock_shared()->end()) {
       return iter->second.direct_route(ctx);
     }
-    return RouteResult(RouteError(RouteErrorKind::NotFound, ""));
+    return std::unexpected{RouteError(RouteErrorKind::NotFound, "")};
   }
 }  // namespace router_details
 
@@ -134,15 +134,15 @@ namespace router_details {
     DEBUG("Direct routing path: {}", ctx.current_path);
     auto& handler = handlers[static_cast<uint8_t>(ctx.request.method)];
     if (handler == nullptr) {
-      return RouteResult(RouteError(RouteErrorKind::Unimplemented, ""));
+      return std::unexpected{RouteError(RouteErrorKind::Unimplemented, "")};
     }
     RouteHandleResult res = handler(ctx);
-    if (res.is_ok()) {
+    if (res.has_value()) {
       DEBUG("Route ok");
-      return RouteResult(res.unwrap());
+      return {std::move(res.value())};
     }
-    ERROR("Route error: {}", res.unwrap_err().to_string());
-    return RouteResult(RouteError(RouteErrorKind::Unknown, ""));
+    ERROR("Route error: {}", res.error().to_string());
+    return std::unexpected{RouteError(RouteErrorKind::Unknown, "")};
   }
 
 }  // namespace router_details
@@ -160,7 +160,7 @@ AddRouteResult HttpRouter::add_route(HttpMethod method, std::string_view path,
 RouteResult HttpRouter::route(RouteContext& ctx) {
   DEBUG("Starting routing path: {}", ctx.current_path);
   if (ctx.request.method == HttpMethod::UNKNOWN) {
-    return RouteResult(RouteError(RouteErrorKind::Unknown, ""));
+    return std::unexpected{RouteError(RouteErrorKind::Unknown, "")};
   }
   return root.route(ctx);
 }

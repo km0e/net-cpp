@@ -7,6 +7,7 @@
 #  include "xsl/wheel.h"
 
 #  include <string_view>
+#  include <expected>
 
 HTTP_NAMESPACE_BEGIN
 
@@ -27,7 +28,7 @@ public:
   std::string to_string() const;
 };
 
-using RouteHandleResult = Result<IntoSendTasksPtr, RouteHandleError>;
+using RouteHandleResult = std::expected<IntoSendTasksPtr, RouteHandleError>;
 
 using RouteHandler = std::function<RouteHandleResult(RouteContext& ctx)>;
 
@@ -74,13 +75,14 @@ public:
   std::string to_string() const;
 };
 
-using AddRouteResult = Result<void, AddRouteError>;
+using AddRouteResult = std::expected<void, AddRouteError>;
 
-using RouteResult = Result<IntoSendTasksPtr, RouteError>;
+using RouteResult = std::expected<IntoSendTasksPtr, RouteError>;
 
 template <class R>
-concept Router = requires(R r, std::string_view path, RouteHandler&& handler, RouteContext& ctx) {
-  { r.add_route(HttpMethod{}, path, std::move(handler)) } -> std::same_as<AddRouteResult>;
+concept Router = requires(R r, HttpMethod hm, std::string_view path, RouteHandler&& handler,
+                          RouteContext& ctx) {
+  { r.add_route(hm, path, std::move(handler)) } -> std::same_as<AddRouteResult>;
   { r.route(ctx) } -> std::same_as<RouteResult>;
   { r.error_handler(RouteErrorKind{}, std::move(handler)) };
 };

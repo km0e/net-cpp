@@ -6,7 +6,7 @@
 #  include "xsl/wheel.h"
 HTTP_HELPER_NAMESPACE_BEGIN
 
-using StaticCreateResult = Result<http::RouteHandler, http::AddRouteError>;
+using StaticCreateResult = std::expected<http::RouteHandler, http::AddRouteError>;
 
 // @brief Create a static handler for a file or folder.
 // @param path The path of the file or folder.

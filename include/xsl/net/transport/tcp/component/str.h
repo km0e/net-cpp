@@ -1,8 +1,8 @@
 #pragma once
 #ifndef _XSL_NET_TRANSPORT_TCP_HELPER_STR_H_
 #  define _XSL_NET_TRANSPORT_TCP_HELPER_STR_H_
-#  include "xsl/logctl.h"
 #  include "xsl/feature.h"
+#  include "xsl/logctl.h"
 #  include "xsl/net/transport/tcp/component/def.h"
 #  include "xsl/net/transport/tcp/utils.h"
 #  include "xsl/wheel.h"
@@ -11,6 +11,7 @@
 
 #  include <sys/socket.h>
 
+#  include <cstddef>
 #  include <list>
 #  include <ranges>
 
@@ -36,10 +37,10 @@ namespace impl {
       while (!this->data_buffer.empty()) {
         auto& data = this->data_buffer.front();
         auto res = send(fd, std::string_view(data.first).substr(data.second));
-        if (res.is_err()) {
-          return {res.unwrap_err()};
+        if (!res.has_value()) {
+          return std::unexpected{res.error()};
         }
-        data.second += res.unwrap();
+        data.second += res.value();
         if (data.second != data.first.size()) {
           return {false};
         }
@@ -56,7 +57,7 @@ namespace impl {
     using Base::Base;
     ~TcpSendString() {}
     SendResult exec(SendContext& ctx) override {
-      DEBUG( "compontent send");
+      DEBUG("compontent send");
       return Base::exec(ctx.sfd);
     }
   };
@@ -78,12 +79,12 @@ namespace impl {
     TcpRecvString(TcpRecvString&&) = default;
     TcpRecvString() : data_buffer() {}
     ~TcpRecvString() {}
-    Result<bool, RecvError> exec(int fd) {
+    std::expected<bool, RecvError> exec(int fd) {
       auto res = recv(fd);
-      if (res.is_err()) {
-        return {res.unwrap_err()};
+      if (!res.has_value()) {
+        return std::unexpected{res.error()};
       }
-      this->data_buffer += res.unwrap();
+      this->data_buffer += res.value();
       return {true};
     }
     std::string data_buffer;
@@ -94,7 +95,7 @@ namespace impl {
     using Base = TcpRecvString<feature::placeholder>;
     using Base::Base;
     ~TcpRecvString() {}
-    Result<bool, RecvError> exec(RecvContext& ctx) override { return Base::exec(ctx.sfd); }
+    std::expected<bool, RecvError> exec(RecvContext& ctx) override { return Base::exec(ctx.sfd); }
   };
 
 }  // namespace impl

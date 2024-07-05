@@ -27,18 +27,14 @@ using TcpSendError = tcp::SendError;
 using TcpRecvContext = tcp::RecvContext;
 using TcpSendTasks = tcp::SendTasks;
 using tcp::connect;
-using tcp::new_tcp_client;
-using tcp::new_tcp_server;
 using tcp::recv;
 using tcp::send;
 using tcp::SockAddrV4;
 using tcp::SockAddrV4View;
-using tcp::TcpClientSockConfig;
 using tcp::TcpConnManager;
 using tcp::TcpConnManagerConfig;
 using tcp::TcpHandler;
 using tcp::TcpServer;
-using tcp::TcpServerSockConfig;
 using tcp::to_string_view;
 TRANSPORT_NAMESPACE_END
 #endif

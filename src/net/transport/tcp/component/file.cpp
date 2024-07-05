@@ -32,12 +32,12 @@ SendResult SendFile::exec(SendContext& ctx) {
       } else {
         ERROR("[sendfile] Failed to send file");
         close(ffd);
-        return {SendError::Unknown};
+        return std::unexpected(SendError::Unknown);
       }
     } else if (n < st.st_size) {
       DEBUG("[sendfile] send {} bytes", n);
       close(ffd);
-      return {false};
+      return {n};
     }
     close(ffd);
     this->path_buffer.pop_front();

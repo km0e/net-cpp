@@ -14,13 +14,13 @@ std::string ParseError::to_string() const {
 }
 
 ParseResult HttpParser::parse(const char* data, size_t& len) {
-  ParseResult res{ParseError(ParseErrorKind::Unknown)};
+  ParseResult res{std::unexpected{ParseError(ParseErrorKind::Unknown)}};
   std::string_view view(data, len);
   size_t pos = 0, parse_end = 0;
   while (pos < len) {
     size_t end = view.find("\r\n", pos);
     if (end == std::string_view::npos) {
-      res = ParseError(ParseErrorKind::Partial);
+      res=std::move(std::unexpected{ParseError(ParseErrorKind::Partial)});
       break;
     } else if (end == pos) {
       parse_end = 2;
@@ -32,13 +32,13 @@ ParseResult HttpParser::parse(const char* data, size_t& len) {
       auto line = view.substr(pos, end - pos);
       size_t _1sp = line.find(' ');
       if (_1sp == std::string_view::npos) {
-        res = ParseError(ParseErrorKind::InvalidFormat);
+        res = std::unexpected{ParseError(ParseErrorKind::InvalidFormat)};
         break;
       }
       this->view.method = line.substr(0, _1sp);
       size_t _2sp = line.find(' ', _1sp + 1);
       if (_2sp == std::string_view::npos) {
-        res = ParseError(ParseErrorKind::InvalidFormat);
+        res = std::unexpected{ParseError(ParseErrorKind::InvalidFormat)};
         break;
       }
       this->view.url = line.substr(_1sp + 1, _2sp - _1sp - 1);
@@ -74,21 +74,21 @@ ParseResult HttpParser::parse(const char* data, size_t& len) {
       if (std::regex_match(tmpv.begin(), tmpv.end(), HTTP_VERSION_REGEX)) {
         this->view.version = tmpv;
       } else {
-        res = ParseError(ParseErrorKind::InvalidFormat);
+        res = std::unexpected{ParseError(ParseErrorKind::InvalidFormat)};
         break;
       }
       pos = end + 2;
     } else {
       size_t colon = view.find(':', pos);
       if (colon == std::string_view::npos) {
-        res = ParseError(ParseErrorKind::InvalidFormat);
+        res = std::unexpected{ParseError(ParseErrorKind::InvalidFormat)};
         break;
       }
       auto key = view.substr(pos, colon - pos);
       size_t vstart = view.find_first_not_of(' ', colon + 1);
       size_t vend = view.find("\r\n", vstart);
       if (vend == std::string_view::npos) {
-        res = ParseError(ParseErrorKind::InvalidFormat);
+        res = std::unexpected{ParseError(ParseErrorKind::InvalidFormat)};
         break;
       }
       auto value = view.substr(vstart, vend - vstart);

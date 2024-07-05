@@ -11,6 +11,7 @@
 
 #  include <cstdint>
 #  include <cstring>
+#  include <expected>
 #  include <tuple>
 #  include <utility>
 
@@ -39,7 +40,7 @@ namespace impl {
 }  // namespace impl
 using AddrInfo = impl::AddrInfo;
 
-using ResolveResult = Result<AddrInfo, std::string>;
+using ResolveResult = std::expected<AddrInfo, std::string>;
 
 namespace impl {
   template <uint8_t ipv>
@@ -76,7 +77,7 @@ namespace impl {
     hints.ai_protocol = protocol;
     int ret = getaddrinfo(name, serv, &hints, &res);
     if (ret != 0) {
-      return {std::string{gai_strerror(ret)}};
+      return std::unexpected{std::string{gai_strerror(ret)}};
     }
     return {AddrInfo(res)};
   }
@@ -87,8 +88,31 @@ namespace impl {
                   IpV, wheel::type_traits::_n<feature::ip<4>, feature::ip<6>>>);
     static_assert(
         wheel::type_traits::existing_v<Proto, wheel::type_traits::_n<feature::tcp, feature::udp>>);
+    /**
+     * @brief Resolve the name and service to an address, typically used for connect
+     *
+     * @param name The name of the host
+     * @param serv The service name or port number
+     * @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG
+     * @return ResolveResult
+     */
     static ResolveResult resolve(const char *name, const char *serv, int flags = AI_ADDRCONFIG) {
       return impl::resolve<IpV, Proto>(name, serv, flags);
+    }
+    /**
+     * @brief Resolve the service to an address, typically used for bind
+     * 
+     * @param serv The service name or port number
+     * @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG | AI_PASSIVE
+     * @return ResolveResult 
+     */
+    static ResolveResult resolve(const char *serv, int flags = AI_ADDRCONFIG | AI_PASSIVE) {
+      return impl::resolve<IpV, Proto>(nullptr, serv, flags);
+    }
+    static ResolveResult resolve(uint16_t port, int flags = AI_ADDRCONFIG | AI_PASSIVE) {
+      char port_str[6];
+      std::snprintf(port_str, sizeof(port_str), "%u", port);
+      return impl::resolve<IpV, Proto>(nullptr, port_str, flags);
     }
   };
 }  // namespace impl

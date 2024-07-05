@@ -33,8 +33,8 @@ RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
   struct stat buf;
   int res = stat(this->path.c_str(), &buf);
   if (res == -1) {
-    ERROR( "stat failed: {}", strerror(errno));
-    return RouteHandleResult(RouteHandleError("stat failed"));
+    ERROR("stat failed: {}", strerror(errno));
+    return std::unexpected(RouteHandleError("stat failed"));
   }
   TcpSendTasks tasks;
   tasks.emplace_after(tasks.before_begin(), make_unique<TcpSendFile>(std::move(this->path)));
@@ -54,17 +54,17 @@ public:
 FolderRouteHandler::FolderRouteHandler(std::string&& path) : path(std::move(path)) {}
 FolderRouteHandler::~FolderRouteHandler() {}
 RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
-  DEBUG( "FolderRouteHandler: {}", ctx.current_path);
+  DEBUG("FolderRouteHandler: {}", ctx.current_path);
   std::string full_path = this->path;
   full_path.append(ctx.current_path.substr(1));
   struct stat buf;
   int res = stat(full_path.c_str(), &buf);
   if (res == -1) {
-    ERROR( "stat failed: path: {} error: {}", full_path, strerror(errno));
+    ERROR("stat failed: path: {} error: {}", full_path, strerror(errno));
     return NOT_FOUND_HANDLER(ctx);
   }
   if (S_ISDIR(buf.st_mode)) {
-    DEBUG( "FolderRouteHandler: is dir");
+    DEBUG("FolderRouteHandler: is dir");
     return RouteHandleResult(NOT_FOUND_HANDLER(ctx));
   }
   TcpSendTasks tasks;
@@ -76,26 +76,26 @@ RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
     resp->part.headers.emplace(
         "Content-Type",
         to_string(ContentType{content_type::MediaType::from_extension(ext), Charset::UTF_8}));
-    DEBUG( "FolderRouteHandler: Content-Type: {}", resp->part.headers["Content-Type"]);
+    DEBUG("FolderRouteHandler: Content-Type: {}", resp->part.headers["Content-Type"]);
   }
   return RouteHandleResult{std::move(resp)};
 }
 StaticCreateResult create_static_handler(std::string&& path) {
   if (path.empty()) {
-    return AddRouteError{AddRouteErrorKind::InvalidPath};
+    return std::unexpected{AddRouteError{AddRouteErrorKind::InvalidPath}};
   }
   std::error_code ec;
   auto status = std::filesystem::status(path, ec);
   if (ec) {
     ERROR("filesystem::status failed: {}", ec.message());
-    return AddRouteError{AddRouteErrorKind::InvalidPath};
+    return std::unexpected{AddRouteError{AddRouteErrorKind::InvalidPath}};
   }
   if (status.type() == std::filesystem::file_type::directory) {
     return RouteHandler{FolderRouteHandler{std::move(path)}};
   } else if (status.type() == std::filesystem::file_type::regular) {
     return RouteHandler{FileRouteHandler{std::move(path)}};
   }
-  return AddRouteError{AddRouteErrorKind::InvalidPath};
+  return std::unexpected{AddRouteError{AddRouteErrorKind::InvalidPath}};
 }
 
 HTTP_HELPER_NAMESPACE_END

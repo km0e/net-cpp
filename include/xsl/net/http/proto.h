@@ -132,4 +132,21 @@ std::string& operator+=(std::string& lhs, const ContentType& rhs);
 
 HTTP_NAMESPACE_END
 
+#  include "xsl/convert.h"
+XSL_NAMESPACE_BEGIN
+template <>
+net::http::HttpVersion from_string_view(std::string_view type);
+
+template <>
+net::http::HttpMethod from_string_view(std::string_view type);
+
+template <>
+net::http::content_type::Type from_string_view(std::string_view type);
+
+template <>
+net::http::content_type::SubType from_string_view(std::string_view type);
+
+template <>
+net::http::content_type::MediaType from_string_view(std::string_view type);
+XSL_NAMESPACE_END
 #endif

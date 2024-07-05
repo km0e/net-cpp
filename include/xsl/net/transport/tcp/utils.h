@@ -1,6 +1,9 @@
 #pragma once
 #ifndef _XSL_NET_TRANSPORT_UTILS_H_
 #  define _XSL_NET_TRANSPORT_UTILS_H_
+#  include "xsl/coro/task.h"
+#  include "xsl/net/sync.h"
+#  include "xsl/net/transport/resolve.h"
 #  include "xsl/net/transport/tcp/def.h"
 #  include "xsl/wheel.h"
 TCP_NAMESPACE_BEGIN
@@ -40,6 +43,10 @@ public:
   bool keep_alive = false;
   bool non_blocking = false;
 };
+
+using ConnectResult = Result<Socket, std::error_code>;
+
+coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> poller);
 
 int new_tcp_client(const char *ip, const char *port, TcpClientSockConfig config = {});
 int new_tcp_client(const SockAddrV4 &sa4, TcpClientSockConfig config = {});

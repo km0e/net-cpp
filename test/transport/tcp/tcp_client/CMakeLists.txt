@@ -22,5 +22,5 @@ add_executable(test_tcp_client_with_poll
 )
 
 add_test(NAME tcp_client_test
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/script/test_with_echo_server.py ${TEST_HOST} ${TEST_PORT} ${TEST_TOOL_NCAT} ${TEST_TOOL_CAT} $<TARGET_FILE:test_tcp_client> $<TARGET_FILE:test_tcp_client_with_poll>
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../script/test_with_echo_server.py ${TEST_HOST} ${TEST_PORT} ${TEST_TOOL_NCAT} ${TEST_TOOL_CAT} $<TARGET_FILE:test_tcp_client> $<TARGET_FILE:test_tcp_client_with_poll>
 )

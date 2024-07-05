@@ -2,8 +2,6 @@
 #ifndef _XSL_CONVERT_H_
 #  define _XSL_CONVERT_H_
 #  include "xsl/def.h"
-#  include "xsl/net/http/proto.h"
-
 #  include <string_view>
 #  include <system_error>
 #  include <utility>
@@ -11,6 +9,12 @@ XSL_NAMESPACE_BEGIN
 
 template <typename T>
 T from_string_view(std::string_view str);
+
+// for std::error_code
+std::string to_string(const std::error_code& ec);
+
+// for std::errc
+std::string to_string(const std::errc& ec);
 
 template <typename T>
 concept ToString = std::convertible_to<T, std::string> || requires(T t) {
@@ -54,25 +58,5 @@ std::string_view to_string_view(T&& t) {
   return std::forward<T>(t);
 }
 
-template <>
-net::http::HttpVersion from_string_view(std::string_view type);
-
-template <>
-net::http::HttpMethod from_string_view(std::string_view type);
-
-template <>
-net::http::content_type::Type from_string_view(std::string_view type);
-
-template <>
-net::http::content_type::SubType from_string_view(std::string_view type);
-
-template <>
-net::http::content_type::MediaType from_string_view(std::string_view type);
-
-// for std::error_code
-std::string to_string(const std::error_code& ec);
-
-// for std::errc
-std::string to_string(const std::errc& ec);
 XSL_NAMESPACE_END
 #endif  // _XSL_CONVERT_H_

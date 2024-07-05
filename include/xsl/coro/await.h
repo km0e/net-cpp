@@ -16,21 +16,21 @@ public:
   CallbackAwaiter(std::function<void(std::function<void(ResultType)>)> func)
       : _func(func), _result(std::nullopt) {}
   bool await_ready() const noexcept {
-    DEBUG( "");
+    DEBUG("");
     return false;
   }
   template <class Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) noexcept {
-    DEBUG( "");
-    _func([this, handle](ResultType result) {
-      _result = result;
-      DEBUG( "result: {}", *_result);
+    DEBUG("");
+    _func([this, handle](ResultType&& result) {
+      _result = std::move(result);
+      DEBUG("set result");
       handle.promise().dispatch([handle]() { handle.resume(); });
     });
   }
   ResultType await_resume() noexcept {
-    DEBUG( "");
-    return *_result;
+    DEBUG("return result");
+    return std::move(*_result);
   }
 
 private:

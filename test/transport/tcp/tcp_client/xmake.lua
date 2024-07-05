@@ -20,7 +20,7 @@ target("tcp_client_test")
         for _, test in ipairs(test_list) do
             test_files[#test_files+1] = target:dep(test):targetfile()
         end
-        local scriptdir = os.scriptdir() .. "/script/test_with_echo_server.py"
+        local scriptdir = os.scriptdir() .. "/../script/test_with_echo_server.py"
         print("cmd: ", "python",scriptdir, "127.0.0.1", 12345, "ncat", "cat", table.unpack(test_files))
         local outputdata,errdata = os.iorunv("python", {scriptdir, "127.0.0.1", 12345, "ncat", "cat", table.unpack(test_files)})
         if(outputdata ~= "" or errdata ~= "") then

@@ -1,14 +1,21 @@
+#include "xsl/coro/await.h"
 #include "xsl/logctl.h"
 #include "xsl/net/transport/tcp/def.h"
 #include "xsl/net/transport/tcp/utils.h"
 #include "xsl/utils.h"
+#include "xsl/utils/fd.h"
+#include "xsl/wheel/result.h"
 
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/types.h>
 
+#include <cerrno>
 #include <cstdlib>
+#include <functional>
+#include <memory>
 #include <numeric>
+#include <system_error>
 
 TCP_NAMESPACE_BEGIN
 SockAddrV4View::SockAddrV4View(const char *sa4) : _ip(), _port() {
@@ -62,6 +69,63 @@ bool SockAddrV4::operator==(const SockAddrV4 &rhs) const {
   return _ip == rhs._ip && _port == rhs._port;
 }
 std::string SockAddrV4::to_string() const { return format("{}:{}", _ip, _port); }
+
+coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> poller) {
+  ConnectResult res = {std::error_code()};
+  for (addrinfo *rp = ai.info; rp != nullptr; rp = rp->ai_next) {
+    int tmpfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+    if (tmpfd == -1) {
+      continue;
+    }
+    DEBUG("Created fd: {}", tmpfd);
+    if (!utils::set_non_blocking(tmpfd)) {
+      res = {std::make_error_code(std::errc{errno})};
+      close(tmpfd);
+      continue;
+    }
+    DEBUG("Set non-blocking to fd: {}", tmpfd);
+    int ec = ::connect(tmpfd, rp->ai_addr, rp->ai_addrlen);
+    if (ec == 0) {
+      res = {Socket(tmpfd)};
+      DEBUG("Connected to fd: {}", tmpfd);
+    } else {
+      WARNING("Failed to connect to fd: {}", tmpfd);
+      auto func = [tmpfd, &poller](auto set_result) {
+        poller->add(tmpfd, IOM_EVENTS::OUT, [set_result](int fd, IOM_EVENTS events) {
+          if (!!(events & IOM_EVENTS::OUT)) {
+            DEBUG("Fd: {} is writable", fd);
+            int opt;
+            socklen_t len = sizeof(opt);
+            if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &opt, &len) == -1) {
+              ERROR("Failed to getsockopt: {}", strerror(errno));
+              set_result({errno});
+              return PollHandleHintTag::DELETE;
+            }
+            if (opt != 0) {
+              ERROR("Failed to connect: {}", strerror(opt));
+              set_result({opt});
+              return PollHandleHintTag::DELETE;
+            }
+            DEBUG("Connected to fd: {}", fd);
+            set_result(Socket(fd));
+            return PollHandleHintTag::DELETE;
+          } else if (!events) {
+            ERROR("Timeout");
+            set_result({ETIMEDOUT});
+            return PollHandleHintTag::DELETE;
+          }
+          return PollHandleHintTag::DELETE;
+        });
+      };
+      res = co_await coro::CallbackAwaiter<ConnectResult>(func);
+      if (res.is_ok()) {
+        break;
+      }
+    }
+    close(tmpfd);
+  }
+  co_return res;
+}
 
 int new_tcp_client(const char *ip, const char *port, TcpClientSockConfig config) {
   DEBUG("Connecting to {}:{}", ip, port);

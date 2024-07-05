@@ -10,6 +10,7 @@
 
 #  include <functional>
 SYNC_NAMESPACE_BEGIN
+const int TIMEOUT = 100;
 #  define USE_EPOLL
 #  ifdef USE_EPOLL
 enum class IOM_EVENTS : uint32_t {
@@ -35,6 +36,7 @@ IOM_EVENTS& operator|=(IOM_EVENTS& a, IOM_EVENTS b);
 IOM_EVENTS operator&(IOM_EVENTS a, IOM_EVENTS b);
 IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b);
 IOM_EVENTS operator~(IOM_EVENTS a);
+bool operator!(IOM_EVENTS a);
 #  endif
 
 enum class PollHandleHintTag : uint8_t {
@@ -68,7 +70,7 @@ public:
   virtual bool modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) = 0;
   virtual void poll() = 0;  // NOLINT [runtime/references
   virtual void remove(int fd) = 0;
-  virtual void shutdown() = 0;
+  virtual void shutdown() = 0;//TODO : call after all handlers are removed
   virtual ~Poller() = default;
 };
 using HandleProxy = std::function<PollHandleHint(std::function<PollHandleHint()>&&)>;

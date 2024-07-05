@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include <semaphore>
 #include <thread>
 using namespace xsl::coro;
 
@@ -31,29 +32,35 @@ TEST(Task, just_throw) {
 }
 
 TEST(Task, async_task) {
+  std::binary_semaphore sem(0);
+
   auto executor = std::make_shared<NewThreadExecutor>();
   int value = 0;
-  auto task1 = [](int &value) -> Task<void, NewThreadExecutor> {
+  auto task1 = [&sem](int &value) -> Task<void, NewThreadExecutor> {
     co_await no_return_task<NewThreadExecutor>(value);
     value += 1;
+    sem.release();
     co_return;
   };
   task1(value).by(executor).block();
+  sem.acquire();
   ASSERT_EQ(value, 2);
 
   task1(value).by(executor).detach();
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  sem.acquire();
   ASSERT_EQ(value, 2);
 
-  auto task2 = [](int &value) -> Task<void, NewThreadExecutor> {
+  auto task2 = [&sem](int &value) -> Task<void, NewThreadExecutor> {
     value = co_await return_task() + 1;
+    sem.release();
     co_return;
   };
   task2(value).by(executor).block();
+  sem.acquire();
   ASSERT_EQ(value, 3);
 
   task2(value).by(executor).detach();
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  sem.acquire();
   ASSERT_EQ(value, 3);
 
   auto task3 = []() -> Task<int, NewThreadExecutor> {

@@ -3,18 +3,26 @@
 #include "xsl/net/sync/poller.h"
 
 #include <sys/signal.h>
+
+#include <cstdint>
 SYNC_NAMESPACE_BEGIN
-IOM_EVENTS operator|(IOM_EVENTS a, IOM_EVENTS b) { return (IOM_EVENTS)((uint32_t)a | (uint32_t)b); }
+IOM_EVENTS operator|(IOM_EVENTS a, IOM_EVENTS b) {
+  return static_cast<IOM_EVENTS>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+}
 IOM_EVENTS& operator|=(IOM_EVENTS& a, IOM_EVENTS b) {
-  a = (IOM_EVENTS)((uint32_t)a | (uint32_t)b);
+  a = static_cast<IOM_EVENTS>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
   return a;
 }
-IOM_EVENTS operator&(IOM_EVENTS a, IOM_EVENTS b) { return (IOM_EVENTS)((uint32_t)a & (uint32_t)b); }
+IOM_EVENTS operator&(IOM_EVENTS a, IOM_EVENTS b) {
+  return static_cast<IOM_EVENTS>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+}
 IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b) {
-  a = (IOM_EVENTS)((uint32_t)a & (uint32_t)b);
+  a = static_cast<IOM_EVENTS>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
   return a;
 }
-IOM_EVENTS operator~(IOM_EVENTS a) { return (IOM_EVENTS)(~(uint32_t)a); }
+IOM_EVENTS operator~(IOM_EVENTS a) { return static_cast<IOM_EVENTS>(~static_cast<uint32_t>(a)); }
+bool operator!(IOM_EVENTS a) { return a == IOM_EVENTS::NONE; }
+
 std::string_view to_string(PollHandleHintTag tag) {
   switch (tag) {
     case PollHandleHintTag::NONE:
@@ -73,7 +81,7 @@ void DefaultPoller::poll() {
   sigaddset(&mask, SIGINT);
   sigaddset(&mask, SIGTERM);
   sigaddset(&mask, SIGQUIT);
-  int n = epoll_pwait(this->fd, events, 10, -1, &mask);
+  int n = epoll_pwait(this->fd, events, 10, TIMEOUT, &mask);
   if (n == -1) {
     ERROR("Failed to poll");
     return;
@@ -105,10 +113,12 @@ void DefaultPoller::shutdown() {
   if (!this->valid()) {
     return;
   }
+  DEBUG("call all handlers with NONE");
   for (auto& [key, value] : *this->handlers.lock()) {
-    close(key);
+    (*value)(key, IOM_EVENTS::NONE);
   }
   this->handlers.lock()->clear();
+  DEBUG("close poller");
   close(this->fd);
   this->fd = -1;
 }

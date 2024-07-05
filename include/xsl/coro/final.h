@@ -48,7 +48,7 @@ template <ToAwaiter Awaiter>
 decltype(auto) final(Awaiter &&awaiter) {
   class FinalWrapper {
   public:
-    using promise_type = typename Awaiter::promise_type;
+    using promise_type [[maybe_unused]] = typename Awaiter::promise_type;
 
     FinalWrapper(Awaiter &&awaiter) : awaiter(std::move(awaiter)) {}
     FinalWrapper(FinalWrapper &&wrapper) noexcept : awaiter(std::move(wrapper.awaiter)) {}

@@ -19,6 +19,7 @@ target("test_tcp_connect")
         end
         return true
     end)
+    add_tests("test_tcp_connect",{run_timeout=1000})
 
 target("test_tcp_bind")
     set_kind("binary")
@@ -26,6 +27,6 @@ target("test_tcp_bind")
     add_files("test_bind.cpp")
     add_packages("cli11","gtest")
     on_package(function(package) end)
+    add_tests("test_tcp_bind")
 
 
-add_tests("test_tcp_connect",{run_timeout=1000},"test_tcp_bind")

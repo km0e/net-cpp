@@ -40,15 +40,17 @@ public:
   std::string _port;
 };
 
-using ConnectResult = std::expected<Socket, std::error_code>;
+
+
+using ConnectResult = std::expected<Socket, std::errc>;
 
 coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> poller);
 
-using BindResult = std::expected<Socket, std::error_code>;
+using BindResult = std::expected<Socket, std::errc>;
 
 BindResult bind(const AddrInfo &ai);
 
-using ListenResult = std::expected<void, std::error_code>;
+using ListenResult = std::expected<void, std::errc>;
 
 ListenResult listen(Socket &skt, int max_connections = MAX_CONNECTIONS);
 

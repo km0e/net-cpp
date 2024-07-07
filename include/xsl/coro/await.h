@@ -6,15 +6,14 @@
 
 #  include <coroutine>
 #  include <functional>
-#  include <optional>
 
 XSL_CORO_NAMESPACE_BEGIN
 
-template <typename ResultType>
+template <class Ntf, class ResultType = Ntf>
 class CallbackAwaiter {
 public:
-  CallbackAwaiter(std::function<void(std::function<void(ResultType)>)> func)
-      : _func(func), _result(std::nullopt) {}
+  using callback_type = std::function<void(std::function<void(Ntf&&)>&&)>;
+  CallbackAwaiter(callback_type&& func) : _func(std::move(func)), _ntf() {}
   bool await_ready() const noexcept {
     DEBUG("");
     return false;
@@ -22,20 +21,20 @@ public:
   template <class Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) noexcept {
     DEBUG("");
-    _func([this, handle](ResultType&& result) {
-      _result = std::move(result);
+    _func([this, handle](Ntf&& result) {
+      _ntf = std::move(result);
       DEBUG("set result");
       handle.promise().dispatch([handle]() { handle.resume(); });
     });
   }
   ResultType await_resume() noexcept {
     DEBUG("return result");
-    return std::move(*_result);
+    return std::move(*_ntf);
   }
 
-private:
-  std::function<void(std::function<void(ResultType)>)> _func;
-  std::optional<ResultType> _result;
+protected:
+  callback_type _func;
+  std::optional<Ntf> _ntf;
 };
 
 XSL_CORO_NAMESPACE_END

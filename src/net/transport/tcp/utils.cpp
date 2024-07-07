@@ -10,7 +10,6 @@
 
 #include <cerrno>
 #include <cstdlib>
-#include <functional>
 #include <memory>
 #include <numeric>
 #include <system_error>
@@ -68,8 +67,42 @@ bool SockAddrV4::operator==(const SockAddrV4 &rhs) const {
 }
 std::string SockAddrV4::to_string() const { return format("{}:{}", _ip, _port); }
 
+class EventAwaiter : public coro::CallbackAwaiter<std::tuple<int, IOM_EVENTS>, ConnectResult> {
+public:
+  using Base = coro::CallbackAwaiter<std::tuple<int, IOM_EVENTS>, ConnectResult>;
+
+  using Base::Base;
+
+  ConnectResult await_resume() noexcept {
+    DEBUG("return result");
+    auto [fd, events] = *_ntf;
+    if (!!(events & IOM_EVENTS::OUT)) {
+      DEBUG("Fd: {} is writable", fd);
+      int opt;
+      socklen_t len = sizeof(opt);
+      if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &opt, &len) == -1) {
+        ERROR("Failed to getsockopt: {}", strerror(errno));
+        return {errno};
+      }
+      if (opt != 0) {
+        ERROR("Failed to connect: {}", strerror(opt));
+        return {opt};
+      }
+      DEBUG("Connected to fd: {}", fd);
+      return {Socket(fd)};
+    } else if (!events) {
+      ERROR("Timeout");
+      return {ETIMEDOUT};
+    }
+    return {ECONNREFUSED};
+  }
+
+private:
+  using Base::_ntf;
+};
+
 coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> poller) {
-  ConnectResult res = std::unexpected{std::error_code()};
+  ConnectResult res = std::unexpected{std::errc()};
   for (addrinfo *rp = ai.info; rp != nullptr; rp = rp->ai_next) {
     int tmpfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (tmpfd == -1) {
@@ -77,7 +110,7 @@ coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> po
     }
     DEBUG("Created fd: {}", tmpfd);
     if (!utils::set_non_blocking(tmpfd)) {
-      res = std::unexpected{std::make_error_code(std::errc{errno})};
+      res = std::unexpected{std::errc{errno}};
       close(tmpfd);
       continue;
     }
@@ -90,32 +123,11 @@ coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> po
       WARNING("Failed to connect to fd: {}", tmpfd);
       auto func = [tmpfd, &poller](auto set_result) {
         poller->add(tmpfd, IOM_EVENTS::OUT, [set_result](int fd, IOM_EVENTS events) {
-          if (!!(events & IOM_EVENTS::OUT)) {
-            DEBUG("Fd: {} is writable", fd);
-            int opt;
-            socklen_t len = sizeof(opt);
-            if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &opt, &len) == -1) {
-              ERROR("Failed to getsockopt: {}", strerror(errno));
-              set_result({errno});
-              return PollHandleHintTag::DELETE;
-            }
-            if (opt != 0) {
-              ERROR("Failed to connect: {}", strerror(opt));
-              set_result({opt});
-              return PollHandleHintTag::DELETE;
-            }
-            DEBUG("Connected to fd: {}", fd);
-            set_result(Socket(fd));
-            return PollHandleHintTag::DELETE;
-          } else if (!events) {
-            ERROR("Timeout");
-            set_result({ETIMEDOUT});
-            return PollHandleHintTag::DELETE;
-          }
+          set_result({fd, events});
           return PollHandleHintTag::DELETE;
         });
       };
-      res = co_await coro::CallbackAwaiter<ConnectResult>(func);
+      res = co_await EventAwaiter(func);
       if (res.has_value()) {
         break;
       }
@@ -126,7 +138,7 @@ coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> po
 }
 
 BindResult bind(const AddrInfo &ai) {
-  BindResult res = std::unexpected{std::error_code()};
+  BindResult res = std::unexpected{std::errc()};
   for (addrinfo *rp = ai.info; rp != nullptr; rp = rp->ai_next) {
     int tmpfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (tmpfd == -1) {
@@ -134,20 +146,20 @@ BindResult bind(const AddrInfo &ai) {
     }
     DEBUG("Created fd: {}", tmpfd);
     if (!utils::set_non_blocking(tmpfd)) {
-      res = std::unexpected{std::make_error_code(std::errc{errno})};
+      res = std::unexpected{std::errc{errno}};
       close(tmpfd);
       continue;
     }
     DEBUG("Set non-blocking to fd: {}", tmpfd);
     int opt = 1;
     if (setsockopt(tmpfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
-      res = std::unexpected{std::make_error_code(std::errc{errno})};
+      res = std::unexpected{std::errc{errno}};
       close(tmpfd);
       continue;
     }
     DEBUG("Set reuse addr to fd: {}", tmpfd);
     if (bind(tmpfd, rp->ai_addr, rp->ai_addrlen) == -1) {
-      res = std::unexpected{std::make_error_code(std::errc{errno})};
+      res = std::unexpected{std::errc{errno}};
 
       close(tmpfd);
       continue;
@@ -161,7 +173,7 @@ BindResult bind(const AddrInfo &ai) {
 
 ListenResult listen(Socket &skt, int max_connections) {
   if (::listen(skt.raw_fd(), max_connections) == -1) {
-    return std::unexpected{std::make_error_code(std::errc{errno})};
+    return std::unexpected{std::errc{errno}};
   }
   return {};
 }

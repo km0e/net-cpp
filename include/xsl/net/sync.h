@@ -4,7 +4,7 @@
 #  include "xsl/net/def.h"
 #  include "xsl/net/sync/poller.h"
 NET_NAMESPACE_BEGIN
-using sync::DefaultPoller;
+using sync::Poller;
 using sync::IOM_EVENTS;
 using sync::poll_add_shared;
 using sync::poll_add_unique;

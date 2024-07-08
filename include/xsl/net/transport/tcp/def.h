@@ -13,7 +13,9 @@ const int ZERO_SIZE_READ_COUNT = 5;
 
 class Socket {
 public:
-  Socket(int sfd);
+  Socket(int sfd) noexcept;
+  Socket(Socket &&rhs) noexcept;
+  Socket &operator=(Socket &&rhs) noexcept;
   ~Socket();
   int raw_fd() const;
 

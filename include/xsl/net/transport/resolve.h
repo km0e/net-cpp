@@ -32,7 +32,9 @@ namespace impl {
     }
     AddrInfo(const AddrInfo &) = delete;
     AddrInfo &operator=(const AddrInfo &) = delete;
-    ~AddrInfo() { freeaddrinfo(this->info); }
+    ~AddrInfo() {
+      if (info) freeaddrinfo(info);
+    }
 
     addrinfo *info;
   };

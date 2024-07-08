@@ -7,12 +7,14 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <cerrno>
 #include <cstdlib>
 #include <memory>
 #include <numeric>
 #include <system_error>
+#include <type_traits>
 
 TCP_NAMESPACE_BEGIN
 SockAddrV4View::SockAddrV4View(const char *sa4) : _ip(), _port() {
@@ -117,7 +119,7 @@ coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> po
     DEBUG("Set non-blocking to fd: {}", tmpfd);
     int ec = ::connect(tmpfd, rp->ai_addr, rp->ai_addrlen);
     if (ec == 0) {
-      res = {Socket(tmpfd)};
+      res.emplace(tmpfd);
       DEBUG("Connected to fd: {}", tmpfd);
     } else {
       WARNING("Failed to connect to fd: {}", tmpfd);
@@ -160,11 +162,10 @@ BindResult bind(const AddrInfo &ai) {
     DEBUG("Set reuse addr to fd: {}", tmpfd);
     if (bind(tmpfd, rp->ai_addr, rp->ai_addrlen) == -1) {
       res = std::unexpected{std::errc{errno}};
-
       close(tmpfd);
       continue;
     }
-    res = {Socket(tmpfd)};
+    res.emplace(tmpfd);
     DEBUG("Bind to fd: {}", tmpfd);
     break;
   }

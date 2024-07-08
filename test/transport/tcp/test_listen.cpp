@@ -9,7 +9,7 @@
 #include <string>
 using namespace xsl::coro;
 // there should have a echo server
-uint16_t port = 12348;
+uint16_t port = 12349;
 
 TEST(bind, create) {
   using namespace xsl::net::transport::tcp;
@@ -19,8 +19,9 @@ TEST(bind, create) {
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());
   auto skt = bind(ai);
-  EXPECT_TRUE(skt.has_value());
-  EXPECT_NE(skt.value().raw_fd(), 0);
+  ASSERT_TRUE(skt.has_value());
+  ASSERT_NE(skt.value().raw_fd(), 0);
+  ASSERT_TRUE(listen(skt.value()).has_value());
 }
 
 int main(int argc, char **argv) {

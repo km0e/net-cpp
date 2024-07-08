@@ -36,17 +36,16 @@ std::string_view to_string(PollHandleHintTag tag) {
   }
 }
 
-DefaultPoller::DefaultPoller()
-    : DefaultPoller(
+Poller::Poller()
+    : Poller(
         std::make_shared<HandleProxy>([](std::function<PollHandleHint()>&& f) { return f(); })) {}
-DefaultPoller::DefaultPoller(std::shared_ptr<HandleProxy>&& proxy)
-    : fd(-1), handlers(), proxy(std::move(proxy)) {
+Poller::Poller(std::shared_ptr<HandleProxy>&& proxy) : fd(-1), handlers(), proxy(std::move(proxy)) {
   this->fd = epoll_create(1);
   DEBUG("Poller fd: {}", this->fd);
 }
-bool DefaultPoller::valid() { return this->fd != -1; }
+bool Poller::valid() { return this->fd != -1; }
 
-bool DefaultPoller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
+bool Poller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
   epoll_event event;
   event.events = (uint32_t)events;
   event.data.fd = fd;
@@ -58,7 +57,7 @@ bool DefaultPoller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
   this->handlers.lock()->try_emplace(fd, make_shared<PollHandler>(handler));
   return true;
 }
-bool DefaultPoller::modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) {
+bool Poller::modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) {
   epoll_event event;
   event.events = (uint32_t)events;
   event.data.fd = fd;
@@ -70,7 +69,7 @@ bool DefaultPoller::modify(int fd, IOM_EVENTS events, std::optional<PollHandler>
   }
   return true;
 }
-void DefaultPoller::poll() {
+void Poller::poll() {
   if (!this->valid()) {
     return;
   }
@@ -105,11 +104,11 @@ void DefaultPoller::poll() {
   }
   TRACE("Polling done");
 }
-void DefaultPoller::remove(int fd) {
+void Poller::remove(int fd) {
   epoll_ctl(this->fd, EPOLL_CTL_DEL, fd, nullptr);
   (*this->handlers.lock()).erase(fd);
 }
-void DefaultPoller::shutdown() {
+void Poller::shutdown() {
   if (!this->valid()) {
     return;
   }
@@ -122,5 +121,5 @@ void DefaultPoller::shutdown() {
   close(this->fd);
   this->fd = -1;
 }
-DefaultPoller::~DefaultPoller() { this->shutdown(); }
+Poller::~Poller() { this->shutdown(); }
 SYNC_NAMESPACE_END

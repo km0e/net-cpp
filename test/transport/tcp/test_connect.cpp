@@ -21,7 +21,7 @@ TEST(connect, connect) {
   auto res = Resolver<feature::ip<4>, feature::tcp>::resolve(host.c_str(), port.c_str());
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());
-  auto poller = std::make_shared<net::DefaultPoller>();
+  auto poller = std::make_shared<net::Poller>();
   std::thread t([&poller]() {
     while (poller->valid()) {
       poller->poll();

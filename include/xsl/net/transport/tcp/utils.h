@@ -6,7 +6,17 @@
 #  include "xsl/net/transport/resolve.h"
 #  include "xsl/net/transport/tcp/def.h"
 
+#  include <netdb.h>
+#  include <sys/socket.h>
+
 #  include <expected>
+#  include <functional>
+#  include <generator>
+#  include <memory>
+#  include <mutex>
+#  include <queue>
+#  include <system_error>
+#  include <tuple>
 
 TCP_NAMESPACE_BEGIN
 class SockAddrV4View {
@@ -40,8 +50,6 @@ public:
   std::string _port;
 };
 
-
-
 using ConnectResult = std::expected<Socket, std::errc>;
 
 coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> poller);
@@ -52,7 +60,85 @@ BindResult bind(const AddrInfo &ai);
 
 using ListenResult = std::expected<void, std::errc>;
 
-ListenResult listen(Socket &skt, int max_connections = MAX_CONNECTIONS);
+ListenResult listen(Socket &skt, int max_connections = 10);
+
+using AcceptResult = std::expected<Socket, std::errc>;
+
+class Acceptor {
+  class AcceptorImpl {
+  public:
+    AcceptorImpl(Socket &&skt) : skt(std::move(skt)), cb([]() {}), mtx_(), events() {}
+    PollHandleHintTag operator()(int fd, IOM_EVENTS events) {
+      this->mtx_.lock();
+      this->events.push({fd, events});
+      if (this->events.size() == 1) {
+        this->cb();
+      } else {
+        this->mtx_.unlock();
+      }
+      return PollHandleHintTag::NONE;
+    }
+
+    Socket skt;
+
+    std::function<void()> cb;
+
+    std::mutex mtx_;
+    std::queue<std::tuple<int, IOM_EVENTS>> events;
+  };
+  bool await_ready() noexcept {
+    DEBUG("");
+    this->impl->mtx_.lock();
+    if (this->impl->events.empty()) {
+      this->impl->mtx_.unlock();
+      return false;
+    }
+    return true;
+  }
+  template <class Promise>
+  void await_suspend(std::coroutine_handle<Promise> handle) noexcept {
+    DEBUG("");
+    this->impl->cb = [handle]() { handle.promise().dispatch([handle]() { handle.resume(); }); };
+  }
+  ConnectResult await_resume() noexcept {
+    DEBUG("return result");
+    this->impl->mtx_.unlock();
+    auto [fd, events] = this->impl->events.front();
+    this->impl->events.pop();
+    if (!!(events & IOM_EVENTS::IN)) {
+      DEBUG("Fd: {} is readable", fd);
+      sockaddr addr;
+      socklen_t len = sizeof(addr);
+      int new_fd = ::accept(fd, &addr, &len);
+      if (new_fd == -1) {
+        ERROR("Failed to accept: {}", strerror(errno));
+        return {errno};
+      }
+      DEBUG("Accepted new fd: {}", new_fd);
+      return {Socket(new_fd)};
+    } else if (!events) {
+      ERROR("Timeout");
+      return {ETIMEDOUT};
+    }
+    return {ECONNREFUSED};
+  }
+
+public:
+  Acceptor(Socket &&skt, std::shared_ptr<Poller> poller)
+      : impl(std::make_unique<AcceptorImpl>(std::move(skt))) {
+    poller->add(impl->skt.raw_fd(), IOM_EVENTS::IN,
+                [impl = impl.get()](int fd, IOM_EVENTS events) { return (*impl)(fd, events); });
+  }
+  ~Acceptor() = default;
+
+  coro::Task<AcceptResult> accept() {
+    DEBUG("");
+    co_return co_await *this;
+  }
+
+private:
+  std::unique_ptr<AcceptorImpl> impl;
+};
 
 bool set_keep_alive(int fd, bool keep_alive = true);
 

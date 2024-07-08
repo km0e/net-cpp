@@ -7,7 +7,7 @@ target("test_tcp_connect")
     add_files("test_connect.cpp")
     add_packages("cli11","gtest")
     on_package(function(package) end)
-        on_test(function (target)
+    on_test(function (target)
         local test_file = target:targetfile();
         local scriptdir = os.scriptdir() .. "/script/test_with_echo_server.py"
         print("cmd: ", "python",scriptdir, "127.0.0.1", 12345, "ncat", "cat", test_file)
@@ -29,4 +29,11 @@ target("test_tcp_bind")
     on_package(function(package) end)
     add_tests("test_tcp_bind")
 
+target("test_tcp_listen")
+    set_kind("binary")
+    set_default(false)
+    add_files("test_listen.cpp")
+    add_packages("cli11","gtest")
+    on_package(function(package) end)
+    add_tests("test_tcp_listen")
 

@@ -4,6 +4,8 @@
 #  define XSL_CORO_NAMESPACE_BEGIN namespace xsl::coro {
 #  define XSL_CORO_NAMESPACE_END }
 #  include <coroutine>
+#  include <exception>
+#  include <expected>
 XSL_CORO_NAMESPACE_BEGIN
 
 /*
@@ -63,6 +65,9 @@ concept ToAwaiter = requires(T t) {
 
 template <class T>
 using to_awaiter_t = decltype(std::declval<T>().operator co_await());
+
+template <class ResultType>
+using Result = std::expected<ResultType, std::exception_ptr>;
 
 XSL_CORO_NAMESPACE_END
 

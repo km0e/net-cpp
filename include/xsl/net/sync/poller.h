@@ -64,33 +64,25 @@ concept Handler = requires(T t) {
 
 using PollHandler = std::function<PollHandleHint(int fd, IOM_EVENTS events)>;
 
+using HandleProxy = std::function<PollHandleHint(std::function<PollHandleHint()>&&)>;
 class Poller {
 public:
-  virtual bool add(int fd, IOM_EVENTS events, PollHandler&& handler) = 0;
-  virtual bool modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) = 0;
-  virtual void poll() = 0;  // NOLINT [runtime/references
-  virtual void remove(int fd) = 0;
-  virtual void shutdown() = 0;//TODO : call after all handlers are removed
-  virtual ~Poller() = default;
-};
-using HandleProxy = std::function<PollHandleHint(std::function<PollHandleHint()>&&)>;
-class DefaultPoller : public Poller {
-public:
-  DefaultPoller();
-  DefaultPoller(std::shared_ptr<HandleProxy>&& proxy);
-  ~DefaultPoller();
+  Poller();
+  Poller(std::shared_ptr<HandleProxy>&& proxy);
+  ~Poller();
   bool valid();
-  bool add(int fd, IOM_EVENTS events, PollHandler&& handler) override;
-  bool modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) override;
-  void poll() override;
-  void remove(int fd) override;
-  void shutdown() override;
+  bool add(int fd, IOM_EVENTS events, PollHandler&& handler);
+  bool modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler);
+  void poll();
+  void remove(int fd);
+  void shutdown();
 
 private:
   int fd;
   ShrdRes<std::unordered_map<int, std::shared_ptr<PollHandler>>> handlers;
   std::shared_ptr<HandleProxy> proxy;
 };
+
 template <Handler T, class... Args>
 std::unique_ptr<T> poll_add_unique(std::shared_ptr<Poller> poller, int fd, IOM_EVENTS events,
                                    Args&&... args) {

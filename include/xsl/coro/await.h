@@ -13,6 +13,7 @@ template <class Ntf, class ResultType = Ntf>
 class CallbackAwaiter {
 public:
   using callback_type = std::function<void(std::function<void(Ntf&&)>&&)>;
+  
   CallbackAwaiter(callback_type&& func) : _func(std::move(func)), _ntf() {}
   bool await_ready() const noexcept {
     DEBUG("");

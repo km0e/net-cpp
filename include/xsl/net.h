@@ -7,7 +7,7 @@
 #  include "xsl/net/transport.h"
 XSL_NAMESPACE_BEGIN
 using net::create_static_handler;
-using net::DefaultPoller;
+using net::Poller;
 using net::HTTP_METHOD_STRINGS;
 using net::HttpHandlerGenerator;
 using net::HttpMethod;

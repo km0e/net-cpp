@@ -16,12 +16,12 @@ namespace feature {
 
   struct node {};
   // using for tcp component
-  struct tcp {};
+  struct Tcp {};
   // using for resolver
-  struct udp {};
+  struct Udp {};
   // using for resolver
   template <uint8_t version>
-  struct ip {};
+  struct Ip {};
 
   namespace impl {
     template <class... Args>

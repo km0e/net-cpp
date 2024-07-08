@@ -26,6 +26,7 @@ using TcpRecvError = tcp::RecvError;
 using TcpSendError = tcp::SendError;
 using TcpRecvContext = tcp::RecvContext;
 using TcpSendTasks = tcp::SendTasks;
+using tcp::Acceptor;
 using tcp::bind;
 using tcp::connect;
 using tcp::listen;

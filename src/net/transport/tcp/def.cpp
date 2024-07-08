@@ -11,8 +11,10 @@ Socket &Socket::operator=(Socket &&rhs) noexcept {
   return *this;
 }
 Socket::~Socket() {
-  DEBUG("close socket {}", sfd);
-  if (sfd) close(sfd);
+  if (sfd) {
+    close(sfd);
+    DEBUG("close socket {}", sfd);
+  }
 }
 int Socket::raw_fd() const { return sfd; }
 

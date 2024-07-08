@@ -1,4 +1,7 @@
 #pragma once
+#include "xsl/logctl.h"
+
+#include <optional>
 #ifndef _XSL_NET_TRANSPORT_UTILS_H_
 #  define _XSL_NET_TRANSPORT_UTILS_H_
 #  include "xsl/coro/task.h"
@@ -67,13 +70,17 @@ using AcceptResult = std::expected<Socket, std::errc>;
 class Acceptor {
   class AcceptorImpl {
   public:
-    AcceptorImpl(Socket &&skt) : skt(std::move(skt)), cb([]() {}), mtx_(), events() {}
+    AcceptorImpl(Socket &&skt) : skt(std::move(skt)), cb(std::nullopt), mtx_(), events() {}
     PollHandleHintTag operator()(int fd, IOM_EVENTS events) {
+      DEBUG("acceptor");
       this->mtx_.lock();
       this->events.push({fd, events});
-      if (this->events.size() == 1) {
-        this->cb();
+      if (this->cb) {
+        DEBUG("dispatch");
+        (*this->cb)();
+        this->cb.reset();
       } else {
+        DEBUG("no cb");
         this->mtx_.unlock();
       }
       return PollHandleHintTag::NONE;
@@ -81,7 +88,7 @@ class Acceptor {
 
     Socket skt;
 
-    std::function<void()> cb;
+    std::optional<std::function<void()>> cb;
 
     std::mutex mtx_;
     std::queue<std::tuple<int, IOM_EVENTS>> events;
@@ -89,16 +96,13 @@ class Acceptor {
   bool await_ready() noexcept {
     DEBUG("");
     this->impl->mtx_.lock();
-    if (this->impl->events.empty()) {
-      this->impl->mtx_.unlock();
-      return false;
-    }
-    return true;
+    return !this->impl->events.empty();
   }
   template <class Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) noexcept {
-    DEBUG("");
+    DEBUG("need to suspend");
     this->impl->cb = [handle]() { handle.promise().dispatch([handle]() { handle.resume(); }); };
+    this->impl->mtx_.unlock();
   }
   ConnectResult await_resume() noexcept {
     DEBUG("return result");

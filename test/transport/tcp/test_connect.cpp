@@ -1,8 +1,7 @@
 #include "xsl/coro/task.h"
 #include "xsl/logctl.h"
 #include "xsl/net/sync.h"
-#include "xsl/net/transport/resolve.h"
-#include "xsl/net/transport/tcp.h"
+#include "xsl/net/transport.h"
 
 #include <CLI/CLI.hpp>
 #include <gtest/gtest.h>
@@ -15,13 +14,12 @@ std::string host = "127.0.0.1";
 std::string port = "12347";
 
 TEST(connect, connect) {
-  using namespace xsl::net::transport::tcp;
-  using namespace xsl::net::transport;
-  using namespace xsl;
-  auto res = Resolver<feature::ip<4>, feature::tcp>::resolve(host.c_str(), port.c_str());
+  using namespace xsl::net;
+  using namespace xsl::feature;
+  auto res = Resolver{}.resolve<Ip<4>, Tcp>(host.c_str(), port.c_str());
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());
-  auto poller = std::make_shared<net::Poller>();
+  auto poller = std::make_shared<Poller>();
   std::thread t([&poller]() {
     while (poller->valid()) {
       poller->poll();

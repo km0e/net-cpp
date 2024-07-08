@@ -2,9 +2,15 @@
 #ifndef _XSL_NET_TRANSPORT_H_
 #  define _XSL_NET_TRANSPORT_H_
 #  include "xsl/net/def.h"
+#  include "xsl/net/transport/resolve.h"
 #  include "xsl/net/transport/tcp.h"
 NET_NAMESPACE_BEGIN
+using transport::Acceptor;
+using transport::bind;
+using transport::connect;
+using transport::listen;
 using transport::recv;
+using transport::Resolver;
 using transport::send;
 using transport::SockAddrV4;
 using transport::SockAddrV4View;

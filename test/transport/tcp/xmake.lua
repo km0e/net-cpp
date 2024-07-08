@@ -37,3 +37,11 @@ target("test_tcp_listen")
     on_package(function(package) end)
     add_tests("test_tcp_listen")
 
+target("test_tcp_acceptor")
+    set_kind("binary")
+    set_default(false)
+    add_files("test_accept.cpp")
+    add_packages("cli11","gtest")
+    on_package(function(package) end)
+    add_tests("test_tcp_acceptor")
+

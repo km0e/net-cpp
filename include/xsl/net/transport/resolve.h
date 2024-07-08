@@ -1,10 +1,8 @@
 #pragma once
-#include <iterator>
 #ifndef XSL_NET_TRANSPORT_RESOLVE
 #  define XSL_NET_TRANSPORT_RESOLVE
 #  include "xsl/feature.h"
 #  include "xsl/net/transport/def.h"
-#  include "xsl/wheel/type_traits.h"
 
 #  include <netdb.h>
 #  include <sys/socket.h>
@@ -12,9 +10,9 @@
 #  include <cstdint>
 #  include <cstring>
 #  include <expected>
+#  include <iterator>
 #  include <string>
 #  include <system_error>
-#  include <tuple>
 #  include <utility>
 
 TRANSPORT_NAMESPACE_BEGIN
@@ -97,39 +95,60 @@ namespace impl {
 }  // namespace impl
 using AddrInfo = impl::AddrInfo;
 
+enum class ResolveFlag : int {
+  V4MAPPED = AI_V4MAPPED,
+  ALL = AI_ALL,
+  ADDRCONFIG = AI_ADDRCONFIG,
+  CANONNAME = AI_CANONNAME,
+  NUMERICHOST = AI_NUMERICHOST,
+  NUMERICSERV = AI_NUMERICSERV,
+  PASSIVE = AI_PASSIVE,
+};
+
+ResolveFlag operator|(ResolveFlag lhs, ResolveFlag rhs);
+
 using ResolveResult = std::expected<AddrInfo, std::error_condition>;
 
 namespace impl {
-  template <uint8_t ipv>
-  int family(feature::ip<ipv>) {
-    if constexpr (ipv == 4) {
-      return AF_INET;
-    } else if constexpr (ipv == 6) {
-      return AF_INET6;
-    } else {
-      return AF_UNSPEC;
-    }
-  }
-
-  template <class Proto>
-  std::tuple<int, int> traits() {
-    if constexpr (std::is_same_v<Proto, feature::tcp>) {
-      return {SOCK_STREAM, IPPROTO_TCP};
-    } else if constexpr (std::is_same_v<Proto, feature::udp>) {
-      return {SOCK_DGRAM, IPPROTO_UDP};
-    } else {
-      return {0, 0};
-    }
-  }
 
   template <class IpV, class Proto>
-  ResolveResult resolve(const char *name, const char *serv, int flags = AI_ADDRCONFIG) {
+  class _ParamTraits {
+  public:
+    static consteval int family() {
+      if constexpr (std::is_same_v<IpV, feature::placeholder>) {
+        return AF_UNSPEC;
+      } else if constexpr (std::is_same_v<IpV, feature::Ip<4>>) {
+        return AF_INET;
+      } else if constexpr (std::is_same_v<IpV, feature::Ip<6>>) {
+        return AF_INET6;
+      } else {
+        return AF_UNSPEC;
+      }
+    }
+    static consteval std::pair<int, int> params() {
+      if constexpr (std::is_same_v<Proto, feature::placeholder>) {
+        return {0, 0};
+      } else if constexpr (std::is_same_v<Proto, feature::Tcp>) {
+        return {SOCK_STREAM, IPPROTO_TCP};
+      } else if constexpr (std::is_same_v<Proto, feature::Udp>) {
+        return {SOCK_DGRAM, IPPROTO_UDP};
+      } else {
+        return {0, 0};
+      }
+    }
+  };
+  template <class... Flags>
+  using ParamTraits = feature::origanize_feature_flags_t<
+      _ParamTraits<feature::set<feature::Ip<4>, feature::Ip<6>>, feature::placeholder>, Flags...>;
+
+  template <class Traits>
+  ResolveResult resolve(const char *name, const char *serv, ResolveFlag flags) {
     addrinfo hints;
     addrinfo *res;
     std::memset(&hints, 0, sizeof(hints));
-    hints.ai_flags = flags;
-    hints.ai_family = family(IpV());
-    auto [type, protocol] = traits<Proto>();
+    hints.ai_flags = static_cast<int>(flags);
+    hints.ai_family = Traits::family();
+    auto [type, protocol] = Traits::params();
     hints.ai_socktype = type;
     hints.ai_protocol = protocol;
     int ret = getaddrinfo(name, serv, &hints, &res);
@@ -139,22 +158,35 @@ namespace impl {
     return {AddrInfo(res)};
   }
 
-  template <class IpV, class Proto>
   struct Resolver {
-    static_assert(wheel::type_traits::existing_v<
-                  IpV, wheel::type_traits::_n<feature::ip<4>, feature::ip<6>>>);
-    static_assert(
-        wheel::type_traits::existing_v<Proto, wheel::type_traits::_n<feature::tcp, feature::udp>>);
     /**
      * @brief Resolve the name and service to an address, typically used for connect
      *
+     * @tparam Flags The flags for getaddrinfo, should be Ip<4>/Ip<6>, Tcp/Udp
      * @param name The name of the host
      * @param serv The service name or port number
      * @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG
      * @return ResolveResult
      */
-    static ResolveResult resolve(const char *name, const char *serv, int flags = AI_ADDRCONFIG) {
-      return impl::resolve<IpV, Proto>(name, serv, flags);
+    template <class... Flags>
+    ResolveResult resolve(const char *name, const char *serv,
+                          ResolveFlag flags = ResolveFlag::ADDRCONFIG) {
+      return impl::resolve<ParamTraits<Flags...>>(name, serv, flags);
+    }
+    /**
+     * @brief Resolve the name and service to an address, typically used for connect
+     *
+     * @tparam Flags The flags for getaddrinfo, should be Ip<4>/Ip<6>, Tcp/Udp
+     * @param name The name of the host
+     * @param serv The service name or port number
+     * @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG
+     * @return ResolveResult
+     */
+    template <class... Flags>
+    ResolveResult resolve(const char *name, int serv, ResolveFlag flags = ResolveFlag::ADDRCONFIG) {
+      char serv_str[6];
+      std::snprintf(serv_str, sizeof(serv_str), "%d", serv);
+      return impl::resolve<ParamTraits<Flags...>>(name, serv_str, flags);
     }
     /**
      * @brief Resolve the service to an address, typically used for bind
@@ -163,17 +195,28 @@ namespace impl {
      * @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG | AI_PASSIVE
      * @return ResolveResult
      */
-    static ResolveResult resolve(const char *serv, int flags = AI_ADDRCONFIG | AI_PASSIVE) {
-      return impl::resolve<IpV, Proto>(nullptr, serv, flags);
+    template <class... Flags>
+    ResolveResult resolve(const char *serv,
+                          ResolveFlag flags = ResolveFlag::ADDRCONFIG | ResolveFlag::PASSIVE) {
+      return impl::resolve<ParamTraits<Flags...>>(nullptr, serv, flags);
     }
-    static ResolveResult resolve(uint16_t port, int flags = AI_ADDRCONFIG | AI_PASSIVE) {
+    /**
+     * @brief Resolve the service to an address, typically used for bind
+     *
+     * @tparam Flags The flags for getaddrinfo, should be Ip<4>/Ip<6>, Tcp/Udp
+     * @param port The port number
+     * @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG | AI_PASSIVE
+     * @return ResolveResult
+     */
+    template <class... Flags>
+    ResolveResult resolve(uint16_t port,
+                          ResolveFlag flags = ResolveFlag::ADDRCONFIG | ResolveFlag::PASSIVE) {
       char port_str[6];
       std::snprintf(port_str, sizeof(port_str), "%u", port);
-      return impl::resolve<IpV, Proto>(nullptr, port_str, flags);
+      return impl::resolve<ParamTraits<Flags...>>(nullptr, port_str, flags);
     }
   };
 }  // namespace impl
-template <class IpV, class Proto>
-using Resolver = impl::Resolver<IpV, Proto>;
+using Resolver = impl::Resolver;
 TRANSPORT_NAMESPACE_END
 #endif

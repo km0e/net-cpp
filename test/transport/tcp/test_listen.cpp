@@ -1,6 +1,5 @@
 #include "xsl/logctl.h"
-#include "xsl/net/transport/resolve.h"
-#include "xsl/net/transport/tcp.h"
+#include "xsl/net/transport.h"
 
 #include <CLI/CLI.hpp>
 #include <gtest/gtest.h>
@@ -12,10 +11,9 @@ using namespace xsl::coro;
 uint16_t port = 12349;
 
 TEST(bind, create) {
-  using namespace xsl::net::transport::tcp;
-  using namespace xsl::net::transport;
-  using namespace xsl;
-  auto res = Resolver<feature::ip<4>, feature::tcp>::resolve(port);
+  using namespace xsl::net;
+  using namespace xsl::feature;
+  auto res = Resolver{}.resolve<Ip<4>, Tcp>(port);
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());
   auto skt = bind(ai);

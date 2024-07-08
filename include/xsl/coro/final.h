@@ -34,7 +34,7 @@ public:
 
   Final(Final &&task) noexcept : _handle(std::exchange(task._handle, {})) {}
 
-  Final(Final &) = delete;
+  Final(const Final &) = delete;
 
   void operator()() const noexcept { _handle(); }
 

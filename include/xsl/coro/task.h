@@ -163,9 +163,9 @@ public:
     _handle = std::exchange(another._handle, {});
     return *this;
   }
-  Task(Task &) = delete;
+  Task(const Task &) = delete;
 
-  Task &operator=(Task &) = delete;
+  Task &operator=(const Task &) = delete;
 
   ~Task() { assert(!_handle); }  // task should be moved to Final/Block
 
@@ -211,9 +211,9 @@ public:
     _handle = std::exchange(another._handle, {});
     return *this;
   }
-  Task(Task &) = delete;
+  Task(const Task &) = delete;
 
-  Task &operator=(Task &) = delete;
+  Task &operator=(const Task &) = delete;
 
   ~Task() { assert(!_handle); }  // task should be moved to Final/Block
 

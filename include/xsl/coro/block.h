@@ -22,9 +22,9 @@ public:
 
   Block(Block &&task) noexcept : _handle(std::exchange(task._handle, {})) {}
 
-  Block(Block &) = delete;
+  Block(const Block &) = delete;
 
-  Block &operator=(Block &) = delete;
+  Block &operator=(const Block &) = delete;
 
   ~Block() {
     DEBUG("~Block");

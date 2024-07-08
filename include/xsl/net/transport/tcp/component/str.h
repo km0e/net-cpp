@@ -5,9 +5,6 @@
 #  include "xsl/logctl.h"
 #  include "xsl/net/transport/tcp/component/def.h"
 #  include "xsl/net/transport/tcp/utils.h"
-#  include "xsl/wheel.h"
-#  include "xsl/wheel/result.h"
-#  include "xsl/wheel/type_traits.h"
 
 #  include <sys/socket.h>
 
@@ -64,10 +61,8 @@ namespace impl {
 }  // namespace impl
 
 template <class... Flags>
-using TcpSendString = wheel::type_traits::swap_t<
-    impl::TcpSendString<>,
-    feature::origanize_feature_flags_t<wheel::type_traits::_n<Flags...>,
-                                       wheel::type_traits::_n<feature::node>>>::type1;
+using TcpSendString
+    = feature::origanize_feature_flags_t<impl::TcpSendString<feature::node>, Flags...>;
 
 namespace impl {
 
@@ -100,10 +95,8 @@ namespace impl {
 
 }  // namespace impl
 template <class... Flags>
-using TcpRecvString = wheel::type_traits::swap_t<
-    impl::TcpRecvString<>,
-    feature::origanize_feature_flags_t<wheel::type_traits::_n<Flags...>,
-                                       wheel::type_traits::_n<feature::node>>>::type1;
+using TcpRecvString
+    = feature::origanize_feature_flags_t<impl::TcpRecvString<feature::node>, Flags...>;
 
 TCP_COMPONENTS_NAMESPACE_END
 #endif

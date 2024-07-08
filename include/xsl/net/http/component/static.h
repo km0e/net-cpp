@@ -3,7 +3,6 @@
 #  define _XSL_NET_HTTP_HELPER_STATIC_H_
 #  include "xsl/net/http/component/def.h"
 #  include "xsl/net/http/router.h"
-#  include "xsl/wheel.h"
 HTTP_HELPER_NAMESPACE_BEGIN
 
 using StaticCreateResult = std::expected<http::RouteHandler, http::AddRouteError>;

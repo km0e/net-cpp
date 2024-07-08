@@ -45,17 +45,30 @@ namespace type_traits {
   using existing = std::bool_constant<existing_v<T, Rep>>;
   //
 
-  namespace impl {
+  namespace swap_impl {
     template <class LeftRep, class RightRep>
     struct swap;
     //
     template <template <class...> class Left, class... Ts1, template <class...> class Right,
               class... Ts2>
     struct swap<Left<Ts1...>, Right<Ts2...>> : _2<Left<Ts2...>, Right<Ts1...>> {};
-  }  // namespace impl
+  }  // namespace swap_impl
   //
   template <class LeftRep, class RightRep>
-  using swap_t = typename impl::swap<LeftRep, RightRep>::self;
+  using swap_t = typename swap_impl::swap<LeftRep, RightRep>::self;
+
+  namespace copy_impl {
+    template <class From, class To>
+    struct copy;
+
+    template <template <class...> class From, template <class...> class To, class... Ts,
+              class... Us>
+    struct copy<From<Ts...>, To<Us...>> : public _1<To<Ts...>> {};
+
+  }  // namespace copy_impl
+
+  template <class From, class To>
+  using copy_t = typename copy_impl::copy<From, To>::type;
 }  // namespace type_traits
 
 WHEEL_NAMESPACE_END

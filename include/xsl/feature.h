@@ -1,4 +1,5 @@
 #pragma once
+#include <type_traits>
 #ifndef _XSL_FEATURE_H_
 #  define _XSL_FEATURE_H_
 #  include "xsl/def.h"
@@ -10,6 +11,9 @@ XSL_NAMESPACE_BEGIN
 namespace feature {
   struct placeholder {};
 
+  template <class... Opts>
+  using set = wheel::type_traits::_n<Opts...>;
+
   struct node {};
   // using for tcp component
   struct tcp {};
@@ -19,39 +23,60 @@ namespace feature {
   template <uint8_t version>
   struct ip {};
 
-  using flag_set = wheel::type_traits::_n<placeholder, node, tcp, udp, ip<4>, ip<6>>;
-
-  template <class T>
-  constexpr bool is_feature_flag_v = wheel::type_traits::existing_v<T, flag_set>;
-  template <class Flag>
-  concept is_feature_flag = wheel::type_traits::existing_v<Flag, flag_set>;
-
   namespace impl {
+    template <class... Args>
+    using type_list = wheel::type_traits::_n<Args...>;
     template <class FeatureFlagSet, class FullFeatureFlagSet, class CompleteFeatureFlagSet>
-    class origanize_feature_flags;
+    struct origanize_feature_flags;
 
-    template <is_feature_flag... Flags, is_feature_flag... CompleteFlags>
-    class origanize_feature_flags<wheel::type_traits::_n<Flags...>, wheel::type_traits::_n<>,
-                                  wheel::type_traits::_n<CompleteFlags...>>
-        : public wheel::type_traits::_1<wheel::type_traits::_n<CompleteFlags...>> {};
+    template <class... Flags, class... CompleteFlags>
+    struct origanize_feature_flags<type_list<Flags...>, type_list<>, type_list<CompleteFlags...>>
+        : wheel::type_traits::_1<type_list<CompleteFlags...>> {};
 
-    template <is_feature_flag... Flags, is_feature_flag Flag, is_feature_flag... FullFlags,
-              class... CompleteFlags>
-    class origanize_feature_flags<wheel::type_traits::_n<Flags...>,
-                                  wheel::type_traits::_n<Flag, FullFlags...>,
-                                  wheel::type_traits::_n<CompleteFlags...>>
-        : public origanize_feature_flags<
-              wheel::type_traits::_n<Flags...>, wheel::type_traits::_n<FullFlags...>,
-              wheel::type_traits::_n<CompleteFlags...,
-                                     std::conditional_t<wheel::type_traits::existing_v<
-                                                            Flag, wheel::type_traits::_n<Flags...>>,
-                                                        Flag, placeholder>>> {};
+    template <class FlagSet, class... FlagSets, class... CompleteFlags>
+    struct origanize_feature_flags<type_list<>, type_list<FlagSet, FlagSets...>,
+                                   type_list<CompleteFlags...>>
+        : origanize_feature_flags<type_list<>, type_list<FlagSets...>,
+                                  type_list<CompleteFlags..., placeholder>> {};
+
+    template <class Flag, class... Flags, class... FlagOpts, template <class...> class FlagSet,
+              class... FlagSets, class... CompleteFlags>
+    struct origanize_feature_flags<type_list<Flag, Flags...>,
+                                   type_list<FlagSet<FlagOpts...>, FlagSets...>,
+                                   type_list<CompleteFlags...>>
+        : std::conditional_t<
+              wheel::type_traits::existing_v<Flag, FlagSet<FlagOpts...>>,
+              origanize_feature_flags<type_list<Flags...>, type_list<FlagSets...>,
+                                      type_list<CompleteFlags..., Flag>>,
+              origanize_feature_flags<type_list<Flag, Flags...>, type_list<FlagSets...>,
+                                      type_list<CompleteFlags..., placeholder>>> {};
+
+    template <class Flag, class... Flags, class FlagOpt, class... FlagSets, class... CompleteFlags>
+    struct origanize_feature_flags<type_list<Flag, Flags...>, type_list<FlagOpt, FlagSets...>,
+                                   type_list<CompleteFlags...>>
+        : std::conditional_t<
+              std::is_same_v<Flag, FlagOpt>,
+              origanize_feature_flags<type_list<Flags...>, type_list<FlagSets...>,
+                                      type_list<CompleteFlags..., Flag>>,
+              origanize_feature_flags<type_list<Flag, Flags...>, type_list<FlagSets...>,
+                                      type_list<CompleteFlags..., placeholder>>> {};
+
+    template <class... Flags, class FlagOpt, class... FlagSets, class... CompleteFlags>
+    struct origanize_feature_flags<type_list<placeholder, Flags...>,
+                                   type_list<FlagOpt, FlagSets...>, type_list<CompleteFlags...>>
+        : origanize_feature_flags<type_list<Flags...>, type_list<FlagSets...>,
+                                  type_list<CompleteFlags..., placeholder>> {};
+
+    template <class FullFlag, class... Flags>
+    using origanize_feature_flags_t = wheel::type_traits::copy_t<
+        typename impl::origanize_feature_flags<type_list<Flags...>,
+                                               wheel::type_traits::copy_t<FullFlag, type_list<>>,
+                                               type_list<>>::type,
+        FullFlag>;
   }  // namespace impl
 
-  template <class FeatureFlagSet, class FullFeatureFlagSet>
-  using origanize_feature_flags_t
-      = impl::origanize_feature_flags<FeatureFlagSet, FullFeatureFlagSet,
-                                      wheel::type_traits::_n<>>::type;
+  template <class FullFlag, class... Flags>
+  using origanize_feature_flags_t = impl::origanize_feature_flags_t<FullFlag, Flags...>;
 
 }  // namespace feature
 XSL_NAMESPACE_END

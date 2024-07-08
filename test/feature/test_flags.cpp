@@ -1,17 +1,37 @@
 #include "xsl/feature.h"
-#include "xsl/wheel/type_traits.h"
 #include <gtest/gtest.h>
 
-TEST(type_traits, origanize_feature_flags_t) {
-  using namespace xsl::wheel;
-  using namespace xsl::feature;
-  using namespace xsl::wheel::type_traits;
-  using Flags1 = _n<node>;
-  using FullFlags1 = _n<node>;
-  ASSERT_TRUE((std::is_same_v<origanize_feature_flags_t<Flags1, FullFlags1>, _n<node>>));
-  using Flags2 = _n<node>;
-  using FullFlags2 = _n<>;
-  ASSERT_TRUE((std::is_same_v<origanize_feature_flags_t<Flags2, FullFlags2>, _n<>>));
+using namespace xsl::feature;
+template <class... Flags>
+struct Test;
+
+template <>
+struct Test<placeholder, int> {
+  static int f() { return 1; }
+};
+
+template <>
+struct Test<int, int> {
+  static int f() { return 2; }
+};
+
+template <>
+struct Test<int, placeholder> {
+  static int f() { return 3; }
+};
+
+template <>
+struct Test<placeholder, char> {
+  static int f() { return 4; }
+};
+
+template <class... Flags>
+using Test_t = origanize_feature_flags_t<Test<int, set<char, int>>, Flags...>;
+
+TEST(feature, origanize_feature_flags_t) {
+  ASSERT_EQ((Test_t<placeholder, int>::f()), 1);
+  ASSERT_EQ((Test_t<int>::f()), 3);
+  ASSERT_EQ((Test_t<char>::f()), 4);
 };
 
 int main() {

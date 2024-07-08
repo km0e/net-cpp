@@ -19,8 +19,8 @@ TEST(bind, create) {
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());
   auto skt = bind(ai);
-  EXPECT_TRUE(skt.has_value());
-  EXPECT_NE(skt.value().raw_fd(), 0);
+  ASSERT_TRUE(skt.has_value());
+  ASSERT_NE(skt.value().raw_fd(), 0);
 }
 
 int main(int argc, char **argv) {

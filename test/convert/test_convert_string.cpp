@@ -18,12 +18,12 @@ TEST(convert, string) {
   A a;
   B b;
   std::string c{"C"};
-  EXPECT_EQ("A", xsl::to_string(a));
-  EXPECT_EQ("A", xsl::to_string_view(a));
-  EXPECT_EQ("B", xsl::to_string(b));
-  EXPECT_EQ("B", xsl::to_string_view(b));
-  EXPECT_EQ("C", xsl::to_string(c));
-  EXPECT_EQ("C", xsl::to_string_view(c));
+  ASSERT_EQ("A", xsl::to_string(a));
+  ASSERT_EQ("A", xsl::to_string_view(a));
+  ASSERT_EQ("B", xsl::to_string(b));
+  ASSERT_EQ("B", xsl::to_string_view(b));
+  ASSERT_EQ("C", xsl::to_string(c));
+  ASSERT_EQ("C", xsl::to_string_view(c));
 };
 
 int main(int argc, char **argv) {

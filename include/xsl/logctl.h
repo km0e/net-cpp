@@ -7,7 +7,6 @@
 #  include <quill/Logger.h>
 XSL_NAMESPACE_BEGIN
 
-
 enum class LogLevel { NONE, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL };
 
 class LogCtl {
@@ -49,22 +48,23 @@ public:
   }
 };
 
-#define TRACE(fmt, ...) LOG_TRACE_L1(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define TRACE(fmt, ...) LOG_TRACE_L1(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#define DEBUG(fmt, ...) LOG_DEBUG(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define DEBUG(fmt, ...) LOG_DEBUG(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#define INFO(fmt, ...) LOG_INFO(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define INFO(fmt, ...) LOG_INFO(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#define WARNING(fmt, ...) LOG_WARNING(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define WARNING(fmt, ...) LOG_WARNING(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#define ERROR(fmt, ...) LOG_ERROR(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define ERROR(fmt, ...) LOG_ERROR(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#define CRITICAL(fmt, ...) LOG_CRITICAL(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define CRITICAL(fmt, ...) LOG_CRITICAL(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
 constexpr void set_log_level(LogLevel level) { xsl::LogCtl::set_log_level(level); }
 
 constexpr void no_log() { set_log_level(xsl::LogLevel::NONE); }
 
+inline void flush_log() { xsl::LogCtl::instance.logger->flush_log(); }
 
 XSL_NAMESPACE_END
 #endif

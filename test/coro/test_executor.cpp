@@ -7,7 +7,7 @@ TEST(ExecutorTest, NoopExecutor) {
   NoopExecutor executor;
   int value = 0;
   executor.schedule([&value] { value = 1; });
-  EXPECT_EQ(value, 1);
+  ASSERT_EQ(value, 1);
 }
 
 int main(int argc, char **argv) {

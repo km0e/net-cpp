@@ -30,8 +30,8 @@ TEST(connect, connect) {
   });
   auto sock = connect(ai, poller);
   auto skt = sock.block();
-  EXPECT_TRUE(skt.has_value());
-  EXPECT_NE(skt.value().raw_fd(), 0);
+  ASSERT_TRUE(skt.has_value());
+  ASSERT_NE(skt.value().raw_fd(), 0);
   poller->shutdown();
   t.join();
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include <iterator>
 #ifndef XSL_NET_TRANSPORT_RESOLVE
 #  define XSL_NET_TRANSPORT_RESOLVE
 #  include "xsl/feature.h"
@@ -12,13 +13,65 @@
 #  include <cstring>
 #  include <expected>
 #  include <string>
+#  include <system_error>
 #  include <tuple>
 #  include <utility>
 
 TRANSPORT_NAMESPACE_BEGIN
 namespace impl {
+  class ResolveCategory : public std::error_category {
+  public:
+    ~ResolveCategory() = default;
 
+    const char *name() const noexcept override { return "resolve"; }
+    std::error_condition default_error_condition(int ev) const noexcept override {
+      return ev == 0 ? std::error_condition{} : std::error_condition{ev, *this};
+    }
+    bool equivalent(int code, const std::error_condition &condition) const noexcept override {
+      return condition.category() == *this && condition.value() == code;
+    }
+    bool equivalent(const std::error_code &code, int condition) const noexcept override {
+      return code.category() == *this && code.value() == condition;
+    }
+    std::string message(int ev) const override { return gai_strerror(ev); }
+  };
   class AddrInfo {
+    class Iterator {
+    public:
+      using value_type = addrinfo;
+      using difference_type = std::ptrdiff_t;
+      using pointer = addrinfo *;
+      using reference = addrinfo &;
+      using iterator_category = std::forward_iterator_tag;
+
+      Iterator() : info(nullptr) {}
+      Iterator(addrinfo *info) : info(info) {}
+      Iterator(const Iterator &) = default;
+      Iterator &operator=(const Iterator &) = default;
+      ~Iterator() = default;
+
+      addrinfo &operator*() const { return *info; }
+      addrinfo *operator->() const { return info; }
+
+      Iterator &operator++() {
+        info = info->ai_next;
+        return *this;
+      }
+
+      Iterator operator++(int) {
+        Iterator tmp = *this;
+        ++*this;
+        return tmp;
+      }
+      bool operator!=(const Iterator &rhs) const { return info != rhs.info; }
+      bool operator==(const Iterator &rhs) const { return info == rhs.info; }
+
+    private:
+      addrinfo *info;
+    };
+
+    static_assert(std::forward_iterator<Iterator>);
+
   public:
     AddrInfo(addrinfo *info) : info(info) {}
     AddrInfo(AddrInfo &&other) : info(std::exchange(other.info, nullptr)) {}
@@ -36,12 +89,15 @@ namespace impl {
       if (info) freeaddrinfo(info);
     }
 
+    Iterator begin() const { return Iterator(info); }
+    Iterator end() const { return Iterator(nullptr); }
+
     addrinfo *info;
   };
 }  // namespace impl
 using AddrInfo = impl::AddrInfo;
 
-using ResolveResult = std::expected<AddrInfo, std::string>;
+using ResolveResult = std::expected<AddrInfo, std::error_condition>;
 
 namespace impl {
   template <uint8_t ipv>
@@ -78,7 +134,7 @@ namespace impl {
     hints.ai_protocol = protocol;
     int ret = getaddrinfo(name, serv, &hints, &res);
     if (ret != 0) {
-      return std::unexpected{std::string{gai_strerror(ret)}};
+      return std::unexpected{std::error_condition{ret, ResolveCategory()}};
     }
     return {AddrInfo(res)};
   }

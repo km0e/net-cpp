@@ -105,8 +105,8 @@ private:
 
 coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> poller) {
   ConnectResult res = std::unexpected{std::errc()};
-  for (addrinfo *rp = ai.info; rp != nullptr; rp = rp->ai_next) {
-    int tmpfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+  for (auto &ai : ai) {
+    int tmpfd = socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
     if (tmpfd == -1) {
       continue;
     }
@@ -117,7 +117,7 @@ coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> po
       continue;
     }
     DEBUG("Set non-blocking to fd: {}", tmpfd);
-    int ec = ::connect(tmpfd, rp->ai_addr, rp->ai_addrlen);
+    int ec = ::connect(tmpfd, ai.ai_addr, ai.ai_addrlen);
     if (ec == 0) {
       res.emplace(tmpfd);
       DEBUG("Connected to fd: {}", tmpfd);
@@ -141,8 +141,8 @@ coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> po
 
 BindResult bind(const AddrInfo &ai) {
   BindResult res = std::unexpected{std::errc()};
-  for (addrinfo *rp = ai.info; rp != nullptr; rp = rp->ai_next) {
-    int tmpfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+  for (auto &ai : ai) {
+    int tmpfd = socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
     if (tmpfd == -1) {
       continue;
     }
@@ -160,7 +160,7 @@ BindResult bind(const AddrInfo &ai) {
       continue;
     }
     DEBUG("Set reuse addr to fd: {}", tmpfd);
-    if (bind(tmpfd, rp->ai_addr, rp->ai_addrlen) == -1) {
+    if (bind(tmpfd, ai.ai_addr, ai.ai_addrlen) == -1) {
       res = std::unexpected{std::errc{errno}};
       close(tmpfd);
       continue;

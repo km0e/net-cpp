@@ -56,7 +56,7 @@ namespace detail {
     }
 
     void unhandled_exception() { _result = std::unexpected{std::current_exception()}; }
-
+    void next() {}
     ResultType operator*() {
       DEBUG("operator*");
       std::unique_lock<std::mutex> lock(_fin_lock);

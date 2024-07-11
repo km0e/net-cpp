@@ -13,6 +13,11 @@ public:
   struct FinalPromise {
     using result_type = void;
     using executor_type = no_executor;
+
+    Final get_return_object() {
+      return Final{std::coroutine_handle<FinalPromise>::from_promise(*this)};
+    }
+
     std::suspend_never initial_suspend() { return {}; }
 
     std::suspend_never final_suspend() noexcept { return {}; }
@@ -21,11 +26,9 @@ public:
 
     void unhandled_exception() { std::rethrow_exception(std::current_exception()); }
 
-    Final get_return_object() {
-      return Final{std::coroutine_handle<FinalPromise>::from_promise(*this)};
-    }
-
     std::nullptr_t executor() const noexcept { return nullptr; }
+
+    void next() {}
   };
 
   using promise_type = FinalPromise;

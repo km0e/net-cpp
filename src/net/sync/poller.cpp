@@ -73,7 +73,7 @@ void Poller::poll() {
   if (!this->valid()) {
     return;
   }
-  TRACE("Start polling");
+  // TRACE("Start polling");
   epoll_event events[10];
   sigset_t mask;
   sigemptyset(&mask);
@@ -85,7 +85,7 @@ void Poller::poll() {
     ERROR("Failed to poll");
     return;
   }
-  DEBUG("Polling {} events", n);
+  // TRACE("Polling {} events", n);
   for (int i = 0; i < n; i++) {
     auto handler = this->handlers.lock_shared()->at(events[i].data.fd);
     PollHandleHint hint
@@ -102,7 +102,7 @@ void Poller::poll() {
         break;
     }
   }
-  TRACE("Polling done");
+  // TRACE("Polling done");
 }
 void Poller::remove(int fd) {
   epoll_ctl(this->fd, EPOLL_CTL_DEL, fd, nullptr);

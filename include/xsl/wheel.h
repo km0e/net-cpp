@@ -4,7 +4,6 @@
 #  define _XSL_WHEEL_H_
 #  include "xsl/def.h"
 #  include "xsl/wheel/mutex.h"
-#  include "xsl/wheel/result.h"
 #  include "xsl/wheel/str.h"
 #  include "xsl/wheel/utils.h"
 #  include "xsl/wheel/vec.h"

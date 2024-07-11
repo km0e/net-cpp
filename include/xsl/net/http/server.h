@@ -1,5 +1,6 @@
 #pragma once
 
+#include "xsl/net/transport/tcp/stream.h"
 #ifndef _XSL_NET_HTTP_SERVER_H_
 #  define _XSL_NET_HTTP_SERVER_H_
 #  include "xsl/convert.h"
@@ -23,10 +24,10 @@ public:
   TcpHandleState recv(int fd) {
     auto res = recv_task.exec(fd);
     if (!res.has_value()) {
-      if (res.error() == RecvError::Eof) {
+      if (res.error() == RecvErrorCategory::Eof) {
         return TcpHandleState::NONE;
       }
-      ERROR("recv error: {}", to_string_view(res.error()));
+      // ERROR("recv error: {}", to_string_view(res.error()));
       return TcpHandleState::CLOSE;
     }
     size_t len = this->recv_task.data_buffer.size();
@@ -61,7 +62,7 @@ public:
   TcpHandleState send(int fd) {
     auto res = send_proxy.exec(fd);
     if (!res.has_value()) {
-      ERROR("send error: {}", to_string_view(res.error()));
+      // ERROR("send error: {}", to_string_view(res.error()));
       return TcpHandleState::CLOSE;
     }
     if (!this->keep_alive) {

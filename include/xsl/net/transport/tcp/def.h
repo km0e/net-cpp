@@ -10,18 +10,7 @@ const int MAX_CONNECTIONS = 100000;
 const int RECV_TIMEOUT = 1000;
 const int KEEP_ALIVE_TIMEOUT_COUNT = 5;
 const int ZERO_SIZE_READ_COUNT = 5;
-
-class Socket {
-public:
-  Socket(int sfd) noexcept;
-  Socket(Socket &&rhs) noexcept;
-  Socket &operator=(Socket &&rhs) noexcept;
-  ~Socket();
-  int raw_fd() const;
-
-private:
-  int sfd;
-};
+const size_t MAX_SINGLE_RECV_SIZE = 1024;
 
 TCP_NAMESPACE_END
 #endif

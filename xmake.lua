@@ -12,7 +12,7 @@ set_warnings("everything")
 
 set_languages("cxxlatest")
 
--- for support <expected> 
+-- for support <expected>
 -- add_defines("__cpp_concepts=202002")
 
 -- dependency
@@ -33,4 +33,4 @@ add_includedirs("$(projectdir)/include", { public = true })
 
 xsl_headers = "$(projectdir)/include/(**.h)"
 
-includes("src", "test")
+includes("src", "test", "examples")

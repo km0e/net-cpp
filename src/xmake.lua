@@ -13,13 +13,13 @@ target("xsl_log_ctl")do
             warn = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_WARNING",
             error = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_ERROR",
             critical = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_CRITICAL"
-        } 
+        }
         target:add("defines", log_level_map[log_level],{public = true}) -- public is important
     end)
     on_package(function(package) end)
 end
 
-includes("net","utils","wheel","coro")
+includes("net","utils","wheel","coro","sys")
 
 
 target("xsl_convert")do

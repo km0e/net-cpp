@@ -9,11 +9,7 @@ using transport::Acceptor;
 using transport::bind;
 using transport::connect;
 using transport::listen;
-using transport::recv;
 using transport::Resolver;
-using transport::send;
-using transport::SockAddrV4;
-using transport::SockAddrV4View;
 using transport::TcpConnManager;
 using transport::TcpConnManagerConfig;
 using transport::TcpHandleHint;
@@ -30,5 +26,6 @@ using transport::TcpSendString;
 using transport::TcpSendTasks;
 using transport::TcpSendTasksProxy;
 using transport::TcpServer;
+using transport::TcpStream;
 NET_NAMESPACE_END
 #endif  // _XSL_NET_TRANSPORT_H_

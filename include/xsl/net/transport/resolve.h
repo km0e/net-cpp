@@ -107,6 +107,9 @@ enum class ResolveFlag : int {
 
 ResolveFlag operator|(ResolveFlag lhs, ResolveFlag rhs);
 
+const ResolveFlag SERVER_FLAGS = ResolveFlag::ADDRCONFIG | ResolveFlag::PASSIVE;
+const ResolveFlag CLIENT_FLAGS = ResolveFlag::ADDRCONFIG;
+
 using ResolveResult = std::expected<AddrInfo, std::error_condition>;
 
 namespace impl {

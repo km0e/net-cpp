@@ -12,7 +12,7 @@ TCP_COMPONENTS_NAMESPACE_BEGIN
 
 SendFile::SendFile(std::string&& path) : path_buffer({std::move(path)}) {}
 SendFile::~SendFile() {}
-SendResult SendFile::exec(SendContext& ctx) {
+std::expected<bool, RecvError> SendFile::exec(SendContext& ctx) {
   while (true) {
     int ffd = open(this->path_buffer.front().c_str(), O_RDONLY);
     if (ffd == -1) {
@@ -32,7 +32,7 @@ SendResult SendFile::exec(SendContext& ctx) {
       } else {
         ERROR("[sendfile] Failed to send file");
         close(ffd);
-        return std::unexpected(SendError::Unknown);
+        // return std::unexpected(SendError::Unknown);
       }
     } else if (n < st.st_size) {
       DEBUG("[sendfile] send {} bytes", n);

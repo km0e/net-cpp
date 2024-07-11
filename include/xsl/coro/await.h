@@ -13,29 +13,67 @@ template <class Ntf, class ResultType = Ntf>
 class CallbackAwaiter {
 public:
   using callback_type = std::function<void(std::function<void(Ntf&&)>&&)>;
-  
+
   CallbackAwaiter(callback_type&& func) : _func(std::move(func)), _ntf() {}
   bool await_ready() const noexcept {
-    DEBUG("");
+    DEBUG("CallbackAwaiter await_ready");
     return false;
   }
   template <class Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) noexcept {
-    DEBUG("");
+    DEBUG("CallbackAwaiter await_suspend for {}", (uint64_t)handle.address());
     _func([this, handle](Ntf&& result) {
       _ntf = std::move(result);
-      DEBUG("set result");
-      handle.promise().dispatch([handle]() { handle.resume(); });
+      DEBUG("CallbackAwaiter set result");
+      handle.promise().dispatch([handle]() {
+        DEBUG("CallbackAwaiter resume {}", (uint64_t)handle.address());
+        handle.resume();
+      });
     });
   }
-  ResultType await_resume() noexcept {
-    DEBUG("return result");
+  ResultType
+  await_resume() noexcept {  // if ResultType is not Ntf, then you should override this function
+    DEBUG("CallbackAwaiter return result");
     return std::move(*_ntf);
   }
 
 protected:
   callback_type _func;
   std::optional<Ntf> _ntf;
+};
+
+template <class ResultType>
+class CallbackAwaiter<void, ResultType> {
+public:
+  using callback_type = std::function<void(std::function<void(void)>&&)>;
+
+  CallbackAwaiter(callback_type&& func) : _func(std::move(func)) {}
+  bool await_ready() const noexcept {
+    DEBUG("await_ready");
+    return false;
+  }
+  template <class Promise>
+  void await_suspend(std::coroutine_handle<Promise> handle) noexcept {
+    DEBUG("await_suspend");
+    _func([this, handle]() {
+      DEBUG("set result");
+      handle.promise().dispatch([handle]() {
+        handle();
+        if (handle.done()) {
+          DEBUG("handle is done");
+          handle.promise().next();
+        }
+      });
+    });
+  }
+  ResultType
+  await_resume() noexcept {  // if ResultType is not Ntf, then you should override this function
+    DEBUG("return result");
+    return;
+  }
+
+protected:
+  callback_type _func;
 };
 
 XSL_CORO_NAMESPACE_END

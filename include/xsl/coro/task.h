@@ -9,8 +9,10 @@
 
 #  include <cassert>
 #  include <coroutine>
+#  include <cstdint>
 #  include <exception>
 #  include <expected>
+#  include <functional>
 #  include <memory>
 #  include <optional>
 #  include <utility>
@@ -34,20 +36,18 @@ public:
   TaskAwaiter(const TaskAwaiter &) = delete;
   TaskAwaiter &operator=(const TaskAwaiter &) = delete;
   ~TaskAwaiter() {
-    DEBUG("destructor");
+    DEBUG("TaskAwaiter destructor for {}", (uint64_t)_handle.address());
     assert(_handle.done());
     _handle.destroy();
   }
 
   bool await_ready() const {
-    DEBUG("awaiter");
-    _handle();
     return _handle.done();
   }
 
   template <class Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) {
-    DEBUG("awaiter");
+    DEBUG("task await_suspend for {}", (uint64_t)handle.address());
     if constexpr (!std::is_same_v<typename promise_traits<Promise>::executor_type, Executor>) {
       this->_handle.promise().next(handle);
     } else {
@@ -62,7 +62,7 @@ public:
   }
 
   ResultType await_resume() {
-    DEBUG("awaiter");
+    DEBUG("task await_resume for {}", (uint64_t)_handle.address());
     return *_handle.promise();
   }
 
@@ -75,22 +75,16 @@ class TaskPromiseBase {
 public:
   using result_type = ResultType;
   using executor_type = Executor;
-  TaskPromiseBase() : _result(std::nullopt), _next_handle(nullptr), _executor(nullptr) {}
-  std::suspend_always initial_suspend() {
+  TaskPromiseBase() : _result(std::nullopt), _next_handle(std::nullopt), _executor(nullptr) {}
+  std::suspend_never initial_suspend() {
     DEBUG("initial_suspend");
     return {};
   }
+  ~TaskPromiseBase() { DEBUG("~TaskPromiseBase"); }
 
   std::suspend_always final_suspend() noexcept {
     DEBUG("final_suspend");
-    if (!_next_handle) {
-      return {};
-    }
-    if (this->_executor)
-      this->_executor->schedule([next_handle = _next_handle]() mutable { next_handle(); });
-    else
-      _next_handle();
-    return {};
+     return {};
   }
 
   void unhandled_exception() { _result = std::unexpected{std::current_exception()}; }
@@ -111,8 +105,22 @@ public:
     this->_executor = executor;
     return *this;
   }
+  template <class Promise>
+  void next(std::coroutine_handle<Promise> handle) {
+    _next_handle = [handle]() mutable {
+      handle();
+      if (handle.done()) {
+        DEBUG("handle is done");
+        handle.promise().next();
+      }
+    };
+  }
 
-  void next(std::coroutine_handle<> handle) { _next_handle = handle; }
+  void next() {
+    if (_next_handle) {
+      this->dispatch([next_handle = std::move(*_next_handle)]() mutable { next_handle(); });
+    }
+  }
 
   const std::shared_ptr<Executor> &executor() const { return _executor; }
 
@@ -129,7 +137,7 @@ public:
 protected:
   std::optional<Result<ResultType>> _result;
 
-  std::coroutine_handle<> _next_handle;
+  std::optional<std::function<void()>> _next_handle;
 
   std::shared_ptr<Executor> _executor;
 };

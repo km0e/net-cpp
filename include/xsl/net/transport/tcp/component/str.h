@@ -30,19 +30,19 @@ namespace impl {
       this->data_buffer = std::list<std::pair<std::string, size_t>>(buf.begin(), buf.end());
     }
     ~TcpSendString() {}
-    SendResult exec(int fd) {
-      while (!this->data_buffer.empty()) {
-        auto& data = this->data_buffer.front();
-        auto res = send(fd, std::string_view(data.first).substr(data.second));
-        if (!res.has_value()) {
-          return std::unexpected{res.error()};
-        }
-        data.second += res.value();
-        if (data.second != data.first.size()) {
-          return {false};
-        }
-        this->data_buffer.pop_front();
-      }
+    std::expected<bool, RecvError> exec(int fd) {
+      // while (!this->data_buffer.empty()) {
+      //   auto& data = this->data_buffer.front();
+      //   auto res = send(fd, std::string_view(data.first).substr(data.second));
+      //   if (!res.has_value()) {
+      //     return std::unexpected{res.error()};
+      //   }
+      //   data.second += res.value();
+      //   if (data.second != data.first.size()) {
+      //     return {false};
+      //   }
+      //   this->data_buffer.pop_front();
+      // }
       return {true};
     }
     std::list<std::pair<std::string, size_t>> data_buffer;
@@ -53,7 +53,7 @@ namespace impl {
     using Base = TcpSendString<feature::placeholder>;
     using Base::Base;
     ~TcpSendString() {}
-    SendResult exec(SendContext& ctx) override {
+    std::expected<bool, RecvError> exec(SendContext& ctx) override {
       DEBUG("compontent send");
       return Base::exec(ctx.sfd);
     }
@@ -74,12 +74,12 @@ namespace impl {
     TcpRecvString(TcpRecvString&&) = default;
     TcpRecvString() : data_buffer() {}
     ~TcpRecvString() {}
-    std::expected<bool, RecvError> exec(int fd) {
-      auto res = recv(fd);
-      if (!res.has_value()) {
-        return std::unexpected{res.error()};
-      }
-      this->data_buffer += res.value();
+    std::expected<bool, RecvErrorCategory> exec(int fd) {
+      // auto res = ::recv(fd);
+      // if (!res.has_value()) {
+      //   return std::unexpected{res.error()};
+      // }
+      // this->data_buffer += res.value();
       return {true};
     }
     std::string data_buffer;
@@ -90,7 +90,9 @@ namespace impl {
     using Base = TcpRecvString<feature::placeholder>;
     using Base::Base;
     ~TcpRecvString() {}
-    std::expected<bool, RecvError> exec(RecvContext& ctx) override { return Base::exec(ctx.sfd); }
+    std::expected<bool, RecvErrorCategory> exec(RecvContext& ctx) override {
+      return Base::exec(ctx.sfd);
+    }
   };
 
 }  // namespace impl

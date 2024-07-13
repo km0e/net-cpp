@@ -11,6 +11,8 @@ project(
 
 set(CMAKE_CXX_STANDARD 23)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS True)
+
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build)
 
 # ---- Include guards ----

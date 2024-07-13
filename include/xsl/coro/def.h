@@ -1,12 +1,12 @@
 #pragma once
 #ifndef XSL_CORO_DEF
 #  define XSL_CORO_DEF
-#  define XSL_CORO_NAMESPACE_BEGIN namespace xsl::coro {
-#  define XSL_CORO_NAMESPACE_END }
+#  define XSL_CORO_NB namespace xsl::coro {
+#  define XSL_CORO_NE }
 #  include <coroutine>
 #  include <exception>
 #  include <expected>
-XSL_CORO_NAMESPACE_BEGIN
+XSL_CORO_NB
 
 /*
 void test1() {
@@ -69,6 +69,6 @@ using to_awaiter_t = decltype(std::declval<T>().operator co_await());
 template <class ResultType>
 using Result = std::expected<ResultType, std::exception_ptr>;
 
-XSL_CORO_NAMESPACE_END
+XSL_CORO_NE
 
 #endif  // XSL_CORO_DEF

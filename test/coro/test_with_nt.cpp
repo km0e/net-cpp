@@ -6,7 +6,6 @@
 #include <gtest/gtest.h>
 
 #include <semaphore>
-#include <thread>
 using namespace xsl::coro;
 
 TEST(Task, just_return) {
@@ -16,19 +15,20 @@ TEST(Task, just_return) {
   no_return_task<NewThreadExecutor>(value).by(executor).block();
   ASSERT_EQ(value, 1);
 
-  no_return_task<NewThreadExecutor>(value).by(executor).detach();
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  ASSERT_EQ(value, 1);
+  std::binary_semaphore sem(0);
+  sync_no_return_task<NewThreadExecutor>(value, sem).by(executor).detach();
+  sem.acquire();
+  ASSERT_EQ(value, 2);
 
-  ASSERT_EQ(return_task<NewThreadExecutor>().by(executor).block(), 2);
+  EXPECT_EQ(return_task<NewThreadExecutor>().by(executor).block(), 1);
 }
 
 TEST(Task, just_throw) {
   auto executor = std::make_shared<NewThreadExecutor>();
-  ASSERT_THROW(no_return_exception_task<NewThreadExecutor>().by(executor).block(),
+  EXPECT_THROW(no_return_exception_task<NewThreadExecutor>().by(executor).block(),
                std::runtime_error);
 
-  ASSERT_THROW(return_exception_task<NewThreadExecutor>().by(executor).block(), std::runtime_error);
+  EXPECT_THROW(return_exception_task<NewThreadExecutor>().by(executor).block(), std::runtime_error);
 }
 
 TEST(Task, async_task) {
@@ -48,7 +48,7 @@ TEST(Task, async_task) {
 
   task1(value).by(executor).detach();
   sem.acquire();
-  ASSERT_EQ(value, 2);
+  EXPECT_EQ(value, 4);
 
   auto task2 = [&sem](int &value) -> Task<void, NewThreadExecutor> {
     value = co_await return_task() + 1;
@@ -57,50 +57,42 @@ TEST(Task, async_task) {
   };
   task2(value).by(executor).block();
   sem.acquire();
-  ASSERT_EQ(value, 3);
+  ASSERT_EQ(value, 2);
 
   task2(value).by(executor).detach();
   sem.acquire();
-  ASSERT_EQ(value, 3);
+  EXPECT_EQ(value, 2);
 
   auto task3 = []() -> Task<int, NewThreadExecutor> {
     int value = 0;
     co_await no_return_task(value);
     co_return value + 1;
   };
-  ASSERT_EQ(task3().by(executor).block(), 2);
+  EXPECT_EQ(task3().by(executor).block(), 2);
 
   auto task4 = []() -> Task<int, NewThreadExecutor> { co_return co_await return_task() + 1; };
-  ASSERT_EQ(task4().by(executor).block(), 3);
+  EXPECT_EQ(task4().by(executor).block(), 2);
 }
 
 TEST(Task, async_exception_task) {
   auto executor = std::make_shared<NoopExecutor>();
-  ASSERT_THROW(
-      []() -> Task<void> {
-        co_await no_return_exception_task();
-        co_return;
-      }()
-                  .by(executor)
-                  .block(),
-      std::runtime_error);
+  auto task1 = []() -> Task<void> {
+    co_await no_return_exception_task();
+    co_return;
+  }();
+  ASSERT_THROW(task1.by(executor).block(), std::runtime_error);
 
-  ASSERT_THROW(
-      []() -> Task<int> { co_return co_await return_exception_task() + 1; }().by(executor).block(),
-      std::runtime_error);
+  auto task2 = []() -> Task<void> { co_await return_exception_task(); }();
+  ASSERT_THROW(task2.by(executor).block(), std::runtime_error);
 
-  ASSERT_THROW(
-      []() -> Task<int> {
-        co_await no_return_exception_task();
-        co_return 1;
-      }()
-                  .by(executor)
-                  .block(),
-      std::runtime_error);
+  auto task3 = []() -> Task<int> {
+    co_await no_return_exception_task();
+    co_return 1;
+  }();
+  ASSERT_THROW(task3.by(executor).block(), std::runtime_error);
 
-  ASSERT_THROW(
-      []() -> Task<int> { co_return co_await return_exception_task() + 1; }().by(executor).block(),
-      std::runtime_error);
+  auto task4 = []() -> Task<int> { co_return co_await return_exception_task() + 1; }();
+  ASSERT_THROW(task4.by(executor).block(), std::runtime_error);
 }
 
 int main(int argc, char **argv) {

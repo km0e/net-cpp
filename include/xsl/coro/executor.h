@@ -5,7 +5,7 @@
 #  include "xsl/coro/def.h"
 
 #  include <functional>
-XSL_CORO_NAMESPACE_BEGIN
+XSL_CORO_NB
 
 template <class T>
 concept Executor = requires(T t, std::move_only_function<void()> func) {
@@ -22,6 +22,6 @@ public:
   void schedule(std::move_only_function<void()> &&func);
 };
 
-XSL_CORO_NAMESPACE_END
+XSL_CORO_NE
 
 #endif  // XSL_CORO_EXECUTOR

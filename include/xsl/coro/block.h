@@ -1,126 +1,31 @@
 #pragma once
+
 #ifndef XSL_CORO_BLOCK
 #  define XSL_CORO_BLOCK
 #  include "xsl/coro/def.h"
-#  include "xsl/logctl.h"
+#  include "xsl/coro/final.h"
 
-#  include <condition_variable>
-#  include <coroutine>
-#  include <cstddef>
 #  include <expected>
-#  include <mutex>
+#  include <semaphore>
 #  include <utility>
-XSL_CORO_NAMESPACE_BEGIN
-template <class ResultType>
-class BlockPromise;
-template <class ResultType>
-class Block {
-public:
-  using promise_type = BlockPromise<ResultType>;
+XSL_CORO_NB
 
-  explicit Block(std::coroutine_handle<promise_type> handle) noexcept : _handle(handle) {}
-
-  Block(Block &&task) noexcept : _handle(std::exchange(task._handle, {})) {}
-
-  Block(const Block &) = delete;
-
-  Block &operator=(const Block &) = delete;
-
-  ~Block() {
-    DEBUG("~Block");
-    if (_handle) _handle.destroy();
-  }
-
-  ResultType operator*() { return *_handle.promise(); }
-
-private:
-  std::coroutine_handle<promise_type> _handle;
-};
-
-namespace detail {
-  template <class ResultType>
-  class BlockPromiseBase {
-  public:
-    using result_type = ResultType;
-    using executor_type = no_executor;
-    BlockPromiseBase() : _result(std::nullopt), _fin_lock(), _fin_cv() {}
-    std::suspend_never initial_suspend() {
-      DEBUG("initial_suspend");
-      return {};
-    }
-
-    std::suspend_always final_suspend() noexcept {
-      DEBUG("final_suspend");
-      _fin_cv.notify_all();
-      return {};
-    }
-
-    void unhandled_exception() { _result = std::unexpected{std::current_exception()}; }
-    void next() {}
-    ResultType operator*() {
-      DEBUG("operator*");
-      std::unique_lock<std::mutex> lock(_fin_lock);
-      if (!_result) _fin_cv.wait(lock);
-      if (*_result) {
-        if constexpr (std::is_same_v<ResultType, void>) {
-          return **_result;
-        } else {
-          return std::move(**_result);
-        }
-      }
-      std::rethrow_exception(_result->error());
-    }
-
-    std::nullptr_t executor() const noexcept { return nullptr; }
-
-  protected:
-    std::optional<std::expected<ResultType, std::exception_ptr>> _result;
-
-    std::mutex _fin_lock;
-    std::condition_variable _fin_cv;
-  };
-}  // namespace detail
-template <class ResultType>
-class BlockPromise : public detail::BlockPromiseBase<ResultType> {
-public:
-  using Base = detail::BlockPromiseBase<ResultType>;
-  using Base::_result;
-
-  Block<ResultType> get_return_object() {
-    return Block{std::coroutine_handle<BlockPromise>::from_promise(*this)};
-  }
-
-  void return_value(ResultType value) {
-    DEBUG("return_value");
-    _result = Result<ResultType>(std::move(value));
-  }
-};
-template <>
-class BlockPromise<void> : public detail::BlockPromiseBase<void> {
-public:
-  using Base = detail::BlockPromiseBase<void>;
-  using Base::_result;
-
-  Block<void> get_return_object() {
-    return Block{std::coroutine_handle<BlockPromise>::from_promise(*this)};
-  }
-  void return_void() {
-    DEBUG("return_value");
-    _result = Result<void>();
-  }
-};
-/**
- * @brief block
- * @tparam Awaiter
- * @param task
- * @return Block<typename awaiter_traits<to_awaiter_t<Awaiter>>::result_type>
- * @note after wrapping the task into a block, you need to call operator* to block the current
- * thread until the task is finished
- */
 template <ToAwaiter Awaiter>
-Block<typename awaiter_traits<to_awaiter_t<Awaiter>>::result_type> block(Awaiter &&task) {
-  co_return co_await std::move(task);
+auto block(Awaiter &&awaiter) -> typename awaiter_traits<to_awaiter_t<Awaiter>>::result_type {
+  using result_type = typename awaiter_traits<to_awaiter_t<Awaiter>>::result_type;
+  std::binary_semaphore sem{0};
+  auto final = [&sem](Awaiter awaiter) -> Final<result_type> {
+    struct Release {
+      std::binary_semaphore &sem;
+      ~Release() { sem.release(); }
+    } release{sem};
+
+    co_return co_await awaiter;
+  }(std::move(awaiter));
+
+  sem.acquire();
+  return *final;
 }
 
-XSL_CORO_NAMESPACE_END
+XSL_CORO_NE
 #endif  // XSL_CORO_BLOCK

@@ -2,11 +2,11 @@
 #include "xsl/coro/executor.h"
 
 #include <thread>
-XSL_CORO_NAMESPACE_BEGIN
+XSL_CORO_NB
 void NoopExecutor::schedule(std::move_only_function<void()> &&func) { func(); }
 
 void NewThreadExecutor::schedule(std::move_only_function<void()> &&func) {
   std::thread(std::move(func)).detach();
 }
 
-XSL_CORO_NAMESPACE_END
+XSL_CORO_NE

@@ -1,11 +1,9 @@
-#include "xsl/coro/task.h"
 #include "coro/tool.h"
+#include "xsl/coro/task.h"
+#include "xsl/logctl.h"
 
 #include <gtest/gtest.h>
-#include <vector>
-#include "xsl/logctl.h"
 using namespace xsl::coro;
-
 
 TEST(Task, just_return) {
   int value = 0;
@@ -13,7 +11,7 @@ TEST(Task, just_return) {
   no_return_task(value).block();
   ASSERT_EQ(value, 1);
 
-  ASSERT_EQ(return_task().block(), 2);
+  ASSERT_EQ(return_task().block(), 1);
 }
 
 TEST(Task, just_throw) {
@@ -37,7 +35,7 @@ TEST(Task, async_task) {
     co_return;
   }(value);
   task2.block();
-  ASSERT_EQ(value, 3);
+  ASSERT_EQ(value, 2);
 
   auto task3 = []() -> Task<int> {
     int value = 0;
@@ -46,30 +44,32 @@ TEST(Task, async_task) {
   }();
   ASSERT_EQ(task3.block(), 2);
 
-  auto task4 = []() -> Task<int> {
-    co_return co_await return_task() + 1;
-  }();
-  ASSERT_EQ(task4.block(), 3);
+  auto task4 = []() -> Task<int> { co_return co_await return_task() + 1; }();
+  ASSERT_EQ(task4.block(), 2);
 }
 
 TEST(Task, async_exception_task) {
-  ASSERT_THROW([]() -> Task<void> {
+  auto task1 = []() -> Task<void> {
     co_await no_return_exception_task();
     co_return;
-  }().block(), std::runtime_error);
+  }();
+  ASSERT_THROW(task1.block(), std::runtime_error);
 
-  ASSERT_THROW([]() -> Task<int> {
-    co_return co_await return_exception_task() + 1;
-  }().block(), std::runtime_error);
+  auto task2 = []() -> Task<void> {
+    co_await return_exception_task();
+    co_return;
+  }();
+  ASSERT_THROW(task2.block(), std::runtime_error);
 
-  ASSERT_THROW([]() -> Task<int> {
+  auto task3 = []() -> Task<int> {
     co_await no_return_exception_task();
     co_return 1;
-  }().block(), std::runtime_error);
+  }();
+  ASSERT_THROW(task3.block(), std::runtime_error);
 
-  ASSERT_THROW([]() -> Task<int> {
-    co_return co_await return_exception_task() + 1;
-  }().block(), std::runtime_error);
+  auto task4 = []() -> Task<int> { co_return co_await return_exception_task() + 1; }();
+
+  ASSERT_THROW(task4.block(), std::runtime_error);
 }
 
 TEST(Task, async_task_with_executor) {
@@ -85,10 +85,8 @@ TEST(Task, async_task_with_executor) {
   ASSERT_EQ(value, 2);
 }
 
-
 int main(int argc, char **argv) {
-  // xsl::no_log();
-  xsl::set_log_level(xsl::LogLevel::TRACE);
+  xsl::no_log();
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

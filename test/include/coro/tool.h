@@ -1,4 +1,5 @@
 #pragma once
+#include <semaphore>
 #ifndef _XSL_TEST_CORO_TOOL_
 #  define _XSL_TEST_CORO_TOOL_
 #  include "xsl/coro/await.h"
@@ -32,13 +33,13 @@ inline Task<void, Executor> multi_resource_task(int &value) {
 
 template <class Executor = NoopExecutor>
 inline Task<void, Executor> no_return_task(int &value) {
-  value = 1;
+  ++value;
   co_return;
 }
 
 template <class Executor = NoopExecutor>
 inline Task<int, Executor> return_task() {
-  co_return 2;
+  co_return 1;
 }
 
 template <class Executor = NoopExecutor>
@@ -50,6 +51,23 @@ inline Task<void, Executor> no_return_exception_task() {
 template <class Executor = NoopExecutor>
 inline Task<int, Executor> return_exception_task() {
   throw std::runtime_error("error");
-  co_return 3;
+  co_return 1;
 }
+
+template <class Executor = NoopExecutor>
+inline Task<void, Executor> sync_no_return_task(int &value, std::binary_semaphore &sem) {
+  ++value;
+  sem.release();
+  co_return;
+}
+
+template <class Executor = NoopExecutor>
+inline Task<int, Executor> sync_return_task(std::binary_semaphore &sem) {
+  struct Guard {
+    std::binary_semaphore &sem;
+    ~Guard() { sem.release(); }
+  } guard{sem};
+  co_return 1;
+}
+
 #endif

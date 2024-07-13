@@ -3,35 +3,63 @@
 #  define XSL_CORO_FINAL
 #  include "xsl/coro/def.h"
 
+#  include <cassert>
 #  include <coroutine>
 #  include <cstddef>
 #  include <exception>
+#  include <expected>
+#  include <optional>
+#  include <type_traits>
 #  include <utility>
-XSL_CORO_NAMESPACE_BEGIN
-class Final {
-public:
-  struct FinalPromise {
-    using result_type = void;
-    using executor_type = no_executor;
+XSL_CORO_NB
 
-    Final get_return_object() {
-      return Final{std::coroutine_handle<FinalPromise>::from_promise(*this)};
+template <class ResultType>
+class FinalPromise;
+
+template <class ResultType>
+class Final {
+  class FinalPromiseBase {
+  public:
+    using result_type = ResultType;
+    using executor_type = no_executor;
+    FinalPromiseBase() : _result(std::nullopt) {}
+    auto get_return_object(this auto &&self) {
+      return Final{std::coroutine_handle<std::remove_cvref_t<decltype(self)>>::from_promise(self)};
     }
 
     std::suspend_never initial_suspend() { return {}; }
 
-    std::suspend_never final_suspend() noexcept { return {}; }
+    std::suspend_always final_suspend() noexcept { return {}; }
 
-    void return_void() {}
-
-    void unhandled_exception() { std::rethrow_exception(std::current_exception()); }
+    void unhandled_exception() { this->_result = std::unexpected{std::current_exception()}; }
 
     std::nullptr_t executor() const noexcept { return nullptr; }
 
-    void next() {}
+    template <class Promise>
+    void resume(std::coroutine_handle<Promise> handle) noexcept {
+      handle();
+    }
+
+    result_type operator*() {
+      if (*_result) {
+        if constexpr (std::is_same_v<result_type, void>) {
+          return **_result;
+        } else {
+          return std::move(**_result);
+        }
+      } else {
+        std::rethrow_exception(_result->error());
+      }
+    }
+
+  protected:
+    std::optional<Result<result_type>> _result;
   };
 
-  using promise_type = FinalPromise;
+public:
+  using PromiseBase = FinalPromiseBase;
+
+  using promise_type = FinalPromise<ResultType>;
 
   explicit Final(std::coroutine_handle<promise_type> handle) noexcept : _handle(handle) {}
 
@@ -39,37 +67,40 @@ public:
 
   Final(const Final &) = delete;
 
-  void operator()() const noexcept { _handle(); }
+  ResultType operator*() { return *_handle.promise(); }
 
-  ~Final() {}
+  ~Final() {
+    assert(!_handle || _handle.done());
+    if (_handle) {
+      _handle.destroy();
+    }
+  }
 
 private:
   std::coroutine_handle<promise_type> _handle;
 };
 
-template <ToAwaiter Awaiter>
-decltype(auto) final(Awaiter &&awaiter) {
-  class FinalWrapper {
-  public:
-    using promise_type [[maybe_unused]] = typename Awaiter::promise_type;
+template <class _ResultType>
+class FinalPromise : public Final<_ResultType>::PromiseBase {
+  using Base = Final<_ResultType>::PromiseBase;
+  using Base::_result;
 
-    FinalWrapper(Awaiter &&awaiter) : awaiter(std::move(awaiter)) {}
-    FinalWrapper(FinalWrapper &&wrapper) noexcept : awaiter(std::move(wrapper.awaiter)) {}
-    FinalWrapper &operator=(FinalWrapper &&wrapper) noexcept {
-      awaiter = std::move(wrapper.awaiter);
-      return *this;
-    }
-    void operator()() {
-      [[maybe_unused]] auto detached
-          = [](Awaiter awaiter) -> Final { co_await awaiter; }(std::move(awaiter));
-    }
+public:
+  using result_type = typename Base::result_type;
 
-  private:
-    Awaiter awaiter;
-  };
+  void return_value(result_type &&value) { this->_result = std::move(value); }
+};
 
-  return FinalWrapper{std::forward<Awaiter>(awaiter)};
-}
+template <>
+class FinalPromise<void> : public Final<void>::PromiseBase {
+  using Base = Final<void>::PromiseBase;
+  using Base::_result;
 
-XSL_CORO_NAMESPACE_END
+public:
+  using result_type = typename Base::result_type;
+
+  void return_void() { this->_result = std::expected<void, std::exception_ptr>{}; }
+};
+
+XSL_CORO_NE
 #endif  // XSL_CORO_FINAL

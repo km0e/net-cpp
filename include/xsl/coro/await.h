@@ -7,7 +7,7 @@
 #  include <coroutine>
 #  include <functional>
 
-XSL_CORO_NAMESPACE_BEGIN
+XSL_CORO_NB
 
 template <class Ntf, class ResultType = Ntf>
 class CallbackAwaiter {
@@ -25,10 +25,7 @@ public:
     _func([this, handle](Ntf&& result) {
       _ntf = std::move(result);
       DEBUG("CallbackAwaiter set result");
-      handle.promise().dispatch([handle]() {
-        DEBUG("CallbackAwaiter resume {}", (uint64_t)handle.address());
-        handle.resume();
-      });
+      handle.promise().resume(handle);
     });
   }
   ResultType
@@ -57,13 +54,7 @@ public:
     DEBUG("await_suspend");
     _func([this, handle]() {
       DEBUG("set result");
-      handle.promise().dispatch([handle]() {
-        handle();
-        if (handle.done()) {
-          DEBUG("handle is done");
-          handle.promise().next();
-        }
-      });
+      handle.promise().resume(handle);
     });
   }
   ResultType
@@ -76,5 +67,5 @@ protected:
   callback_type _func;
 };
 
-XSL_CORO_NAMESPACE_END
+XSL_CORO_NE
 #endif  // XSL_CORO_AWAIT

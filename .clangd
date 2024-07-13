@@ -1,2 +1,2 @@
 CompileFlags:
-  Add: ['-D__cpp_concepts=202002']
+  Add: ['-D__cpp_concepts=202002','-D__cpp_explicit_this_parameter=202110']

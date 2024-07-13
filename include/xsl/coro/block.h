@@ -7,21 +7,21 @@
 
 #  include <expected>
 #  include <semaphore>
-#  include <utility>
 XSL_CORO_NB
 
-template <ToAwaiter Awaiter>
-auto block(Awaiter &&awaiter) -> typename awaiter_traits<to_awaiter_t<Awaiter>>::result_type {
-  using result_type = typename awaiter_traits<to_awaiter_t<Awaiter>>::result_type;
+template <class Awaiter>
+  requires Awaitable<Awaiter, Final<typename awaiter_traits<Awaiter>::result_type>>
+auto block(Awaiter &awaiter) -> typename awaiter_traits<Awaiter>::result_type {
+  using result_type = typename awaiter_traits<Awaiter>::result_type;
   std::binary_semaphore sem{0};
-  auto final = [&sem](Awaiter awaiter) -> Final<result_type> {
+  auto final = [&sem](Awaiter &awaiter) -> Final<result_type> {
     struct Release {
       std::binary_semaphore &sem;
       ~Release() { sem.release(); }
     } release{sem};
 
     co_return co_await awaiter;
-  }(std::move(awaiter));
+  }(awaiter);
 
   sem.acquire();
   return *final;

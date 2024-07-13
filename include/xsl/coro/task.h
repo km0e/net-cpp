@@ -213,7 +213,10 @@ public:
 
   void detach(std::shared_ptr<executor_type> &executor) { this->by(executor).detach(); }
 
-  result_type block() { return coro::block(std::move(*this)); }
+  result_type block() {
+    auto self = std::move(*this);
+    return coro::block(self);
+  }
 
   TaskAwaiter<result_type, executor_type> operator co_await() {
     DEBUG("move handle to TaskAwaiter");
@@ -225,6 +228,8 @@ protected:
 
   TaskAwaiter<result_type, executor_type> _co_await() { return std::exchange(_handle, {}); }
 };
+
+static_assert(Awaitable<Task<int>>, "Task<int> is not Awaitable");
 
 XSL_CORO_NE
 #endif  // XSL_CORO_TASK

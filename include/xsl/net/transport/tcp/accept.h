@@ -1,6 +1,7 @@
 #pragma once
 #ifndef XSL_NET_TRANSPORT_TCP_ACCEPT
 #  define XSL_NET_TRANSPORT_TCP_ACCEPT
+#  include "xsl/coro/def.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/sync.h"
 #  include "xsl/net/transport/tcp/def.h"
@@ -11,6 +12,7 @@
 #  include <optional>
 #  include <queue>
 #  include <system_error>
+#  include <utility>
 TCP_NAMESPACE_BEGIN
 /**
  * @brief Acceptor is a coroutine that can be used to accept a connection
@@ -26,7 +28,7 @@ class Acceptor {
       this->events.push(events);
       if (this->cb) {
         DEBUG("dispatch");
-        auto cb = std::move(this->cb);
+        auto cb = std::exchange(this->cb, std::nullopt);
         (*cb)();
         /**
          * @brief why move cb before calling it? not calling it directly and then reset it?
@@ -50,6 +52,7 @@ class Acceptor {
   };
 
 public:
+  using result_type = AcceptResult;
   Acceptor(Socket &&skt, std::shared_ptr<Poller> poller)
       : impl(std::make_unique<AcceptorImpl>(std::move(skt))) {
     poller->add(impl->skt.raw_fd(), IOM_EVENTS::IN,
@@ -85,5 +88,7 @@ public:
 private:
   std::unique_ptr<AcceptorImpl> impl;
 };
+static_assert(coro::Awaitable<Acceptor>, "Acceptor must be an Awaitable");
+
 TCP_NAMESPACE_END
 #endif

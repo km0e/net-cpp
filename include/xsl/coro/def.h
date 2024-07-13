@@ -1,4 +1,5 @@
 #pragma once
+#include <utility>
 #ifndef XSL_CORO_DEF
 #  define XSL_CORO_DEF
 #  define XSL_CORO_NB namespace xsl::coro {
@@ -45,26 +46,34 @@ public:
   using executor_type = typename Promise::executor_type;
 };
 
+struct noop_coroutine {
+  struct promise_type {
+    using result_type = void;
+    using executor_type = no_executor;
+    noop_coroutine get_return_object() { return noop_coroutine{}; }
+    std::suspend_never initial_suspend() { return {}; }
+    std::suspend_never final_suspend() noexcept { return {}; }
+    void return_void() {}
+    void unhandled_exception() {}
+    template <class F>
+    void dispatch(F&&) {}
+    template <class Promise>
+    void resume(std::coroutine_handle<Promise>) {}
+  };
+  using promise_type = promise_type;
+};
+
+template <class Awaiter, class Coroutine = noop_coroutine>
+concept Awaitable = requires() { [](Awaiter& a) -> Coroutine { co_await a; }; };
+
 template <class Awaiter>
 class awaiter_traits {
 public:
-  using result_type = decltype(std::declval<Awaiter>().await_resume());
+  using result_type = typename Awaiter::result_type;
 };
 
-template <class Awaiter>
-concept Awaitable = requires(Awaiter awaiter) {
-  { awaiter.await_ready() } -> std::same_as<bool>;
-  { awaiter.await_suspend(std::coroutine_handle<>{}) };
-  { awaiter.await_resume() };
-};
-
-template <class T>
-concept ToAwaiter = requires(T t) {
-  { t.operator co_await() } -> Awaitable;
-};
-
-template <class T>
-using to_awaiter_t = decltype(std::declval<T>().operator co_await());
+template <class ToAwaiter>
+using to_awaiter_t = decltype(operator co_await(std::declval<ToAwaiter>()));
 
 template <class ResultType>
 using Result = std::expected<ResultType, std::exception_ptr>;

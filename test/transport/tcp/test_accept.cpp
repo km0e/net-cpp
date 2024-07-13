@@ -1,3 +1,4 @@
+#include "xsl/coro/block.h"
 #include "xsl/feature.h"
 #include "xsl/logctl.h"
 #include "xsl/net/transport.h"
@@ -32,6 +33,7 @@ TEST(bind, create) {
     INFO("Poller shutdown");
   });
   bool ok = false;
+  xsl::flush_log();
   std::thread t2([&poller, &ok, &con, &acc]() {
     auto res = Resolver{}.resolve<Ip<4>, Tcp>("127.0.0.1", port);
     if (!res.has_value()) {
@@ -53,15 +55,17 @@ TEST(bind, create) {
   });
   con.acquire();
   ASSERT_TRUE(ok);
+  xsl::flush_log();
   auto acceptor = Acceptor{std::move(skt.value()), poller};
-  // auto accept_res = acceptor.accept().block();
-  // acc.release();
-  // xsl::flush_log();
-  // ASSERT_TRUE(accept_res.has_value());
-  // ASSERT_NE(accept_res.value().raw_fd(), 0);
-  // poller->shutdown();
-  // t.join();
-  // t2.join();
+  auto accept_res = block(acceptor);
+  acc.release();
+  ASSERT_TRUE(accept_res.has_value());
+  auto [skt2, addr] = std::move(accept_res.value());
+  ASSERT_NE(skt2.raw_fd(), 0);
+  poller->shutdown();
+  t.join();
+  t2.join();
+  xsl::flush_log();
   INFO("Poller joined");
 }
 

@@ -39,6 +39,10 @@ class Final {
     void resume(std::coroutine_handle<Promise> handle) noexcept {
       handle();
     }
+    template <class F>
+    void dispatch(F &&f) {
+      f();
+    }
 
     result_type operator*() {
       if (*_result) {

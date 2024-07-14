@@ -25,7 +25,6 @@ using transport::TcpSendFile;
 using transport::TcpSendString;
 using transport::TcpSendTasks;
 using transport::TcpSendTasksProxy;
-using transport::TcpServer;
 using transport::TcpStream;
 NET_NE
 #endif  // XSL_NET_TRANSPORT

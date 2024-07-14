@@ -100,7 +100,7 @@ private:
 
 using HttpHandlerGenerator = HandlerGenerator<HttpRouter, HttpHandler>;
 
-using HttpServer = TcpServer<Handler<HttpRouter>, HttpHandlerGenerator>;
+// using HttpServer = TcpServer<Handler<HttpRouter>, HttpHandlerGenerator>;
 
 HTTP_NE
 #endif

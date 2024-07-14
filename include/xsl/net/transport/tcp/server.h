@@ -1,55 +1,60 @@
 #pragma once
 #ifndef XSL_NET_TRANSPORT_TCP_SERVER
 #  define XSL_NET_TRANSPORT_TCP_SERVER
-#  include "xsl/logctl.h"
-#  include "xsl/net/transport/tcp/conn.h"
+#  include "xsl/coro/task.h"
+#  include "xsl/net/transport/resolve.h"
+#  include "xsl/net/transport/tcp/accept.h"
 #  include "xsl/net/transport/tcp/def.h"
+#  include "xsl/net/transport/tcp/stream.h"
 #  include "xsl/sync.h"
-#  include "xsl/utils.h"
+#  include "xsl/sys/net/socket.h"
 
-#  include <unistd.h>
-
+#  include <expected>
 #  include <memory>
 
 TCP_NB
 
-template <TcpHandlerLike H, TcpHandlerGeneratorLike<H> HG>
+template <class... Flags>
+std::expected<sys::net::Socket, std::error_condition> tcp_serv(const char *host, const char *port) {
+  auto addr = Resolver{}.resolve<Flags...>(host, port, SERVER_FLAGS);
+  if (!addr) {
+    return std::unexpected(addr.error());
+  }
+  auto bres = bind(addr.value());
+  if (!bres) {
+    return std::unexpected(bres.error());
+  }
+  auto lres = listen(bres.value());
+  if (!lres) {
+    return std::unexpected(lres.error());
+  }
+  return sys::net::Socket{std::move(bres.value())};
+}
+
 class TcpServer {
 public:
-  TcpServer(TcpServer&&) = delete;
-  TcpServer(std::shared_ptr<HG> handler_generator, TcpConnManagerConfig conn_manager_config)
-      : handler_generator(handler_generator), tcp_conn_manager(conn_manager_config) {}
-  ~TcpServer() {}
-  PollHandleHint operator()(int fd, IOM_EVENTS events) {
-    if ((events & IOM_EVENTS::IN) == IOM_EVENTS::IN) {
-      sockaddr addr;
-      socklen_t addr_len = sizeof(addr);
-      int client_fd = ::accept(fd, &addr, &addr_len);
-      if (client_fd == -1) {  // todo: handle error
-        return {PollHandleHintTag::NONE};
-      }
-      if (!set_non_blocking(client_fd)) {
-        WARNING("[TcpServer::<lambda::handler>] Failed to set non-blocking");
-        close(client_fd);
-        return {PollHandleHintTag::NONE};
-      }
-      auto handler = (*this->handler_generator)(client_fd);
-      if (!handler) {
-        WARNING("[TcpServer::<lambda::handler>] Failed to create handler");
-        close(client_fd);
-        return {PollHandleHintTag::NONE};
-      }
-      this->tcp_conn_manager.add(client_fd, std::move(handler));
-      return {PollHandleHintTag::NONE};
+  template <class... Flags>
+  static std::expected<TcpServer, std::error_condition> create(std::shared_ptr<Poller> poller,
+                                                               const char *host, const char *port) {
+    auto skt = tcp_serv<Flags...>(host, port);
+    if (!skt) {
+      return std::unexpected(skt.error());
     }
-    TRACE("there is no IN event");
-    return {PollHandleHintTag::NONE};
+    return TcpServer{std::move(poller), std::move(skt.value())};
   }
-  bool stop() { return true; }
+  TcpServer(const std::shared_ptr<Poller> &poller, Socket &&socket)
+      : poller(poller), acceptor{std::move(socket), this->poller} {}
+  TcpServer(TcpServer &&) = default;
+  coro::Task<std::expected<TcpStream, std::error_condition>> gen() {
+    co_return (co_await acceptor).transform([this](auto &&res) -> TcpStream {
+      auto [skt, _] = std::move(res);
+      return {std::move(skt), this->poller};
+    });
+  }
 
-  std::shared_ptr<HG> handler_generator;
-
-  TcpConnManager<H> tcp_conn_manager;
+private:
+  std::shared_ptr<Poller> poller;
+  Acceptor acceptor;
 };
 
 TCP_NE

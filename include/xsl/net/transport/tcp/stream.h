@@ -11,6 +11,7 @@
 
 #  include <sys/socket.h>
 
+#  include <atomic>
 #  include <cstddef>
 #  include <functional>
 #  include <memory>
@@ -60,54 +61,58 @@ public:
   SendErrorCategory category;
 };
 
-class TcpStream {
-  class TcpStreamImpl {
+namespace impl_tcp_stream {
+  struct InnerHandle {
+    InnerHandle() noexcept : closed() , read_cb(std::nullopt), write_cb(std::nullopt) {}
+    std::atomic_flag closed;
+    sync::UnqRes<std::optional<std::function<void()>>> read_cb, write_cb;
+  };
+  class Callback {
   public:
-    TcpStreamImpl(Socket &&sock) noexcept
-        : sock(std::move(sock)), read_cb(std::nullopt), write_cb(std::nullopt) {}
+    Callback(const std::shared_ptr<InnerHandle> &handle) noexcept : handle(handle) {}
     sync::PollHandleHint operator()(int, sync::IOM_EVENTS events) {
       DEBUG("TcpStream");
+      if (this->handle->closed.test()) {
+        return sync::PollHandleHintTag::DELETE;
+      }
       if (!!(events & sync::IOM_EVENTS::IN)) {
-        auto cb = std::exchange(*this->read_cb.lock(), std::nullopt);
+        auto cb = std::exchange(*this->handle->read_cb.lock(), std::nullopt);
         if (cb) {
           (*cb)();
         }
       }
       if (!!(events & sync::IOM_EVENTS::OUT)) {
-        auto cb = std::exchange(*this->write_cb.lock(), std::nullopt);
+        auto cb = std::exchange(*this->handle->write_cb.lock(), std::nullopt);
         if (cb) {
           (*cb)();
         }
       }
       return sync::PollHandleHintTag::NONE;
     }
-    Socket sock;
-    sync::UnqRes<std::optional<std::function<void()>>> read_cb, write_cb;
-  };
 
+  private:
+    std::shared_ptr<InnerHandle> handle;
+  };
+}  // namespace impl_tcp_stream
+
+class TcpStream {
 public:
   TcpStream(Socket &&sock, std::shared_ptr<sync::Poller> poller) noexcept
-      : impl(std::make_unique<TcpStreamImpl>(std::move(sock))), poller(std::move(poller)) {
-    this->poller->add(
-        this->impl->sock.raw_fd(),
-        sync::IOM_EVENTS::IN | sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-        [impl = this->impl.get()](int fd, sync::IOM_EVENTS events) { return (*impl)(fd, events); });
+      : sock(std::move(sock)), handle(std::make_shared<impl_tcp_stream::InnerHandle>()) {
+    poller->add(this->sock.raw_fd(),
+                sync::IOM_EVENTS::IN | sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
+                impl_tcp_stream::Callback{this->handle});
   }
   TcpStream(TcpStream &&rhs) noexcept = default;
   TcpStream &operator=(TcpStream &&rhs) noexcept = default;
-  ~TcpStream() {
-    if (this->impl) {
-      DEBUG("TcpStream dtor");
-      this->poller->remove(this->impl->sock.raw_fd());
-    }
-  }
+  ~TcpStream() {}
   coro::Task<RecvResult> read(std::string &rbuf) {
     TRACE("start recv string");
     std::vector<std::string> data;
     char buf[MAX_SINGLE_RECV_SIZE];
     ssize_t n;
     for (;;) {
-      n = ::recv(this->impl->sock.raw_fd(), buf, sizeof(buf), 0);
+      n = ::recv(this->sock.raw_fd(), buf, sizeof(buf), 0);
       DEBUG("recv n: {}", n);
       if (n == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -116,8 +121,8 @@ public:
             break;
           }
           DEBUG("no data");
-          co_await coro::CallbackAwaiter<void>{[impl = this->impl.get()](auto &&cb) {
-            *impl->read_cb.lock() = std::move(cb);
+          co_await coro::CallbackAwaiter<void>{[handle = this->handle.get()](auto &&cb) {
+            *handle->read_cb.lock() = std::move(cb);
             DEBUG("set read_cb");
           }};
           continue;
@@ -145,12 +150,13 @@ public:
     ssize_t n;
     size_t total = 0;
     do {
-      n = ::recv(this->impl->sock.raw_fd(), buf, std::min(sizeof(buf), size - total), 0);
+      n = ::recv(this->sock.raw_fd(), buf, std::min(sizeof(buf), size - total), 0);
       DEBUG("recv n: {}", n);
       if (n == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          co_await coro::CallbackAwaiter<void>{
-              [impl = this->impl.get()](auto &&cb) { *impl->read_cb.lock() = std::move(cb); }};
+          co_await coro::CallbackAwaiter<void>{[handle = this->handle.get()](auto &&cb) {
+            *handle->read_cb.lock() = std::move(cb);
+          }};
           continue;
         } else {
           ERROR("Failed to recv data, err : {}", strerror(errno));
@@ -206,12 +212,13 @@ public:
     // return std::unexpected{SendError{SendErrorCategory::Unknown}};
 
     while (true) {
-      ssize_t n = ::send(this->impl->sock.raw_fd(), data.data(), data.size(), 0);
+      ssize_t n = ::send(this->sock.raw_fd(), data.data(), data.size(), 0);
       if (n == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
           DEBUG("need write again");
-          co_await coro::CallbackAwaiter<void>{
-              [impl = this->impl.get()](auto &&cb) { *impl->write_cb.lock() = std::move(cb); }};
+          co_await coro::CallbackAwaiter<void>{[handle = this->handle.get()](auto &&cb) {
+            *handle->write_cb.lock() = std::move(cb);
+          }};
           continue;
         } else {
           co_return std::unexpected{SendError{SendErrorCategory::Unknown}};
@@ -219,7 +226,7 @@ public:
       } else if (n == 0) {
         DEBUG("need write again");
         co_await coro::CallbackAwaiter<void>{
-            [impl = this->impl.get()](auto &&cb) { *impl->write_cb.lock() = std::move(cb); }};
+            [handle = this->handle.get()](auto &&cb) { *handle->write_cb.lock() = std::move(cb); }};
         continue;
       } else if (static_cast<size_t>(n) == data.size()) {
         co_return {true};
@@ -229,8 +236,8 @@ public:
   }
 
 private:
-  std::unique_ptr<TcpStreamImpl> impl;
-  std::shared_ptr<sync::Poller> poller;
+  Socket sock;
+  std::shared_ptr<impl_tcp_stream::InnerHandle> handle;
 };
 TCP_NE
 #endif

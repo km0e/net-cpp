@@ -51,7 +51,7 @@ public:
   }
   template <class Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) noexcept {
-    DEBUG("await_suspend");
+    DEBUG("callback await_suspend for {}", (uint64_t)handle.address());
     _func([this, handle]() {
       DEBUG("set result");
       handle.promise().resume(handle);
@@ -59,7 +59,7 @@ public:
   }
   ResultType
   await_resume() noexcept {  // if ResultType is not Ntf, then you should override this function
-    DEBUG("return result");
+    DEBUG("callback await_resume");
     return;
   }
 

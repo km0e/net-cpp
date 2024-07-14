@@ -3,8 +3,8 @@
 #  define XSL_CORO_TASK
 #  include "xsl/coro/block.h"
 #  include "xsl/coro/def.h"
+#  include "xsl/coro/detach.h"
 #  include "xsl/coro/executor.h"
-#  include "xsl/coro/final.h"
 #  include "xsl/logctl.h"
 
 #  include <cassert>
@@ -50,7 +50,7 @@ public:
 
   template <class Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) {
-    DEBUG("task await_suspend for {}", (uint64_t)handle.address());
+    DEBUG("await_suspend: {} -> {}", (uint64_t)_handle.address(), (uint64_t)handle.address());
     if constexpr (!std::is_same_v<typename promise_traits<Promise>::executor_type, Executor>) {
       this->_handle.promise().next(handle);
     } else {
@@ -122,13 +122,15 @@ class Task {
 
     template <class Promise>
     void resume(std::coroutine_handle<Promise> handle) {
-      this->dispatch([handle, next_resume = std::move(_next_resume)]() mutable {
+      this->dispatch([handle, this]() mutable {
+        DEBUG("task resume {}", (uint64_t)handle.address());
         handle();
+        DEBUG("task resume {} done", (uint64_t)handle.address());
         if (handle.done()) {
-          DEBUG("handle is done");
-          if (next_resume) {
-            DEBUG("next resume");
-            (*next_resume)();
+          DEBUG("task resume handle done");
+          if (this->_next_resume) {
+            DEBUG("task resume next_resume");
+            (*this->_next_resume)();
           }
         }
       });
@@ -205,18 +207,16 @@ public:
 
   void detach() {
     DEBUG("task detach");
-    this->_handle.promise().dispatch(
-        [awaiter = std::move(this->_co_await())]() mutable -> Final<result_type> {
-          co_await awaiter;
-        });
+    // this->_handle.promise().dispatch(
+    //     [awaiter = std::move(this->_co_await())]() mutable -> Block<result_type> {
+    //       co_await awaiter;
+    //     });
+    coro::detach(this->_co_await());
   }
 
   void detach(std::shared_ptr<executor_type> &executor) { this->by(executor).detach(); }
 
-  result_type block() {
-    auto self = std::move(*this);
-    return coro::block(self);
-  }
+  result_type block() { return coro::block(this->_co_await()); }
 
   TaskAwaiter<result_type, executor_type> operator co_await() {
     DEBUG("move handle to TaskAwaiter");

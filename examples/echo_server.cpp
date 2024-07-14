@@ -1,16 +1,10 @@
-#include "xsl/feature.h"
 #include "xsl/logctl.h"
-#include "xsl/net/transport/tcp.h"
-#include "xsl/net/transport/tcp/stream.h"
-#include "xsl/sys.h"
 
 #include <CLI/CLI.hpp>
 #include <xsl/net.h>
-#include <xsl/net/transport.h>
 
 #include <memory>
 #include <string>
-#include <thread>
 #include <utility>
 
 std::string ip = "127.0.0.1";
@@ -19,37 +13,13 @@ using namespace xsl::net;
 using namespace xsl::feature;
 
 xsl::coro::Task<void> session(TcpStream stream) {
-  std::string buf;
-  for (;;) {
-    buf.clear();
-    auto rres = co_await stream.read(buf);
-    if (!rres) {
-      if (rres.error().eof()) {
-        INFO("connection closed");
-        break;
-      } else {
-        WARNING("read error: {}", rres.error().message());
-        break;
-      }
-    }
-    INFO("Received: {}", buf);
-    auto sres = co_await stream.write(buf);
-    if (!sres) {
-      WARNING("write error: {}", sres.error().message());
-      break;
-    }
-    INFO("Sent: {}", buf);
+  for (std::string buf;; buf.clear()) {
+    if (!co_await stream.read(buf)) break;
+    if (!co_await stream.write(buf)) break;
   }
-  co_return;
 }
 
-xsl::coro::Task<void> echo(xsl::Socket &&socket) {
-  auto poller = std::make_shared<xsl::Poller>();
-  std::thread{[poller] {
-    while (true) {
-      poller->poll();
-    }
-  }}.detach();
+xsl::coro::Task<void> echo(xsl::Socket &&socket, std::shared_ptr<xsl::Poller> poller) {
   auto acceptor = Acceptor{std::move(socket), poller};
   for (;;) {
     auto ares = co_await acceptor;
@@ -57,23 +27,25 @@ xsl::coro::Task<void> echo(xsl::Socket &&socket) {
       WARNING("acceptor error: {}", ares.error().message());
     }
     auto [skt, ni] = std::move(ares.value());
-    INFO("Accepted: {}:{}", ni.ip, ni.port);
     session(TcpStream{std::move(skt), poller}).detach();
-    INFO("Accepted");
   }
 }
 
 int main(int argc, char *argv[]) {
-  xsl::set_log_level(xsl::LogLevel::TRACE);
+  xsl::no_log();
   CLI::App app{"Echo server"};
   app.add_option("-i,--ip", ip, "IP address");
   app.add_option("-p,--port", port, "Port");
   CLI11_PARSE(app, argc, argv);
-  INFO("Echo server: {}:{}", ip, port);
+
   auto server = transport::serv<Ip<4>, Tcp>(ip.c_str(), port.c_str());
   if (!server) {
     return 1;
   }
-  echo(std::move(server.value())).block();
+  auto poller = std::make_shared<xsl::Poller>();
+  echo(std::move(server.value()), poller).detach();
+  while (true) {
+    poller->poll();
+  }
   return 0;
 }

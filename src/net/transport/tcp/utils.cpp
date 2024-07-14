@@ -13,7 +13,7 @@
 #include <memory>
 #include <system_error>
 
-TCP_NAMESPACE_BEGIN
+TCP_NB
 
 class EventAwaiter : public coro::CallbackAwaiter<std::tuple<int, IOM_EVENTS>, ConnectResult> {
 public:
@@ -217,4 +217,4 @@ bool set_keep_alive(int fd, bool keep_alive) {
 //   return std::unexpected{SendError::Unknown};
 // }
 
-TCP_NAMESPACE_END
+TCP_NE

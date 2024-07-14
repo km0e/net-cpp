@@ -4,8 +4,8 @@
 #  include "xsl/coro/await.h"
 #  include "xsl/coro/task.h"
 #  include "xsl/logctl.h"
-#  include "xsl/net/sync/poller.h"
 #  include "xsl/net/transport/tcp/def.h"
+#  include "xsl/sync.h"
 #  include "xsl/sys.h"
 
 #  include <sys/socket.h>
@@ -17,7 +17,7 @@
 #  include <optional>
 #  include <string_view>
 #  include <utility>
-TCP_NAMESPACE_BEGIN
+TCP_NB
 enum class RecvErrorCategory {
   Unknown,
   Eof,
@@ -244,5 +244,5 @@ private:
   std::unique_ptr<TcpStreamImpl> impl;
   std::shared_ptr<sync::Poller> poller;
 };
-TCP_NAMESPACE_END
+TCP_NE
 #endif

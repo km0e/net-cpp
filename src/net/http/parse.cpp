@@ -3,7 +3,7 @@
 
 #include <regex>
 
-HTTP_NAMESPACE_BEGIN
+HTTP_NB
 ParseError::ParseError(ParseErrorKind kind)
     : kind(kind), message(PARSE_ERROR_STRINGS[static_cast<int>(kind)]) {}
 ParseError::ParseError(ParseErrorKind kind, std::string message) : kind(kind), message(message) {}
@@ -109,4 +109,4 @@ ParseResult HttpParser::parse(std::string_view& data) {
 
 void HttpParser::clear() { this->view.clear(); }
 
-HTTP_NAMESPACE_END
+HTTP_NE

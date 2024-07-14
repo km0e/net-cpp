@@ -1,6 +1,6 @@
 #include "xsl/net/http/def.h"
 #include "xsl/net/http/proto.h"
-HTTP_NAMESPACE_BEGIN
+HTTP_NB
 
 std::string_view to_string_view(const HttpVersion& version) {
   if (version == HttpVersion::UNKNOWN) return "Unknown";
@@ -76,11 +76,11 @@ std::string to_string(const ContentType& content_type) {
   return result;
 }
 
-HTTP_NAMESPACE_END
+HTTP_NE
 
 #include "xsl/def.h"
 
-XSL_NAMESPACE_BEGIN
+XSL_NB
 template <>
 net::http::HttpVersion from_string_view<net::http::HttpVersion>(std::string_view version) {
   auto iter = std::ranges::find(net::http::HTTP_VERSION_STRINGS, version);
@@ -123,4 +123,4 @@ net::http::content_type::MediaType from_string_view(std::string_view type) {
   return net::http::content_type::MediaType{type_enum, sub_type_enum};
 }
 
-XSL_NAMESPACE_END
+XSL_NE

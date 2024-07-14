@@ -1,18 +1,17 @@
 #pragma once
-#ifndef _XSL_NET_TRANSPORT_TCP_SERVER_H_
-#  define _XSL_NET_TRANSPORT_TCP_SERVER_H_
+#ifndef XSL_NET_TRANSPORT_TCP_SERVER
+#  define XSL_NET_TRANSPORT_TCP_SERVER
 #  include "xsl/logctl.h"
-#  include "xsl/net/sync.h"
-#  include "xsl/net/sync/poller.h"
 #  include "xsl/net/transport/tcp/conn.h"
 #  include "xsl/net/transport/tcp/def.h"
+#  include "xsl/sync.h"
 #  include "xsl/utils.h"
 
 #  include <unistd.h>
 
 #  include <memory>
 
-TCP_NAMESPACE_BEGIN
+TCP_NB
 
 template <TcpHandlerLike H, TcpHandlerGeneratorLike<H> HG>
 class TcpServer {
@@ -53,5 +52,5 @@ public:
   TcpConnManager<H> tcp_conn_manager;
 };
 
-TCP_NAMESPACE_END
+TCP_NE
 #endif

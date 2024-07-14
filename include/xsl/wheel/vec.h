@@ -1,13 +1,13 @@
 #pragma once
-#ifndef _XSL_WHEEL_VEC_H_
-#  define _XSL_WHEEL_VEC_H_
+#ifndef XSL_WHEEL_VEC
+#  define XSL_WHEEL_VEC
 #  include "xsl/wheel/def.h"
 
 #  include <algorithm>
 #  include <cstddef>
 #  include <memory>
 
-WHEEL_NAMESPACE_BEGIN
+WHEEL_NB
 template <typename T>
 class FixedVec {
 public:
@@ -57,5 +57,5 @@ private:
   size_t _size;
   std::unique_ptr<T[]> data;
 };
-WHEEL_NAMESPACE_END
+WHEEL_NE
 #endif

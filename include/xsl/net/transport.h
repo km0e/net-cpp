@@ -1,10 +1,10 @@
 #pragma once
-#ifndef _XSL_NET_TRANSPORT_H_
-#  define _XSL_NET_TRANSPORT_H_
+#ifndef XSL_NET_TRANSPORT
+#  define XSL_NET_TRANSPORT
 #  include "xsl/net/def.h"
 #  include "xsl/net/transport/resolve.h"
 #  include "xsl/net/transport/tcp.h"
-NET_NAMESPACE_BEGIN
+NET_NB
 using transport::Acceptor;
 using transport::bind;
 using transport::connect;
@@ -27,5 +27,5 @@ using transport::TcpSendTasks;
 using transport::TcpSendTasksProxy;
 using transport::TcpServer;
 using transport::TcpStream;
-NET_NAMESPACE_END
-#endif  // _XSL_NET_TRANSPORT_H_
+NET_NE
+#endif  // XSL_NET_TRANSPORT

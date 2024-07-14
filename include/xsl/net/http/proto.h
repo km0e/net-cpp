@@ -1,13 +1,13 @@
 #pragma once
-#ifndef _XSL_NET_HTTP_PROTO_H_
-#  define _XSL_NET_HTTP_PROTO_H_
+#ifndef XSL_NET_HTTP_PROTO
+#  define XSL_NET_HTTP_PROTO
 #  include "xsl/net/http/def.h"
 
 #  include <array>
 #  include <regex>
 #  include <string_view>
 
-HTTP_NAMESPACE_BEGIN
+HTTP_NB
 
 enum class HttpVersion : uint8_t {
   EXT,
@@ -130,10 +130,10 @@ public:
 std::string to_string(const ContentType& content_type);
 std::string& operator+=(std::string& lhs, const ContentType& rhs);
 
-HTTP_NAMESPACE_END
+HTTP_NE
 
 #  include "xsl/convert.h"
-XSL_NAMESPACE_BEGIN
+XSL_NB
 template <>
 net::http::HttpVersion from_string_view(std::string_view type);
 
@@ -148,5 +148,5 @@ net::http::content_type::SubType from_string_view(std::string_view type);
 
 template <>
 net::http::content_type::MediaType from_string_view(std::string_view type);
-XSL_NAMESPACE_END
+XSL_NE
 #endif

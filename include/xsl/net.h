@@ -1,13 +1,11 @@
 #pragma once
-#ifndef _XSL_NET_H
-#  define _XSL_NET_H
+#ifndef XSL_NET_H
+#  define XSL_NET_H
 #  include "xsl/def.h"
 #  include "xsl/net/http.h"
-#  include "xsl/net/sync.h"
 #  include "xsl/net/transport.h"
-XSL_NAMESPACE_BEGIN
+XSL_NB
 using net::create_static_handler;
-using net::Poller;
 using net::HTTP_METHOD_STRINGS;
 using net::HttpHandlerGenerator;
 using net::HttpMethod;
@@ -20,13 +18,6 @@ using net::HttpRouter;
 using net::HttpRouteResult;
 using net::HttpServer;
 using net::HttpVersion;
-using net::IOM_EVENTS;
-using net::poll_add_shared;
-using net::poll_add_unique;
-using net::Poller;
-using net::PollHandleHint;
-using net::PollHandleHintTag;
-using net::PollHandler;
 using net::RouteErrorKind;
 using net::TcpConnManager;
 using net::TcpConnManagerConfig;
@@ -43,5 +34,5 @@ using net::TcpSendTasks;
 using net::TcpSendTasksProxy;
 using net::TcpServer;
 using net::to_string_view;
-XSL_NAMESPACE_END
+XSL_NE
 #endif

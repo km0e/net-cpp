@@ -10,7 +10,7 @@
 // #include <sys/types.h>
 // #include <unistd.h>
 
-// TCP_HELPER_NAMESPACE_BEGIN
+// TCP_HELPER_NB
 
 // SendPipe::SendPipe(int fd) : fd(fd) {}
 // SendPipe::~SendPipe() {}
@@ -50,4 +50,4 @@
 //   }
 //   return {false};
 // }
-// TCP_HELPER_NAMESPACE_END
+// TCP_HELPER_NE

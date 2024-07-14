@@ -9,7 +9,7 @@
 // #include <sys/stat.h>
 // #include <unistd.h>
 
-// TCP_HELPER_NAMESPACE_BEGIN
+// TCP_HELPER_NB
 
 // SendPause::SendPause(bool& cont_send) : cont_send(cont_send) {}
 // SendPause::~SendPause() {}
@@ -31,4 +31,4 @@
 //   cont_recv = true;
 //   return {false};
 // }
-// TCP_HELPER_NAMESPACE_END
+// TCP_HELPER_NE

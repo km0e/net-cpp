@@ -1,9 +1,9 @@
 #pragma once
-#ifndef _XSL_NET_HTTP_HELPER_STATIC_H_
-#  define _XSL_NET_HTTP_HELPER_STATIC_H_
+#ifndef XSL_NET_HTTP_HELPER_STATIC
+#  define XSL_NET_HTTP_HELPER_STATIC
 #  include "xsl/net/http/component/def.h"
 #  include "xsl/net/http/router.h"
-HTTP_HELPER_NAMESPACE_BEGIN
+HTTP_HELPER_NB
 
 using StaticCreateResult = std::expected<http::RouteHandler, http::AddRouteError>;
 
@@ -13,5 +13,5 @@ using StaticCreateResult = std::expected<http::RouteHandler, http::AddRouteError
 
 StaticCreateResult create_static_handler(std::string&& path);
 
-HTTP_HELPER_NAMESPACE_END
-#endif  // _XSL_NET_HTTP_HELPER_STATIC_H_
+HTTP_HELPER_NE
+#endif  // XSL_NET_HTTP_HELPER_STATIC

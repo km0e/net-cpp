@@ -1,8 +1,8 @@
 #pragma once
-#ifndef _XSL_NET_DEF_H_
-#  define _XSL_NET_DEF_H_
+#ifndef XSL_NET_DEF
+#  define XSL_NET_DEF
 
-#  define NET_NAMESPACE_BEGIN namespace xsl::net {
-#  define NET_NAMESPACE_END }
+#  define NET_NB namespace xsl::net {
+#  define NET_NE }
 
 #endif

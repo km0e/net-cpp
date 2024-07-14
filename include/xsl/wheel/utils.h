@@ -1,12 +1,12 @@
 #pragma once
-#ifndef _XSL_WHEEL_UTILS_H_
-#  define _XSL_WHEEL_UTILS_H_
+#ifndef XSL_WHEEL_UTILS
+#  define XSL_WHEEL_UTILS
 #  include "xsl/wheel/def.h"
 #  include "xsl/wheel/str.h"
 
 #  include <functional>
 #  include <string>
-WHEEL_NAMESPACE_BEGIN
+WHEEL_NB
 namespace detail {
 
   class string_hasher : public std::hash<std::string>, public std::hash<std::string_view> {
@@ -20,5 +20,5 @@ namespace detail {
 }  // namespace detail
 template <typename T>
 using sumap = std::unordered_map<std::string, T, detail::string_hasher, std::equal_to<>>;
-WHEEL_NAMESPACE_END
+WHEEL_NE
 #endif

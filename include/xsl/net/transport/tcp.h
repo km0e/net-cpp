@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _XSL_NET_TRANSPORT_TCP_H_
-#  define _XSL_NET_TRANSPORT_TCP_H_
+#ifndef XSL_NET_TRANSPORT_TCP
+#  define XSL_NET_TRANSPORT_TCP
 #  include "xsl/net/transport/def.h"
 #  include "xsl/net/transport/resolve.h"
 #  include "xsl/net/transport/tcp/accept.h"
@@ -12,7 +12,7 @@
 
 #  include <expected>
 #  include <system_error>
-TRANSPORT_NAMESPACE_BEGIN
+TRANSPORT_NB
 using TcpHandleHint = tcp::HandleHint;
 using tcp::TcpHandlerGeneratorLike;
 using tcp::TcpHandlerLike;
@@ -58,5 +58,5 @@ std::expected<Socket, std::error_condition> serv(const char *host, const char *p
   return Socket{std::move(bres.value())};
 }
 
-TRANSPORT_NAMESPACE_END
+TRANSPORT_NE
 #endif

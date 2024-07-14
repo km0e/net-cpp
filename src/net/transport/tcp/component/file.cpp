@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-TCP_COMPONENTS_NAMESPACE_BEGIN
+TCP_COMPONENTS_NB
 
 SendFile::SendFile(std::string&& path) : path_buffer({std::move(path)}) {}
 SendFile::~SendFile() {}
@@ -47,4 +47,4 @@ std::expected<bool, RecvError> SendFile::exec(SendContext& ctx) {
   }
   return {true};
 }
-TCP_COMPONENTS_NAMESPACE_END
+TCP_COMPONENTS_NE

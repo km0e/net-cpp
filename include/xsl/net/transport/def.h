@@ -1,7 +1,7 @@
 #pragma once
-#ifndef _XSL_NET_TRANSPORT_DEF_H_
-#  define _XSL_NET_TRANSPORT_DEF_H_
+#ifndef XSL_NET_TRANSPORT_DEF
+#  define XSL_NET_TRANSPORT_DEF
 
-#  define TRANSPORT_NAMESPACE_BEGIN namespace xsl::net::transport {
-#  define TRANSPORT_NAMESPACE_END }
-#endif  // _XSL_NET_TRANSPORT_DEF_H_
+#  define TRANSPORT_NB namespace xsl::net::transport {
+#  define TRANSPORT_NE }
+#endif  // XSL_NET_TRANSPORT_DEF

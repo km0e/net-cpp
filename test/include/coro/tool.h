@@ -1,7 +1,7 @@
 #pragma once
 #include <semaphore>
-#ifndef _XSL_TEST_CORO_TOOL_
-#  define _XSL_TEST_CORO_TOOL_
+#ifndef XSL_TEST_CORO_TOOL_
+#  define XSL_TEST_CORO_TOOL_
 #  include "xsl/coro/await.h"
 #  include "xsl/coro/task.h"
 #  include "xsl/logctl.h"

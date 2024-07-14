@@ -5,7 +5,7 @@
 #include "xsl/net/http/proto.h"
 
 
-HTTP_NAMESPACE_BEGIN
+HTTP_NB
 
 RequestView::RequestView() : method(), url(), query(), version(), headers() {}
 
@@ -89,4 +89,4 @@ TcpSendTasks HttpResponse<std::string>::into_send_tasks() {
   tasks.emplace_after(tasks.before_begin(), part.into_send_task_ptr());
   return tasks;
 }
-HTTP_NAMESPACE_END
+HTTP_NE

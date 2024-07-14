@@ -5,8 +5,8 @@
 
 #  include <cstdint>
 #  include <string>
-INET_NAMESPACE_BEGIN
+INET_NB
 
 
-INET_NAMESPACE_END
+INET_NE
 #endif

@@ -1,10 +1,10 @@
 #pragma once
-#ifndef _XSL_NET_TRANSPORT_UTILS_H_
-#  define _XSL_NET_TRANSPORT_UTILS_H_
+#ifndef XSL_NET_TRANSPORT_UTILS
+#  define XSL_NET_TRANSPORT_UTILS
 #  include "xsl/coro/task.h"
-#  include "xsl/net/sync.h"
 #  include "xsl/net/transport/resolve.h"
 #  include "xsl/net/transport/tcp/def.h"
+#  include "xsl/sync/poller.h"
 #  include "xsl/sys.h"
 
 #  include <netdb.h>
@@ -15,11 +15,11 @@
 #  include <memory>
 #  include <system_error>
 
-TCP_NAMESPACE_BEGIN
+TCP_NB
 
 using ConnectResult = std::expected<Socket, std::errc>;
 
-coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<Poller> poller);
+coro::Task<ConnectResult> connect(const AddrInfo &ai, std::shared_ptr<sync::Poller> poller);
 
 using BindResult = std::expected<Socket, std::errc>;
 
@@ -35,5 +35,5 @@ bool set_keep_alive(int fd, bool keep_alive = true);
 // using RecvResult = std::expected<std::string, RecvError>;
 // SendResult send(int fd, std::string_view data);
 // RecvResult recv(int fd);
-TCP_NAMESPACE_END
-#endif  // _XSL_NET_TRANSPORT_UTILS_H_
+TCP_NE
+#endif  // XSL_NET_TRANSPORT_UTILS

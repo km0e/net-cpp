@@ -5,7 +5,7 @@
 #include <quill/Frontend.h>
 #include <quill/Logger.h>
 #include <quill/sinks/ConsoleSink.h>
-XSL_NAMESPACE_BEGIN
+XSL_NB
 LogCtl LogCtl::instance{};
 LogCtl::LogCtl() : logger(nullptr) {
   quill::Backend::start();
@@ -20,4 +20,4 @@ LogCtl::~LogCtl() {
   quill::Backend::stop();
 }
 
-XSL_NAMESPACE_END
+XSL_NE

@@ -15,7 +15,7 @@
 #  include <system_error>
 #  include <utility>
 
-TRANSPORT_NAMESPACE_BEGIN
+TRANSPORT_NB
 namespace impl {
   class ResolveCategory : public std::error_category {
   public:
@@ -221,5 +221,5 @@ namespace impl {
   };
 }  // namespace impl
 using Resolver = impl::Resolver;
-TRANSPORT_NAMESPACE_END
+TRANSPORT_NE
 #endif

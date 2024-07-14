@@ -1,7 +1,7 @@
 #include "xsl/wheel/def.h"
 #include "xsl/wheel/str.h"
 
-WHEEL_NAMESPACE_BEGIN
+WHEEL_NB
 void i32_to_bytes(int32_t value, char* bytes) {
   bytes[0] = (value >> 24) & 0xFF;
   bytes[1] = (value >> 16) & 0xFF;
@@ -22,4 +22,4 @@ std::strong_ordering operator<=>(const FixedString& lhs, std::string_view rhs) {
 std::strong_ordering operator<=>(const FixedString& lhs, const char* rhs) {
   return lhs.compare(std::string_view(rhs)) <=> 0;
 }
-WHEEL_NAMESPACE_END
+WHEEL_NE

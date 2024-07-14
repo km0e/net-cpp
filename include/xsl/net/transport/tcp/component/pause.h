@@ -1,10 +1,10 @@
 // #pragma once
-// #ifndef _XSL_NET_TRANSPORT_TCP_HELPER_PAUSE_H_
-// #  define _XSL_NET_TRANSPORT_TCP_HELPER_PAUSE_H_
+// #ifndef XSL_NET_TRANSPORT_TCP_HELPER_PAUSE
+// #  define XSL_NET_TRANSPORT_TCP_HELPER_PAUSE
 // #  include "xsl/net/transport/tcp/context.h"
 // #  include "xsl/net/transport/tcp/helper/def.h"
 
-// TCP_HELPER_NAMESPACE_BEGIN
+// TCP_HELPER_NB
 // class SendPause : public tcp::SendTaskNode {
 // public:
 //   SendPause(bool& cont_send);
@@ -23,5 +23,5 @@
 // protected:
 //   bool& cont_recv;
 // };
-// TCP_HELPER_NAMESPACE_END
+// TCP_HELPER_NE
 // #endif

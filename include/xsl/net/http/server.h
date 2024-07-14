@@ -1,18 +1,18 @@
 #pragma once
 
-#include "xsl/net/transport/tcp/stream.h"
-#ifndef _XSL_NET_HTTP_SERVER_H_
-#  define _XSL_NET_HTTP_SERVER_H_
+#ifndef XSL_NET_HTTP_SERVER
+#  define XSL_NET_HTTP_SERVER
 #  include "xsl/convert.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/parse.h"
 #  include "xsl/net/http/router.h"
-#  include "xsl/net/sync.h"
 #  include "xsl/net/transport.h"
+#  include "xsl/net/transport/tcp/stream.h"
+#  include "xsl/sync.h"
 
-HTTP_NAMESPACE_BEGIN
+HTTP_NB
 
 template <Router R>
 class Handler {
@@ -102,5 +102,5 @@ using HttpHandlerGenerator = HandlerGenerator<HttpRouter, HttpHandler>;
 
 using HttpServer = TcpServer<Handler<HttpRouter>, HttpHandlerGenerator>;
 
-HTTP_NAMESPACE_END
+HTTP_NE
 #endif

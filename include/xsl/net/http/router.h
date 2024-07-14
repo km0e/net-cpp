@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _XSL_NET_HTTP_ROUTER_H_
-#  define _XSL_NET_HTTP_ROUTER_H_
+#ifndef XSL_NET_HTTP_ROUTER
+#  define XSL_NET_HTTP_ROUTER
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/proto.h"
@@ -9,7 +9,7 @@
 #  include <string_view>
 #  include <expected>
 
-HTTP_NAMESPACE_BEGIN
+HTTP_NB
 
 class RouteContext {
 public:
@@ -135,5 +135,5 @@ private:
          make_shared<RouteHandler>(UNIMPLEMENTED_HANDLER)};
 };
 
-HTTP_NAMESPACE_END
+HTTP_NE
 #endif

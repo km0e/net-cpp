@@ -1,11 +1,11 @@
 #pragma once
-#ifndef _XSL_CONVERT_H_
-#  define _XSL_CONVERT_H_
+#ifndef XSL_CONVERT
+#  define XSL_CONVERT
 #  include "xsl/def.h"
 #  include <string_view>
 #  include <system_error>
 #  include <utility>
-XSL_NAMESPACE_BEGIN
+XSL_NB
 
 template <typename T>
 T from_string_view(std::string_view str);
@@ -58,5 +58,5 @@ std::string_view to_string_view(T&& t) {
   return std::forward<T>(t);
 }
 
-XSL_NAMESPACE_END
-#endif  // _XSL_CONVERT_H_
+XSL_NE
+#endif  // XSL_CONVERT

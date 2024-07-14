@@ -1,11 +1,11 @@
 #pragma once
-#ifndef _XSL_NET_HTTP_MSG_H_
-#  define _XSL_NET_HTTP_MSG_H_
+#ifndef XSL_NET_HTTP_MSG
+#  define XSL_NET_HTTP_MSG
 #  include "xsl/feature.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/proto.h"
 #  include "xsl/net/transport.h"
-HTTP_NAMESPACE_BEGIN
+HTTP_NB
 
 using namespace transport::tcp;
 class RequestView {
@@ -142,5 +142,5 @@ using DefaultResponse = HttpResponse<std::string>;
 
 // using ResponseResult = Result<Response, ResponseError>;
 
-HTTP_NAMESPACE_END
+HTTP_NE
 #endif

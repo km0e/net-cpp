@@ -1,6 +1,6 @@
 #include "xsl/net/transport/tcp/component/def.h"
 #include <cstddef>
-TCP_COMPONENTS_NAMESPACE_BEGIN
+TCP_COMPONENTS_NB
 
 SendContext::SendContext(int sfd, SendTasks& tasks) : sfd(sfd), tasks(tasks) {}
 SendContext::~SendContext() {}
@@ -26,4 +26,4 @@ std::expected<bool, RecvErrorCategory> SendTasksProxy::exec(int fd) {
   // return {sum};
   return {0};
 }
-TCP_COMPONENTS_NAMESPACE_END
+TCP_COMPONENTS_NE

@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _XSL_WHEEL_STR_H_
-#  define _XSL_WHEEL_STR_H_
+#ifndef XSL_WHEEL_STR
+#  define XSL_WHEEL_STR
 #  include "xsl/wheel/def.h"
 
 #  include <compare>
@@ -9,7 +9,7 @@
 #  include <string>
 #  include <string_view>
 
-WHEEL_NAMESPACE_BEGIN
+WHEEL_NB
 
 void i32_to_bytes(int32_t value, char* bytes);
 
@@ -119,5 +119,5 @@ inline std::string_view to_string_view(const FixedString& str) {
 std::strong_ordering operator<=>(const FixedString& lhs, const FixedString& rhs);
 std::strong_ordering operator<=>(const FixedString& lhs, std::string_view rhs);
 std::strong_ordering operator<=>(const FixedString& lhs, const char* rhs);
-WHEEL_NAMESPACE_END
+WHEEL_NE
 #endif

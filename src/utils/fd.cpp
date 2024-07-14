@@ -2,7 +2,7 @@
 #include "xsl/utils/fd.h"
 
 #include <fcntl.h>
-UTILS_NAMESPACE_BEGIN
+UTILS_NB
 bool set_non_blocking(int fd, bool non_blocking) {
   int flags = fcntl(fd, F_GETFL, 0);
   if (flags == -1) {
@@ -19,4 +19,4 @@ bool set_non_blocking(int fd, bool non_blocking) {
   }
   return true;
 }
-UTILS_NAMESPACE_END
+UTILS_NE

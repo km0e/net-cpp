@@ -1,11 +1,11 @@
 #include "xsl/logctl.h"
-#include "xsl/net/sync/def.h"
-#include "xsl/net/sync/poller.h"
+#include "xsl/sync/def.h"
+#include "xsl/sync/poller.h"
 
 #include <sys/signal.h>
 
 #include <cstdint>
-SYNC_NAMESPACE_BEGIN
+XSL_SYNC_NB
 IOM_EVENTS operator|(IOM_EVENTS a, IOM_EVENTS b) {
   return static_cast<IOM_EVENTS>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
 }
@@ -38,7 +38,7 @@ std::string_view to_string(PollHandleHintTag tag) {
 
 Poller::Poller()
     : Poller(
-        std::make_shared<HandleProxy>([](std::function<PollHandleHint()>&& f) { return f(); })) {}
+          std::make_shared<HandleProxy>([](std::function<PollHandleHint()>&& f) { return f(); })) {}
 Poller::Poller(std::shared_ptr<HandleProxy>&& proxy) : fd(-1), handlers(), proxy(std::move(proxy)) {
   this->fd = epoll_create(1);
   DEBUG("Poller fd: {}", this->fd);
@@ -122,4 +122,4 @@ void Poller::shutdown() {
   this->fd = -1;
 }
 Poller::~Poller() { this->shutdown(); }
-SYNC_NAMESPACE_END
+XSL_SYNC_NE

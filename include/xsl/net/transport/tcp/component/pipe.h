@@ -1,10 +1,10 @@
 // #pragma once
-// #ifndef _XSL_NET_TRANSPORT_TCP_HELPER_PIPE_H_
-// #  define _XSL_NET_TRANSPORT_TCP_HELPER_PIPE_H_
+// #ifndef XSL_NET_TRANSPORT_TCP_HELPER_PIPE
+// #  define XSL_NET_TRANSPORT_TCP_HELPER_PIPE
 // #  include "xsl/net/transport/tcp/context.h"
 // #  include "xsl/net/transport/tcp/helper/def.h"
 
-// TCP_HELPER_NAMESPACE_BEGIN
+// TCP_HELPER_NB
 // const size_t MAX_SINGLE_PIPE_SIZE = 65535;
 
 // class SendPipe : public tcp::SendTaskNode {
@@ -25,5 +25,5 @@
 // protected:
 //   int fd;
 // };
-// TCP_HELPER_NAMESPACE_END
+// TCP_HELPER_NE
 // #endif

@@ -1,11 +1,11 @@
 #pragma once
-#ifndef _XSL_LOGCTL_H_
-#  define _XSL_LOGCTL_H_
+#ifndef XSL_LOGCTL
+#  define XSL_LOGCTL
 #  include "xsl/def.h"
 
 #  include <quill/LogMacros.h>
 #  include <quill/Logger.h>
-XSL_NAMESPACE_BEGIN
+XSL_NB
 
 enum class LogLevel { NONE, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL };
 
@@ -66,5 +66,5 @@ constexpr void no_log() { set_log_level(xsl::LogLevel::NONE); }
 
 inline void flush_log() { xsl::LogCtl::instance.logger->flush_log(); }
 
-XSL_NAMESPACE_END
+XSL_NE
 #endif

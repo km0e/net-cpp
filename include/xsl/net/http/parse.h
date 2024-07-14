@@ -1,13 +1,13 @@
 #pragma once
-#ifndef _XSL_NET_HTTP_PARSE_H_
-#  define _XSL_NET_HTTP_PARSE_H_
+#ifndef XSL_NET_HTTP_PARSE
+#  define XSL_NET_HTTP_PARSE
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/wheel.h"
 
 #  include <array>
 #  include <string>
-HTTP_NAMESPACE_BEGIN
+HTTP_NB
 enum class ParseErrorKind {
   Unknown,
   Partial,
@@ -67,5 +67,5 @@ public:
   RequestView view;
   void clear();
 };
-HTTP_NAMESPACE_END
+HTTP_NE
 #endif

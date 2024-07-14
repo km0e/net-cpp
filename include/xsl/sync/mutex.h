@@ -1,10 +1,10 @@
 #pragma once
-#ifndef _XSL_WHEEL_MUTEX_H_
-#  define _XSL_WHEEL_MUTEX_H_
-#  include "xsl/wheel/def.h"
+#ifndef XSL_WHEEL_MUTEX
+#  define XSL_WHEEL_MUTEX
+#  include "xsl/sync/def.h"
 
 #  include <shared_mutex>
-WHEEL_NAMESPACE_BEGIN
+XSL_SYNC_NB
 
 template <class T>
 concept Lockable = requires(T t) {
@@ -90,5 +90,5 @@ private:
   C container;
   std::shared_mutex mutex;
 };
-WHEEL_NAMESPACE_END
+XSL_SYNC_NE
 #endif

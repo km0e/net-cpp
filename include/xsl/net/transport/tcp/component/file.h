@@ -1,10 +1,10 @@
 #pragma once
-#ifndef _XSL_NET_TRANSPORT_TCP_HELPER_FILE_H_
-#  define _XSL_NET_TRANSPORT_TCP_HELPER_FILE_H_
+#ifndef XSL_NET_TRANSPORT_TCP_HELPER_FILE
+#  define XSL_NET_TRANSPORT_TCP_HELPER_FILE
 #  include "xsl/net/transport/tcp/component/def.h"
 
 #  include <list>
-TCP_COMPONENTS_NAMESPACE_BEGIN
+TCP_COMPONENTS_NB
 class SendFile : public SendTaskNode {
 public:
   SendFile(std::string&& path);
@@ -14,5 +14,5 @@ public:
 protected:
   std::list<std::string> path_buffer;
 };
-TCP_COMPONENTS_NAMESPACE_END
+TCP_COMPONENTS_NE
 #endif

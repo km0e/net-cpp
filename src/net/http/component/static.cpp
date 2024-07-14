@@ -8,7 +8,7 @@
 #include <filesystem>
 #include <system_error>
 
-HTTP_HELPER_NAMESPACE_BEGIN
+HTTP_HELPER_NB
 using namespace http;
 class FileRouteHandler {
 public:
@@ -98,4 +98,4 @@ StaticCreateResult create_static_handler(std::string&& path) {
   return std::unexpected{AddRouteError{AddRouteErrorKind::InvalidPath}};
 }
 
-HTTP_HELPER_NAMESPACE_END
+HTTP_HELPER_NE

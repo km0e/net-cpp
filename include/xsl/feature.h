@@ -1,13 +1,13 @@
 #pragma once
 #include <type_traits>
-#ifndef _XSL_FEATURE_H_
-#  define _XSL_FEATURE_H_
+#ifndef XSL_FEATURE
+#  define XSL_FEATURE
 #  include "xsl/def.h"
 #  include "xsl/wheel/type_traits.h"
 
 #  include <cstdint>
 
-XSL_NAMESPACE_BEGIN
+XSL_NB
 namespace feature {
   struct placeholder {};
 
@@ -79,5 +79,5 @@ namespace feature {
   using origanize_feature_flags_t = impl::origanize_feature_flags_t<FullFlag, Flags...>;
 
 }  // namespace feature
-XSL_NAMESPACE_END
+XSL_NE
 #endif

@@ -1,10 +1,10 @@
 #pragma once
-#ifndef _XSL_NET_HTTP_HELPER_H_
-#  define _XSL_NET_HTTP_HELPER_H_
+#ifndef XSL_NET_HTTP_HELPER
+#  define XSL_NET_HTTP_HELPER
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/component/static.h"
-HTTP_NAMESPACE_BEGIN
+HTTP_NB
 using component::StaticCreateResult;
 using component::create_static_handler;
-HTTP_NAMESPACE_END
-#endif  // _XSL_NET_HTTP_HELPER_H_
+HTTP_NE
+#endif  // XSL_NET_HTTP_HELPER

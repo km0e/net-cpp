@@ -3,8 +3,8 @@
 #  define XSL_NET_TRANSPORT_TCP_ACCEPT
 #  include "xsl/coro/def.h"
 #  include "xsl/logctl.h"
-#  include "xsl/net/sync.h"
 #  include "xsl/net/transport/tcp/def.h"
+#  include "xsl/sync.h"
 #  include "xsl/sys.h"
 
 #  include <coroutine>
@@ -13,7 +13,8 @@
 #  include <queue>
 #  include <system_error>
 #  include <utility>
-TCP_NAMESPACE_BEGIN
+TCP_NB
+using namespace xsl::sync;
 /**
  * @brief Acceptor is a coroutine that can be used to accept a connection
  *
@@ -22,7 +23,7 @@ class Acceptor {
   class AcceptorImpl {
   public:
     AcceptorImpl(Socket &&skt) : skt(std::move(skt)), cb(std::nullopt), mtx_(), events() {}
-    PollHandleHintTag operator()([[maybe_unused]] int fd, IOM_EVENTS events) {
+    sync::PollHandleHintTag operator()([[maybe_unused]] int fd, IOM_EVENTS events) {
       DEBUG("acceptor");
       this->mtx_.lock();
       this->events.push(events);
@@ -90,5 +91,5 @@ private:
 };
 static_assert(coro::Awaitable<Acceptor>, "Acceptor must be an Awaitable");
 
-TCP_NAMESPACE_END
+TCP_NE
 #endif

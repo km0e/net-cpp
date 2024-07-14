@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _XSL_NET_TRANSPORT_TCP_HELPER_STR_H_
-#  define _XSL_NET_TRANSPORT_TCP_HELPER_STR_H_
+#ifndef XSL_NET_TRANSPORT_TCP_HELPER_STR
+#  define XSL_NET_TRANSPORT_TCP_HELPER_STR
 #  include "xsl/feature.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/transport/tcp/component/def.h"
@@ -12,7 +12,7 @@
 #  include <list>
 #  include <ranges>
 
-TCP_COMPONENTS_NAMESPACE_BEGIN
+TCP_COMPONENTS_NB
 namespace impl {
   template <class... Flags>
   class TcpSendString;
@@ -100,5 +100,5 @@ template <class... Flags>
 using TcpRecvString
     = feature::origanize_feature_flags_t<impl::TcpRecvString<feature::node>, Flags...>;
 
-TCP_COMPONENTS_NAMESPACE_END
+TCP_COMPONENTS_NE
 #endif

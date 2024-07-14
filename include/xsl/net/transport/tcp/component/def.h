@@ -1,14 +1,14 @@
 #pragma once
-#ifndef _XSL_NET_TRANSPORT_TCP_HELPER_DEF_H_
-#  define _XSL_NET_TRANSPORT_TCP_HELPER_DEF_H_
+#ifndef XSL_NET_TRANSPORT_TCP_HELPER_DEF
+#  define XSL_NET_TRANSPORT_TCP_HELPER_DEF
 
-#  define TCP_COMPONENTS_NAMESPACE_BEGIN namespace xsl::net::transport::tcp::component {
-#  define TCP_COMPONENTS_NAMESPACE_END }
+#  define TCP_COMPONENTS_NB namespace xsl::net::transport::tcp::component {
+#  define TCP_COMPONENTS_NE }
 #  include "xsl/net/transport/tcp/stream.h"
 
 #  include <expected>
 #  include <forward_list>
-TCP_COMPONENTS_NAMESPACE_BEGIN
+TCP_COMPONENTS_NB
 
 class SendContext;
 class RecvContext;
@@ -57,5 +57,5 @@ public:
   std::expected<bool, RecvErrorCategory> exec(int fd);
   SendTasks tasks;
 };
-TCP_COMPONENTS_NAMESPACE_END
+TCP_COMPONENTS_NE
 #endif

@@ -1,11 +1,11 @@
 #pragma once
-#ifndef _XSL_NET_TRANSPORT_TCP_HELPER_H_
-#  define _XSL_NET_TRANSPORT_TCP_HELPER_H_
+#ifndef XSL_NET_TRANSPORT_TCP_HELPER
+#  define XSL_NET_TRANSPORT_TCP_HELPER
 #  include "xsl/net/transport/tcp/component/def.h"
 #  include "xsl/net/transport/tcp/component/file.h"
 #  include "xsl/net/transport/tcp/component/str.h"
 #  include "xsl/net/transport/tcp/def.h"
-TCP_NAMESPACE_BEGIN
+TCP_NB
 using component::RecvContext;
 using component::RecvTaskNode;
 using component::RecvTasks;
@@ -16,5 +16,5 @@ using component::SendTasks;
 using component::SendTasksProxy;
 using component::TcpRecvString;
 using component::TcpSendString;
-TCP_NAMESPACE_END
+TCP_NE
 #endif

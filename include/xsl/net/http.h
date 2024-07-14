@@ -1,13 +1,13 @@
 #pragma once
-#ifndef _XSL_NET_HTTP_H_
-#  define _XSL_NET_HTTP_H_
+#ifndef XSL_NET_HTTP
+#  define XSL_NET_HTTP
 #  include "xsl/net/def.h"
 #  include "xsl/net/http/component.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/parse.h"
 #  include "xsl/net/http/router.h"
 #  include "xsl/net/http/server.h"
-NET_NAMESPACE_BEGIN
+NET_NB
 using http::create_static_handler;
 using http::DefaultResponse;
 using http::HttpHandlerGenerator;
@@ -30,5 +30,5 @@ using http::StaticCreateResult;
 using HttpParseError = http::ParseError;
 using HttpParseErrorKind = http::ParseErrorKind;
 using HttpParseResult = http::ParseResult;
-NET_NAMESPACE_END
+NET_NE
 #endif

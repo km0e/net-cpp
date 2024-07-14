@@ -1,15 +1,16 @@
 #pragma once
-#ifndef _XSL_NET_POLLER_
-#  define _XSL_NET_POLLER_
-#  include "xsl/net/sync/def.h"
-#  include "xsl/wheel.h"
+#ifndef XSL_NET_POLLER_
+#  define XSL_NET_POLLER_
+#  include "xsl/sync/def.h"
+#  include "xsl/sync/mutex.h"
 
 #  include <sys/epoll.h>
 #  include <sys/socket.h>
 #  include <sys/types.h>
 
 #  include <functional>
-SYNC_NAMESPACE_BEGIN
+#  include <memory>
+XSL_SYNC_NB
 const int TIMEOUT = 100;
 #  define USE_EPOLL
 #  ifdef USE_EPOLL
@@ -101,5 +102,5 @@ std::shared_ptr<T> poll_add_shared(std::shared_ptr<Poller> poller, int fd, IOM_E
   });
   return handler;
 }
-SYNC_NAMESPACE_END
+XSL_SYNC_NE
 #endif

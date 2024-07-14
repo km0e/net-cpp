@@ -5,7 +5,7 @@
 #include "xsl/net/http/router.h"
 #include "xsl/wheel.h"
 
-HTTP_NAMESPACE_BEGIN
+HTTP_NB
 RouteContext::RouteContext(Request&& request)
     : current_path(request.view.url), request(std::move(request)) {}
 RouteContext::~RouteContext() {}
@@ -177,4 +177,4 @@ void HttpRouter::error_handler(RouteErrorKind kind, RouteHandler&& handler) {
   }
 }
 
-HTTP_NAMESPACE_END
+HTTP_NE

@@ -1,10 +1,10 @@
 #pragma once
-#ifndef _XSL_WHEEL_TYPE_TRAITS_H_
-#  define _XSL_WHEEL_TYPE_TRAITS_H_
+#ifndef XSL_WHEEL_TYPE_TRAITS
+#  define XSL_WHEEL_TYPE_TRAITS
 #  include "xsl/wheel/def.h"
 
 #  include <type_traits>
-WHEEL_NAMESPACE_BEGIN
+WHEEL_NB
 namespace type_traits {
   template <class... Ts>
   using _0 = void;
@@ -71,5 +71,5 @@ namespace type_traits {
   using copy_t = typename copy_impl::copy<From, To>::type;
 }  // namespace type_traits
 
-WHEEL_NAMESPACE_END
+WHEEL_NE
 #endif

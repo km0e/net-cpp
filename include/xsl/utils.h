@@ -1,10 +1,10 @@
 #pragma once
-#ifndef _XSL_UTILS_H_
-#  define _XSL_UTILS_H_
+#ifndef XSL_UTILS
+#  define XSL_UTILS
 #  include "xsl/def.h"
 #  include "xsl/utils/fd.h"
-XSL_NAMESPACE_BEGIN
+XSL_NB
 using utils::set_non_blocking;
-XSL_NAMESPACE_END
+XSL_NE
 
 #endif

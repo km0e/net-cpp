@@ -10,6 +10,7 @@
 #include <semaphore>
 #include <string>
 using namespace xsl::coro;
+using namespace xsl;
 // there should have a echo server
 uint16_t port = 12350;
 

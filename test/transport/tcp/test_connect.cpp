@@ -1,7 +1,7 @@
 #include "xsl/coro/task.h"
 #include "xsl/logctl.h"
-#include "xsl/net/sync.h"
 #include "xsl/net/transport.h"
+#include "xsl/sync.h"
 
 #include <CLI/CLI.hpp>
 #include <gtest/gtest.h>
@@ -9,6 +9,7 @@
 #include <string>
 #include <thread>
 using namespace xsl::coro;
+using namespace xsl;
 // there should have a echo server
 std::string host = "127.0.0.1";
 std::string port = "12347";

@@ -4,6 +4,7 @@
 #  define XSL_CORO_BLOCK
 #  include "xsl/coro/def.h"
 
+#  include <cassert>
 #  include <coroutine>
 #  include <expected>
 #  include <optional>

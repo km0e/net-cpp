@@ -216,7 +216,10 @@ public:
 
   void detach(std::shared_ptr<executor_type> &executor) { this->by(executor).detach(); }
 
-  result_type block() { return coro::block(this->_co_await()); }
+  result_type block() {
+    auto tmp = this->_co_await();
+    return coro::block(tmp);
+  }
 
   TaskAwaiter<result_type, executor_type> operator co_await() {
     DEBUG("move handle to TaskAwaiter");

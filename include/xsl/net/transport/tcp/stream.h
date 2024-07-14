@@ -5,7 +5,8 @@
 #  include "xsl/coro/task.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/transport/tcp/def.h"
-#  include "xsl/sync.h"
+#  include "xsl/sync/mutex.h"
+#  include "xsl/sync/poller.h"
 #  include "xsl/sys.h"
 
 #  include <sys/socket.h>
@@ -63,31 +64,25 @@ class TcpStream {
   class TcpStreamImpl {
   public:
     TcpStreamImpl(Socket &&sock) noexcept
-        : sock(std::move(sock)), mtx(), read_cb(std::nullopt), write_cb(std::nullopt) {}
+        : sock(std::move(sock)), read_cb(std::nullopt), write_cb(std::nullopt) {}
     sync::PollHandleHint operator()(int, sync::IOM_EVENTS events) {
       DEBUG("TcpStream");
       if (!!(events & sync::IOM_EVENTS::IN)) {
-        if (this->read_cb.has_value()) {
-          this->mtx.lock();
-          auto cb = std::exchange(this->read_cb, std::nullopt);
-          this->mtx.unlock();
+        auto cb = std::exchange(*this->read_cb.lock(), std::nullopt);
+        if (cb) {
           (*cb)();
         }
       }
       if (!!(events & sync::IOM_EVENTS::OUT)) {
-        if (this->write_cb.has_value()) {
-          this->mtx.lock();
-          auto cb = std::exchange(this->write_cb, std::nullopt);
-          this->mtx.unlock();
+        auto cb = std::exchange(*this->write_cb.lock(), std::nullopt);
+        if (cb) {
           (*cb)();
         }
       }
       return sync::PollHandleHintTag::NONE;
     }
     Socket sock;
-    std::mutex mtx;
-    std::optional<std::function<void()>> read_cb;
-    std::optional<std::function<void()>> write_cb;
+    sync::UnqRes<std::optional<std::function<void()>>> read_cb, write_cb;
   };
 
 public:
@@ -122,8 +117,7 @@ public:
           }
           DEBUG("no data");
           co_await coro::CallbackAwaiter<void>{[impl = this->impl.get()](auto &&cb) {
-            std::lock_guard<std::mutex> lock(impl->mtx);
-            impl->read_cb = std::move(cb);
+            *impl->read_cb.lock() = std::move(cb);
             DEBUG("set read_cb");
           }};
           continue;
@@ -155,10 +149,8 @@ public:
       DEBUG("recv n: {}", n);
       if (n == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          co_await coro::CallbackAwaiter<void>{[this](auto &&cb) {
-            std::lock_guard<std::mutex> lock(this->impl->mtx);
-            this->impl->read_cb = std::move(cb);
-          }};
+          co_await coro::CallbackAwaiter<void>{
+              [impl = this->impl.get()](auto &&cb) { *impl->read_cb.lock() = std::move(cb); }};
           continue;
         } else {
           ERROR("Failed to recv data, err : {}", strerror(errno));
@@ -218,20 +210,16 @@ public:
       if (n == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
           DEBUG("need write again");
-          co_await coro::CallbackAwaiter<void>{[this](auto &&cb) {
-            std::lock_guard<std::mutex> lock(this->impl->mtx);
-            this->impl->write_cb = std::move(cb);
-          }};
+          co_await coro::CallbackAwaiter<void>{
+              [impl = this->impl.get()](auto &&cb) { *impl->write_cb.lock() = std::move(cb); }};
           continue;
         } else {
           co_return std::unexpected{SendError{SendErrorCategory::Unknown}};
         }
       } else if (n == 0) {
         DEBUG("need write again");
-        co_await coro::CallbackAwaiter<void>{[this](auto &&cb) {
-          std::lock_guard<std::mutex> lock(this->impl->mtx);
-          this->impl->write_cb = std::move(cb);
-        }};
+        co_await coro::CallbackAwaiter<void>{
+            [impl = this->impl.get()](auto &&cb) { *impl->write_cb.lock() = std::move(cb); }};
         continue;
       } else if (static_cast<size_t>(n) == data.size()) {
         co_return {true};

@@ -2,6 +2,7 @@
 #include "xsl/logctl.h"
 #include "xsl/net/transport/tcp/def.h"
 #include "xsl/net/transport/tcp/utils.h"
+#include "xsl/sync.h"
 #include "xsl/utils/fd.h"
 
 #include <arpa/inet.h>

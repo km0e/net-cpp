@@ -17,7 +17,7 @@ void detach(Awaiter &&awaiter) {
     class DetachPromise {
     public:
       using result_type = void;
-      using executor_type = no_executor;
+      using executor_type [[maybe_unused]] = no_executor;
       DetachPromise() : _result(std::nullopt) {}
       decltype(auto) get_return_object() {
         return Detach{std::coroutine_handle<DetachPromise>::from_promise(*this)};

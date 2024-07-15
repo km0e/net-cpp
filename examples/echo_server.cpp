@@ -1,4 +1,5 @@
 #include "xsl/logctl.h"
+
 #include <CLI/CLI.hpp>
 #include <xsl/net.h>
 
@@ -27,14 +28,15 @@ Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
     co_return;
   }
   auto serv = std::move(server.value());
-  for (auto stream = co_await serv.gen();; stream = co_await serv.gen()) {
-    auto _ = stream.transform([](auto &&stream) { session(std::move(stream)).detach(); });
+  for (;;) {
+    auto stream = co_await serv.accept();
+    session(std::move(stream)).detach();
   }
 }
 
 int main(int argc, char *argv[]) {
-  // xsl::set_log_level(xsl::LogLevel::DEBUG);
-  xsl::no_log();
+  xsl::set_log_level(xsl::LogLevel::DEBUG);
+  // xsl::no_log();
   CLI::App app{"Echo server"};
   app.add_option("-i,--ip", ip, "IP address");
   app.add_option("-p,--port", port, "Port");

@@ -1,4 +1,5 @@
 #include "xsl/net/transport/tcp/component/def.h"
+
 #include <cstddef>
 TCP_COMPONENTS_NB
 
@@ -8,7 +9,7 @@ RecvContext::RecvContext(int sfd, RecvTasks& tasks) : sfd(sfd), tasks(tasks), it
 RecvContext::~RecvContext() {}
 SendTasksProxy::SendTasksProxy() : tasks() {}
 SendTasksProxy::~SendTasksProxy() {}
-std::expected<bool, RecvErrorCategory> SendTasksProxy::exec(int fd) {
+std::expected<bool, RecvErrorCategory> SendTasksProxy::exec([[maybe_unused]] int fd) {
   // SendContext ctx(fd, this->tasks);
   // size_t sum = 0;
   // while (!this->tasks.empty()) {

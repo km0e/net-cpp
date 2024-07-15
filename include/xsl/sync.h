@@ -4,6 +4,7 @@
 #  include "xsl/def.h"
 #  include "xsl/sync/mutex.h"
 #  include "xsl/sync/poller.h"
+#  include "xsl/sync/spsc.h"
 XSL_NB
 using sync::IOM_EVENTS;
 using sync::LockGuard;
@@ -15,5 +16,6 @@ using sync::PollHandleHintTag;
 using sync::PollHandler;
 using sync::ShrdGuard;
 using sync::ShrdRes;
+using sync::SPSC;
 XSL_NE
 #endif

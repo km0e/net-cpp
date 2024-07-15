@@ -30,7 +30,7 @@ namespace impl {
       this->data_buffer = std::list<std::pair<std::string, size_t>>(buf.begin(), buf.end());
     }
     ~TcpSendString() {}
-    std::expected<bool, RecvError> exec(int fd) {
+    std::expected<bool, RecvError> exec([[maybe_unused]] int fd) {
       // while (!this->data_buffer.empty()) {
       //   auto& data = this->data_buffer.front();
       //   auto res = send(fd, std::string_view(data.first).substr(data.second));
@@ -74,7 +74,7 @@ namespace impl {
     TcpRecvString(TcpRecvString&&) = default;
     TcpRecvString() : data_buffer() {}
     ~TcpRecvString() {}
-    std::expected<bool, RecvErrorCategory> exec(int fd) {
+    std::expected<bool, RecvErrorCategory> exec([[maybe_unused]] int fd) {
       // auto res = ::recv(fd);
       // if (!res.has_value()) {
       //   return std::unexpected{res.error()};

@@ -39,6 +39,7 @@ AcceptResult accept(Socket &skt) {
   if (fd < 0) {
     return AcceptResult{std::unexpect, std::errc(errno)};
   }
+  DEBUG("accept socket {}", fd);
   char ip[NI_MAXHOST], port[NI_MAXSERV];
   if (getnameinfo(&addr, addrlen, ip, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV)
       != 0) {

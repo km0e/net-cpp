@@ -1,22 +1,18 @@
 #pragma once
 #ifndef XSL_NET_TRANSPORT_TCP_STREAM
 #  define XSL_NET_TRANSPORT_TCP_STREAM
-#  include "xsl/coro/await.h"
+#  include "xsl/coro/semaphore.h"
 #  include "xsl/coro/task.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/transport/tcp/def.h"
-#  include "xsl/sync/mutex.h"
 #  include "xsl/sync/poller.h"
 #  include "xsl/sys.h"
 
 #  include <sys/socket.h>
 
 #  include <cstddef>
-#  include <cstdint>
-#  include <functional>
 #  include <memory>
 #  include <numeric>
-#  include <optional>
 #  include <string_view>
 #  include <utility>
 TCP_NB
@@ -62,60 +58,40 @@ public:
 };
 
 namespace impl_tcp_stream {
-  class InnerHandle {
-  public:
-    InnerHandle() noexcept : read_cb(std::nullopt), write_cb(std::nullopt) {}
-    ~InnerHandle() {}
-    InnerHandle(InnerHandle &&) = delete;
-    void set_read_cb(std::function<void()> &&cb) {
-      DEBUG("{} set read_cb", (uint64_t)this);
-      *this->read_cb.lock() = std::move(cb);
-    }
-    void read() {
-      DEBUG("{} try call read", (uint64_t)this);
-      auto cb = std::exchange(*this->read_cb.lock(), std::nullopt);
-      if (cb) {
-        DEBUG("call read_cb");
-        (*cb)();
-      }
-    }
-    decltype(auto) get_write_cb() { return this->write_cb.lock(); }
-
-  private:
-    sync::UnqRes<std::optional<std::function<void()>>> read_cb, write_cb;
-  };
   class Callback {
   public:
-    Callback(const std::shared_ptr<InnerHandle> &handle) noexcept : handle(handle) {}
+    Callback(std::shared_ptr<coro::CountingSemaphore<1>> read_sem,
+             std::shared_ptr<coro::CountingSemaphore<1>> write_sem) noexcept
+        : read_sem(read_sem), write_sem(write_sem) {}
     sync::PollHandleHint operator()(int, sync::IOM_EVENTS events) {
-      if (this->handle.unique()) {
+      if (this->read_sem.unique() && this->write_sem.unique()) {
         return sync::PollHandleHintTag::DELETE;
       }
       if (!!(events & sync::IOM_EVENTS::IN)) {
         DEBUG("read event");
-        this->handle->read();
+        this->read_sem->release();
       }
       if (!!(events & sync::IOM_EVENTS::OUT)) {
-        auto cb = std::exchange(*this->handle->get_write_cb(), std::nullopt);
-        if (cb) {
-          (*cb)();
-        }
+        DEBUG("write event");
+        this->write_sem->release();
       }
       return sync::PollHandleHintTag::NONE;
     }
 
   private:
-    std::shared_ptr<InnerHandle> handle;
+    std::shared_ptr<coro::CountingSemaphore<1>> read_sem, write_sem;
   };
 }  // namespace impl_tcp_stream
 
 class TcpStream {
 public:
   TcpStream(Socket &&sock, std::shared_ptr<sync::Poller> poller) noexcept
-      : sock(std::move(sock)), handle(std::make_shared<impl_tcp_stream::InnerHandle>()) {
+      : sock(std::move(sock)),
+        read_sem(std::make_shared<coro::CountingSemaphore<1>>(true)),
+        write_sem(std::make_shared<coro::CountingSemaphore<1>>(true)) {
     poller->add(this->sock.raw_fd(),
                 sync::IOM_EVENTS::IN | sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-                impl_tcp_stream::Callback{this->handle});
+                impl_tcp_stream::Callback{this->read_sem, this->write_sem});
   }
   TcpStream(TcpStream &&rhs) noexcept = default;
   TcpStream &operator=(TcpStream &&rhs) noexcept = default;
@@ -135,8 +111,7 @@ public:
             break;
           }
           DEBUG("no data");
-          co_await coro::CallbackAwaiter<void>{
-              [handle = this->handle.get()](auto &&cb) { handle->set_read_cb(std::move(cb)); }};
+          co_await *this->read_sem;
           continue;
         } else {
           ERROR("Failed to recv data, err : {}", strerror(errno));
@@ -166,8 +141,7 @@ public:
       DEBUG("recv n: {}", n);
       if (n == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          co_await coro::CallbackAwaiter<void>{
-              [handle = this->handle.get()](auto &&cb) { handle->set_read_cb(std::move(cb)); }};
+          co_await *this->read_sem;
           continue;
         } else {
           ERROR("Failed to recv data, err : {}", strerror(errno));
@@ -227,17 +201,14 @@ public:
       if (n == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
           DEBUG("need write again");
-          co_await coro::CallbackAwaiter<void>{[handle = this->handle.get()](auto &&cb) {
-            *handle->get_write_cb() = std::move(cb);
-          }};
+          co_await *this->write_sem;
           continue;
         } else {
           co_return std::unexpected{SendError{SendErrorCategory::Unknown}};
         }
       } else if (n == 0) {
         DEBUG("need write again");
-        co_await coro::CallbackAwaiter<void>{
-            [handle = this->handle.get()](auto &&cb) { *handle->get_write_cb() = std::move(cb); }};
+        co_await *this->write_sem;
         continue;
       } else if (static_cast<size_t>(n) == data.size()) {
         co_return {true};
@@ -248,7 +219,7 @@ public:
 
 private:
   Socket sock;
-  std::shared_ptr<impl_tcp_stream::InnerHandle> handle;
+  std::shared_ptr<coro::CountingSemaphore<1>> read_sem, write_sem;
 };
 TCP_NE
 #endif

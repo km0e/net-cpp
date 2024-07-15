@@ -11,8 +11,8 @@
 
 #  include <sys/socket.h>
 
-#  include <atomic>
 #  include <cstddef>
+#  include <cstdint>
 #  include <functional>
 #  include <memory>
 #  include <numeric>
@@ -62,27 +62,41 @@ public:
 };
 
 namespace impl_tcp_stream {
-  struct InnerHandle {
-    InnerHandle() noexcept : closed() , read_cb(std::nullopt), write_cb(std::nullopt) {}
-    std::atomic_flag closed;
+  class InnerHandle {
+  public:
+    InnerHandle() noexcept : read_cb(std::nullopt), write_cb(std::nullopt) {}
+    ~InnerHandle() {}
+    InnerHandle(InnerHandle &&) = delete;
+    void set_read_cb(std::function<void()> &&cb) {
+      DEBUG("{} set read_cb", (uint64_t)this);
+      *this->read_cb.lock() = std::move(cb);
+    }
+    void read() {
+      DEBUG("{} try call read", (uint64_t)this);
+      auto cb = std::exchange(*this->read_cb.lock(), std::nullopt);
+      if (cb) {
+        DEBUG("call read_cb");
+        (*cb)();
+      }
+    }
+    decltype(auto) get_write_cb() { return this->write_cb.lock(); }
+
+  private:
     sync::UnqRes<std::optional<std::function<void()>>> read_cb, write_cb;
   };
   class Callback {
   public:
     Callback(const std::shared_ptr<InnerHandle> &handle) noexcept : handle(handle) {}
     sync::PollHandleHint operator()(int, sync::IOM_EVENTS events) {
-      DEBUG("TcpStream");
-      if (this->handle->closed.test()) {
+      if (this->handle.unique()) {
         return sync::PollHandleHintTag::DELETE;
       }
       if (!!(events & sync::IOM_EVENTS::IN)) {
-        auto cb = std::exchange(*this->handle->read_cb.lock(), std::nullopt);
-        if (cb) {
-          (*cb)();
-        }
+        DEBUG("read event");
+        this->handle->read();
       }
       if (!!(events & sync::IOM_EVENTS::OUT)) {
-        auto cb = std::exchange(*this->handle->write_cb.lock(), std::nullopt);
+        auto cb = std::exchange(*this->handle->get_write_cb(), std::nullopt);
         if (cb) {
           (*cb)();
         }
@@ -121,10 +135,8 @@ public:
             break;
           }
           DEBUG("no data");
-          co_await coro::CallbackAwaiter<void>{[handle = this->handle.get()](auto &&cb) {
-            *handle->read_cb.lock() = std::move(cb);
-            DEBUG("set read_cb");
-          }};
+          co_await coro::CallbackAwaiter<void>{
+              [handle = this->handle.get()](auto &&cb) { handle->set_read_cb(std::move(cb)); }};
           continue;
         } else {
           ERROR("Failed to recv data, err : {}", strerror(errno));
@@ -154,9 +166,8 @@ public:
       DEBUG("recv n: {}", n);
       if (n == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          co_await coro::CallbackAwaiter<void>{[handle = this->handle.get()](auto &&cb) {
-            *handle->read_cb.lock() = std::move(cb);
-          }};
+          co_await coro::CallbackAwaiter<void>{
+              [handle = this->handle.get()](auto &&cb) { handle->set_read_cb(std::move(cb)); }};
           continue;
         } else {
           ERROR("Failed to recv data, err : {}", strerror(errno));
@@ -217,7 +228,7 @@ public:
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
           DEBUG("need write again");
           co_await coro::CallbackAwaiter<void>{[handle = this->handle.get()](auto &&cb) {
-            *handle->write_cb.lock() = std::move(cb);
+            *handle->get_write_cb() = std::move(cb);
           }};
           continue;
         } else {
@@ -226,7 +237,7 @@ public:
       } else if (n == 0) {
         DEBUG("need write again");
         co_await coro::CallbackAwaiter<void>{
-            [handle = this->handle.get()](auto &&cb) { *handle->write_cb.lock() = std::move(cb); }};
+            [handle = this->handle.get()](auto &&cb) { *handle->get_write_cb() = std::move(cb); }};
         continue;
       } else if (static_cast<size_t>(n) == data.size()) {
         co_return {true};

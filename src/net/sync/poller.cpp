@@ -54,7 +54,7 @@ bool Poller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
   }
   DEBUG("Handler registered for fd: {}", fd);
   // there should be a lock here?
-  this->handlers.lock()->try_emplace(fd, make_shared<PollHandler>(handler));
+  this->handlers.lock()->insert_or_assign(fd, make_shared<PollHandler>(handler));
   return true;
 }
 bool Poller::modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) {

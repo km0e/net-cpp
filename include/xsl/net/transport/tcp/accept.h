@@ -8,7 +8,6 @@
 #  include "xsl/sync.h"
 #  include "xsl/sys.h"
 
-#  include <atomic>
 #  include <coroutine>
 #  include <expected>
 #  include <memory>
@@ -22,8 +21,7 @@ using namespace xsl::sync;
 
 namespace impl_tcp_acceptor {
   struct InnerHandle {
-    InnerHandle() noexcept : closed(), mtx(), cb(), events() {}
-    std::atomic_flag closed;
+    InnerHandle() noexcept : mtx(), cb(), events() {}
     std::mutex mtx;
     std::optional<std::function<void()>> cb;
     std::queue<IOM_EVENTS> events;
@@ -33,7 +31,7 @@ namespace impl_tcp_acceptor {
     Callback(const std::shared_ptr<InnerHandle> &handle) : handle(handle) {}
     sync::PollHandleHintTag operator()([[maybe_unused]] int fd, IOM_EVENTS events) {
       DEBUG("acceptor");
-      if (this->handle->closed.test()) {
+      if (this->handle.unique()) {
         return PollHandleHintTag::DELETE;
       }
       this->handle->mtx.lock();

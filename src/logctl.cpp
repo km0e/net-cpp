@@ -12,8 +12,9 @@ LogCtl::LogCtl() : logger(nullptr) {
   auto console_sink = quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink_id_1");
   logger = quill::Frontend::create_or_get_logger(
       "root", std::move(console_sink),
-      "[%(thread_id)] %(short_source_location:<28) %(log_level:<6) "
-      "%(message)");
+      "[%(time)][%(thread_id)] %(short_source_location:<28) %(log_level:<6) "
+      "%(message)",
+      "%H:%M:%S.%Qus");
 }
 LogCtl::~LogCtl() {
   quill::Frontend::remove_logger(logger);

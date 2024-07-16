@@ -10,17 +10,22 @@ using namespace xsl::coro;
 TEST(SemaphoreTest, Basic) {
   CountingSemaphore<1> sem{};
   int value = 0;
-  std::thread t([&] {
+  int res = 0;
+  std::thread t1([&] {
     [&]() -> Task<void> {
       co_await sem;
-      assert(value == 1);
+      res = value;
       co_return;
     }()
                  .block();
   });
-  value = 1;
-  sem.release();
-  t.join();
+  std::thread t2([&] {
+    value = 1;
+    sem.release();
+  });
+  t1.join();
+  t2.join();
+  ASSERT_EQ(res, 1);
 };
 
 int main(int argc, char **argv) {

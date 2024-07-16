@@ -1,9 +1,9 @@
 #pragma once
 #ifndef XSL_CORO_TASK
 #  define XSL_CORO_TASK
-#  include "xsl/coro/base.h"
 #  include "xsl/coro/def.h"
 #  include "xsl/coro/executor.h"
+#  include "xsl/coro/next.h"
 #  include "xsl/logctl.h"
 
 #  include <cassert>
@@ -13,8 +13,8 @@
 XSL_CORO_NB
 
 template <class Promise>
-class TaskAwaiter : public AwaiterBase<Promise> {
-  using Base = AwaiterBase<Promise>;
+class TaskAwaiter : public Awaiter<Promise> {
+  using Base = Awaiter<Promise>;
 
 public:
   using promise_type = typename Base::promise_type;
@@ -27,13 +27,14 @@ protected:
 };
 
 template <typename ResultType, typename Executor = NoopExecutor>
-class Task : public CoroBase<ResultType, Executor> {
-  friend class CoroBase<ResultType, Executor>;
-  using TaskBase = CoroBase<ResultType, Executor>;
+class Task : public Next<ResultType, Executor> {
+private:
+  using Base = Next<ResultType, Executor>;
 
-  class TaskPromiseBase : public TaskBase::PromiseBase {
-    using Base = TaskBase::PromiseBase;
+protected:
+  friend typename Base::Friend;
 
+  class TaskPromiseBase : public Base::NextPromiseBase {
   public:
     using coro_type = Task<ResultType, Executor>;
     std::suspend_never initial_suspend() noexcept {
@@ -43,15 +44,17 @@ class Task : public CoroBase<ResultType, Executor> {
   };
 
 public:
-  using promise_type = TaskBase::template Promise<TaskPromiseBase>;
+  using promise_type = Base::template Promise<TaskPromiseBase>;
 
-  using typename TaskBase::executor_type;
-  using typename TaskBase::result_type;
+  using typename Base::executor_type;
+  using typename Base::result_type;
   using awaiter_type = TaskAwaiter<promise_type>;
 
   static_assert(Awaitable<awaiter_type>, "TaskAwaiter is not Awaitable");
 
   explicit Task(std::coroutine_handle<promise_type> handle) noexcept : _handle(handle) {}
+
+  ~Task() { assert(!_handle); }
 
 protected:
   std::coroutine_handle<promise_type> _handle;

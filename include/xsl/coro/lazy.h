@@ -1,9 +1,9 @@
 #pragma once
 #ifndef XSL_CORO_LAZY
 #  define XSL_CORO_LAZY
-#  include "xsl/coro/base.h"
 #  include "xsl/coro/def.h"
 #  include "xsl/coro/executor.h"
+#  include "xsl/coro/next.h"
 #  include "xsl/logctl.h"
 
 #  include <cassert>
@@ -11,8 +11,8 @@
 #  include <expected>
 XSL_CORO_NB
 template <class Promise>
-class LazyAwaiter : public AwaiterBase<Promise> {
-  using Base = AwaiterBase<Promise>;
+class LazyAwaiter : public Awaiter<Promise> {
+  using Base = Awaiter<Promise>;
 
 public:
   using promise_type = typename Base::promise_type;
@@ -28,13 +28,13 @@ protected:
 };
 
 template <typename ResultType, typename Executor = NoopExecutor>
-class Lazy : public CoroBase<ResultType, Executor> {
-  friend class CoroBase<ResultType, Executor>;
-  using LazyBase = CoroBase<ResultType, Executor>;
+class Lazy : public Next<ResultType, Executor> {
+private:
+  using LazyBase = Next<ResultType, Executor>;
 
-  class LazyPromiseBase : public LazyBase::PromiseBase {
-    using Base = LazyBase::PromiseBase;
-
+protected:
+  friend typename LazyBase::Friend;
+  class LazyPromiseBase : public LazyBase::NextPromiseBase {
   public:
     using coro_type = Lazy<ResultType, Executor>;
     std::suspend_always initial_suspend() noexcept {
@@ -53,6 +53,8 @@ public:
   static_assert(Awaitable<awaiter_type>, "LazyAwaiter is not Awaitable");
 
   explicit Lazy(std::coroutine_handle<promise_type> handle) noexcept : _handle(handle) {}
+
+  ~Lazy() { assert(!_handle); }
 
 protected:
   std::coroutine_handle<promise_type> _handle;

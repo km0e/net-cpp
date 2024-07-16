@@ -1,33 +1,30 @@
 #pragma once
-#include <type_traits>
 #ifndef XSL_CORO_BASE
 #  define XSL_CORO_BASE
-#  include "xsl/coro/block.h"
 #  include "xsl/coro/def.h"
-#  include "xsl/coro/detach.h"
 #  include "xsl/logctl.h"
 
-#  include <functional>
-#  include <memory>
+#  include <cassert>
 #  include <optional>
+#  include <type_traits>
 XSL_CORO_NB
 
 template <class Promise>
-class AwaiterBase {
+class Awaiter {
 public:
   using promise_type = Promise;
   using result_type = typename promise_traits<Promise>::result_type;
   using executor_type = typename promise_traits<Promise>::executor_type;
 
-  AwaiterBase(std::coroutine_handle<promise_type> handle) : _handle(handle) {}
-  AwaiterBase(AwaiterBase &&another) noexcept : _handle(std::exchange(another._handle, {})) {}
-  AwaiterBase &operator=(AwaiterBase &&another) noexcept {
+  Awaiter(std::coroutine_handle<promise_type> handle) : _handle(handle) {}
+  Awaiter(Awaiter &&another) noexcept : _handle(std::exchange(another._handle, {})) {}
+  Awaiter &operator=(Awaiter &&another) noexcept {
     _handle = std::exchange(another._handle, {});
     return *this;
   }
-  AwaiterBase(const AwaiterBase &) = delete;
-  AwaiterBase &operator=(const AwaiterBase &) = delete;
-  ~AwaiterBase() {
+  Awaiter(const Awaiter &) = delete;
+  Awaiter &operator=(const Awaiter &) = delete;
+  ~Awaiter() {
     DEBUG("TaskAwaiter destructor for {}", (uint64_t)_handle.address());
     if (_handle) {
       assert(_handle.done());
@@ -61,15 +58,22 @@ protected:
   std::coroutine_handle<promise_type> _handle;
 };
 
-template <typename ResultType, typename Executor>
-class CoroBase {
+class HandleGetter {
 protected:
+  auto &&get_handle(this auto &&self) { return self._handle; }
+};
+
+template <typename ResultType>
+class Coro : public HandleGetter {
+protected:
+  using Friend = HandleGetter;
+
   class PromiseBase {
   public:
     using result_type = ResultType;
-    using executor_type = Executor;
+    using executor_type = void;
 
-    PromiseBase() : _result(std::nullopt), _next_resume(std::nullopt), _executor(nullptr) {}
+    PromiseBase() : _result(std::nullopt) {}
 
     auto get_return_object(this auto &&self) {
       DEBUG("get_return_object");
@@ -84,7 +88,7 @@ protected:
       return {};
     }
 
-    void unhandled_exception() { _result = std::unexpected{std::current_exception()}; }
+    void unhandled_exception() { this->_result = std::unexpected{std::current_exception()}; }
 
     result_type operator*() {
       DEBUG("operator*");
@@ -98,50 +102,19 @@ protected:
       std::rethrow_exception(_result->error());
     }
 
-    auto &&by(this auto &&self, const std::shared_ptr<Executor> &executor) {
-      self._executor = executor;
-      return std::forward<decltype(self)>(self);
-    }
     template <class Promise>
-
-    void next(std::coroutine_handle<Promise> handle) {
-      _next_resume = [handle]() mutable { handle.promise().resume(handle); };
+    void resume(std::coroutine_handle<Promise>) {
+      assert(false && "coro base cannot resume");
     }
-
-    template <class Promise>
-    void resume(std::coroutine_handle<Promise> handle) {
-      this->dispatch([handle, this]() mutable {
-        DEBUG("task resume {}", (uint64_t)handle.address());
-        handle();
-        DEBUG("task resume {} done", (uint64_t)handle.address());
-        if (handle.done()) {
-          DEBUG("task resume handle done");
-          if (this->_next_resume) {
-            DEBUG("task resume next_resume");
-            (*this->_next_resume)();
-          }
-        }
-      });
-    }
-
-    const std::shared_ptr<Executor> &executor() const { return _executor; }
 
     template <typename F>
       requires std::invocable<F>
-    void dispatch(F &&f) {
-      if (this->executor()) {
-        this->_executor->schedule(std::move(f));
-      } else {
-        f();
-      }
+    void dispatch(F &&) {
+      assert(false && "coro base cannot dispatch");
     }
 
   protected:
     std::optional<Result<result_type>> _result;
-
-    std::optional<std::function<void()>> _next_resume;
-
-    std::shared_ptr<Executor> _executor;
   };
 
   template <typename Base>
@@ -170,34 +143,15 @@ public:
   using result_type = PromiseBase::result_type;
   using executor_type = PromiseBase::executor_type;
 
-  CoroBase() = default;
+  Coro() = default;
 
-  CoroBase(CoroBase &&task) noexcept = default;
+  Coro(Coro &&task) noexcept = default;
 
-  CoroBase &operator=(CoroBase &&another) noexcept = default;
+  Coro &operator=(Coro &&another) noexcept = default;
 
-  CoroBase(const CoroBase &) = delete;
+  Coro(const Coro &) = delete;
 
-  CoroBase &operator=(const CoroBase &) = delete;
-
-  ~CoroBase() { assert(!_handle); }  // task should be moved to Final/TaskAwaiter
-
-  auto &&by(this auto &&self, std::shared_ptr<executor_type> &executor) {
-    self._handle.promise().by(executor);
-    return std::forward<decltype(self)>(self);
-  }
-
-  void detach(this auto &&self) {
-    DEBUG("task detach");
-    coro::detach(self._co_await());
-  }
-
-  void detach(std::shared_ptr<executor_type> &executor) { this->by(executor).detach(); }
-
-  result_type block(this auto &&self) {
-    auto tmp = self._co_await();
-    return coro::block(tmp);
-  }
+  Coro &operator=(const Coro &) = delete;
 
   decltype(auto) operator co_await(this auto &&self) {
     DEBUG("move handle to TaskAwaiter");
@@ -206,7 +160,7 @@ public:
 
 protected:
   auto _co_await(this auto &&self) -> typename std::remove_cvref_t<decltype(self)>::awaiter_type {
-    return std::exchange(self._handle, {});
+    return std::exchange(self.get_handle(), {});
   }
 };
 XSL_CORO_NE

@@ -58,8 +58,7 @@ TEST(bind, create) {
   ASSERT_TRUE(ok);
   xsl::flush_log();
   auto acceptor = Acceptor{std::move(skt.value()), poller};
-  auto task = acceptor.accept();
-  auto accept_res = block(task);
+  auto accept_res = block(acceptor.accept());
   acc.release();
   ASSERT_TRUE(accept_res.has_value());
   auto [skt2, addr] = std::move(*accept_res);

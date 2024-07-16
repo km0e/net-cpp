@@ -52,13 +52,17 @@ public:
   Acceptor(Acceptor &&rhs) noexcept = default;
   ~Acceptor() = default;
 
-  coro::Task<std::tuple<Socket, IpAddr>> accept() noexcept {
+  coro::Task<AcceptResult> accept() noexcept {
     DEBUG("acceptor accept");
     while (true) {
-      co_await *this->sem;
       auto res = xsl::accept(this->sock);
       if (res) {
         co_return std::move(*res);
+      } else if (res.error() == std::errc::resource_unavailable_try_again
+                 || res.error() == std::errc::operation_would_block) {
+        co_await *this->sem;
+      } else {
+        co_return std::unexpected{res.error()};
       }
     }
   }

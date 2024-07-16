@@ -93,7 +93,12 @@ public:
                 sync::IOM_EVENTS::IN | sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
                 impl_tcp_stream::Callback{this->read_sem, this->write_sem});
   }
-  TcpStream(TcpStream &&rhs) noexcept = default;
+  TcpStream(TcpStream &&rhs) noexcept
+      : sock(std::move(rhs.sock)),
+        read_sem(std::move(rhs.read_sem)),
+        write_sem(std::move(rhs.write_sem)) {
+    DEBUG("TcpStream move");
+  }
   TcpStream &operator=(TcpStream &&rhs) noexcept = default;
   ~TcpStream() {}
   coro::Task<RecvResult> read(std::string &rbuf) {

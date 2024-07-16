@@ -48,9 +48,11 @@ public:
   TcpServer(const std::shared_ptr<Poller> &poller, Socket &&socket)
       : poller(poller), acceptor{std::move(socket), this->poller} {}
   TcpServer(TcpServer &&) = default;
-  coro::Task<TcpStream> accept() {
+  coro::Task<std::expected<TcpStream, std::errc>> accept() {
     DEBUG("tcp server accept");
-    co_return {std::move(std::get<0>(co_await acceptor.accept())), this->poller};
+    co_return (co_await acceptor.accept()).transform([this](auto &&res) -> TcpStream {
+      return {std::move(std::get<0>(std::move(res))), this->poller};
+    });
   }
 
 private:

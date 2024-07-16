@@ -37,13 +37,13 @@ AcceptResult accept(Socket &skt) {
   socklen_t addrlen = sizeof(addr);
   int fd = ::accept4(skt.raw_fd(), &addr, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
   if (fd < 0) {
-    return AcceptResult{std::unexpect, std::errc(errno)};
+    return std::unexpected{std::errc(errno)};
   }
   DEBUG("accept socket {}", fd);
   char ip[NI_MAXHOST], port[NI_MAXSERV];
   if (getnameinfo(&addr, addrlen, ip, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV)
       != 0) {
-    return AcceptResult{std::unexpect, std::errc(errno)};
+    return std::unexpected{std::errc(errno)};
   }
   return std::make_tuple(Socket(fd), IpAddr(ip, port));
 }

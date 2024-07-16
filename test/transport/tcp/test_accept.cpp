@@ -61,7 +61,8 @@ TEST(bind, create) {
   auto task = acceptor.accept();
   auto accept_res = block(task);
   acc.release();
-  auto [skt2, addr] = std::move(accept_res);
+  ASSERT_TRUE(accept_res.has_value());
+  auto [skt2, addr] = std::move(*accept_res);
   ASSERT_NE(skt2.raw_fd(), 0);
   poller->shutdown();
   t.join();

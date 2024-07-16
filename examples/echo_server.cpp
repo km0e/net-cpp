@@ -29,8 +29,8 @@ Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
   }
   auto serv = std::move(server.value());
   for (;;) {
-    auto stream = co_await serv.accept();
-    session(std::move(stream)).detach();
+    auto _
+        = (co_await serv.accept()).transform([](auto &&res) { session(std::move(res)).detach(); });
   }
 }
 

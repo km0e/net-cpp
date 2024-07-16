@@ -77,7 +77,7 @@ public:
 private:
   int sfd;
 };
-using AcceptResult = std::expected<std::tuple<Socket, IpAddr>, std::error_condition>;
+using AcceptResult = std::expected<std::tuple<Socket, IpAddr>, std::errc>;
 
 AcceptResult accept(Socket &skt);
 

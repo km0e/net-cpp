@@ -9,6 +9,7 @@
 #  include <mutex>
 #  include <optional>
 #  include <semaphore>
+#  include <utility>
 XSL_CORO_NB
 
 template <std::ptrdiff_t LeastMaxValue = std::numeric_limits<std::ptrdiff_t>::max()>

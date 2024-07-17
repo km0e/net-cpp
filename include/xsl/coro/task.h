@@ -17,8 +17,9 @@ class TaskAwaiter : public Awaiter<Promise> {
   using Base = Awaiter<Promise>;
 
 public:
-  using promise_type = typename Base::promise_type;
-  using result_type = typename Base::result_type;
+  using promise_type = Promise;
+  using typename Base::result_type;
+
   using Base::Base;
   bool await_ready() const { return _handle.done(); }
 
@@ -26,7 +27,20 @@ protected:
   using Base::_handle;
 };
 
-template <typename ResultType, typename Executor = NoopExecutor>
+template <class ResultType, class Executor = NoopExecutor>
+class Task;
+
+template <class ResultType, class Executor>
+class TaskPromiseBase : public NextPromiseBase<ResultType, Executor> {
+public:
+  using coro_type = Task<ResultType, Executor>;
+  std::suspend_never initial_suspend() noexcept {
+    DEBUG("initial_suspend");
+    return {};
+  }
+};
+
+template <class ResultType, class Executor>
 class Task : public Next<ResultType, Executor> {
 private:
   using Base = Next<ResultType, Executor>;
@@ -34,17 +48,8 @@ private:
 protected:
   friend typename Base::Friend;
 
-  class TaskPromiseBase : public Base::NextPromiseBase {
-  public:
-    using coro_type = Task<ResultType, Executor>;
-    std::suspend_never initial_suspend() noexcept {
-      DEBUG("initial_suspend");
-      return {};
-    }
-  };
-
 public:
-  using promise_type = Base::template Promise<TaskPromiseBase>;
+  using promise_type = Promise<TaskPromiseBase<ResultType, Executor>>;
 
   using typename Base::executor_type;
   using typename Base::result_type;
@@ -53,6 +58,8 @@ public:
   static_assert(Awaitable<awaiter_type>, "TaskAwaiter is not Awaitable");
 
   explicit Task(std::coroutine_handle<promise_type> handle) noexcept : _handle(handle) {}
+
+  Task(Task &&task) noexcept : _handle(std::exchange(task._handle, {})) {}
 
   ~Task() { assert(!_handle); }
 

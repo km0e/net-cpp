@@ -1,5 +1,4 @@
 #pragma once
-#include <utility>
 #ifndef XSL_CORO_DEF
 #  define XSL_CORO_DEF
 #  define XSL_CORO_NB namespace xsl::coro {
@@ -37,19 +36,10 @@ do not know why, but test2 is ok
 so I think the problem is the lambda capture, do not use lambda capture
 */
 
-struct no_executor {};
-
-template <class Promise>
-class promise_traits {
-public:
-  using result_type = typename Promise::result_type;
-  using executor_type = typename Promise::executor_type;
-};
-
 struct noop_coroutine {
   struct promise_type {
     using result_type = void;
-    using executor_type = no_executor;
+    using executor_type = void;
     noop_coroutine get_return_object() { return noop_coroutine{}; }
     std::suspend_never initial_suspend() { return {}; }
     std::suspend_never final_suspend() noexcept { return {}; }

@@ -1,6 +1,7 @@
 #pragma once
 #ifndef XSL_CORO_LAZY
 #  define XSL_CORO_LAZY
+#  include "xsl/coro/base.h"
 #  include "xsl/coro/def.h"
 #  include "xsl/coro/executor.h"
 #  include "xsl/coro/next.h"
@@ -12,11 +13,13 @@
 XSL_CORO_NB
 template <class Promise>
 class LazyAwaiter : public Awaiter<Promise> {
+private:
   using Base = Awaiter<Promise>;
 
 public:
-  using promise_type = typename Base::promise_type;
-  using result_type = typename Base::result_type;
+  using promise_type = Promise;
+  using typename Base::result_type;
+
   using Base::Base;
   bool await_ready() {
     _handle.promise().resume(_handle);
@@ -27,32 +30,43 @@ protected:
   using Base::_handle;
 };
 
-template <typename ResultType, typename Executor = NoopExecutor>
+template <class ResultType, class Executor = NoopExecutor>
+class Lazy;
+
+template <class ResultType, class Executor>
+class LazyPromiseBase : public NextPromiseBase<ResultType, Executor> {
+private:
+  using Base = NextPromiseBase<ResultType, Executor>;
+
+public:
+  using typename Base::result_type;
+  using coro_type = Lazy<ResultType, Executor>;
+  std::suspend_always initial_suspend() noexcept {
+    DEBUG("initial_suspend");
+    return {};
+  }
+};
+
+template <class ResultType, class Executor>
 class Lazy : public Next<ResultType, Executor> {
 private:
   using LazyBase = Next<ResultType, Executor>;
 
 protected:
   friend typename LazyBase::Friend;
-  class LazyPromiseBase : public LazyBase::NextPromiseBase {
-  public:
-    using coro_type = Lazy<ResultType, Executor>;
-    std::suspend_always initial_suspend() noexcept {
-      DEBUG("initial_suspend");
-      return {};
-    }
-  };
 
 public:
-  using promise_type = LazyBase::template Promise<LazyPromiseBase>;
+  using promise_type = Promise<LazyPromiseBase<ResultType, Executor>>;
 
-  using typename LazyBase::executor_type;
-  using typename LazyBase::result_type;
+  using executor_type = promise_type::executor_type;
+  using result_type = promise_type::result_type;
   using awaiter_type = LazyAwaiter<promise_type>;
 
   static_assert(Awaitable<awaiter_type>, "LazyAwaiter is not Awaitable");
 
   explicit Lazy(std::coroutine_handle<promise_type> handle) noexcept : _handle(handle) {}
+
+  Lazy(Lazy &&task) noexcept : _handle(std::exchange(task._handle, {})) {}
 
   ~Lazy() { assert(!_handle); }
 

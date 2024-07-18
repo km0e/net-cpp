@@ -23,12 +23,12 @@ xsl::coro::Task<void> session(TcpStream stream) {
 }
 
 Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
-  auto server = tcp::Server::create<Ip<4>, Tcp>(poller, ip.data(), port.data());
+  auto server = tcp::Server::create<Ip<4>, Tcp>(std::move(poller), ip.data(), port.data());
   if (!server) {
     co_return;
   }
   auto serv = std::move(server.value());
-  for (;;) {
+  while (true) {
     auto _
         = (co_await serv.accept()).transform([](auto &&res) { session(std::move(res)).detach(); });
   }

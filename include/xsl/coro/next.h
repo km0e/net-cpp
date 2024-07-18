@@ -1,4 +1,5 @@
 #pragma once
+#include <utility>
 #ifndef XSL_CORO_NEXT
 #  define XSL_CORO_NEXT
 #  include "xsl/coro/base.h"
@@ -13,8 +14,10 @@ XSL_CORO_NB
 
 template <class Promise>
 class Awaiter {
-public:
+protected:
   using promise_type = Promise;
+
+public:
   typedef typename promise_type::executor_type executor_type;
   typedef typename promise_type::result_type result_type;
 
@@ -132,11 +135,14 @@ public:
     return std::forward<decltype(self)>(self);
   }
 
-  result_type block(this auto &&self) { return coro::block(self._co_await()); }
+  template <class Self>
+  result_type block(this Self &&self) {
+    return coro::block(std::forward<Self>(self));
+  }
 
   void detach(this auto &&self) {
     DEBUG("task detach");
-    self._co_await();
+    self.move_handle();
   }
 
   void detach(std::shared_ptr<executor_type> &executor) { this->by(executor).detach(); }

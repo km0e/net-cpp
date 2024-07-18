@@ -14,10 +14,13 @@ XSL_CORO_NB
 
 template <class Promise>
 class TaskAwaiter : public Awaiter<Promise> {
+private:
   using Base = Awaiter<Promise>;
 
-public:
+protected:
   using promise_type = Promise;
+
+public:
   using typename Base::result_type;
 
   using Base::Base;

@@ -1,6 +1,7 @@
 #pragma once
 #ifndef XSL_CORO_BASE
 #  define XSL_CORO_BASE
+#  include "xsl/coro/chain.h"
 #  include "xsl/coro/def.h"
 #  include "xsl/logctl.h"
 
@@ -83,28 +84,29 @@ public:
   void return_void() { _result = Result<void>(); }
 };
 
-class HandleGetter {
+class HandleControl {
 protected:
   auto &&get_handle(this auto &&self) { return self._handle; }
+  auto move_handle(this auto &&self) { return std::exchange(self._handle, {}); }
 };
 
 template <class ResultType>
-class Coro : public HandleGetter {
+class Coro : public HandleControl {
 protected:
-  using Friend = HandleGetter;
+  using Friend = HandleControl;
 
 public:
   using result_type = PromiseBase<ResultType>::result_type;
   using executor_type = PromiseBase<ResultType>::executor_type;
 
-  decltype(auto) operator co_await(this auto &&self) {
+  auto operator co_await(this auto &&self) -> typename std::decay_t<decltype(self)>::awaiter_type {
     DEBUG("move handle to TaskAwaiter");
-    return self._co_await();
+    return self.move_handle();
   }
 
-protected:
-  auto _co_await(this auto &&self) -> typename std::decay_t<decltype(self)>::awaiter_type {
-    return std::exchange(self.get_handle(), {});
+  auto transform(this auto &&self, std::invocable<result_type> auto &&f) {
+    using awaiter_type = typename std::decay_t<decltype(self)>::awaiter_type;
+    return ChainAwaiter<awaiter_type>(self.move_handle()).transform(std::forward<decltype(f)>(f));
   }
 };
 XSL_CORO_NE

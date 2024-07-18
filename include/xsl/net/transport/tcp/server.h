@@ -1,7 +1,6 @@
 #pragma once
 #ifndef XSL_NET_TRANSPORT_TCP_SERVER
 #  define XSL_NET_TRANSPORT_TCP_SERVER
-#  include "xsl/coro/task.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/transport/resolve.h"
 #  include "xsl/net/transport/tcp/accept.h"
@@ -37,21 +36,30 @@ std::expected<sys::net::Socket, std::error_condition> tcp_serv(const char *host,
 class TcpServer {
 public:
   template <class... Flags>
-  static std::expected<TcpServer, std::error_condition> create(std::shared_ptr<Poller> poller,
+  static std::expected<TcpServer, std::error_condition> create(
+      const std::shared_ptr<Poller> &poller, const char *host, const char *port) {
+    tcp_serv<Flags...>(host, port).transform([&poller](auto &&skt) {
+      return TcpServer{poller, std::move(skt)};
+    });
+  }
+  template <class... Flags>
+  static std::expected<TcpServer, std::error_condition> create(std::shared_ptr<Poller> &&poller,
                                                                const char *host, const char *port) {
-    auto skt = tcp_serv<Flags...>(host, port);
-    if (!skt) {
-      return std::unexpected(skt.error());
-    }
-    return TcpServer{std::move(poller), std::move(*skt)};
+    tcp_serv<Flags...>(host, port).transform([&poller](auto &&skt) {
+      return TcpServer{std::move(poller), std::move(skt)};
+    });
   }
   TcpServer(const std::shared_ptr<Poller> &poller, Socket &&socket)
       : poller(poller), acceptor{std::move(socket), this->poller} {}
+  TcpServer(std::shared_ptr<Poller> &&poller, Socket &&socket)
+      : poller(std::move(poller)), acceptor{std::move(socket), this->poller} {}
   TcpServer(TcpServer &&) = default;
-  coro::Task<std::expected<TcpStream, std::errc>> accept() {
+  decltype(auto) accept() {
     DEBUG("tcp server accept");
-    co_return (co_await acceptor.accept()).transform([this](auto &&res) -> TcpStream {
-      return {std::move(std::get<0>(std::move(res))), this->poller};
+    return acceptor.accept().transform([this](auto &&exp) {
+      return exp.transform([this](auto &&res) -> TcpStream {
+        return {std::move(std::get<0>(std::move(res))), this->poller};
+      });
     });
   }
 

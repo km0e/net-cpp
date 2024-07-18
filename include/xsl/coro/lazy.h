@@ -16,8 +16,10 @@ class LazyAwaiter : public Awaiter<Promise> {
 private:
   using Base = Awaiter<Promise>;
 
-public:
+protected:
   using promise_type = Promise;
+
+public:
   using typename Base::result_type;
 
   using Base::Base;

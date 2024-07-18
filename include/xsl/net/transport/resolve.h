@@ -163,13 +163,13 @@ namespace impl {
 
   struct Resolver {
     /**
-     * @brief Resolve the name and service to an address, typically used for connect
-     *
-     * @tparam Flags The flags for getaddrinfo, should be Ip<4>/Ip<6>, Tcp/Udp
-     * @param name The name of the host
-     * @param serv The service name or port number
-     * @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG
-     * @return ResolveResult
+     @brief Resolve the name and service to an address, typically used for connect
+
+     @tparam Flags The flags for getaddrinfo, should be Ip<4>/Ip<6>, Tcp/Udp
+     @param name The name of the host
+     @param serv The service name or port number
+     @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG
+     @return ResolveResult
      */
     template <class... Flags>
     ResolveResult resolve(const char *name, const char *serv,
@@ -177,13 +177,13 @@ namespace impl {
       return impl::resolve<ParamTraits<Flags...>>(name, serv, flags);
     }
     /**
-     * @brief Resolve the name and service to an address, typically used for connect
-     *
-     * @tparam Flags The flags for getaddrinfo, should be Ip<4>/Ip<6>, Tcp/Udp
-     * @param name The name of the host
-     * @param serv The service name or port number
-     * @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG
-     * @return ResolveResult
+     @brief Resolve the name and service to an address, typically used for connect
+
+     @tparam Flags The flags for getaddrinfo, should be Ip<4>/Ip<6>, Tcp/Udp
+     @param name The name of the host
+     @param serv The service name or port number
+     @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG
+     @return ResolveResult
      */
     template <class... Flags>
     ResolveResult resolve(const char *name, int serv, ResolveFlag flags = ResolveFlag::ADDRCONFIG) {
@@ -192,11 +192,11 @@ namespace impl {
       return impl::resolve<ParamTraits<Flags...>>(name, serv_str, flags);
     }
     /**
-     * @brief Resolve the service to an address, typically used for bind
-     *
-     * @param serv The service name or port number
-     * @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG | AI_PASSIVE
-     * @return ResolveResult
+     @brief Resolve the service to an address, typically used for bind
+
+     @param serv The service name or port number
+     @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG | AI_PASSIVE
+     @return ResolveResult
      */
     template <class... Flags>
     ResolveResult resolve(const char *serv,
@@ -204,12 +204,12 @@ namespace impl {
       return impl::resolve<ParamTraits<Flags...>>(nullptr, serv, flags);
     }
     /**
-     * @brief Resolve the service to an address, typically used for bind
-     *
-     * @tparam Flags The flags for getaddrinfo, should be Ip<4>/Ip<6>, Tcp/Udp
-     * @param port The port number
-     * @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG | AI_PASSIVE
-     * @return ResolveResult
+     @brief Resolve the service to an address, typically used for bind
+
+     @tparam Flags The flags for getaddrinfo, should be Ip<4>/Ip<6>, Tcp/Udp
+     @param port The port number
+     @param flags The flags for getaddrinfo, default to AI_ADDRCONFIG | AI_PASSIVE
+     @return ResolveResult
      */
     template <class... Flags>
     ResolveResult resolve(uint16_t port,

@@ -19,10 +19,9 @@ public:
 
   auto get_return_object(this auto &&self) noexcept {
     DEBUG("get_return_object");
-    using promise_type = std::remove_cvref_t<decltype(self)>;
+    using promise_type = std::decay_t<decltype(self)>;
     using coro_type = promise_type::coro_type;
-    return coro_type{
-        std::coroutine_handle<std::remove_cvref_t<decltype(self)>>::from_promise(self)};
+    return coro_type{std::coroutine_handle<promise_type>::from_promise(self)};
   }
 
   std::suspend_never initial_suspend() const noexcept { return {}; }
@@ -104,7 +103,7 @@ public:
   }
 
 protected:
-  auto _co_await(this auto &&self) -> typename std::remove_cvref_t<decltype(self)>::awaiter_type {
+  auto _co_await(this auto &&self) -> typename std::decay_t<decltype(self)>::awaiter_type {
     return std::exchange(self.get_handle(), {});
   }
 };

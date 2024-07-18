@@ -40,8 +40,7 @@ namespace impl_tcp_acceptor {
 }  // namespace impl_tcp_acceptor
 
 /**
- * @brief Acceptor is a coroutine that can be used to accept a connection
- *
+ @brief Acceptor is a coroutine that can be used to accept a connection
  */
 class Acceptor {
 public:

@@ -30,8 +30,8 @@ enum class HandleState {
 };
 
 /**
- * @brief TcpHandlerLike concept
- * @tparam T type
+ @brief TcpHandlerLike concept
+ @tparam T type
  */
 template <class T>
 concept TcpHandlerLike = requires(T t, int fd, IOM_EVENTS events) {

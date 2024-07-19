@@ -15,30 +15,6 @@
 TCP_NB
 using namespace xsl::sync;
 
-namespace impl_tcp_acceptor {
-  class Callback {
-  public:
-    Callback(const std::shared_ptr<coro::CountingSemaphore<1>> &sem) : sem(sem) {}
-    sync::PollHandleHintTag operator()([[maybe_unused]] int fd, IOM_EVENTS events) {
-      DEBUG("acceptor");
-      if (this->sem.unique()) {
-        return PollHandleHintTag::DELETE;
-      }
-      if (!!(events & IOM_EVENTS::IN)) {
-        sem->release();
-      } else if (!events) {
-        ERROR("Timeout");
-        return PollHandleHintTag::DELETE;
-      }
-      // TODO: handle other events
-      return PollHandleHintTag::NONE;
-    }
-
-  private:
-    std::shared_ptr<coro::CountingSemaphore<1>> sem;
-  };
-}  // namespace impl_tcp_acceptor
-
 /**
  @brief Acceptor is a coroutine that can be used to accept a connection
  */
@@ -46,7 +22,8 @@ class Acceptor {
 public:
   Acceptor(Socket &&skt, std::shared_ptr<Poller> poller)
       : sock(std::move(skt)), sem(std::make_shared<coro::CountingSemaphore<1>>(false)) {
-    poller->add(this->sock.raw_fd(), IOM_EVENTS::IN, impl_tcp_acceptor::Callback{this->sem});
+    using InCallback = sync::PollCallback<IOM_EVENTS::IN>;
+    poller->add(this->sock.raw_fd(), IOM_EVENTS::IN, InCallback{this->sem});
   }
   Acceptor(Acceptor &&rhs) noexcept = default;
   ~Acceptor() = default;

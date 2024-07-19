@@ -1,7 +1,4 @@
 #pragma once
-#include "xsl/sys/net/socket.h"
-
-#include <tuple>
 #ifndef XSL_NET_TRANSPORT_TCP_HELPER_STR
 #  define XSL_NET_TRANSPORT_TCP_HELPER_STR
 #  include "xsl/coro/lazy.h"
@@ -12,6 +9,7 @@
 #  include "xsl/net/transport/tcp/component/def.h"
 #  include "xsl/net/transport/tcp/stream.h"
 #  include "xsl/sync.h"
+#  include "xsl/sync/poller.h"
 #  include "xsl/sys.h"
 
 #  include <fcntl.h>
@@ -21,10 +19,12 @@
 #  include <expected>
 #  include <list>
 #  include <memory>
+#  include <numeric>
 #  include <ranges>
 #  include <string>
 #  include <string_view>
 #  include <system_error>
+#  include <tuple>
 
 TCP_COMPONENTS_NB
 namespace impl {
@@ -239,109 +239,6 @@ using impl_string_reader::StringReader;
 
 namespace impl_string_forwarder {
   const size_t MAX_SINGLE_FWD_SIZE = 4096;
-  class InCallback {
-  public:
-    InCallback(const std::shared_ptr<coro::CountingSemaphore<1>>& read_sem) noexcept
-        : read_sem(read_sem) {}
-    sync::PollHandleHint operator()(int, sync::IOM_EVENTS events) {
-      if (this->read_sem.unique()) {
-        return sync::PollHandleHintTag::DELETE;
-      }
-      if (!!(events & sync::IOM_EVENTS::IN)) {
-        DEBUG("read event");
-        this->read_sem->release();
-      }
-      return sync::PollHandleHintTag::NONE;
-    }
-
-  private:
-    std::shared_ptr<coro::CountingSemaphore<1>> read_sem;
-  };
-  class OutCallback {
-  public:
-    OutCallback(const std::shared_ptr<coro::CountingSemaphore<1>>& write_sem) noexcept
-        : write_sem(write_sem) {}
-    sync::PollHandleHint operator()(int, sync::IOM_EVENTS events) {
-      if (this->write_sem.unique()) {
-        return sync::PollHandleHintTag::DELETE;
-      }
-      if (!!(events & sync::IOM_EVENTS::OUT)) {
-        DEBUG("write event");
-        this->write_sem->release();
-      }
-      return sync::PollHandleHintTag::NONE;
-    }
-
-  private:
-    std::shared_ptr<coro::CountingSemaphore<1>> write_sem;
-  };
-  class StringWriter {
-  public:
-    StringWriter(int pipe_fd, std::shared_ptr<coro::CountingSemaphore<1>> write_sem) noexcept
-        : _pipe_fd(pipe_fd), write_sem(write_sem) {}
-    StringWriter(StringWriter&& rhs) noexcept
-        : _pipe_fd(std::exchange(rhs._pipe_fd, -1)), write_sem(std::move(rhs.write_sem)) {}
-    coro::Task<std::expected<void, RecvError>> operator()(Socket& sock,
-                                                          coro::CountingSemaphore<1>& sem) {
-      while (true) {
-        ssize_t n = ::splice(sock.raw_fd(), nullptr, _pipe_fd, nullptr, MAX_SINGLE_FWD_SIZE,
-                             SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
-        DEBUG("recv n: {}", n);
-        if (n == 0) {
-          co_await sem;
-        } else if (n == -1) {
-          if (errno == EAGAIN) {
-            DEBUG("no data");
-            co_await *write_sem;
-            continue;
-          } else {
-            ERROR("Failed to recv data, err : {}", strerror(errno));
-            co_return std::unexpected{RecvError{RecvErrorCategory::Unknown}};
-          }
-        }
-      }
-    }
-    ~StringWriter() {
-      if (_pipe_fd != -1) {
-        ::close(_pipe_fd);
-      }
-    }
-    int _pipe_fd;
-    std::shared_ptr<coro::CountingSemaphore<1>> write_sem;
-  };
-  class StringReader {
-  public:
-    StringReader(int pipe_fd, std::shared_ptr<coro::CountingSemaphore<1>> read_sem) noexcept
-        : _pipe_fd(pipe_fd), read_sem(read_sem) {}
-    StringReader(StringReader&& rhs) noexcept
-        : _pipe_fd(std::exchange(rhs._pipe_fd, -1)), read_sem(std::move(rhs.read_sem)) {}
-    coro::Task<std::expected<void, SendError>> operator()(Socket& sock,
-                                                          coro::CountingSemaphore<1>& sem) {
-      while (true) {
-        ssize_t n = ::splice(_pipe_fd, nullptr, sock.raw_fd(), nullptr, MAX_SINGLE_FWD_SIZE,
-                             SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
-        DEBUG("send n: {}", n);
-        if (n == 0) {
-          co_await *read_sem;
-        } else if (n == -1) {
-          if (errno == EAGAIN) {
-            co_await sem;
-            continue;
-          } else {
-            ERROR("Failed to send data, err : {}", strerror(errno));
-            co_return std::unexpected{SendError{SendErrorCategory::Unknown}};
-          }
-        }
-      }
-    }
-    ~StringReader() {
-      if (_pipe_fd != -1) {
-        ::close(_pipe_fd);
-      }
-    }
-    int _pipe_fd;
-    std::shared_ptr<coro::CountingSemaphore<1>> read_sem;
-  };
   inline coro::Lazy<std::expected<void, SendError>> write(
       int pipe_fd, std::shared_ptr<coro::CountingSemaphore<1>> read_sem,
       std::pair<std::shared_ptr<Socket>, std::shared_ptr<coro::CountingSemaphore<1>>> write_meta) {
@@ -413,10 +310,10 @@ forward(std::shared_ptr<Poller> poller, From& from, To& to) {
   }
   auto read_sem = std::make_shared<coro::CountingSemaphore<1>>();
   auto write_sem = std::make_shared<coro::CountingSemaphore<1>>();
-  poller->add(pipe_fd[0], sync::IOM_EVENTS::IN | sync::IOM_EVENTS::ET,
-              impl_string_forwarder::InCallback{read_sem});
-  poller->add(pipe_fd[1], sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-              impl_string_forwarder::OutCallback{write_sem});
+  using InCallback = sync::PollCallback<sync::IOM_EVENTS::IN>;
+  poller->add(pipe_fd[0], sync::IOM_EVENTS::IN | sync::IOM_EVENTS::ET, InCallback{read_sem});
+  using OutCallback = sync::PollCallback<sync::IOM_EVENTS::OUT>;
+  poller->add(pipe_fd[1], sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET, OutCallback{write_sem});
   auto lazy_read = impl_string_forwarder::read(pipe_fd[1], write_sem, from.read_meta());
   auto lazy_write = impl_string_forwarder::write(pipe_fd[0], read_sem, to.write_meta());
   return {std::make_tuple(StringForwarder<From, To>{read_sem, write_sem}, std::move(lazy_read),

@@ -5,15 +5,13 @@
 #  include "xsl/coro/task.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/transport/tcp/def.h"
+#  include "xsl/sync.h"
 #  include "xsl/sync/poller.h"
 #  include "xsl/sys.h"
 
 #  include <sys/socket.h>
 
-#  include <concepts>
-#  include <cstddef>
 #  include <memory>
-#  include <numeric>
 #  include <string_view>
 #  include <type_traits>
 #  include <utility>
@@ -61,41 +59,16 @@ public:
 
 using SendResult = std::expected<void, SendError>;
 
-namespace impl_tcp_stream {
-  class Callback {
-  public:
-    Callback(std::shared_ptr<coro::CountingSemaphore<1>> read_sem,
-             std::shared_ptr<coro::CountingSemaphore<1>> write_sem) noexcept
-        : read_sem(read_sem), write_sem(write_sem) {}
-    sync::PollHandleHint operator()(int, sync::IOM_EVENTS events) {
-      if (this->read_sem.unique() && this->write_sem.unique()) {
-        return sync::PollHandleHintTag::DELETE;
-      }
-      if (!!(events & sync::IOM_EVENTS::IN)) {
-        DEBUG("read event");
-        this->read_sem->release();
-      }
-      if (!!(events & sync::IOM_EVENTS::OUT)) {
-        DEBUG("write event");
-        this->write_sem->release();
-      }
-      return sync::PollHandleHintTag::NONE;
-    }
-
-  private:
-    std::shared_ptr<coro::CountingSemaphore<1>> read_sem, write_sem;
-  };
-}  // namespace impl_tcp_stream
-
 class TcpStream {
 public:
   TcpStream(Socket &&sock, std::shared_ptr<sync::Poller> poller) noexcept
       : sock(std::make_shared<Socket>(std::move(sock))),
         read_sem(std::make_shared<coro::CountingSemaphore<1>>()),
         write_sem(std::make_shared<coro::CountingSemaphore<1>>()) {
+    using IOCallback = sync::PollCallback<sync::IOM_EVENTS::IN, sync::IOM_EVENTS::OUT>;
     poller->add(this->sock->raw_fd(),
                 sync::IOM_EVENTS::IN | sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-                impl_tcp_stream::Callback{this->read_sem, this->write_sem});
+                IOCallback{this->read_sem, this->write_sem});
   }
   TcpStream(TcpStream &&rhs) noexcept
       : sock(std::move(rhs.sock)),
@@ -104,7 +77,9 @@ public:
     DEBUG("TcpStream move");
   }
   TcpStream &operator=(TcpStream &&rhs) noexcept = default;
+
   ~TcpStream() {}
+
   std::pair<std::shared_ptr<Socket>, std::shared_ptr<coro::CountingSemaphore<1>>> read_meta() {
     return {this->sock, this->read_sem};
   }
@@ -118,18 +93,21 @@ public:
   decltype(auto) read(Func &&func) {
     return std::forward<Func>(func)(this->sock, this->read_sem);
   }
+
   template <class Func>
     requires std::is_invocable_r_v<coro::Task<SendResult>, Func, std::shared_ptr<Socket>,
                                    std::shared_ptr<coro::CountingSemaphore<1>>>
   decltype(auto) write(Func &&func) {
     return std::forward<Func>(func)(this->sock, this->write_sem);
   }
+
   template <class Func>
     requires std::is_invocable_r_v<coro::Task<RecvResult>, Func, Socket &,
                                    coro::CountingSemaphore<1> &>
   decltype(auto) unsafe_read(Func &&func) {
     return std::forward<Func>(func)(*this->sock, *this->read_sem);
   }
+
   template <class Func>
     requires std::is_invocable_r_v<coro::Task<SendResult>, Func, Socket &,
                                    coro::CountingSemaphore<1> &>

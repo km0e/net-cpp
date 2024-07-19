@@ -38,14 +38,14 @@ public:
   template <class... Flags>
   static std::expected<TcpServer, std::error_condition> create(
       const std::shared_ptr<Poller> &poller, const char *host, const char *port) {
-    tcp_serv<Flags...>(host, port).transform([&poller](auto &&skt) {
+    return tcp_serv<Flags...>(host, port).transform([&poller](auto &&skt) {
       return TcpServer{poller, std::move(skt)};
     });
   }
   template <class... Flags>
   static std::expected<TcpServer, std::error_condition> create(std::shared_ptr<Poller> &&poller,
                                                                const char *host, const char *port) {
-    tcp_serv<Flags...>(host, port).transform([&poller](auto &&skt) {
+    return tcp_serv<Flags...>(host, port).transform([&poller](auto &&skt) {
       return TcpServer{std::move(poller), std::move(skt)};
     });
   }

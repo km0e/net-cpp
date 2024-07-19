@@ -10,10 +10,12 @@
 
 #  include <sys/socket.h>
 
+#  include <concepts>
 #  include <cstddef>
 #  include <memory>
 #  include <numeric>
 #  include <string_view>
+#  include <type_traits>
 #  include <utility>
 TCP_NB
 enum class RecvErrorCategory {
@@ -57,6 +59,8 @@ public:
   SendErrorCategory category;
 };
 
+using SendResult = std::expected<void, SendError>;
+
 namespace impl_tcp_stream {
   class Callback {
   public:
@@ -86,10 +90,10 @@ namespace impl_tcp_stream {
 class TcpStream {
 public:
   TcpStream(Socket &&sock, std::shared_ptr<sync::Poller> poller) noexcept
-      : sock(std::move(sock)),
-        read_sem(std::make_shared<coro::CountingSemaphore<1>>(true)),
-        write_sem(std::make_shared<coro::CountingSemaphore<1>>(true)) {
-    poller->add(this->sock.raw_fd(),
+      : sock(std::make_shared<Socket>(std::move(sock))),
+        read_sem(std::make_shared<coro::CountingSemaphore<1>>()),
+        write_sem(std::make_shared<coro::CountingSemaphore<1>>()) {
+    poller->add(this->sock->raw_fd(),
                 sync::IOM_EVENTS::IN | sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
                 impl_tcp_stream::Callback{this->read_sem, this->write_sem});
   }
@@ -101,129 +105,40 @@ public:
   }
   TcpStream &operator=(TcpStream &&rhs) noexcept = default;
   ~TcpStream() {}
-  coro::Task<RecvResult> read(std::string &rbuf) {
-    TRACE("start recv string");
-    std::vector<std::string> data;
-    char buf[MAX_SINGLE_RECV_SIZE];
-    ssize_t n;
-    for (;;) {
-      n = ::recv(this->sock.raw_fd(), buf, sizeof(buf), 0);
-      DEBUG("recv n: {}", n);
-      if (n == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          if (!data.empty()) {
-            DEBUG("recv over");
-            break;
-          }
-          DEBUG("no data");
-          co_await *this->read_sem;
-          continue;
-        } else {
-          ERROR("Failed to recv data, err : {}", strerror(errno));
-          // TODO: handle recv error
-          co_return std::unexpected{RecvError{RecvErrorCategory::Unknown}};
-        }
-      } else if (n == 0) {
-        DEBUG("recv eof");
-        co_return std::unexpected{RecvError{RecvErrorCategory::Eof}};
-        break;
-      }
-      TRACE("recv {} bytes", n);
-      data.emplace_back(buf, n);
-    };
-    rbuf = std::accumulate(data.begin(), data.end(), rbuf);
-    DEBUG("end recv string");
-    co_return {};
+  std::pair<std::shared_ptr<Socket>, std::shared_ptr<coro::CountingSemaphore<1>>> read_meta() {
+    return {this->sock, this->read_sem};
   }
-  coro::Task<RecvResult> read(std::string &rbuf, size_t size) {
-    TRACE("start recv size");
-    std::vector<std::string> data;
-    char buf[MAX_SINGLE_RECV_SIZE];
-    ssize_t n;
-    size_t total = 0;
-    do {
-      n = ::recv(this->sock.raw_fd(), buf, std::min(sizeof(buf), size - total), 0);
-      DEBUG("recv n: {}", n);
-      if (n == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          co_await *this->read_sem;
-          continue;
-        } else {
-          ERROR("Failed to recv data, err : {}", strerror(errno));
-          co_return std::unexpected{RecvError{RecvErrorCategory::Unknown}};
-        }
-      } else if (n == 0) {
-        DEBUG("recv eof");
-        co_return std::unexpected{RecvError{RecvErrorCategory::Eof}};
-        break;
-      }
-      data.emplace_back(buf, n);
-      total += n;
-    } while (total < size);
-    rbuf = std::accumulate(data.begin(), data.end(), rbuf);
-    co_return {};
+  std::pair<std::shared_ptr<Socket>, std::shared_ptr<coro::CountingSemaphore<1>>> write_meta() {
+    return {this->sock, this->write_sem};
   }
-  coro::Task<std::expected<bool, SendError>> write(std::string_view data) {
-    DEBUG("start write {} bytes", data.size());
-    // ssize_t n = ::send(this->impl->sock.raw_fd(), data.data(), data.size(), 0);
-    // DEBUG("write {} bytes", n);
-    // if (n == -1) {
-    //   if (errno == EAGAIN || errno == EWOULDBLOCK) {
-    //     DEBUG("write over");
-    //     return {true};
-    //   } else {
-    //     return std::unexpected{SendError{SendErrorCategory::Unknown}};
-    //   }
-    // } else if (n == 0) {
-    //   return {0};
-    // } else if (static_cast<size_t>(n) == data.size()) {
-    //   DEBUG("write {} bytes", n);
-    //   return {static_cast<size_t>(n)};
-    // }
-    // DEBUG("write {} bytes", n);
-    // data = data.substr(n);
-    // while (true) {
-    //   ssize_t tmp = ::write(this->impl->sock.raw_fd(), data.data(), data.size());
-    //   if (tmp == -1) {
-    //     if (errno == EAGAIN || errno == EWOULDBLOCK) {
-    //       return {static_cast<size_t>(n)};
-    //     } else {
-    //       return std::unexpected{SendError{SendErrorCategory::Unknown}};
-    //     }
-    //   } else if (tmp == 0) {
-    //     return {static_cast<size_t>(n)};
-    //   } else if (static_cast<size_t>(tmp) == data.size()) {
-    //     DEBUG("write {} bytes", tmp);
-    //     return {static_cast<size_t>(n + tmp)};
-    //   }
-    //   data = data.substr(tmp);
-    //   n += tmp;
-    // }
-    // return std::unexpected{SendError{SendErrorCategory::Unknown}};
 
-    while (true) {
-      ssize_t n = ::send(this->sock.raw_fd(), data.data(), data.size(), 0);
-      if (n == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          DEBUG("need write again");
-          co_await *this->write_sem;
-          continue;
-        } else {
-          co_return std::unexpected{SendError{SendErrorCategory::Unknown}};
-        }
-      } else if (n == 0) {
-        DEBUG("need write again");
-        co_await *this->write_sem;
-        continue;
-      } else if (static_cast<size_t>(n) == data.size()) {
-        co_return {true};
-      }
-      data = data.substr(n);
-    }
+  template <class Func>
+    requires std::is_invocable_r_v<coro::Task<RecvResult>, Func, std::shared_ptr<Socket>,
+                                   std::shared_ptr<coro::CountingSemaphore<1>>>
+  decltype(auto) read(Func &&func) {
+    return std::forward<Func>(func)(this->sock, this->read_sem);
+  }
+  template <class Func>
+    requires std::is_invocable_r_v<coro::Task<SendResult>, Func, std::shared_ptr<Socket>,
+                                   std::shared_ptr<coro::CountingSemaphore<1>>>
+  decltype(auto) write(Func &&func) {
+    return std::forward<Func>(func)(this->sock, this->write_sem);
+  }
+  template <class Func>
+    requires std::is_invocable_r_v<coro::Task<RecvResult>, Func, Socket &,
+                                   coro::CountingSemaphore<1> &>
+  decltype(auto) unsafe_read(Func &&func) {
+    return std::forward<Func>(func)(*this->sock, *this->read_sem);
+  }
+  template <class Func>
+    requires std::is_invocable_r_v<coro::Task<SendResult>, Func, Socket &,
+                                   coro::CountingSemaphore<1> &>
+  decltype(auto) unsafe_write(Func &&func) {
+    return std::forward<Func>(func)(*this->sock, *this->write_sem);
   }
 
 private:
-  Socket sock;
+  std::shared_ptr<Socket> sock;
   std::shared_ptr<coro::CountingSemaphore<1>> read_sem, write_sem;
 };
 TCP_NE

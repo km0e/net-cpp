@@ -1,11 +1,11 @@
 #pragma once
-#include <type_traits>
 #ifndef XSL_FEATURE
 #  define XSL_FEATURE
 #  include "xsl/def.h"
 #  include "xsl/wheel/type_traits.h"
 
 #  include <cstdint>
+#  include <type_traits>
 
 XSL_NB
 namespace feature {
@@ -22,6 +22,8 @@ namespace feature {
   // using for resolver
   template <uint8_t version>
   struct Ip {};
+  struct Exact {};
+  // using for resolver
 
   namespace impl {
     template <class... Args>

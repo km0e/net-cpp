@@ -5,6 +5,7 @@
 #  include "xsl/net/http.h"
 #  include "xsl/net/transport.h"
 #  include "xsl/net/transport/tcp.h"
+#  include "xsl/net/transport/tcp/component.h"
 #  include "xsl/net/transport/tcp/server.h"
 NET_NB
 using net::create_static_handler;
@@ -42,6 +43,9 @@ namespace tcp {
   std::expected<sys::net::Socket, std::error_condition> serv(const char *host, const char *port) {
     return net::transport::tcp::tcp_serv<Flags...>(host, port);
   };
+  using transport::tcp::forward;
+  using transport::tcp::StringReader;
+  using transport::tcp::StringWriter;
 }  // namespace tcp
 NET_NE
 #endif

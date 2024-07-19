@@ -100,7 +100,7 @@ public:
   using executor_type = PromiseBase<ResultType>::executor_type;
 
   auto operator co_await(this auto &&self) -> typename std::decay_t<decltype(self)>::awaiter_type {
-    DEBUG("move handle to TaskAwaiter");
+    DEBUG("move handle to Awaiter");
     return self.move_handle();
   }
 

@@ -74,6 +74,49 @@ TEST(Task, async_task) {
   EXPECT_EQ(task4().by(executor).block(), 2);
 }
 
+TEST(Task, async_lazy) {
+  std::binary_semaphore sem(0);
+
+  auto executor = std::make_shared<NewThreadExecutor>();
+  int value = 0;
+  auto task1 = [&sem](int &value) -> Task<void, NewThreadExecutor> {
+    co_await no_return_task<NewThreadExecutor>(value);
+    value += 1;
+    sem.release();
+    co_return;
+  };
+  task1(value).by(executor).block();
+  sem.acquire();
+  ASSERT_EQ(value, 2);
+
+  task1(value).by(executor).detach();
+  sem.acquire();
+  EXPECT_EQ(value, 4);
+
+  auto task2 = [&sem](int &value) -> Task<void, NewThreadExecutor> {
+    value = co_await return_task() + 1;
+    sem.release();
+    co_return;
+  };
+  task2(value).by(executor).block();
+  sem.acquire();
+  ASSERT_EQ(value, 2);
+
+  task2(value).by(executor).detach();
+  sem.acquire();
+  EXPECT_EQ(value, 2);
+
+  auto task3 = []() -> Task<int, NewThreadExecutor> {
+    int value = 0;
+    co_await no_return_task(value);
+    co_return value + 1;
+  };
+  EXPECT_EQ(task3().by(executor).block(), 2);
+
+  auto task4 = []() -> Task<int, NewThreadExecutor> { co_return co_await return_task() + 1; };
+  EXPECT_EQ(task4().by(executor).block(), 2);
+}
+
 TEST(Task, async_exception_task) {
   auto executor = std::make_shared<NoopExecutor>();
   auto task1 = []() -> Task<void> {

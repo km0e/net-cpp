@@ -1,5 +1,5 @@
 #pragma once
-#include <utility>
+#include "xsl/coro/detach.h"
 #ifndef XSL_CORO_NEXT
 #  define XSL_CORO_NEXT
 #  include "xsl/coro/base.h"
@@ -10,6 +10,7 @@
 #  include <functional>
 #  include <memory>
 #  include <optional>
+#  include <utility>
 XSL_CORO_NB
 
 template <class Promise>
@@ -142,7 +143,7 @@ public:
 
   void detach(this auto &&self) {
     DEBUG("task detach");
-    self.move_handle();
+    coro::detach(std::move(self));
   }
 
   void detach(std::shared_ptr<executor_type> &executor) { this->by(executor).detach(); }

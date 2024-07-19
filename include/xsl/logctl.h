@@ -18,9 +18,13 @@ private:
 public:
   ~LogCtl();
   quill::Logger* logger;
+#  if QUILL_COMPILE_ACTIVE_LOG_LEVEL <= QUILL_LOG_LEVEL_CRITICAL
   static LogCtl instance;
 
   static constexpr void no_log() { set_log_level(LogLevel::NONE); }
+
+  static inline void flush_log() { instance.logger->flush_log(); }
+
   static constexpr void set_log_level(LogLevel level) {
     switch (level) {
       case LogLevel::TRACE:
@@ -46,6 +50,13 @@ public:
         break;
     }
   }
+#  else
+  static constexpr void no_log() {}
+
+  static constexpr void flush_log() {}
+
+  static constexpr void set_log_level(LogLevel) {}
+#  endif
 };
 
 #  define TRACE(fmt, ...) LOG_TRACE_L1(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
@@ -64,7 +75,7 @@ constexpr void set_log_level(LogLevel level) { xsl::LogCtl::set_log_level(level)
 
 constexpr void no_log() { set_log_level(xsl::LogLevel::NONE); }
 
-inline void flush_log() { xsl::LogCtl::instance.logger->flush_log(); }
+inline void flush_log() { xsl::LogCtl::flush_log(); }
 
 XSL_NE
 #endif

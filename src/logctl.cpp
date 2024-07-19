@@ -6,7 +6,9 @@
 #include <quill/Logger.h>
 #include <quill/sinks/ConsoleSink.h>
 XSL_NB
+#if QUILL_COMPILE_ACTIVE_LOG_LEVEL <= QUILL_LOG_LEVEL_CRITICAL
 LogCtl LogCtl::instance{};
+#endif
 LogCtl::LogCtl() : logger(nullptr) {
   quill::Backend::start();
   auto console_sink = quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink_id_1");

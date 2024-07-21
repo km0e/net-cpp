@@ -1,7 +1,7 @@
-#include "xsl/coro/task.h"
+#include "xsl/feature.h"
 #include "xsl/logctl.h"
-#include "xsl/net/transport.h"
 #include "xsl/sync.h"
+#include "xsl/sys.h"
 
 #include <CLI/CLI.hpp>
 #include <gtest/gtest.h>
@@ -30,7 +30,7 @@ TEST(connect, connect) {
   auto sock = connect(ai, poller);
   auto skt = sock.block();
   ASSERT_TRUE(skt.has_value());
-  ASSERT_NE(skt.value().raw_fd(), 0);
+  ASSERT_NE(skt.value().raw(), 0);
   poller->shutdown();
   t.join();
 }

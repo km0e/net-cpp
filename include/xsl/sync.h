@@ -3,11 +3,13 @@
 #  define XSL_SYNC
 #  include "xsl/coro/semaphore.h"
 #  include "xsl/def.h"
+#  include "xsl/logctl.h"
 #  include "xsl/sync/mutex.h"
 #  include "xsl/sync/poller.h"
 #  include "xsl/sync/spsc.h"
 
 #  include <array>
+#  include <cstdint>
 XSL_NB
 using sync::IOM_EVENTS;
 using sync::LockGuard;
@@ -31,7 +33,8 @@ namespace sync {
     template <class... Sems>
     PollCallback(Sems &&...sems) : sems{std::forward<Sems>(sems)...} {}
     sync::PollHandleHint operator()(int, sync::IOM_EVENTS events) {
-      if (!events) {
+      DEBUG("Poll Event: {}", static_cast<uint32_t>(events));
+      if (!events || !!(events & sync::IOM_EVENTS::HUP)) {
         for (auto &sem : sems) {
           auto raw = sem.get();
           sem.reset();

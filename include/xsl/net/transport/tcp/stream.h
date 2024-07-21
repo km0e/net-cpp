@@ -7,7 +7,7 @@
 #  include "xsl/net/transport/tcp/def.h"
 #  include "xsl/sync.h"
 #  include "xsl/sync/poller.h"
-#  include "xsl/sys.h"
+#  include "xsl/sys/net.h"
 
 #  include <sys/socket.h>
 
@@ -61,12 +61,12 @@ using SendResult = std::expected<void, SendError>;
 
 class TcpStream {
 public:
-  TcpStream(Socket &&sock, std::shared_ptr<sync::Poller> poller) noexcept
-      : sock(std::make_shared<Socket>(std::move(sock))),
+  TcpStream(sys::Socket &&sock, std::shared_ptr<sync::Poller> poller) noexcept
+      : sock(std::make_shared<sys::Socket>(std::move(sock))),
         read_sem(std::make_shared<coro::CountingSemaphore<1>>()),
         write_sem(std::make_shared<coro::CountingSemaphore<1>>()) {
     using IOCallback = sync::PollCallback<sync::IOM_EVENTS::IN, sync::IOM_EVENTS::OUT>;
-    poller->add(this->sock->raw_fd(),
+    poller->add(this->sock->raw(),
                 sync::IOM_EVENTS::IN | sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
                 IOCallback{this->read_sem, this->write_sem});
   }
@@ -80,43 +80,44 @@ public:
 
   ~TcpStream() {}
 
-  std::pair<std::shared_ptr<Socket>, std::shared_ptr<coro::CountingSemaphore<1>>> read_meta() {
+  std::pair<std::shared_ptr<sys::Socket>, std::shared_ptr<coro::CountingSemaphore<1>>> read_meta() {
     return {this->sock, this->read_sem};
   }
-  std::pair<std::shared_ptr<Socket>, std::shared_ptr<coro::CountingSemaphore<1>>> write_meta() {
+  std::pair<std::shared_ptr<sys::Socket>, std::shared_ptr<coro::CountingSemaphore<1>>>
+  write_meta() {
     return {this->sock, this->write_sem};
   }
 
   template <class Func>
-    requires std::is_invocable_r_v<coro::Task<RecvResult>, Func, std::shared_ptr<Socket>,
+    requires std::is_invocable_r_v<coro::Task<RecvResult>, Func, std::shared_ptr<sys::Socket>,
                                    std::shared_ptr<coro::CountingSemaphore<1>>>
   decltype(auto) read(Func &&func) {
     return std::forward<Func>(func)(this->sock, this->read_sem);
   }
 
   template <class Func>
-    requires std::is_invocable_r_v<coro::Task<SendResult>, Func, std::shared_ptr<Socket>,
+    requires std::is_invocable_r_v<coro::Task<SendResult>, Func, std::shared_ptr<sys::Socket>,
                                    std::shared_ptr<coro::CountingSemaphore<1>>>
   decltype(auto) write(Func &&func) {
     return std::forward<Func>(func)(this->sock, this->write_sem);
   }
 
   template <class Func>
-    requires std::is_invocable_r_v<coro::Task<RecvResult>, Func, Socket &,
+    requires std::is_invocable_r_v<coro::Task<RecvResult>, Func, sys::Socket &,
                                    coro::CountingSemaphore<1> &>
   decltype(auto) unsafe_read(Func &&func) {
     return std::forward<Func>(func)(*this->sock, *this->read_sem);
   }
 
   template <class Func>
-    requires std::is_invocable_r_v<coro::Task<SendResult>, Func, Socket &,
+    requires std::is_invocable_r_v<coro::Task<SendResult>, Func, sys::Socket &,
                                    coro::CountingSemaphore<1> &>
   decltype(auto) unsafe_write(Func &&func) {
     return std::forward<Func>(func)(*this->sock, *this->write_sem);
   }
 
 private:
-  std::shared_ptr<Socket> sock;
+  std::shared_ptr<sys::Socket> sock;
   std::shared_ptr<coro::CountingSemaphore<1>> read_sem, write_sem;
 };
 TCP_NE

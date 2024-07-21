@@ -10,7 +10,6 @@
 #  include "xsl/net/transport/tcp/stream.h"
 #  include "xsl/sync.h"
 #  include "xsl/sync/poller.h"
-#  include "xsl/sys.h"
 
 #  include <fcntl.h>
 #  include <sys/socket.h>
@@ -121,13 +120,13 @@ namespace impl_string_writer {
   class StringWriter<feature::placeholder> {
   public:
     StringWriter(std::string& data) : data(data) {}
-    coro::Task<std::expected<void, RecvError>> operator()(Socket& sock,
+    coro::Task<std::expected<void, RecvError>> operator()(sys::Socket& sock,
                                                           coro::CountingSemaphore<1>& sem) {
       std::vector<std::string> datalist;
       char buf[MAX_SINGLE_RECV_SIZE];
       ssize_t n;
       while (true) {
-        n = ::recv(sock.raw_fd(), buf, sizeof(buf), 0);
+        n = ::recv(sock.raw(), buf, sizeof(buf), 0);
         DEBUG("recv n: {}", n);
         if (n == -1) {
           if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -162,14 +161,14 @@ namespace impl_string_writer {
   class StringWriter<feature::Exact> {
   public:
     StringWriter(std::string& data, size_t size) : data(data), size(size) {}
-    coro::Task<std::expected<void, RecvError>> operator()(Socket& sock,
+    coro::Task<std::expected<void, RecvError>> operator()(sys::Socket& sock,
                                                           coro::CountingSemaphore<1>& sem) {
       std::vector<std::string> datalist;
       char buf[MAX_SINGLE_RECV_SIZE];
       ssize_t n;
       size_t total = 0;
       do {
-        n = ::recv(sock.raw_fd(), buf, std::min(sizeof(buf), size - total), 0);
+        n = ::recv(sock.raw(), buf, std::min(sizeof(buf), size - total), 0);
         DEBUG("recv n: {}", n);
         if (n == -1) {
           if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -205,10 +204,10 @@ namespace impl_string_reader {
   class StringReader<feature::placeholder> {
   public:
     StringReader(std::string_view data) : data(data) {}
-    coro::Task<std::expected<void, SendError>> operator()(Socket& sock,
+    coro::Task<std::expected<void, SendError>> operator()(sys::Socket& sock,
                                                           coro::CountingSemaphore<1>& sem) {
       while (true) {
-        ssize_t n = ::send(sock.raw_fd(), data.data(), data.size(), 0);
+        ssize_t n = ::send(sock.raw(), data.data(), data.size(), 0);
         if (n == -1) {
           if (errno == EAGAIN || errno == EWOULDBLOCK) {
             DEBUG("need write again");
@@ -241,10 +240,11 @@ namespace impl_string_forwarder {
   const size_t MAX_SINGLE_FWD_SIZE = 4096;
   inline coro::Lazy<std::expected<void, SendError>> write(
       int pipe_fd, std::shared_ptr<coro::CountingSemaphore<1>> read_sem,
-      std::pair<std::shared_ptr<Socket>, std::shared_ptr<coro::CountingSemaphore<1>>> write_meta) {
+      std::pair<std::shared_ptr<sys::Socket>, std::shared_ptr<coro::CountingSemaphore<1>>>
+          write_meta) {
     auto [sock, sem] = write_meta;
     while (true) {
-      ssize_t n = ::splice(pipe_fd, nullptr, sock->raw_fd(), nullptr, MAX_SINGLE_FWD_SIZE,
+      ssize_t n = ::splice(pipe_fd, nullptr, sock->raw(), nullptr, MAX_SINGLE_FWD_SIZE,
                            SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
       DEBUG("send n: {}", n);
       if (n == 0) {
@@ -263,10 +263,11 @@ namespace impl_string_forwarder {
   }
   inline coro::Lazy<std::expected<void, RecvError>> read(
       int pipe_fd, std::shared_ptr<coro::CountingSemaphore<1>> write_sem [[maybe_unused]],
-      std::pair<std::shared_ptr<Socket>, std::shared_ptr<coro::CountingSemaphore<1>>> read_meta) {
+      std::pair<std::shared_ptr<sys::Socket>, std::shared_ptr<coro::CountingSemaphore<1>>>
+          read_meta) {
     auto [sock, sem] = read_meta;
     while (true) {
-      ssize_t n = ::splice(sock->raw_fd(), nullptr, pipe_fd, nullptr, MAX_SINGLE_FWD_SIZE,
+      ssize_t n = ::splice(sock->raw(), nullptr, pipe_fd, nullptr, MAX_SINGLE_FWD_SIZE,
                            SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
       DEBUG("recv n: {}", n);
       if (n == 0) {

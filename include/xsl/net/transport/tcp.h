@@ -3,13 +3,9 @@
 #ifndef XSL_NET_TRANSPORT_TCP
 #  define XSL_NET_TRANSPORT_TCP
 #  include "xsl/net/transport/def.h"
-#  include "xsl/net/transport/tcp/accept.h"
 #  include "xsl/net/transport/tcp/component.h"
 #  include "xsl/net/transport/tcp/conn.h"
 #  include "xsl/net/transport/tcp/stream.h"
-#  include "xsl/net/transport/tcp/utils.h"
-
-#  include <expected>
 
 TRANSPORT_NB
 using TcpHandleHint = tcp::HandleHint;
@@ -31,10 +27,6 @@ using TcpRecvError = tcp::RecvError;
 using TcpSendError = tcp::SendError;
 using TcpRecvContext = tcp::RecvContext;
 using TcpSendTasks = tcp::SendTasks;
-using tcp::Acceptor;
-using tcp::bind;
-using tcp::connect;
-using tcp::listen;
 using tcp::TcpConnManager;
 using tcp::TcpConnManagerConfig;
 using tcp::TcpHandler;

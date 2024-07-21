@@ -2,14 +2,8 @@
 #ifndef XSL_NET_TRANSPORT
 #  define XSL_NET_TRANSPORT
 #  include "xsl/net/def.h"
-#  include "xsl/net/transport/resolve.h"
 #  include "xsl/net/transport/tcp.h"
 NET_NB
-using transport::Acceptor;
-using transport::bind;
-using transport::connect;
-using transport::listen;
-using transport::Resolver;
 using transport::TcpConnManager;
 using transport::TcpConnManagerConfig;
 using transport::TcpHandleHint;

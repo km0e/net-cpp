@@ -2,7 +2,8 @@
 #ifndef XSL_NET_TRANSPORT_RESOLVE
 #  define XSL_NET_TRANSPORT_RESOLVE
 #  include "xsl/feature.h"
-#  include "xsl/net/transport/def.h"
+#  include "xsl/sys/net/def.h"
+#  include "xsl/sys/net/endpoint.h"
 
 #  include <netdb.h>
 #  include <sys/socket.h>
@@ -10,12 +11,11 @@
 #  include <cstdint>
 #  include <cstring>
 #  include <expected>
-#  include <iterator>
 #  include <string>
 #  include <system_error>
 #  include <utility>
 
-TRANSPORT_NB
+SYS_NET_NB
 namespace impl {
   class ResolveCategory : public std::error_category {
   public:
@@ -33,67 +33,8 @@ namespace impl {
     }
     std::string message(int ev) const override { return gai_strerror(ev); }
   };
-  class AddrInfo {
-    class Iterator {
-    public:
-      using value_type = addrinfo;
-      using difference_type = std::ptrdiff_t;
-      using pointer = addrinfo *;
-      using reference = addrinfo &;
-      using iterator_category = std::forward_iterator_tag;
 
-      Iterator() : info(nullptr) {}
-      Iterator(addrinfo *info) : info(info) {}
-      Iterator(const Iterator &) = default;
-      Iterator &operator=(const Iterator &) = default;
-      ~Iterator() = default;
-
-      addrinfo &operator*() const { return *info; }
-      addrinfo *operator->() const { return info; }
-
-      Iterator &operator++() {
-        info = info->ai_next;
-        return *this;
-      }
-
-      Iterator operator++(int) {
-        Iterator tmp = *this;
-        ++*this;
-        return tmp;
-      }
-      bool operator!=(const Iterator &rhs) const { return info != rhs.info; }
-      bool operator==(const Iterator &rhs) const { return info == rhs.info; }
-
-    private:
-      addrinfo *info;
-    };
-
-    static_assert(std::forward_iterator<Iterator>);
-
-  public:
-    AddrInfo(addrinfo *info) : info(info) {}
-    AddrInfo(AddrInfo &&other) : info(std::exchange(other.info, nullptr)) {}
-    AddrInfo &operator=(AddrInfo &&other) {
-      if (this != &other) {
-        freeaddrinfo(this->info);
-        this->info = other.info;
-        other.info = nullptr;
-      }
-      return *this;
-    }
-    AddrInfo(const AddrInfo &) = delete;
-    AddrInfo &operator=(const AddrInfo &) = delete;
-    ~AddrInfo() {
-      if (info) freeaddrinfo(info);
-    }
-
-    Iterator begin() const { return Iterator(info); }
-    Iterator end() const { return Iterator(nullptr); }
-
-    addrinfo *info;
-  };
 }  // namespace impl
-using AddrInfo = impl::AddrInfo;
 
 enum class ResolveFlag : int {
   V4MAPPED = AI_V4MAPPED,
@@ -110,7 +51,7 @@ ResolveFlag operator|(ResolveFlag lhs, ResolveFlag rhs);
 const ResolveFlag SERVER_FLAGS = ResolveFlag::ADDRCONFIG | ResolveFlag::PASSIVE;
 const ResolveFlag CLIENT_FLAGS = ResolveFlag::ADDRCONFIG;
 
-using ResolveResult = std::expected<AddrInfo, std::error_condition>;
+using ResolveResult = std::expected<EndpointSet, std::error_condition>;
 
 namespace impl {
 
@@ -158,7 +99,7 @@ namespace impl {
     if (ret != 0) {
       return std::unexpected{std::error_condition{ret, ResolveCategory()}};
     }
-    return {AddrInfo(res)};
+    return {EndpointSet(res)};
   }
 
   struct Resolver {
@@ -221,5 +162,5 @@ namespace impl {
   };
 }  // namespace impl
 using Resolver = impl::Resolver;
-TRANSPORT_NE
+SYS_NET_NE
 #endif

@@ -3,10 +3,19 @@
 #  define XSL_SYS
 #  include "xsl/def.h"
 #  include "xsl/sys/net.h"
+#  include "xsl/sys/net/resolve.h"
+#  include "xsl/sys/net/tcp.h"
 XSL_NB
-using sys::accept;
-using sys::AcceptResult;
-using sys::IpAddr;
-using sys::Socket;
+namespace net {
+  using sys::net::Resolver;
+  using sys::net::SERVER_FLAGS;
+}  // namespace net
+namespace sys::tcp {
+  using sys::net::accept;
+  using sys::net::AcceptResult;
+  using sys::net::bind;
+  using sys::net::connect;
+  using sys::net::listen;
+}  // namespace sys::tcp
 XSL_NE
 #endif

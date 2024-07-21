@@ -1,5 +1,5 @@
 #include "xsl/logctl.h"
-#include "xsl/net/transport.h"
+#include "xsl/sys.h"
 
 #include <CLI/CLI.hpp>
 #include <gtest/gtest.h>
@@ -18,8 +18,8 @@ TEST(bind, create) {
   auto ai = std::move(res.value());
   auto skt = bind(ai);
   ASSERT_TRUE(skt.has_value());
-  ASSERT_NE(skt.value().raw_fd(), 0);
-  ASSERT_TRUE(listen(skt.value()).has_value());
+  ASSERT_NE(skt->raw(), 0);
+  ASSERT_TRUE(xsl::sys::tcp::listen(*skt).has_value());
 }
 
 int main(int argc, char **argv) {

@@ -1,32 +1,31 @@
 #pragma once
 #ifndef XSL_NET_TRANSPORT_TCP_SERVER
 #  define XSL_NET_TRANSPORT_TCP_SERVER
-#  include "xsl/logctl.h"
-#  include "xsl/net/transport/resolve.h"
-#  include "xsl/net/transport/tcp/accept.h"
+#  include "xsl/coro/task.h"
 #  include "xsl/net/transport/tcp/def.h"
-#  include "xsl/net/transport/tcp/stream.h"
-#  include "xsl/net/transport/tcp/utils.h"
 #  include "xsl/sync.h"
+#  include "xsl/sys.h"
 #  include "xsl/sys/net/socket.h"
 
 #  include <expected>
 #  include <memory>
+#  include <system_error>
+#  include <tuple>
 #  include <utility>
 
 TCP_NB
 
 template <class... Flags>
 std::expected<sys::net::Socket, std::error_condition> tcp_serv(const char *host, const char *port) {
-  auto addr = Resolver{}.resolve<Flags...>(host, port, SERVER_FLAGS);
+  auto addr = xsl::net::Resolver{}.resolve<Flags...>(host, port, xsl::net::SERVER_FLAGS);
   if (!addr) {
     return std::unexpected(addr.error());
   }
-  auto bres = tcp::bind(*addr);
+  auto bres = sys::tcp::bind(*addr);
   if (!bres) {
     return std::unexpected(bres.error());
   }
-  auto lres = tcp::listen(*bres);
+  auto lres = sys::tcp::listen(*bres);
   if (!lres) {
     return std::unexpected(lres.error());
   }
@@ -39,7 +38,10 @@ public:
   static std::expected<TcpServer, std::error_condition> create(
       const std::shared_ptr<Poller> &poller, const char *host, const char *port) {
     return tcp_serv<Flags...>(host, port).transform([&poller](auto &&skt) {
-      return TcpServer{poller, std::move(skt)};
+      auto copy_poller = poller;
+      auto [r, w] = std::move(skt).split();
+      auto async_r = std::move(r).async(copy_poller);
+      return TcpServer{std::move(copy_poller), std::move(async_r)};
     });
   }
   template <class... Flags>
@@ -49,23 +51,33 @@ public:
       return TcpServer{std::move(poller), std::move(skt)};
     });
   }
-  TcpServer(const std::shared_ptr<Poller> &poller, Socket &&socket)
-      : poller(poller), acceptor{std::move(socket), this->poller} {}
-  TcpServer(std::shared_ptr<Poller> &&poller, Socket &&socket)
-      : poller(std::move(poller)), acceptor{std::move(socket), this->poller} {}
+  TcpServer(const std::shared_ptr<Poller> &poller, sys::io::AsyncReadDevice &&dev)
+      : poller(poller), dev(std::move(dev)) {}
+  TcpServer(std::shared_ptr<Poller> &&poller, sys::io::AsyncReadDevice &&dev)
+      : poller(std::move(poller)), dev(std::move(dev)) {}
   TcpServer(TcpServer &&) = default;
-  decltype(auto) accept() {
-    DEBUG("tcp server accept");
-    return acceptor.accept().transform([this](auto &&exp) {
-      return exp.transform([this](auto &&res) -> TcpStream {
-        return {std::move(std::get<0>(std::move(res))), this->poller};
-      });
-    });
+  coro::Task<std::expected<
+      std::tuple<sys::io::AsyncReadDevice, sys::io::AsyncWriteDevice, sys::net::SockAddr>,
+      std::errc>>
+  accept() noexcept {
+    while (true) {
+      auto res = sys::tcp::accept(this->dev.raw());
+      if (res) {
+        auto [sock, addr] = std::move(*res);
+        auto async_dev = std::move(sock).async(this->poller).split();
+        co_return std::tuple_cat(std::move(async_dev), std::tuple{std::move(addr)});
+      } else if (res.error() == std::errc::resource_unavailable_try_again
+                 || res.error() == std::errc::operation_would_block) {
+        co_await this->dev.sem();
+      } else {
+        co_return std::unexpected{res.error()};
+      }
+    }
   }
 
 private:
   std::shared_ptr<Poller> poller;
-  Acceptor acceptor;
+  sys::io::AsyncReadDevice dev;
 };
 
 TCP_NE

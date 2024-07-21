@@ -1,5 +1,6 @@
+#include "xsl/feature.h"
 #include "xsl/logctl.h"
-#include "xsl/net/transport.h"
+#include "xsl/sys.h"
 
 #include <CLI/CLI.hpp>
 #include <gtest/gtest.h>
@@ -7,6 +8,7 @@
 #include <cstdint>
 #include <string>
 using namespace xsl::coro;
+using namespace xsl;
 // there should have a echo server
 uint16_t port = 12348;
 
@@ -16,9 +18,9 @@ TEST(bind, create) {
   auto res = Resolver{}.resolve<Ip<4>, Tcp>(port);
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());
-  auto skt = bind(ai);
+  auto skt = xsl::sys::tcp::bind(ai);
   ASSERT_TRUE(skt.has_value());
-  ASSERT_NE(skt.value().raw_fd(), 0);
+  ASSERT_NE(skt.value().raw(), 0);
 }
 
 int main(int argc, char **argv) {

@@ -23,6 +23,7 @@ namespace feature {
   template <uint8_t version>
   struct Ip {};
   struct Exact {};
+  struct Raw {};
   // using for resolver
 
   namespace impl {

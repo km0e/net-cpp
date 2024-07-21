@@ -1,7 +1,9 @@
+#include "xsl/io/splice.h"
 #include "xsl/logctl.h"
 
 #include <CLI/CLI.hpp>
 #include <xsl/net.h>
+#include <xsl/sys/pipe.h>
 
 #include <expected>
 #include <memory>
@@ -15,13 +17,7 @@ std::string port = "8080";
 using namespace xsl::net;
 using namespace xsl::feature;
 using namespace xsl::coro;
-
-xsl::coro::Task<void> session(TcpStream stream) {
-  for (std::string buf;; buf.clear()) {
-    if (!co_await stream.unsafe_read(tcp::StringWriter(buf))) break;
-    if (!co_await stream.unsafe_write(tcp::StringReader(buf))) break;
-  }
-}
+using namespace xsl;
 
 Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
   auto server = tcp::Server::create<Ip<4>, Tcp>(poller, ip.data(), port.data());
@@ -30,16 +26,12 @@ Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
   }
   auto serv = std::move(server.value());
   while (true) {
-    auto _
-        = (co_await serv.accept()).and_then([&](auto &&stream) -> std::expected<void, std::errc> {
-            //  session(std::move(stream)).detach();
-            auto fwdres = tcp::forward(poller, stream, stream);
-            if (!fwdres) return std::unexpected{fwdres.error()};
-            auto [fwd, lazy_read, lazy_write] = std::move(*fwdres);
-            lazy_read.detach();
-            lazy_write.detach();
-            return std::expected<void, std::errc>{};
-          });
+    auto ac_res = co_await serv.accept();
+    if (!ac_res) {
+      continue;
+    }
+    auto [r, w, addr] = std::move(*ac_res);
+    xsl::io::splice(std::move(r), std::move(w), std::string(4096, '\0')).detach();
   }
 }
 

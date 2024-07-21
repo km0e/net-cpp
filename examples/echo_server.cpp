@@ -31,12 +31,12 @@ Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
       continue;
     }
     auto [r, w, addr] = std::move(*ac_res);
-    xsl::io::splice(std::move(r), std::move(w), std::string(4096, '\0')).detach();
+    io::splice(std::move(r), std::move(w), std::string(4096, '\0')).detach();
   }
 }
 
 int main(int argc, char *argv[]) {
-  xsl::set_log_level(xsl::LogLevel::DEBUG);
+  set_log_level(xsl::LogLevel::DEBUG);
   // xsl::no_log();
   CLI::App app{"Echo server"};
   app.add_option("-i,--ip", ip, "IP address");

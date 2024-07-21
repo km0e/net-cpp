@@ -24,6 +24,8 @@ namespace feature {
   struct Ip {};
   struct Exact {};
   struct Raw {};
+  struct In {};
+  struct Out {};
   // using for resolver
 
   namespace impl {

@@ -51,7 +51,8 @@ static inline coro::Task<std::expected<int, std::errc>> connect(addrinfo *ai,
   if (ec != 0) {
     WARNING("Failed to connect to fd: {}", tmpfd);
     auto sem = std::make_shared<coro::CountingSemaphore<1>>();
-    poller->add(tmpfd, sync::IOM_EVENTS::OUT, sync::PollCallback<sync::IOM_EVENTS::OUT>{sem});
+    poller->add(tmpfd, sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
+                sync::PollCallback<sync::IOM_EVENTS::OUT>{sem});
     co_await *sem;
     auto check = [](int fd) {
       int opt;
@@ -72,6 +73,7 @@ static inline coro::Task<std::expected<int, std::errc>> connect(addrinfo *ai,
       co_return std::unexpected{std::errc{res}};
     }
   }
+  DEBUG("Connected to fd: {}", tmpfd);
   co_return tmpfd;
 }
 

@@ -10,7 +10,7 @@ target("test_tcp_connect")
     on_test(function (target)
         local test_file = target:targetfile();
         local scriptdir = os.scriptdir() .. "/script/test_with_echo_server.py"
-        print("cmd: ", "python",scriptdir, "127.0.0.1", 12345, "ncat", "cat", test_file)
+        print("cmd: ", "python",scriptdir, "127.0.0.1", 12347, "ncat", "cat", test_file)
         local outputdata,errdata = os.iorunv("python", {scriptdir, "127.0.0.1", 12347, "ncat", "cat", test_file})
         if(outputdata ~= "" or errdata ~= "") then
             print(outputdata)

@@ -6,6 +6,7 @@
 #include <CLI/CLI.hpp>
 #include <gtest/gtest.h>
 
+#include <cstdlib>
 #include <string>
 #include <thread>
 using namespace xsl::coro;
@@ -29,13 +30,18 @@ TEST(connect, connect) {
   });
   auto sock = connect(ai, poller);
   auto skt = sock.block();
+  DEBUG("Socket connected");
+  xsl::flush_log();
   ASSERT_TRUE(skt.has_value());
-  ASSERT_NE(skt.value().raw(), 0);
+  ASSERT_NE(skt->raw(), 0);
   poller->shutdown();
   t.join();
+  DEBUG("Poller joined");
+  xsl::flush_log();
 }
 
 int main(int argc, char **argv) {
+  // xsl::set_log_level(xsl::LogLevel::DEBUG);
   xsl::no_log();
 
   CLI::App app{"TCP Client"};

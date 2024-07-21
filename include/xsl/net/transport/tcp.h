@@ -12,8 +12,6 @@ using TcpHandleHint = tcp::HandleHint;
 using tcp::TcpHandlerGeneratorLike;
 using tcp::TcpHandlerLike;
 using TcpHandleState = tcp::HandleState;
-using tcp::StringReader;
-using tcp::StringWriter;
 using TcpSendTaskNode = tcp::SendTaskNode;
 using TcpRecvTaskNode = tcp::RecvTaskNode;
 using TcpRecvTasks = tcp::RecvTasks;
@@ -30,7 +28,6 @@ using TcpSendTasks = tcp::SendTasks;
 using tcp::TcpConnManager;
 using tcp::TcpConnManagerConfig;
 using tcp::TcpHandler;
-using tcp::component::StringReader;
 // using tcp::TcpServer;
 using tcp::TcpStream;
 TRANSPORT_NE

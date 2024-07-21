@@ -6,7 +6,6 @@
 #  include "xsl/net/transport/tcp/component/str.h"
 #  include "xsl/net/transport/tcp/def.h"
 TCP_NB
-using component::forward;
 using component::RecvContext;
 using component::RecvTaskNode;
 using component::RecvTasks;
@@ -15,8 +14,6 @@ using component::SendFile;
 using component::SendTaskNode;
 using component::SendTasks;
 using component::SendTasksProxy;
-using component::StringReader;
-using component::StringWriter;
 using component::TcpRecvString;
 using component::TcpSendString;
 TCP_NE

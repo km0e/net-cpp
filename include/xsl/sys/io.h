@@ -3,6 +3,7 @@
 #  define XSL_SYS_IO
 #  include "xsl/coro/semaphore.h"
 #  include "xsl/coro/task.h"
+#  include "xsl/feature.h"
 #  include "xsl/logctl.h"
 #  include "xsl/sync.h"
 #  include "xsl/sync/poller.h"
@@ -33,6 +34,9 @@ namespace io {
     int raw() const noexcept { return _fd; }
 
     ~NativeDevice() noexcept {
+      if (_fd == -1) {
+        return;
+      }
       DEBUG("close fd: {}", _fd);
       close(_fd);
     }
@@ -40,107 +44,19 @@ namespace io {
   protected:
     int _fd;
   };
-  class AsyncReadDevice;
-  class ReadDevice {
-  public:
-    explicit ReadDevice(NativeDevice &&dev) noexcept
-        : _dev(std::make_shared<NativeDevice>(std::move(dev))) {}
-    ReadDevice(std::shared_ptr<NativeDevice> dev) noexcept : _dev(std::move(dev)) {}
-    ReadDevice(ReadDevice &&rhs) noexcept : _dev(std::move(rhs._dev)) {}
-    ReadDevice &operator=(ReadDevice &&rhs) noexcept {
-      _dev = std::move(rhs._dev);
-      return *this;
-    }
-    int raw() const noexcept { return _dev->raw(); }
-    AsyncReadDevice async(std::shared_ptr<sync::Poller> &poller) && noexcept;
 
-  protected:
-    std::shared_ptr<NativeDevice> _dev;
-  };
-
-  class AsyncWriteDevice;
-  class WriteDevice {
-  public:
-    WriteDevice(NativeDevice &&dev) noexcept
-        : _dev(std::make_shared<NativeDevice>(std::move(dev))) {}
-    WriteDevice(std::shared_ptr<NativeDevice> dev) noexcept : _dev(std::move(dev)) {}
-    WriteDevice(WriteDevice &&rhs) noexcept : _dev(std::move(rhs._dev)) {}
-    WriteDevice &operator=(WriteDevice &&rhs) noexcept {
-      _dev = std::move(rhs._dev);
-      return *this;
-    }
-    int raw() const noexcept { return _dev->raw(); }
-    AsyncWriteDevice async(std::shared_ptr<sync::Poller> &poller) && noexcept;
-
-  protected:
-    std::shared_ptr<NativeDevice> _dev;
-  };
-
-  class AsyncReadDevice : public ReadDevice {
-  public:
-    AsyncReadDevice(NativeDevice &&dev, std::shared_ptr<coro::CountingSemaphore<1>> sem) noexcept
-        : ReadDevice(std::move(dev)), _sem(std::move(sem)) {}
-    AsyncReadDevice(std::shared_ptr<NativeDevice> dev,
-                    std::shared_ptr<coro::CountingSemaphore<1>> sem) noexcept
-        : ReadDevice(std::move(dev)), _sem(std::move(sem)) {}
-    AsyncReadDevice(AsyncReadDevice &&rhs) noexcept
-        : ReadDevice(std::move(rhs)), _sem(std::move(rhs._sem)) {}
-    AsyncReadDevice &operator=(AsyncReadDevice &&rhs) noexcept {
-      ReadDevice::operator=(std::move(rhs));
-      _sem = std::move(rhs._sem);
-      return *this;
-    }
-    decltype(auto) raw() const noexcept { return ReadDevice::raw(); }
-
-    coro::CountingSemaphore<1> &sem() noexcept { return *_sem; }
-
-    bool is_valid() const noexcept { return !this->_sem.unique(); }
-
-  protected:
-    std::shared_ptr<coro::CountingSemaphore<1>> _sem;
-  };
-
-  inline AsyncReadDevice ReadDevice::async(std::shared_ptr<sync::Poller> &poller) && noexcept {
-    auto sem = std::make_shared<coro::CountingSemaphore<1>>();
-    poller->add(_dev->raw(), sync::IOM_EVENTS::IN | sync::IOM_EVENTS::ET,
-                sync::PollCallback<sync::IOM_EVENTS::IN>{sem});
-    return AsyncReadDevice{std::move(_dev), std::move(sem)};
-  }
-
-  class AsyncWriteDevice : public WriteDevice {
-  public:
-    AsyncWriteDevice(NativeDevice &&dev, std::shared_ptr<coro::CountingSemaphore<1>> sem) noexcept
-        : WriteDevice(std::move(dev)), _sem(std::move(sem)) {}
-    AsyncWriteDevice(std::shared_ptr<NativeDevice> dev,
-                     std::shared_ptr<coro::CountingSemaphore<1>> sem) noexcept
-        : WriteDevice(std::move(dev)), _sem(std::move(sem)) {}
-    AsyncWriteDevice(AsyncWriteDevice &&rhs) noexcept
-        : WriteDevice(std::move(rhs)), _sem(std::move(rhs._sem)) {}
-    AsyncWriteDevice &operator=(AsyncWriteDevice &&rhs) noexcept {
-      WriteDevice::operator=(std::move(rhs));
-      _sem = std::move(rhs._sem);
-      return *this;
-    }
-
-    decltype(auto) raw() const noexcept { return WriteDevice::raw(); }
-
-    coro::CountingSemaphore<1> &sem() noexcept { return *_sem; }
-
-    bool is_valid() const noexcept { return !this->_sem.unique(); }
-
-  protected:
-    std::shared_ptr<coro::CountingSemaphore<1>> _sem;
-  };
-
-  inline AsyncWriteDevice WriteDevice::async(std::shared_ptr<sync::Poller> &poller) && noexcept {
-    auto sem = std::make_shared<coro::CountingSemaphore<1>>();
-    poller->add(_dev->raw(), sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-                sync::PollCallback<sync::IOM_EVENTS::OUT>{sem});
-    return AsyncWriteDevice{std::move(_dev), std::move(sem)};
-  }
-
+  template <class... Flags>
   class AsyncDevice;
-  class Device {
+  using AsyncReadDevice = AsyncDevice<feature::In, feature::placeholder>;
+  using AsyncWriteDevice = AsyncDevice<feature::placeholder, feature::Out>;
+
+  template <class... Flags>
+  class Device;
+  using ReadDevice = Device<feature::In, feature::placeholder>;
+  using WriteDevice = Device<feature::placeholder, feature::Out>;
+
+  template <>
+  class Device<feature::placeholder, feature::placeholder> {
   public:
     explicit Device(NativeDevice &&dev) noexcept
         : _dev(std::make_shared<NativeDevice>(std::move(dev))) {}
@@ -150,19 +66,118 @@ namespace io {
       _dev = std::move(rhs._dev);
       return *this;
     }
+    ~Device() noexcept { DEBUG("Device dtor, use count: {}", _dev.use_count()); }
     int raw() const noexcept { return _dev->raw(); }
-
-    std::tuple<ReadDevice, WriteDevice> split() && noexcept {
-      return {ReadDevice{std::move(_dev)}, WriteDevice{std::move(_dev)}};
-    }
-
-    AsyncDevice async(std::shared_ptr<sync::Poller> &poller) && noexcept;
 
   protected:
     std::shared_ptr<NativeDevice> _dev;
   };
+  template <>
+  class Device<feature::placeholder, feature::Out>
+      : public Device<feature::placeholder, feature::placeholder> {
+  private:
+    using Base = Device<feature::placeholder, feature::placeholder>;
 
-  class AsyncDevice : public Device {
+  public:
+    using Base::Base;
+    AsyncDevice<feature::placeholder, feature::Out> async(
+        std::shared_ptr<sync::Poller> &poller) && noexcept;
+  };
+
+  template <>
+  class Device<feature::In, feature::placeholder>
+      : public Device<feature::placeholder, feature::placeholder> {
+  private:
+    using Base = Device<feature::placeholder, feature::placeholder>;
+
+  public:
+    using Base::Base;
+    AsyncDevice<feature::In, feature::placeholder> async(
+        std::shared_ptr<sync::Poller> &poller) && noexcept;
+  };
+
+  template <>
+  class Device<feature::In, feature::Out>
+      : public Device<feature::placeholder, feature::placeholder> {
+  private:
+    using Base = Device<feature::placeholder, feature::placeholder>;
+
+  public:
+    using Base::Base;
+    std::tuple<ReadDevice, WriteDevice> split() && noexcept {
+      return {ReadDevice{std::move(_dev)}, WriteDevice{std::move(_dev)}};
+    }
+
+    AsyncDevice<feature::In, feature::Out> async(std::shared_ptr<sync::Poller> &poller) && noexcept;
+  };
+
+  template <>
+  class AsyncDevice<feature::In, feature::placeholder>
+      : public Device<feature::In, feature::placeholder> {
+  public:
+    AsyncDevice(NativeDevice &&dev, std::shared_ptr<coro::CountingSemaphore<1>> sem) noexcept
+        : Device(std::move(dev)), _sem(std::move(sem)) {}
+    AsyncDevice(std::shared_ptr<NativeDevice> dev,
+                std::shared_ptr<coro::CountingSemaphore<1>> sem) noexcept
+        : Device(std::move(dev)), _sem(std::move(sem)) {}
+    AsyncDevice(AsyncDevice &&rhs) noexcept : Device(std::move(rhs)), _sem(std::move(rhs._sem)) {}
+    AsyncDevice &operator=(AsyncDevice &&rhs) noexcept {
+      Device::operator=(std::move(rhs));
+      _sem = std::move(rhs._sem);
+      return *this;
+    }
+
+    coro::CountingSemaphore<1> &sem() noexcept { return *_sem; }
+
+    bool is_valid() const noexcept { return !this->_sem.unique(); }
+
+  protected:
+    std::shared_ptr<coro::CountingSemaphore<1>> _sem;
+  };
+
+  inline AsyncDevice<feature::In, feature::placeholder> Device<
+      feature::In, feature::placeholder>::async(std::shared_ptr<sync::Poller> &poller) && noexcept {
+    auto sem = std::make_shared<coro::CountingSemaphore<1>>();
+    poller->add(_dev->raw(), sync::IOM_EVENTS::IN | sync::IOM_EVENTS::ET,
+                sync::PollCallback<sync::IOM_EVENTS::IN>{sem});
+    return {std::move(_dev), std::move(sem)};
+  }
+
+  template <>
+  class AsyncDevice<feature::placeholder, feature::Out>
+      : public Device<feature::placeholder, feature::Out> {
+  public:
+    AsyncDevice(NativeDevice &&dev, std::shared_ptr<coro::CountingSemaphore<1>> sem) noexcept
+        : Device(std::move(dev)), _sem(std::move(sem)) {}
+    AsyncDevice(std::shared_ptr<NativeDevice> dev,
+                std::shared_ptr<coro::CountingSemaphore<1>> sem) noexcept
+        : Device(std::move(dev)), _sem(std::move(sem)) {}
+    AsyncDevice(AsyncDevice &&rhs) noexcept : Device(std::move(rhs)), _sem(std::move(rhs._sem)) {}
+    AsyncDevice &operator=(AsyncDevice &&rhs) noexcept {
+      Device::operator=(std::move(rhs));
+      _sem = std::move(rhs._sem);
+      return *this;
+    }
+
+    coro::CountingSemaphore<1> &sem() noexcept { return *_sem; }
+
+    bool is_valid() const noexcept { return !this->_sem.unique(); }
+
+  protected:
+    std::shared_ptr<coro::CountingSemaphore<1>> _sem;
+  };
+
+  inline AsyncDevice<feature::placeholder, feature::Out>
+  Device<feature::placeholder, feature::Out>::async(
+      std::shared_ptr<sync::Poller> &poller) && noexcept {
+    auto sem = std::make_shared<coro::CountingSemaphore<1>>();
+    poller->add(_dev->raw(), sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
+                sync::PollCallback<sync::IOM_EVENTS::OUT>{sem});
+    return {std::move(_dev), std::move(sem)};
+  }
+
+  template <>
+  class AsyncDevice<feature::In, feature::Out> : public Device<feature::In, feature::Out> {
   public:
     AsyncDevice(std::shared_ptr<NativeDevice> dev,
                 std::shared_ptr<coro::CountingSemaphore<1>> read_sem,
@@ -181,8 +196,6 @@ namespace io {
       return *this;
     }
 
-    decltype(auto) raw() const noexcept { return Device::raw(); }
-
     coro::CountingSemaphore<1> &read_sem() noexcept { return *_read_sem; }
     coro::CountingSemaphore<1> &write_sem() noexcept { return *_write_sem; }
 
@@ -196,26 +209,15 @@ namespace io {
     std::shared_ptr<coro::CountingSemaphore<1>> _write_sem;
   };
 
-  inline AsyncDevice Device::async(std::shared_ptr<sync::Poller> &poller) && noexcept {
+  inline AsyncDevice<feature::In, feature::Out> Device<feature::In, feature::Out>::async(
+      std::shared_ptr<sync::Poller> &poller) && noexcept {
     auto read_sem = std::make_shared<coro::CountingSemaphore<1>>();
     auto write_sem = std::make_shared<coro::CountingSemaphore<1>>();
     poller->add(
         _dev->raw(), sync::IOM_EVENTS::IN | sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
         sync::PollCallback<sync::IOM_EVENTS::IN, sync::IOM_EVENTS::OUT>{read_sem, write_sem});
-    return AsyncDevice{std::move(_dev), std::move(read_sem), std::move(write_sem)};
+    return {std::move(_dev), std::move(read_sem), std::move(write_sem)};
   }
-
-  class Buffer {
-  public:
-    Buffer() = default;
-    Buffer(std::size_t size) : _size(size), _buf(std::make_unique<std::byte[]>(size)) {}
-    operator std::byte *() noexcept { return _buf.get(); }
-    size_t size() const noexcept { return _size; }
-
-  protected:
-    std::size_t _size;
-    std::unique_ptr<std::byte[]> _buf;
-  };
 
   enum class RecvErrorCategory {
     Unknown,
@@ -240,8 +242,9 @@ namespace io {
     RecvErrorCategory category;
   };
   using RecvResult = std::expected<std::size_t, RecvError>;
-  inline coro::Task<std::tuple<std::size_t, std::optional<RecvError>>> unsafe_exact_read(
+  inline coro::Task<std::tuple<std::size_t, std::optional<RecvError>>> immediate_read(
       AsyncReadDevice &dev, std::span<std::byte> buf) {
+    using Result = std::tuple<std::size_t, std::optional<RecvError>>;
     ssize_t n;
     size_t offset = 0;
     while (true) {
@@ -259,13 +262,11 @@ namespace io {
         } else {
           ERROR("Failed to recv data, err : {}", strerror(errno));
           // TODO: handle recv error
-          co_return std::make_tuple(
-              offset, std::optional<RecvError>{RecvError{RecvErrorCategory::Unknown}});
+          co_return Result(offset, {{RecvErrorCategory::Unknown}});
         }
       } else if (n == 0) {
         DEBUG("recv eof");
-        co_return std::make_tuple(offset,
-                                  std::optional<RecvError>{RecvError{RecvErrorCategory::Eof}});
+        co_return Result(offset, {{RecvErrorCategory::Eof}});
       }
       TRACE("recv {} bytes", n);
       offset += n;
@@ -305,8 +306,8 @@ namespace io {
   };
 
   using SendResult = std::expected<void, SendError>;
-  inline coro::Task<std::expected<void, SendError>> write(AsyncWriteDevice &dev,
-                                                          std::span<const std::byte> data) {
+  inline coro::Task<std::expected<void, SendError>> immediate_write(
+      AsyncWriteDevice &dev, std::span<const std::byte> data) {
     while (true) {
       ssize_t n = ::send(dev.raw(), data.data(), data.size(), 0);
       if (n == -1) {

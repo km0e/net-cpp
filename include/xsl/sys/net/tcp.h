@@ -5,7 +5,6 @@
 #  include "xsl/sync/poller.h"
 #  include "xsl/sys/net/def.h"
 #  include "xsl/sys/net/endpoint.h"
-#  include "xsl/sys/net/resolve.h"
 #  include "xsl/sys/net/socket.h"
 
 #  include <expected>

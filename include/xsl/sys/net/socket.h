@@ -1,6 +1,7 @@
 #pragma once
 #ifndef XSL_SYS_NET_SOCKET
 #  define XSL_SYS_NET_SOCKET
+#  include "xsl/feature.h"
 #  include "xsl/sys/io.h"
 #  include "xsl/sys/net/def.h"
 
@@ -8,7 +9,6 @@
 
 #  include <cstdint>
 #  include <expected>
-#  include <system_error>
 SYS_NET_NB
 
 namespace impl {
@@ -74,8 +74,8 @@ private:
 // // ipv6
 // using IpV6Addr = impl::IpAddr<6>;
 
-using Socket = io::Device;
-using AsyncSocket = io::AsyncDevice;
+using Socket = io::Device<feature::In, feature::Out>;
+using AsyncSocket = io::AsyncDevice<feature::In, feature::Out>;
 
 SYS_NET_NE
 #endif

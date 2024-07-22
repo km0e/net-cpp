@@ -34,7 +34,7 @@ private:
 
 template <class Awaiter>
   requires Awaitable<Awaiter, Detach<typename awaiter_traits<Awaiter>::result_type>>
-void detach(Awaiter &&awaiter) {
+void detach(Awaiter &&awaiter) {//TODO: use co_await to get executor
   [[maybe_unused]] auto final
       = [](Awaiter &&awaiter) -> Detach<typename awaiter_traits<Awaiter>::result_type> {
     DEBUG("detach");

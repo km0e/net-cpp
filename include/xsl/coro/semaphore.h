@@ -75,13 +75,14 @@ public:
 template <>
 class CountingSemaphoreAwaiter<1> {
 public:
-  CountingSemaphoreAwaiter(std::mutex &mtx, bool &ready, std::optional<std::function<void()>> &cb)
+  CountingSemaphoreAwaiter(std::mutex &mtx, std::optional<bool> &ready,
+                           std::optional<std::function<void()>> &cb)
       : _mtx(mtx), _ready(ready), _cb(cb) {}
 
   bool await_ready() noexcept(noexcept(_mtx.lock())) {
     DEBUG("semaphore await_ready");
     this->_mtx.lock();
-    return this->_ready;
+    return this->_ready.has_value();
   }
 
   template <class Promise>
@@ -91,15 +92,15 @@ public:
     this->_mtx.unlock();
   }
 
-  void await_resume() {
+  bool await_resume() {
     DEBUG("semaphore await_resume");
-    this->_ready = false;
     this->_mtx.unlock();
+    return *std::exchange(this->_ready, std::nullopt);
   }
 
 private:
   std::mutex &_mtx;
-  bool &_ready;
+  std::optional<bool> &_ready;
   std::optional<std::function<void()>> &_cb;
 };
 
@@ -107,11 +108,11 @@ template <>
 class CountingSemaphore<1> {
 private:
   std::mutex _mtx;
-  bool _ready;
+  std::optional<bool> _ready;
   std::optional<std::function<void()>> _cb;
 
 public:
-  CountingSemaphore(bool ready = false) : _mtx(), _ready(ready), _cb() {}
+  CountingSemaphore(std::optional<bool> ready = std::nullopt) : _mtx(), _ready(ready), _cb() {}
   CountingSemaphore(const CountingSemaphore &) = delete;
   CountingSemaphore(CountingSemaphore &&) = delete;
   CountingSemaphore &operator=(const CountingSemaphore &) = delete;
@@ -122,14 +123,14 @@ public:
     return CountingSemaphoreAwaiter<1>(_mtx, _ready, _cb);
   }
 
-  void release() {
+  void release(bool ready = true) {
     DEBUG("semaphore release");
     this->_mtx.lock();
+    this->_ready = ready;
     if (this->_cb) {
       auto cb = std::exchange(this->_cb, std::nullopt);
       (*cb)();
     } else {
-      this->_ready = true;
       this->_mtx.unlock();
     }
   }

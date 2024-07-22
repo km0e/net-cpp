@@ -33,7 +33,7 @@ RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
   struct stat buf;
   int res = stat(this->path.c_str(), &buf);
   if (res == -1) {
-    ERROR("stat failed: {}", strerror(errno));
+    LOG2("stat failed: {}", strerror(errno));
     return std::unexpected(RouteHandleError("stat failed"));
   }
   TcpSendTasks tasks;
@@ -54,17 +54,17 @@ public:
 FolderRouteHandler::FolderRouteHandler(std::string&& path) : path(std::move(path)) {}
 FolderRouteHandler::~FolderRouteHandler() {}
 RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
-  DEBUG("FolderRouteHandler: {}", ctx.current_path);
+  LOG5("FolderRouteHandler: {}", ctx.current_path);
   std::string full_path = this->path;
   full_path.append(ctx.current_path.substr(1));
   struct stat buf;
   int res = stat(full_path.c_str(), &buf);
   if (res == -1) {
-    ERROR("stat failed: path: {} error: {}", full_path, strerror(errno));
+    LOG2("stat failed: path: {} error: {}", full_path, strerror(errno));
     return NOT_FOUND_HANDLER(ctx);
   }
   if (S_ISDIR(buf.st_mode)) {
-    DEBUG("FolderRouteHandler: is dir");
+    LOG5("FolderRouteHandler: is dir");
     return RouteHandleResult(NOT_FOUND_HANDLER(ctx));
   }
   TcpSendTasks tasks;
@@ -76,7 +76,7 @@ RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
     resp->part.headers.emplace(
         "Content-Type",
         to_string(ContentType{content_type::MediaType::from_extension(ext), Charset::UTF_8}));
-    DEBUG("FolderRouteHandler: Content-Type: {}", resp->part.headers["Content-Type"]);
+    LOG5("FolderRouteHandler: Content-Type: {}", resp->part.headers["Content-Type"]);
   }
   return RouteHandleResult{std::move(resp)};
 }
@@ -87,7 +87,7 @@ StaticCreateResult create_static_handler(std::string&& path) {
   std::error_code ec;
   auto status = std::filesystem::status(path, ec);
   if (ec) {
-    ERROR("filesystem::status failed: {}", ec.message());
+    LOG2("filesystem::status failed: {}", ec.message());
     return std::unexpected{AddRouteError{AddRouteErrorKind::InvalidPath}};
   }
   if (status.type() == std::filesystem::file_type::directory) {

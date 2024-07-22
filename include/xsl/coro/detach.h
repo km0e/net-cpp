@@ -37,7 +37,7 @@ template <class Awaiter>
 void detach(Awaiter &&awaiter) {//TODO: use co_await to get executor
   [[maybe_unused]] auto final
       = [](Awaiter &&awaiter) -> Detach<typename awaiter_traits<Awaiter>::result_type> {
-    DEBUG("detach");
+    LOG5("detach");
     if constexpr (std::is_reference_v<Awaiter>) {
       co_await awaiter;
     } else {

@@ -13,7 +13,7 @@ TCP_NB
 bool set_keep_alive(int fd, bool keep_alive) {
   int opt = keep_alive ? 1 : 0;
   if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt))) {
-    ERROR("Failed to set keep alive");
+    LOG2("Failed to set keep alive");
     return false;
   }
   return true;

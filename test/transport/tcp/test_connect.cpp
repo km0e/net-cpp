@@ -26,17 +26,17 @@ TEST(connect, connect) {
     while (poller->valid()) {
       poller->poll();
     }
-    DEBUG("Poller shutdown");
+    LOG5("Poller shutdown");
   });
   auto sock = connect(ai, poller);
   auto skt = sock.block();
-  DEBUG("Socket connected");
+  LOG5("Socket connected");
   xsl::flush_log();
   ASSERT_TRUE(skt.has_value());
   ASSERT_NE(skt->raw(), 0);
   poller->shutdown();
   t.join();
-  DEBUG("Poller joined");
+  LOG5("Poller joined");
   xsl::flush_log();
 }
 

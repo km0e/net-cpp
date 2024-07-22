@@ -36,7 +36,7 @@ Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
 }
 
 int main(int argc, char *argv[]) {
-  set_log_level(xsl::LogLevel::DEBUG);
+  set_log_level(xsl::LogLevel::LOG1);
   // xsl::no_log();
   CLI::App app{"Echo server"};
   app.add_option("-i,--ip", ip, "IP address");

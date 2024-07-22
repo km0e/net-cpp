@@ -19,7 +19,7 @@ public:
   PromiseBase() : _result(std::nullopt) {}
 
   auto get_return_object(this auto &&self) noexcept {
-    DEBUG("get_return_object");
+    LOG5("get_return_object");
     using promise_type = std::decay_t<decltype(self)>;
     using coro_type = promise_type::coro_type;
     return coro_type{std::coroutine_handle<promise_type>::from_promise(self)};
@@ -28,14 +28,14 @@ public:
   std::suspend_never initial_suspend() const noexcept { return {}; }
 
   std::suspend_always final_suspend() const noexcept {
-    DEBUG("final_suspend");
+    LOG5("final_suspend");
     return {};
   }
 
   void unhandled_exception() { this->_result = std::unexpected{std::current_exception()}; }
 
   result_type operator*() {
-    DEBUG("operator*");
+    LOG5("operator*");
     if (*_result) {
       if constexpr (std::is_same_v<result_type, void>) {
         return **_result;
@@ -68,7 +68,7 @@ protected:
 public:
   using typename Base::result_type;
   void return_value(result_type &&value) {
-    DEBUG("return_value");
+    LOG5("return_value");
     _result = Result<result_type>(std::move(value));
   }
 };
@@ -100,7 +100,7 @@ public:
   using executor_type = PromiseBase<ResultType>::executor_type;
 
   auto operator co_await(this auto &&self) -> typename std::decay_t<decltype(self)>::awaiter_type {
-    DEBUG("move handle to Awaiter");
+    LOG5("move handle to Awaiter");
     return self.move_handle();
   }
 

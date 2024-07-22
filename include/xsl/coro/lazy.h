@@ -44,7 +44,7 @@ public:
   using typename Base::result_type;
   using coro_type = Lazy<ResultType, Executor>;
   std::suspend_always initial_suspend() noexcept {
-    DEBUG("initial_suspend");
+    LOG5("initial_suspend");
     return {};
   }
 };

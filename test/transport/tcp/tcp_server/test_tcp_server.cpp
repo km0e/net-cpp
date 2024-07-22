@@ -34,7 +34,7 @@ public:
   TcpHandleState recv(int fd) {
     auto res = recv_task.exec(fd);
     if (!res.has_value()) {
-      ERROR("recv error: {}", to_string_view(res.error()));
+      LOG2("recv error: {}", to_string_view(res.error()));
       return TcpHandleState::CLOSE;
     }
     INFO("[T][Handler::recv] Received data: {}", this->recv_task.data_buffer);
@@ -82,14 +82,14 @@ int main(int argc, char **argv) {
   int fd = new_tcp_server(sa4);
   auto poller = std::make_shared<DefaultPoller>();
   if (!poller->valid()) {
-    ERROR("Failed to create poller");
+    LOG2("Failed to create poller");
     return 1;
   }
   auto handler_generator = std::make_shared<HandlerGenerator>();
   TcpConnManagerConfig config{poller};
   auto server = std::make_unique<TcpServer<Handler, HandlerGenerator>>(handler_generator, config);
   if (!server) {
-    ERROR("Failed to create server on {}:{}", ip, port);
+    LOG2("Failed to create server on {}:{}", ip, port);
     return 1;
   }
   poller->add(fd, IOM_EVENTS::IN,

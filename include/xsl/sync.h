@@ -33,7 +33,7 @@ namespace sync {
     template <class... Sems>
     PollCallback(Sems &&...sems) : sems{std::forward<Sems>(sems)...} {}
     sync::PollHandleHint operator()(int, sync::IOM_EVENTS events) {
-      DEBUG("Poll Event: {}", static_cast<uint32_t>(events));
+      LOG5("Poll Event: {}", static_cast<uint32_t>(events));
       if (!events || !!(events & sync::IOM_EVENTS::HUP)) {
         for (auto &sem : sems) {
           auto raw = sem.get();

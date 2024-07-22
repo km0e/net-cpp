@@ -27,7 +27,7 @@ public:
       if (res.error() == RecvErrorCategory::Eof) {
         return TcpHandleState::NONE;
       }
-      // ERROR("recv error: {}", to_string_view(res.error()));
+      // LOG2("recv error: {}", to_string_view(res.error()));
       return TcpHandleState::CLOSE;
     }
     size_t len = this->recv_task.data_buffer.size();
@@ -51,7 +51,7 @@ public:
     auto rtres = this->router->route(ctx);
     if (rtres.is_err()) {
       // TODO: handle route error
-      ERROR("route error: {}", xsl::to_string(rtres.error()));
+      LOG2("route error: {}", xsl::to_string(rtres.error()));
       return TcpHandleState::CLOSE;
     }
     auto tasks = rtres.value()->into_send_tasks();
@@ -62,7 +62,7 @@ public:
   TcpHandleState send(int fd) {
     auto res = send_proxy.exec(fd);
     if (!res.has_value()) {
-      // ERROR("send error: {}", to_string_view(res.error()));
+      // LOG2("send error: {}", to_string_view(res.error()));
       return TcpHandleState::CLOSE;
     }
     if (!this->keep_alive) {
@@ -70,9 +70,9 @@ public:
     }
     return TcpHandleState::NONE;
   }
-  void close([[maybe_unused]] int fd) { TRACE(""); }
+  void close([[maybe_unused]] int fd) { LOG6(""); }
   TcpHandleState other([[maybe_unused]] int fd, [[maybe_unused]] IOM_EVENTS events) {
-    ERROR("Unexpected events");
+    LOG2("Unexpected events");
     return TcpHandleState::CLOSE;
   }
 

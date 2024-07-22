@@ -57,7 +57,7 @@ namespace impl {
     using Base::Base;
     ~TcpSendString() {}
     std::expected<bool, RecvError> exec(SendContext& ctx) override {
-      DEBUG("compontent send");
+      LOG5("compontent send");
       return Base::exec(ctx.sfd);
     }
   };

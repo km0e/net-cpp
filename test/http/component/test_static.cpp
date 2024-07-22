@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
 #include <system_error>
 using namespace std;
 static string tmp_dir = "";

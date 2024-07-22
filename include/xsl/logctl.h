@@ -7,7 +7,17 @@
 #  include <quill/Logger.h>
 XSL_NB
 
-enum class LogLevel { NONE, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL };
+enum class LogLevel {
+  NONE,
+  LOG1,
+  LOG2,
+  LOG3,
+  LOG4,
+  LOG5,
+  LOG6,
+  LOG7,
+  LOG8
+};
 
 class LogCtl {
 private:
@@ -27,26 +37,32 @@ public:
 
   static constexpr void set_log_level(LogLevel level) {
     switch (level) {
-      case LogLevel::TRACE:
-        instance.logger->set_log_level(quill::LogLevel::TraceL3);
-        break;
-      case LogLevel::DEBUG:
-        instance.logger->set_log_level(quill::LogLevel::Debug);
-        break;
-      case LogLevel::INFO:
-        instance.logger->set_log_level(quill::LogLevel::Info);
-        break;
-      case LogLevel::WARNING:
-        instance.logger->set_log_level(quill::LogLevel::Warning);
-        break;
-      case LogLevel::ERROR:
-        instance.logger->set_log_level(quill::LogLevel::Error);
-        break;
-      case LogLevel::CRITICAL:
-        instance.logger->set_log_level(quill::LogLevel::Critical);
-        break;
       case LogLevel::NONE:
         instance.logger->set_log_level(quill::LogLevel::None);
+        break;
+      case LogLevel::LOG1:
+        instance.logger->set_log_level(quill::LogLevel::Critical);
+        break;
+      case LogLevel::LOG2:
+        instance.logger->set_log_level(quill::LogLevel::Error);
+        break;
+      case LogLevel::LOG3:
+        instance.logger->set_log_level(quill::LogLevel::Warning);
+        break;
+      case LogLevel::LOG4:
+        instance.logger->set_log_level(quill::LogLevel::Info);
+        break;
+      case LogLevel::LOG5:
+        instance.logger->set_log_level(quill::LogLevel::Debug);
+        break;
+      case LogLevel::LOG6:
+        instance.logger->set_log_level(quill::LogLevel::TraceL1);
+        break;
+      case LogLevel::LOG7:
+        instance.logger->set_log_level(quill::LogLevel::TraceL2);
+        break;
+      case LogLevel::LOG8:
+        instance.logger->set_log_level(quill::LogLevel::TraceL3);
         break;
     }
   }
@@ -59,17 +75,21 @@ public:
 #  endif
 };
 
-#  define TRACE(fmt, ...) LOG_TRACE_L1(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define LOG1(fmt, ...) LOG_CRITICAL(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define DEBUG(fmt, ...) LOG_DEBUG(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define LOG2(fmt, ...) LOG_ERROR(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define INFO(fmt, ...) LOG_INFO(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define LOG3(fmt, ...) LOG_WARNING(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define WARNING(fmt, ...) LOG_WARNING(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define LOG4(fmt, ...) LOG_INFO(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define ERROR(fmt, ...) LOG_ERROR(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define LOG5(fmt, ...) LOG_DEBUG(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define CRITICAL(fmt, ...) LOG_CRITICAL(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define LOG6(fmt, ...) LOG_TRACE_L1(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+
+#  define LOG7(fmt, ...) LOG_TRACE_L2(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+
+#  define LOG8(fmt, ...) LOG_TRACE_L3(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
 constexpr void set_log_level(LogLevel level) { xsl::LogCtl::set_log_level(level); }
 

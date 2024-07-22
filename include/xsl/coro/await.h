@@ -21,16 +21,16 @@ public:
   }
   template <class Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) noexcept {
-    DEBUG("CallbackAwaiter await_suspend for {}", (uint64_t)handle.address());
+    LOG5("CallbackAwaiter await_suspend for {}", (uint64_t)handle.address());
     _func([this, handle](Ntf&& result) {
       _ntf = std::move(result);
-      DEBUG("CallbackAwaiter set result");
+      LOG5("CallbackAwaiter set result");
       handle.promise().resume(handle);
     });
   }
   ResultType
   await_resume() noexcept {  // if ResultType is not Ntf, then you should override this function
-    DEBUG("CallbackAwaiter return result");
+    LOG5("CallbackAwaiter return result");
     return std::move(*_ntf);
   }
 
@@ -46,12 +46,12 @@ public:
 
   CallbackAwaiter(callback_type&& func) : _func(std::move(func)) {}
   bool await_ready() const noexcept {
-    DEBUG("await_ready");
+    LOG5("await_ready");
     return false;
   }
   template <class Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) noexcept {
-    DEBUG("callback await_suspend for {}", (uint64_t)handle.address());
+    LOG5("callback await_suspend for {}", (uint64_t)handle.address());
     _func([this, handle]() {
       DEBUG("set result");
       handle.promise().dispatch([handle]() {
@@ -127,7 +127,7 @@ public:
   }
   ResultType
   await_resume() noexcept {  // if ResultType is not Ntf, then you should override this function
-    DEBUG("callback await_resume");
+    LOG5("callback await_resume");
     return;
   }
 

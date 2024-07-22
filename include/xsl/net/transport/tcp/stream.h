@@ -74,7 +74,7 @@ public:
       : sock(std::move(rhs.sock)),
         read_sem(std::move(rhs.read_sem)),
         write_sem(std::move(rhs.write_sem)) {
-    DEBUG("TcpStream move");
+    LOG5("TcpStream move");
   }
   TcpStream &operator=(TcpStream &&rhs) noexcept = default;
 

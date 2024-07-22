@@ -25,7 +25,7 @@ AcceptResult accept(int fd) {
   if (tmpfd < 0) {
     return std::unexpected{std::errc(errno)};
   }
-  DEBUG("accept socket {}", tmpfd);
+  LOG5("accept socket {}", tmpfd);
   // char ip[NI_MAXHOST], port[NI_MAXSERV];
   // if (getnameinfo(&addr, addrlen, ip, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST |
   // NI_NUMERICSERV)
@@ -41,15 +41,15 @@ static inline coro::Task<std::expected<int, std::errc>> connect(addrinfo *ai,
   if (tmpfd == -1) [[unlikely]] {
     co_return std::unexpected{std::errc{errno}};
   }
-  DEBUG("Created fd: {}", tmpfd);
+  LOG5("Created fd: {}", tmpfd);
   if (auto snb_res = set_blocking<false>(tmpfd); !snb_res) [[unlikely]] {
     close(tmpfd);
     co_return std::unexpected{snb_res.error()};
   }
-  DEBUG("Set non-blocking to fd: {}", tmpfd);
+  LOG5("Set non-blocking to fd: {}", tmpfd);
   int ec = ::connect(tmpfd, ai->ai_addr, ai->ai_addrlen);
   if (ec != 0) {
-    WARNING("Failed to connect to fd: {}", tmpfd);
+    LOG3("Failed to connect to fd: {}", tmpfd);
     auto sem = std::make_shared<coro::CountingSemaphore<1>>();
     poller->add(tmpfd, sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
                 sync::PollCallback<sync::IOM_EVENTS::OUT>{sem});
@@ -58,11 +58,11 @@ static inline coro::Task<std::expected<int, std::errc>> connect(addrinfo *ai,
       int opt;
       socklen_t len = sizeof(opt);
       if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &opt, &len) == -1) [[unlikely]] {
-        ERROR("Failed to getsockopt: {}", strerror(errno));
+        LOG2("Failed to getsockopt: {}", strerror(errno));
         return errno;
       }
       if (opt != 0) [[unlikely]] {
-        ERROR("Failed to connect: {}", strerror(opt));
+        LOG2("Failed to connect: {}", strerror(opt));
         return opt;
       }
       return 0;
@@ -73,7 +73,7 @@ static inline coro::Task<std::expected<int, std::errc>> connect(addrinfo *ai,
       co_return std::unexpected{std::errc{res}};
     }
   }
-  DEBUG("Connected to fd: {}", tmpfd);
+  LOG5("Connected to fd: {}", tmpfd);
   co_return tmpfd;
 }
 
@@ -97,18 +97,18 @@ static inline std::expected<int, std::errc> bind(addrinfo *ai) {
   if (tmpfd == -1) [[unlikely]] {
     return std::unexpected{std::errc{errno}};
   }
-  DEBUG("Created fd: {}", tmpfd);
+  LOG5("Created fd: {}", tmpfd);
   if (auto snb_res = set_blocking<false>(tmpfd); !snb_res) [[unlikely]] {
     close(tmpfd);
     return std::unexpected{snb_res.error()};
   }
-  DEBUG("Set non-blocking to fd: {}", tmpfd);
+  LOG5("Set non-blocking to fd: {}", tmpfd);
   int opt = 1;
   if (setsockopt(tmpfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) [[unlikely]] {
     close(tmpfd);
     return std::unexpected{std::errc{errno}};
   }
-  DEBUG("Set reuse addr to fd: {}", tmpfd);
+  LOG5("Set reuse addr to fd: {}", tmpfd);
   if (bind(tmpfd, ai->ai_addr, ai->ai_addrlen) == -1) [[unlikely]] {
     close(tmpfd);
     return std::unexpected{std::errc{errno}};

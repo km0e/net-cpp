@@ -44,13 +44,13 @@ int main(int argc, char **argv) {
   auto handler_generator = make_shared<HttpHandlerGenerator>(router);
   auto poller = std::make_shared<DefaultPoller>();
   if (!poller->valid()) {
-    ERROR("Failed to create poller");
+    LOG2("Failed to create poller");
     return 1;
   }
   TcpConnManagerConfig config{poller};
   auto server = make_unique<HttpServer>(handler_generator, config);
   if (!server) {
-    ERROR("Failed to serve");
+    LOG2("Failed to serve");
     return 1;
   }
   pthread_t poller_thread;

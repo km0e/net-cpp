@@ -46,7 +46,7 @@ namespace router_details {
 
   AddRouteResult HttpRouteNode::add_route(HttpMethod method, std::string_view path,
                                           RouteHandler&& handler) {
-    DEBUG("Adding route: {}", path);
+    LOG5("Adding route: {}", path);
     if (path[0] != '/') {
       return std::unexpected(AddRouteError(AddRouteErrorKind::InvalidPath, ""));
     }
@@ -76,7 +76,7 @@ namespace router_details {
   }
 
   RouteResult HttpRouteNode::route(RouteContext& ctx) {
-    TRACE("Routing path: {}", ctx.current_path);
+    LOG6("Routing path: {}", ctx.current_path);
     if (ctx.current_path[0] != '/') {
       return std::unexpected(RouteError(RouteErrorKind::NotFound, ""));
     }
@@ -113,7 +113,7 @@ namespace router_details {
         return dr_res;
       }
     } while (false);
-    DEBUG("Routing to default child");
+    LOG5("Routing to default child");
     auto iter = this->children.lock_shared()->find("");  // find default child
     if (iter != this->children.lock_shared()->end()) {
       return iter->second.direct_route(ctx);
@@ -131,17 +131,17 @@ namespace router_details {
     return true;
   }
   RouteResult HttpRouteNode::direct_route(RouteContext& ctx) {
-    DEBUG("Direct routing path: {}", ctx.current_path);
+    LOG5("Direct routing path: {}", ctx.current_path);
     auto& handler = handlers[static_cast<uint8_t>(ctx.request.method)];
     if (handler == nullptr) {
       return std::unexpected{RouteError(RouteErrorKind::Unimplemented, "")};
     }
     RouteHandleResult res = handler(ctx);
     if (res.has_value()) {
-      DEBUG("Route ok");
+      LOG5("Route ok");
       return {std::move(res.value())};
     }
-    ERROR("Route error: {}", res.error().to_string());
+    LOG2("Route error: {}", res.error().to_string());
     return std::unexpected{RouteError(RouteErrorKind::Unknown, "")};
   }
 
@@ -153,12 +153,12 @@ HttpRouter::~HttpRouter() {}
 
 AddRouteResult HttpRouter::add_route(HttpMethod method, std::string_view path,
                                      RouteHandler&& handler) {
-  DEBUG("Adding route: {}", path);
+  LOG5("Adding route: {}", path);
   return root.add_route(method, path, std::move(handler));
 }
 
 RouteResult HttpRouter::route(RouteContext& ctx) {
-  DEBUG("Starting routing path: {}", ctx.current_path);
+  LOG5("Starting routing path: {}", ctx.current_path);
   if (ctx.request.method == HttpMethod::UNKNOWN) {
     return std::unexpected{RouteError(RouteErrorKind::Unknown, "")};
   }

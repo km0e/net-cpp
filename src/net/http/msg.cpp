@@ -36,7 +36,7 @@ std::unique_ptr<TcpSendString<feature::node>> ResponsePart::into_send_task_ptr()
   return make_unique<TcpSendString<feature::node>>(this->to_string());
 }
 TcpSendTasks ResponsePart::into_send_tasks() {
-  DEBUG("ResponsePart::into_send_tasks");
+  LOG5("ResponsePart::into_send_tasks");
   TcpSendTasks tasks;
   tasks.emplace_after(tasks.before_begin(), into_send_task_ptr());
   return tasks;

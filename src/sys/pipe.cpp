@@ -13,7 +13,7 @@ SYS_NB
 std::pair<io::ReadDevice, io::WriteDevice> pipe() {
   int fds[2];
   if (pipe2(fds, O_NONBLOCK) == -1) {
-    ERROR("Failed to create pipe, err: {}", strerror(errno));
+    LOG2("Failed to create pipe, err: {}", strerror(errno));
     return {io::ReadDevice(-1), io::WriteDevice(-1)};
   }
   return {io::ReadDevice(fds[0]), io::WriteDevice(fds[1])};
@@ -23,7 +23,7 @@ std::pair<io::AsyncReadDevice, io::AsyncWriteDevice> async_pipe(
     std::shared_ptr<sync::Poller>& poller) {
   int fds[2];
   if (pipe2(fds, O_NONBLOCK) == -1) {
-    ERROR("Failed to create pipe, err: {}", strerror(errno));
+    LOG2("Failed to create pipe, err: {}", strerror(errno));
     return {io::AsyncReadDevice(-1, nullptr), io::AsyncWriteDevice(-1, nullptr)};
   }
   auto read_sem = std::make_shared<coro::CountingSemaphore<1>>();
@@ -40,23 +40,22 @@ static coro::Task<std::optional<std::errc>> splice_single(io::AsyncReadDevice fr
   while (true) {
     ssize_t n = ::splice(from.raw(), nullptr, to.raw(), nullptr, MAX_SINGLE_FWD_SIZE,
                          SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
-    DEBUG("recv n: {}", n);
+    LOG5("recv n: {}", n);
     if (n == 0) {
       co_return std::nullopt;
     } else if (n == -1) {
       if (errno == EAGAIN) {
-        DEBUG("no data");
-        co_await from.sem();
-        if (!from.is_valid()) {
-          DEBUG("from {} is invalid", from.raw());
+        LOG5("no data");
+        if (!co_await from.sem()) {
+          LOG5("from {} is invalid", from.raw());
           co_return std::nullopt;
         }
       } else {
-        ERROR("Failed to recv data, err : {}", strerror(errno));
+        LOG2("Failed to recv data, err : {}", strerror(errno));
         co_return std::errc(errno);
       }
     }
-    DEBUG("fwd: recv {} bytes", n);
+    LOG5("fwd: recv {} bytes", n);
   }
   co_return std::nullopt;
 }

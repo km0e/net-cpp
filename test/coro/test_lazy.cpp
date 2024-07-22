@@ -75,9 +75,9 @@ TEST(Lazy, async_exception_task) {
 TEST(Lazy, async_task_with_executor) {
   int value = 0;
   auto task1 = [](int &value) -> Lazy<void> {
-    DEBUG("task1 start");
+    LOG5("task1 start");
     co_await resource_task(value);
-    DEBUG("task1 end");
+    LOG5("task1 end");
     value += 1;
     co_return;
   }(value);

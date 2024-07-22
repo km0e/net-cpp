@@ -37,7 +37,7 @@ namespace io {
       if (_fd == -1) {
         return;
       }
-      DEBUG("close fd: {}", _fd);
+      LOG5("close fd: {}", _fd);
       close(_fd);
     }
 
@@ -66,7 +66,7 @@ namespace io {
       _dev = std::move(rhs._dev);
       return *this;
     }
-    ~Device() noexcept { DEBUG("Device dtor, use count: {}", _dev.use_count()); }
+    ~Device() noexcept { LOG2("Device dtor, use count: {}", _dev.use_count()); }
     int raw() const noexcept { return _dev->raw(); }
 
   protected:
@@ -249,29 +249,29 @@ namespace io {
     size_t offset = 0;
     while (true) {
       n = ::recv(dev.raw(), buf.data() + offset, buf.size() - offset, 0);
-      DEBUG("recv n: {}", n);
+      LOG5("recv n: {}", n);
       if (n == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
           if (offset != 0) {
-            DEBUG("recv over");
+            LOG5("recv over");
             break;
           }
-          DEBUG("no data");
+          LOG5("no data");
           co_await dev.sem();
           continue;
         } else {
-          ERROR("Failed to recv data, err : {}", strerror(errno));
+          LOG2("Failed to recv data, err : {}", strerror(errno));
           // TODO: handle recv error
           co_return Result(offset, {{RecvErrorCategory::Unknown}});
         }
       } else if (n == 0) {
-        DEBUG("recv eof");
+        LOG5("recv eof");
         co_return Result(offset, {{RecvErrorCategory::Eof}});
       }
-      TRACE("recv {} bytes", n);
+      LOG6("recv {} bytes", n);
       offset += n;
     };
-    DEBUG("end recv string");
+    LOG5("end recv string");
     co_return std::make_tuple(offset, std::nullopt);
   }
   // inline coro::Task<std::tuple<std::size_t, std::optional<RecvError>>> unsafe_read(
@@ -312,14 +312,14 @@ namespace io {
       ssize_t n = ::send(dev.raw(), data.data(), data.size(), 0);
       if (n == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          DEBUG("need write again");
+          LOG5("need write again");
           co_await dev.sem();
           continue;
         } else {
           co_return std::unexpected{SendError{SendErrorCategory::Unknown}};
         }
       } else if (n == 0) {
-        DEBUG("need write again");
+        LOG5("need write again");
         co_await dev.sem();
         continue;
       } else if (static_cast<size_t>(n) == data.size()) {

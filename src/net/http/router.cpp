@@ -3,7 +3,6 @@
 #include "xsl/net/http/parse.h"
 #include "xsl/net/http/proto.h"
 #include "xsl/net/http/router.h"
-#include "xsl/wheel.h"
 
 HTTP_NB
 RouteContext::RouteContext(Request&& request)
@@ -153,12 +152,12 @@ HttpRouter::~HttpRouter() {}
 
 AddRouteResult HttpRouter::add_route(HttpMethod method, std::string_view path,
                                      RouteHandler&& handler) {
-  LOG5("Adding route: {}", path);
+  LOG4("Adding route: {}", path);
   return root.add_route(method, path, std::move(handler));
 }
 
 RouteResult HttpRouter::route(RouteContext& ctx) {
-  LOG5("Starting routing path: {}", ctx.current_path);
+  LOG4("Starting routing path: {}", ctx.current_path);
   if (ctx.request.method == HttpMethod::UNKNOWN) {
     return std::unexpected{RouteError(RouteErrorKind::Unknown, "")};
   }

@@ -23,7 +23,7 @@ TEST(http_parse, partial) {
   auto res = parser.parse(data, len);
   ASSERT_FALSE(res.has_value());
   auto err = std::move(res.error());
-  ASSERT_EQ(err.kind, HttpParseErrorKind::Partial);
+  ASSERT_EQ(err._kind, HttpParseErrorKind::Partial);
 }
 TEST(http_parse, invalid_format) {
   HttpParser parser;
@@ -32,7 +32,7 @@ TEST(http_parse, invalid_format) {
   auto res = parser.parse(data, len);
   ASSERT_FALSE(res.has_value());
   auto err = std::move(res.error());
-  ASSERT_EQ(err.kind, HttpParseErrorKind::InvalidFormat);
+  ASSERT_EQ(err._kind, HttpParseErrorKind::InvalidFormat);
 }
 TEST(http_parse, test_version) {
   HttpParser parser;
@@ -41,7 +41,7 @@ TEST(http_parse, test_version) {
   auto res = parser.parse(data, len);
   ASSERT_FALSE(res.has_value());
   auto err = std::move(res.error());
-  ASSERT_EQ(err.kind, HttpParseErrorKind::InvalidFormat);
+  ASSERT_EQ(err._kind, HttpParseErrorKind::InvalidFormat);
 }
 TEST(http_parse, test_query) {
   HttpParser parser;

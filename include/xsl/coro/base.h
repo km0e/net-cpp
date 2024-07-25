@@ -28,7 +28,7 @@ public:
   std::suspend_never initial_suspend() const noexcept { return {}; }
 
   std::suspend_always final_suspend() const noexcept {
-    LOG5("final_suspend");
+    LOG6("final_suspend");
     return {};
   }
 

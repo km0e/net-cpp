@@ -8,12 +8,17 @@
 #  include "xsl/sync.h"
 #  include "xsl/sync/poller.h"
 #  include "xsl/sys/def.h"
+#  include "xsl/wheel/type_traits.h"
 
+#  include <fcntl.h>
+#  include <sys/sendfile.h>
 #  include <sys/socket.h>
+#  include <sys/stat.h>
 #  include <unistd.h>
 
 #  include <cstddef>
 #  include <expected>
+#  include <filesystem>
 #  include <memory>
 #  include <optional>
 #  include <span>
@@ -49,11 +54,13 @@ namespace io {
   class AsyncDevice;
   using AsyncReadDevice = AsyncDevice<feature::In, feature::placeholder>;
   using AsyncWriteDevice = AsyncDevice<feature::placeholder, feature::Out>;
+  using AsyncReadWriteDevice = AsyncDevice<feature::In, feature::Out>;
 
   template <class... Flags>
   class Device;
   using ReadDevice = Device<feature::In, feature::placeholder>;
   using WriteDevice = Device<feature::placeholder, feature::Out>;
+  using ReadWriteDevice = Device<feature::In, feature::Out>;
 
   template <>
   class Device<feature::placeholder, feature::placeholder> {
@@ -66,7 +73,7 @@ namespace io {
       _dev = std::move(rhs._dev);
       return *this;
     }
-    ~Device() noexcept { LOG2("Device dtor, use count: {}", _dev.use_count()); }
+    ~Device() noexcept { LOG6("Device dtor, use count: {}", _dev.use_count()); }
     int raw() const noexcept { return _dev->raw(); }
 
   protected:
@@ -129,8 +136,6 @@ namespace io {
 
     coro::CountingSemaphore<1> &sem() noexcept { return *_sem; }
 
-    bool is_valid() const noexcept { return !this->_sem.unique(); }
-
   protected:
     std::shared_ptr<coro::CountingSemaphore<1>> _sem;
   };
@@ -160,8 +165,6 @@ namespace io {
     }
 
     coro::CountingSemaphore<1> &sem() noexcept { return *_sem; }
-
-    bool is_valid() const noexcept { return !this->_sem.unique(); }
 
   protected:
     std::shared_ptr<coro::CountingSemaphore<1>> _sem;
@@ -242,8 +245,10 @@ namespace io {
     RecvErrorCategory category;
   };
   using RecvResult = std::expected<std::size_t, RecvError>;
+  template <class Device>
+    requires wheel::type_traits::existing_v<feature::In, Device>
   inline coro::Task<std::tuple<std::size_t, std::optional<RecvError>>> immediate_read(
-      AsyncReadDevice &dev, std::span<std::byte> buf) {
+      Device &dev, std::span<std::byte> buf) {
     using Result = std::tuple<std::size_t, std::optional<RecvError>>;
     ssize_t n;
     size_t offset = 0;
@@ -257,7 +262,9 @@ namespace io {
             break;
           }
           LOG5("no data");
-          co_await dev.sem();
+          if (!co_await dev.sem()) {
+            co_return Result(offset, {{RecvErrorCategory::Unknown}});
+          }
           continue;
         } else {
           LOG2("Failed to recv data, err : {}", strerror(errno));
@@ -290,6 +297,7 @@ namespace io {
   // }
   enum class SendErrorCategory {
     Unknown,
+    Closed,
   };
 
   class SendError {
@@ -299,6 +307,8 @@ namespace io {
       switch (this->category) {
         case SendErrorCategory::Unknown:
           return "Unknown error";
+        case SendErrorCategory::Closed:
+          return "Connection closed";
       }
       return "Unknown error";
     }
@@ -310,22 +320,52 @@ namespace io {
       AsyncWriteDevice &dev, std::span<const std::byte> data) {
     while (true) {
       ssize_t n = ::send(dev.raw(), data.data(), data.size(), 0);
+      if (static_cast<size_t>(n) == data.size()) {
+        co_return {};
+      }
+      if (n > 0) {
+        data = data.subspan(n);
+        continue;
+      }
+      if (n == -1 && !(errno == EAGAIN || errno == EWOULDBLOCK)) {
+        co_return std::unexpected{SendError{SendErrorCategory::Unknown}};
+      }
+      if (!co_await dev.sem()) {
+        co_return std::unexpected{SendError{SendErrorCategory::Closed}};
+      }
+    }
+  }
+  inline coro::Task<std::expected<void, SendError>> immediate_write(AsyncWriteDevice &dev,
+                                                                    std::filesystem::path path) {
+    int ffd = open(path.c_str(), O_RDONLY);
+    if (ffd == -1) {
+      LOG2("open file failed");
+      co_return std::unexpected(SendError{SendErrorCategory::Unknown});
+    }
+    NativeDevice file{ffd};
+    struct stat st;
+    if (fstat(file.raw(), &st) == -1) {
+      LOG2("fstat failed");
+      co_return std::unexpected(SendError{SendErrorCategory::Unknown});
+    }
+    off_t offset = 0;
+    while (true) {
+      ssize_t n = ::sendfile(dev.raw(), file.raw(), &offset, st.st_size);
+      // TODO: handle sendfile error
       if (n == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
           LOG5("need write again");
-          co_await dev.sem();
-          continue;
+          if (!co_await dev.sem()) {
+            co_return std::unexpected(SendError{SendErrorCategory::Unknown});
+          }
         } else {
-          co_return std::unexpected{SendError{SendErrorCategory::Unknown}};
+          LOG2("[sendfile] Failed to send file");
+          co_return std::unexpected(SendError{SendErrorCategory::Unknown});
         }
-      } else if (n == 0) {
-        LOG5("need write again");
-        co_await dev.sem();
-        continue;
-      } else if (static_cast<size_t>(n) == data.size()) {
-        co_return {};
+      } else if (n < st.st_size) {
+        LOG5("[sendfile] send {} bytes", n);
+        st.st_size -= n;
       }
-      data = data.subspan(n);
     }
   }
 }  // namespace io

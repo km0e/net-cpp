@@ -1,6 +1,6 @@
 #pragma once
-#ifndef XSL_NET_HTTP_HELPER_STATIC
-#  define XSL_NET_HTTP_HELPER_STATIC
+#ifndef XSL_NET_HTTP_COMPONENT_STATIC
+#  define XSL_NET_HTTP_COMPONENT_STATIC
 #  include "xsl/net/http/component/def.h"
 #  include "xsl/net/http/router.h"
 HTTP_HELPER_NB

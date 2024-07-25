@@ -1,4 +1,5 @@
 #pragma once
+#include "xsl/logctl.h"
 #ifndef XSL_NET_TRANSPORT_TCP_SERVER
 #  define XSL_NET_TRANSPORT_TCP_SERVER
 #  include "xsl/coro/task.h"
@@ -37,6 +38,7 @@ public:
   template <class... Flags>
   static std::expected<TcpServer, std::error_condition> create(
       const std::shared_ptr<Poller> &poller, const char *host, const char *port) {
+    LOG4("Start listening on {}:{}", host, port);
     return tcp_serv<Flags...>(host, port).transform([&poller](auto &&skt) {
       auto copy_poller = poller;
       auto [r, w] = std::move(skt).split();
@@ -56,19 +58,20 @@ public:
   TcpServer(std::shared_ptr<Poller> &&poller, sys::io::AsyncReadDevice &&dev)
       : poller(std::move(poller)), dev(std::move(dev)) {}
   TcpServer(TcpServer &&) = default;
-  coro::Task<std::expected<
-      std::tuple<sys::io::AsyncReadDevice, sys::io::AsyncWriteDevice, sys::net::SockAddr>,
-      std::errc>>
+  coro::Task<
+      std::expected<std::tuple<sys::io::AsyncReadWriteDevice, sys::net::SockAddr>, std::errc>>
   accept() noexcept {
     while (true) {
       auto res = sys::tcp::accept(this->dev.raw());
       if (res) {
         auto [sock, addr] = std::move(*res);
-        auto async_dev = std::move(sock).async(this->poller).split();
-        co_return std::tuple_cat(std::move(async_dev), std::tuple{std::move(addr)});
+        auto async_dev = std::move(sock).async(this->poller);
+        co_return std::make_tuple(std::move(async_dev), std::move(addr));
       } else if (res.error() == std::errc::resource_unavailable_try_again
                  || res.error() == std::errc::operation_would_block) {
-        co_await this->dev.sem();
+        if (!co_await this->dev.sem()) {
+          co_return std::unexpected{std::errc::operation_canceled};
+        }
       } else {
         co_return std::unexpected{res.error()};
       }

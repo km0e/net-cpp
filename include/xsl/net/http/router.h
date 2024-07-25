@@ -28,7 +28,7 @@ public:
   std::string to_string() const;
 };
 
-using RouteHandleResult = std::expected<IntoSendTasksPtr, RouteHandleError>;
+using RouteHandleResult = std::expected<IntoSendTaskPtr, RouteHandleError>;
 
 using RouteHandler = std::function<RouteHandleResult(RouteContext& ctx)>;
 
@@ -77,7 +77,7 @@ public:
 
 using AddRouteResult = std::expected<void, AddRouteError>;
 
-using RouteResult = std::expected<IntoSendTasksPtr, RouteError>;
+using RouteResult = std::expected<IntoSendTaskPtr, RouteError>;
 
 template <class R>
 concept Router = requires(R r, HttpMethod hm, std::string_view path, RouteHandler&& handler,

@@ -2,105 +2,71 @@
 
 #ifndef XSL_NET_HTTP_SERVER
 #  define XSL_NET_HTTP_SERVER
-#  include "xsl/convert.h"
+#  include "xsl/coro/task.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
-#  include "xsl/net/http/parse.h"
 #  include "xsl/net/http/router.h"
-#  include "xsl/net/transport.h"
-#  include "xsl/net/transport/tcp/stream.h"
-#  include "xsl/sync.h"
+#  include "xsl/net/http/stream.h"
+#  include "xsl/net/transport/tcp/server.h"
+
+#  include <string_view>
 
 HTTP_NB
 
-template <Router R>
-class Handler {
-public:
-  Handler(std::shared_ptr<R> router)
-      : parser(), router(router), recv_task(), send_proxy(), keep_alive(false) {}
-  Handler(Handler&&) = default;
-  ~Handler() {}
-  TcpHandleState recv(int fd) {
-    auto res = recv_task.exec(fd);
+inline coro::Task<void> http_connection(sys::io::AsyncReadWriteDevice dev,
+                                        std::shared_ptr<HttpRouter> router) {
+  auto [ard, awd] = std::move(dev).split();
+  auto reader = HttpReader{std::move(ard)};
+  while (true) {
+    auto res = co_await reader.recv();
     if (!res.has_value()) {
-      if (res.error() == RecvErrorCategory::Eof) {
-        return TcpHandleState::NONE;
-      }
-      // LOG2("recv error: {}", to_string_view(res.error()));
-      return TcpHandleState::CLOSE;
+      LOG3("recv error: {}", std::make_error_code(res.error()).message());
+      continue;
     }
-    size_t len = this->recv_task.data_buffer.size();
-    // TODO: handle parse error
-    auto req = this->parser.parse(this->recv_task.data_buffer.c_str(), len);
-    if (!req.has_value()) {
-      if (req.error().kind == ParseErrorKind::Partial) {
-        return TcpHandleState::NONE;
-      } else {
-        // TODO: handle request error
-        return TcpHandleState::CLOSE;
-      }
+    LOG5("{}", std::string_view(res->raw).substr(0, res->view.length));
+    bool keep_alive = true;
+    if (auto iter = res->view.headers.find("Connection");
+        iter == res->view.headers.end() || iter->second != "keep-alive") {
+      keep_alive = false;
     }
-    RequestView view = req.value();
-    if (auto it = view.headers.find("Content-Length"); it != view.headers.end()) {
-      size_t content_len = std::strtoul(it->second.data(), nullptr, 10);
-      len += content_len;
-    }
-    auto ctx = RouteContext{Request{this->recv_task.data_buffer.substr(0, len), req.value()}};
-    recv_task.data_buffer.erase(0, len);
-    auto rtres = this->router->route(ctx);
-    if (rtres.is_err()) {
-      // TODO: handle route error
+    auto ctx = RouteContext{std::move(*res)};
+    auto rtres = router->route(ctx);
+    if (!rtres) {
       LOG2("route error: {}", xsl::to_string(rtres.error()));
-      return TcpHandleState::CLOSE;
+      continue;
     }
-    auto tasks = rtres.value()->into_send_tasks();
-    tasks.splice_after(tasks.before_begin(), std::move(this->send_proxy.tasks));
-    this->send_proxy.tasks = move(tasks);
-    return this->send(fd);
-  }
-  TcpHandleState send(int fd) {
-    auto res = send_proxy.exec(fd);
-    if (!res.has_value()) {
-      // LOG2("send error: {}", to_string_view(res.error()));
-      return TcpHandleState::CLOSE;
+    auto send_res = co_await (**rtres)(awd);
+    if (!send_res) {
+      LOG3("send error: {}", send_res.error().message());
     }
-    if (!this->keep_alive) {
-      return TcpHandleState::CLOSE;
+    if (!keep_alive) {
+      break;
     }
-    return TcpHandleState::NONE;
   }
-  void close([[maybe_unused]] int fd) { LOG6(""); }
-  TcpHandleState other([[maybe_unused]] int fd, [[maybe_unused]] IOM_EVENTS events) {
-    LOG2("Unexpected events");
-    return TcpHandleState::CLOSE;
-  }
+}
 
-private:
-  HttpParser parser;
-  std::shared_ptr<R> router;
-  TcpRecvString<> recv_task;
-  SendTasksProxy send_proxy;
-  bool keep_alive;
-};
-
-using HttpHandler = Handler<HttpRouter>;
-
-template <Router R, TcpHandlerLike H>
-class HandlerGenerator {
+class HttpServer {
 public:
-  HandlerGenerator(std::shared_ptr<R> router) : router(router) {}
-  std::unique_ptr<Handler<R>> operator()([[maybe_unused]] int fd) {
-    return make_unique<Handler<R>>(this->router);
+  HttpServer(transport::tcp::TcpServer server, std::shared_ptr<HttpRouter> router)
+      : server(std::move(server)), router(std::move(router)) {}
+  ~HttpServer() {}
+  coro::Task<std::expected<void, std::errc>> run() {
+    LOG4("HttpServer start");
+    while (true) {
+      auto res = co_await this->server.accept();
+      if (!res) {
+        LOG2("accept error: {}", std::make_error_code(res.error()).message());
+        continue;
+      }
+      auto [arwd, addr] = std::move(*res);
+      http_connection(std::move(arwd), this->router).detach();
+    }
   }
 
 private:
-  std::shared_ptr<R> router;
+  transport::tcp::TcpServer server;
+  std::shared_ptr<HttpRouter> router;
 };
-
-using HttpHandlerGenerator = HandlerGenerator<HttpRouter, HttpHandler>;
-
-// using HttpServer = TcpServer<Handler<HttpRouter>, HttpHandlerGenerator>;
-
 HTTP_NE
 #endif

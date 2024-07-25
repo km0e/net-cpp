@@ -30,14 +30,15 @@ Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
     if (!ac_res) {
       continue;
     }
-    auto [r, w, addr] = std::move(*ac_res);
+    auto [rw, addr] = std::move(*ac_res);
+    auto [r, w] = std::move(rw).split();
     io::splice(std::move(r), std::move(w), std::string(4096, '\0')).detach();
   }
 }
 
 int main(int argc, char *argv[]) {
-  set_log_level(xsl::LogLevel::LOG1);
-  // xsl::no_log();
+  // set_log_level(xsl::LogLevel::LOG1);
+  xsl::no_log();
   CLI::App app{"Echo server"};
   app.add_option("-i,--ip", ip, "IP address");
   app.add_option("-p,--port", port, "Port");

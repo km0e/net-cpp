@@ -3,10 +3,12 @@
 #include "xsl/net/http/proto.h"
 #include "xsl/net/http/router.h"
 
+#include <sys/io.h>
 #include <sys/stat.h>
 
 #include <filesystem>
 #include <system_error>
+#include <utility>
 
 HTTP_HELPER_NB
 using namespace http;
@@ -36,10 +38,11 @@ RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
     LOG2("stat failed: {}", strerror(errno));
     return std::unexpected(RouteHandleError("stat failed"));
   }
-  TcpSendTasks tasks;
-  tasks.emplace_after(tasks.before_begin(), make_unique<TcpSendFile>(std::move(this->path)));
-  auto resp = make_unique<HttpResponse<TcpSendTasks>>(
-      ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(tasks));
+  auto send_file = [path = this->path](sys::io::AsyncWriteDevice& awd) {
+    return sys::io::immediate_write(awd, path);
+  };
+  auto resp = std::make_unique<HttpResponse<decltype(send_file)>>(
+      ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file));
   resp->part.headers.emplace("Content-Type", to_string(this->content_type));
   return RouteHandleResult{std::move(resp)};
 }
@@ -67,10 +70,11 @@ RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
     LOG5("FolderRouteHandler: is dir");
     return RouteHandleResult(NOT_FOUND_HANDLER(ctx));
   }
-  TcpSendTasks tasks;
-  tasks.emplace_after(tasks.before_begin(), make_unique<TcpSendFile>(std::move(full_path)));
-  auto resp = make_unique<HttpResponse<TcpSendTasks>>(
-      ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(tasks));
+  auto send_file = [path = full_path](sys::io::AsyncWriteDevice& awd) {
+    return sys::io::immediate_write(awd, path);
+  };
+  auto resp = std::make_unique<HttpResponse<decltype(send_file)>>(
+      ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file));
   if (auto point = ctx.current_path.rfind('.'); point != std::string::npos) {
     auto ext = ctx.current_path.substr(point + 1);
     resp->part.headers.emplace(

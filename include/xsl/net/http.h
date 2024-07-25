@@ -10,7 +10,6 @@
 NET_NB
 using http::create_static_handler;
 using http::DefaultResponse;
-using http::HttpHandlerGenerator;
 using http::HttpMethod;
 using http::HttpParser;
 using http::HttpRouter;
@@ -27,8 +26,6 @@ using HttpResponsePart = http::ResponsePart;
 using http::HttpResponse;
 using http::RouteErrorKind;
 using http::StaticCreateResult;
-using HttpParseError = http::ParseError;
-using HttpParseErrorKind = http::ParseErrorKind;
 using HttpParseResult = http::ParseResult;
 NET_NE
 #endif

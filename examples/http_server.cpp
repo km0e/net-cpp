@@ -35,12 +35,12 @@ Task<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::
     LOG5("add_route failed");
     co_return;
   }
-  auto http_server = http::HttpServer(std::move(tcp_server.value()), http_router);
-  http_server.run().detach();
+  auto http_server = http::HttpServer(std::move(*tcp_server), http_router);
+  co_await http_server.run();
 }
 
 int main(int argc, char* argv[]) {
-  set_log_level(xsl::LogLevel::LOG1);
+  set_log_level(xsl::LogLevel::LOG5);
   // xsl::no_log();
   CLI::App app{"Echo server"};
   app.add_option("-i,--ip", ip, "IP address");

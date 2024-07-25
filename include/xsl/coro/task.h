@@ -38,7 +38,7 @@ class TaskPromiseBase : public NextPromiseBase<ResultType, Executor> {
 public:
   using coro_type = Task<ResultType, Executor>;
   std::suspend_never initial_suspend() noexcept {
-    LOG5("initial_suspend");
+    LOG6("initial_suspend");
     return {};
   }
 };

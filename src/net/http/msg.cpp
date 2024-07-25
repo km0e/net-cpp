@@ -1,15 +1,44 @@
 #include "xsl/convert.h"
-#include "xsl/feature.h"
-#include "xsl/logctl.h"
 #include "xsl/net/http/msg.h"
 #include "xsl/net/http/proto.h"
 
+#include <expected>
 
 HTTP_NB
 
-RequestView::RequestView() : method(), url(), query(), version(), headers() {}
+RequestView::RequestView() : method(), url(), query(), version(), headers(), length(0) {}
 
 RequestView::~RequestView() {}
+
+std::string RequestView::to_string() {
+  std::string res;
+  res.reserve(1024);
+  res += method;
+  res += " ";
+  res += url;
+  if (!query.empty()) {
+    res += "?";
+    for (const auto& [key, value] : query) {
+      res += key;
+      res += "=";
+      res += value;
+      res += "&";
+    }
+    res.pop_back();
+  }
+  res += " ";
+  res += version;
+  res += "\r\n";
+  for (const auto& [key, value] : headers) {
+    res += key;
+    res += ": ";
+    res += value;
+    res += "\r\n";
+  }
+  res += "\r\n";
+  return res;
+}
+
 void RequestView::clear() {
   method = std::string_view{};
   url = std::string_view{};
@@ -18,8 +47,11 @@ void RequestView::clear() {
   headers.clear();
 }
 
-Request::Request(std::string&& raw, RequestView view)
-    : method(xsl::from_string_view<HttpMethod>(view.method)), view(view), raw(std::move(raw)) {}
+Request::Request(std::string&& raw, RequestView&& view, BodyStream&& body)
+    : method(xsl::from_string_view<HttpMethod>(view.method)),
+      view(std::move(view)),
+      raw(std::move(raw)),
+      body(std::move(body)) {}
 Request::~Request() {}
 ResponseError::ResponseError(int code, std::string_view message) : code(code), message(message) {}
 ResponseError::~ResponseError() {}
@@ -32,14 +64,14 @@ ResponsePart::ResponsePart(HttpVersion version, int status_code, std::string&& s
       version(version),
       headers() {}
 ResponsePart::~ResponsePart() {}
-std::unique_ptr<TcpSendString<feature::node>> ResponsePart::into_send_task_ptr() {
-  return make_unique<TcpSendString<feature::node>>(this->to_string());
-}
-TcpSendTasks ResponsePart::into_send_tasks() {
-  LOG5("ResponsePart::into_send_tasks");
-  TcpSendTasks tasks;
-  tasks.emplace_after(tasks.before_begin(), into_send_task_ptr());
-  return tasks;
+coro::Task<std::expected<void, sys::io::SendError>> ResponsePart::operator()(
+    sys::io::AsyncWriteDevice& awd) {
+  auto str = this->to_string();
+  auto res = co_await sys::io::immediate_write(awd, std::as_bytes(std::span(str)));
+  if (!res) {
+    co_return std::unexpected{res.error()};
+  };
+  co_return {};
 }
 std::string ResponsePart::to_string() {
   std::string res;
@@ -70,23 +102,18 @@ std::string ResponsePart::to_string() {
   res += "\r\n";
   return res;
 }
-HttpResponse<TcpSendTasks>::HttpResponse() : part(), tasks() {}
-HttpResponse<TcpSendTasks>::HttpResponse(ResponsePart&& part, TcpSendTasks&& tasks)
-    : part(std::move(part)), tasks(std::move(tasks)) {}
-HttpResponse<TcpSendTasks>::~HttpResponse() {}
-TcpSendTasks HttpResponse<TcpSendTasks>::into_send_tasks() {
-  this->tasks.emplace_after(this->tasks.before_begin(), this->part.into_send_task_ptr());
-  return std::move(this->tasks);
-}
+
 HttpResponse<std::string>::HttpResponse() : part(), body() {}
 HttpResponse<std::string>::HttpResponse(ResponsePart&& part, std::string&& body)
     : part(part), body(body) {}
 HttpResponse<std::string>::~HttpResponse() {}
-TcpSendTasks HttpResponse<std::string>::into_send_tasks() {
-  TcpSendTasks tasks;
-  tasks.emplace_after(tasks.before_begin(),
-                      make_unique<TcpSendString<feature::node>>(std::move(body)));
-  tasks.emplace_after(tasks.before_begin(), part.into_send_task_ptr());
-  return tasks;
+coro::Task<std::expected<void, sys::io::SendError>> HttpResponse<std::string>::operator()(
+    sys::io::AsyncWriteDevice& awd) {
+  co_await part(awd);
+  auto res = co_await sys::io::immediate_write(awd, std::as_bytes(std::span(body)));
+  if (!res) {
+    co_return std::unexpected{res.error()};
+  }
+  co_return {};
 }
 HTTP_NE

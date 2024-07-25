@@ -36,9 +36,7 @@ namespace sync {
       LOG5("Poll Event: {}", static_cast<uint32_t>(events));
       if (!events || !!(events & sync::IOM_EVENTS::HUP)) {
         for (auto &sem : sems) {
-          auto raw = sem.get();
-          sem.reset();
-          raw->release();
+          sem->release(false);
         }
         return sync::PollHandleHintTag::DELETE;
       } else {

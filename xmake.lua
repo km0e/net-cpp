@@ -21,6 +21,7 @@ add_requires("toml++", {configs = {header_only = true}})
 add_requires("thread-pool", "cli11", "gtest", "quill")
 
 -- log level
+-- set_config("log_level", "none")
 set_config("log_level", "trace")
 
 add_packages("quill")

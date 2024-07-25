@@ -3,36 +3,10 @@
 #  define XSL_NET_HTTP_PARSE
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
-#  include "xsl/wheel.h"
 
-#  include <array>
-#  include <string>
+#  include <string_view>
 HTTP_NB
-enum class ParseErrorKind {
-  Unknown,
-  Partial,
-  InvalidFormat,
-};
-const int PARSE_ERROR_COUNT = 3;
-const std::array<std::string_view, PARSE_ERROR_COUNT> PARSE_ERROR_STRINGS = {
-    "Unknown",
-    "Partial",
-    "InvalidFormat",
-};
-class ParseError {
-public:
-  ParseError(ParseErrorKind kind);
-  ParseError(ParseErrorKind kind, std::string message);
-  ParseError(ParseError&&) = default;
-  ParseError& operator=(ParseError&&) = default;
-  ParseError(const ParseError&) = default;
-  ParseError& operator=(const ParseError&) = default;
-  ~ParseError();
-  ParseErrorKind kind;
-  std::string message;
-  std::string to_string() const;
-};
-using ParseResult = std::expected<RequestView, ParseError>;
+using ParseResult = std::expected<RequestView, std::errc>;
 
 class HttpParser {
 public:

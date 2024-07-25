@@ -20,10 +20,13 @@ public:
       : _ard(std::make_shared<sys::io::AsyncReadDevice>(std::move(ard))),
         buffer(),
         parse_len(0),
-        parser() {}
+        parser() {
+    buffer.resize(1024);
+  }
   HttpReader(HttpReader&&) = default;
   ~HttpReader() {}
   coro::Task<std::expected<Request, std::errc>> recv() {
+    this->parse_len = 0;
     while (true) {
       auto [sz, err] = co_await sys::io::immediate_read(*this->_ard,
                                                         std::as_writable_bytes(std::span(buffer)));
@@ -42,7 +45,7 @@ public:
           continue;
         }
       }
-      this->parse_len = 0;
+      req->length = len;
       co_return Request{std::exchange(this->buffer, ""), std::move(*req), BodyStream(this->_ard)};
     }
   }

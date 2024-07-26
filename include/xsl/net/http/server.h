@@ -35,10 +35,10 @@ inline coro::Task<void> http_connection(sys::io::AsyncReadWriteDevice dev,
     if (!rtres) {
       LOG2("route error: {}", xsl::to_string(rtres.error()));
       continue;
-    }
-    auto send_res = co_await (**rtres)(awd);
-    if (!send_res) {
-      LOG3("send error: {}", send_res.error().message());
+    };
+    auto [sz, err] = co_await rtres->sendto(awd);
+    if (err) {
+      LOG3("send error: {}", std::make_error_code(err.value()).message());
     }
     if (!keep_alive) {
       break;

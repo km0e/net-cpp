@@ -6,11 +6,10 @@
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/parse.h"
+#  include "xsl/sys/net/io.h"
 
 #  include <cstddef>
 #  include <memory>
-#  include <span>
-#  include <tuple>
 #  include <utility>
 HTTP_NB
 
@@ -28,10 +27,10 @@ public:
   coro::Task<std::expected<Request, std::errc>> recv() {
     this->parse_len = 0;
     while (true) {
-      auto [sz, err] = co_await sys::io::immediate_read(*this->_ard,
-                                                        std::as_writable_bytes(std::span(buffer)));
+      auto [sz, err] = co_await sys::net::immediate_recv(*this->_ard,
+                                                         std::as_writable_bytes(std::span(buffer)));
       if (err) {
-        LOG3("recv error: {}", err->message());
+        LOG3("recv error: {}", std::make_error_code(*err).message());
         continue;
       }
       size_t len = buffer.size() - parse_len;

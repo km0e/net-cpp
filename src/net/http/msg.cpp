@@ -1,6 +1,7 @@
 #include "xsl/convert.h"
 #include "xsl/net/http/msg.h"
 #include "xsl/net/http/proto.h"
+#include "xsl/sys/net/io.h"
 
 #include <expected>
 
@@ -64,15 +65,6 @@ ResponsePart::ResponsePart(HttpVersion version, int status_code, std::string&& s
       version(version),
       headers() {}
 ResponsePart::~ResponsePart() {}
-coro::Task<std::expected<void, sys::io::SendError>> ResponsePart::operator()(
-    sys::io::AsyncWriteDevice& awd) {
-  auto str = this->to_string();
-  auto res = co_await sys::io::immediate_write(awd, std::as_bytes(std::span(str)));
-  if (!res) {
-    co_return std::unexpected{res.error()};
-  };
-  co_return {};
-}
 std::string ResponsePart::to_string() {
   std::string res;
   res.reserve(1024);
@@ -102,18 +94,23 @@ std::string ResponsePart::to_string() {
   res += "\r\n";
   return res;
 }
+HttpResponse::HttpResponse(ResponsePart&& part) : part(std::move(part)), body() {}
 
-HttpResponse<std::string>::HttpResponse() : part(), body() {}
-HttpResponse<std::string>::HttpResponse(ResponsePart&& part, std::string&& body)
-    : part(part), body(body) {}
-HttpResponse<std::string>::~HttpResponse() {}
-coro::Task<std::expected<void, sys::io::SendError>> HttpResponse<std::string>::operator()(
+HttpResponse::~HttpResponse() {}
+coro::Task<std::tuple<std::size_t, std::optional<std::errc>>> HttpResponse::sendto(
     sys::io::AsyncWriteDevice& awd) {
-  co_await part(awd);
-  auto res = co_await sys::io::immediate_write(awd, std::as_bytes(std::span(body)));
-  if (!res) {
-    co_return std::unexpected{res.error()};
+  auto str = this->part.to_string();
+  auto [sz, err] = co_await sys::net::immediate_send(awd, std::as_bytes(std::span(str)));
+  if (err) {
+    co_return std::make_tuple(sz, err);
+  };
+  if (!body) {
+    co_return std::make_tuple(sz, std::nullopt);
   }
-  co_return {};
+  auto [bsz, berr] = co_await this->body(awd);
+  if (berr) {
+    co_return std::make_tuple(sz + bsz, berr);
+  }
+  co_return std::make_tuple(sz + bsz, std::nullopt);
 }
 HTTP_NE

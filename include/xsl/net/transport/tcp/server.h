@@ -1,8 +1,8 @@
 #pragma once
-#include "xsl/logctl.h"
 #ifndef XSL_NET_TRANSPORT_TCP_SERVER
 #  define XSL_NET_TRANSPORT_TCP_SERVER
 #  include "xsl/coro/task.h"
+#  include "xsl/logctl.h"
 #  include "xsl/net/transport/tcp/def.h"
 #  include "xsl/sync.h"
 #  include "xsl/sys.h"

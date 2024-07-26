@@ -6,8 +6,8 @@
 #  include "xsl/net/http/proto.h"
 #  include "xsl/wheel.h"
 
-#  include <string_view>
 #  include <expected>
+#  include <string_view>
 
 HTTP_NB
 
@@ -28,7 +28,7 @@ public:
   std::string to_string() const;
 };
 
-using RouteHandleResult = std::expected<IntoSendTaskPtr, RouteHandleError>;
+using RouteHandleResult = std::expected<HttpResponse, RouteHandleError>;
 
 using RouteHandler = std::function<RouteHandleResult(RouteContext& ctx)>;
 
@@ -77,7 +77,7 @@ public:
 
 using AddRouteResult = std::expected<void, AddRouteError>;
 
-using RouteResult = std::expected<IntoSendTaskPtr, RouteError>;
+using RouteResult = std::expected<HttpResponse, RouteError>;
 
 template <class R>
 concept Router = requires(R r, HttpMethod hm, std::string_view path, RouteHandler&& handler,
@@ -106,18 +106,16 @@ namespace router_details {
 }  // namespace router_details
 
 const RouteHandler UNKNOWN_HANDLER = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
-  return RouteHandleResult{
-      std::make_unique<ResponsePart>(HttpVersion::HTTP_1_1, 500, "Internal Server Error")};
+  return RouteHandleResult{ResponsePart(HttpVersion::HTTP_1_1, 500, "Internal Server Error")};
 };
 
 const RouteHandler NOT_FOUND_HANDLER = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
-  return RouteHandleResult{std::make_unique<ResponsePart>(HttpVersion::HTTP_1_1, 404, "Not Found")};
+  return RouteHandleResult{ResponsePart(HttpVersion::HTTP_1_1, 404, "Not Found")};
 };
 
 const RouteHandler UNIMPLEMENTED_HANDLER
     = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
-  return RouteHandleResult{
-      std::make_unique<ResponsePart>(HttpVersion::HTTP_1_1, 501, "Not Implemented")};
+  return RouteHandleResult{ResponsePart(HttpVersion::HTTP_1_1, 501, "Not Implemented")};
 };
 
 class HttpRouter {

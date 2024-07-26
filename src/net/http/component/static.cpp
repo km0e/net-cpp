@@ -2,11 +2,13 @@
 #include "xsl/net/http/component/static.h"
 #include "xsl/net/http/proto.h"
 #include "xsl/net/http/router.h"
+#include "xsl/sys/net/io.h"
 
 #include <sys/io.h>
 #include <sys/stat.h>
 
 #include <filesystem>
+#include <functional>
 #include <system_error>
 #include <utility>
 
@@ -38,12 +40,12 @@ RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
     LOG2("stat failed: {}", strerror(errno));
     return std::unexpected(RouteHandleError("stat failed"));
   }
-  auto send_file = [path = this->path](sys::io::AsyncWriteDevice& awd) {
-    return sys::io::immediate_write(awd, path);
-  };
-  auto resp = std::make_unique<HttpResponse<decltype(send_file)>>(
-      ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file));
-  resp->part.headers.emplace("Content-Type", to_string(this->content_type));
+  // auto send_file = [path = this->path](sys::io::AsyncWriteDevice& awd) {
+  //   return sys::net::immediate_sendfile(awd, path);
+  // };
+  auto send_file = std::bind(sys::net::immediate_sendfile, std::placeholders::_1, this->path);
+  auto resp = HttpResponse(ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file));
+  resp.part.headers.emplace("Content-Type", to_string(this->content_type));
   return RouteHandleResult{std::move(resp)};
 }
 
@@ -70,17 +72,17 @@ RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
     LOG5("FolderRouteHandler: is dir");
     return RouteHandleResult(NOT_FOUND_HANDLER(ctx));
   }
-  auto send_file = [path = full_path](sys::io::AsyncWriteDevice& awd) {
-    return sys::io::immediate_write(awd, path);
-  };
-  auto resp = std::make_unique<HttpResponse<decltype(send_file)>>(
-      ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file));
+  // auto send_file = [path = full_path](sys::io::AsyncWriteDevice& awd) {
+  //   return sys::io::immediate_sendfile(awd, path);
+  // };
+  auto send_file = std::bind(sys::net::immediate_sendfile, std::placeholders::_1, full_path);
+  auto resp = HttpResponse(ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file));
   if (auto point = ctx.current_path.rfind('.'); point != std::string::npos) {
     auto ext = ctx.current_path.substr(point + 1);
-    resp->part.headers.emplace(
+    resp.part.headers.emplace(
         "Content-Type",
         to_string(ContentType{content_type::MediaType::from_extension(ext), Charset::UTF_8}));
-    LOG5("FolderRouteHandler: Content-Type: {}", resp->part.headers["Content-Type"]);
+    LOG5("FolderRouteHandler: Content-Type: {}", resp.part.headers["Content-Type"]);
   }
   return RouteHandleResult{std::move(resp)};
 }

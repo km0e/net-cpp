@@ -9,7 +9,6 @@
 #  include "xsl/net/http/server.h"
 NET_NB
 using http::create_static_handler;
-using http::DefaultResponse;
 using http::HttpMethod;
 using http::HttpParser;
 using http::HttpRouter;

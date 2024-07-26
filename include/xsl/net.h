@@ -3,6 +3,8 @@
 #  define XSL_NET_H
 #  include "xsl/net/def.h"
 #  include "xsl/net/http.h"
+#  include "xsl/net/io.h"
+#  include "xsl/net/io/splice.h"
 #  include "xsl/net/transport/tcp.h"
 #  include "xsl/net/transport/tcp/server.h"
 XSL_NB
@@ -28,5 +30,9 @@ namespace tcp {
     return xsl::net::transport::tcp::tcp_serv<Flags...>(host, port);
   };
 }  // namespace tcp
+
+namespace net {
+  using xsl::net::io::splice;
+}
 XSL_NE
 #endif

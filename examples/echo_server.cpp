@@ -1,4 +1,3 @@
-#include "xsl/io/splice.h"
 #include "xsl/logctl.h"
 
 #include <CLI/CLI.hpp>
@@ -32,7 +31,7 @@ Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
     }
     auto [rw, addr] = std::move(*ac_res);
     auto [r, w] = std::move(rw).split();
-    io::splice(std::move(r), std::move(w), std::string(4096, '\0')).detach();
+    net::splice(std::move(r), std::move(w), std::string(4096, '\0')).detach();
   }
 }
 

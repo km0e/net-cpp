@@ -2,7 +2,6 @@
 #include "xsl/coro/task.h"
 #include "xsl/logctl.h"
 #include "xsl/sys/def.h"
-#include "xsl/sys/io.h"
 #include "xsl/sys/pipe.h"
 
 #include <fcntl.h>

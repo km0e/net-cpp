@@ -2,13 +2,14 @@
 #ifndef XSL_SYS_NET_SOCKET
 #  define XSL_SYS_NET_SOCKET
 #  include "xsl/feature.h"
-#  include "xsl/sys/io.h"
+#  include "xsl/sys/io/dev.h"
 #  include "xsl/sys/net/def.h"
 
 #  include <sys/socket.h>
 
 #  include <cstdint>
 #  include <expected>
+#  include <string>
 SYS_NET_NB
 
 namespace impl {
@@ -73,9 +74,8 @@ private:
 // using IpV4Addr = impl::IpAddr<4>;
 // // ipv6
 // using IpV6Addr = impl::IpAddr<6>;
-
-using Socket = io::Device<feature::In, feature::Out>;
-using AsyncSocket = io::AsyncDevice<feature::In, feature::Out>;
+using Socket = sys::io::Device<feature::In, feature::Out>;
+using AsyncSocket = sys::io::AsyncDevice<feature::In, feature::Out>;
 
 SYS_NET_NE
 #endif

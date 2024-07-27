@@ -1,12 +1,13 @@
 #pragma once
-#include "xsl/coro/detach.h"
 #ifndef XSL_CORO_NEXT
 #  define XSL_CORO_NEXT
 #  include "xsl/coro/base.h"
 #  include "xsl/coro/block.h"
 #  include "xsl/coro/def.h"
+#  include "xsl/coro/detach.h"
 #  include "xsl/logctl.h"
 
+#  include <concepts>
 #  include <functional>
 #  include <memory>
 #  include <optional>
@@ -106,8 +107,10 @@ public:
     _next_resume = [handle]() mutable { handle.promise().resume(handle); };
   }
 
-  auto &&by(this auto &&self, const std::shared_ptr<Executor> &executor) {
-    self._executor = executor;
+  template <class E>
+    requires std::same_as<std::remove_cvref_t<E>, std::shared_ptr<Executor>>
+  auto &&by(this auto &&self, E &&executor) {
+    self._executor = std::forward<E>(executor);
     return std::forward<decltype(self)>(self);
   }
 
@@ -131,8 +134,10 @@ public:
   using result_type = PromiseBase::result_type;
   using executor_type = PromiseBase::executor_type;
 
-  auto &&by(this auto &&self, std::shared_ptr<executor_type> &executor) {
-    self.get_handle().promise().by(executor);
+  template <class E>
+    requires std::same_as<std::remove_cvref_t<E>, std::shared_ptr<Executor>>
+  auto &&by(this auto &&self, E &&executor) {
+    self.get_handle().promise().by(std::forward<E>(executor));
     return std::forward<decltype(self)>(self);
   }
 
@@ -145,8 +150,11 @@ public:
     LOG5("task detach");
     coro::detach(std::move(self));
   }
-
-  void detach(std::shared_ptr<executor_type> &executor) { this->by(executor).detach(); }
+  template <class E>
+    requires std::same_as<std::remove_cvref_t<E>, std::shared_ptr<Executor>>
+  void detach(this auto &&self, E &&executor) {
+    self.by(std::forward<E>(executor)).detach();
+  }
 };
 XSL_CORO_NE
 #endif

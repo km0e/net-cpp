@@ -24,11 +24,12 @@ public:
   }
   HttpReader(HttpReader&&) = default;
   ~HttpReader() {}
-  coro::Task<std::expected<Request, std::errc>> recv() {
+  template <class Executor = coro::ExecutorBase>
+  coro::Task<std::expected<Request, std::errc>, Executor> recv() {
     this->parse_len = 0;
     while (true) {
-      auto [sz, err] = co_await sys::net::immediate_recv(*this->_ard,
-                                                         std::as_writable_bytes(std::span(buffer)));
+      auto [sz, err] = co_await sys::net::immediate_recv<Executor>(
+          *this->_ard, std::as_writable_bytes(std::span(buffer)));
       if (err) {
         LOG3("recv error: {}", std::make_error_code(*err).message());
         continue;

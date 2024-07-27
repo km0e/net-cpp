@@ -2,6 +2,7 @@
 
 #ifndef XSL_NET_HTTP_SERVER
 #  define XSL_NET_HTTP_SERVER
+#  include "xsl/coro/await.h"
 #  include "xsl/coro/task.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
@@ -14,12 +15,13 @@
 
 HTTP_NB
 
-inline coro::Task<void> http_connection(sys::io::AsyncReadWriteDevice dev,
-                                        std::shared_ptr<HttpRouter> router) {
+template <class Executor = coro::ExecutorBase>
+coro::Task<void, Executor> http_connection(sys::io::AsyncReadWriteDevice dev,
+                                           std::shared_ptr<HttpRouter> router) {
   auto [ard, awd] = std::move(dev).split();
   auto reader = HttpReader{std::move(ard)};
   while (true) {
-    auto res = co_await reader.recv();
+    auto res = co_await reader.recv<Executor>();
     if (!res.has_value()) {
       LOG3("recv error: {}", std::make_error_code(res.error()).message());
       continue;
@@ -36,7 +38,7 @@ inline coro::Task<void> http_connection(sys::io::AsyncReadWriteDevice dev,
       LOG2("route error: {}", xsl::to_string(rtres.error()));
       continue;
     };
-    auto [sz, err] = co_await rtres->sendto(awd);
+    auto [sz, err] = co_await rtres->sendto<Executor>(awd);
     if (err) {
       LOG3("send error: {}", std::make_error_code(err.value()).message());
     }
@@ -51,16 +53,18 @@ public:
   HttpServer(transport::tcp::TcpServer server, std::shared_ptr<HttpRouter> router)
       : server(std::move(server)), router(std::move(router)) {}
   ~HttpServer() {}
-  coro::Task<std::expected<void, std::errc>> run() {
+  template <class Executor = coro::ExecutorBase>
+  coro::Task<std::expected<void, std::errc>, Executor> run() {
     LOG4("HttpServer start");
     while (true) {
-      auto res = co_await this->server.accept();
+      auto res = co_await this->server.accept<Executor>();
       if (!res) {
         LOG2("accept error: {}", std::make_error_code(res.error()).message());
         continue;
       }
       auto [arwd, addr] = std::move(*res);
-      http_connection(std::move(arwd), this->router).detach();
+      http_connection<Executor>(std::move(arwd), this->router)
+          .detach(co_await coro::GetExecutor<Executor>());
     }
   }
 

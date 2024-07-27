@@ -1,3 +1,4 @@
+#include "xsl/coro/executor.h"
 #include "xsl/logctl.h"
 #include "xsl/net/http/component/static.h"
 #include "xsl/net/http/proto.h"
@@ -43,7 +44,8 @@ RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
   // auto send_file = [path = this->path](sys::io::AsyncWriteDevice& awd) {
   //   return sys::net::immediate_sendfile(awd, path);
   // };
-  auto send_file = std::bind(sys::net::immediate_sendfile, std::placeholders::_1, this->path);
+  auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase>,
+                             std::placeholders::_1, this->path);
   auto resp = HttpResponse(ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file));
   resp.part.headers.emplace("Content-Type", to_string(this->content_type));
   return RouteHandleResult{std::move(resp)};
@@ -75,7 +77,8 @@ RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
   // auto send_file = [path = full_path](sys::io::AsyncWriteDevice& awd) {
   //   return sys::io::immediate_sendfile(awd, path);
   // };
-  auto send_file = std::bind(sys::net::immediate_sendfile, std::placeholders::_1, full_path);
+  auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase>,
+                             std::placeholders::_1, full_path);
   auto resp = HttpResponse(ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file));
   if (auto point = ctx.current_path.rfind('.'); point != std::string::npos) {
     auto ext = ctx.current_path.substr(point + 1);

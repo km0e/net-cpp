@@ -1,11 +1,11 @@
 #pragma once
-#include "xsl/coro/executor.h"
 #ifndef XSL_CORO_NEXT
 #  define XSL_CORO_NEXT
 #  include "xsl/coro/base.h"
 #  include "xsl/coro/block.h"
 #  include "xsl/coro/def.h"
 #  include "xsl/coro/detach.h"
+#  include "xsl/coro/executor.h"
 #  include "xsl/logctl.h"
 
 #  include <concepts>
@@ -43,7 +43,7 @@ public:
   template <class _Promise>
   void await_suspend(std::coroutine_handle<_Promise> handle) {
     LOG5("await_suspend: {} -> {}", (uint64_t)_handle.address(), (uint64_t)handle.address());
-    if constexpr (!std::is_same_v<typename _Promise::executor_type, executor_type>) {
+    if constexpr (std::is_same_v<typename _Promise::executor_type, void>) {
       this->_handle.promise().next(handle);
     } else {
       if (this->_handle.promise().executor()) {

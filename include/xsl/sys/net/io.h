@@ -17,9 +17,9 @@
 #  include <system_error>
 #  include <tuple>
 SYS_NET_NB
-template <class Device>
+template <class Executor = coro::ExecutorBase, class Device>
   requires wheel::type_traits::existing_v<feature::In, Device>
-inline coro::Task<std::tuple<std::size_t, std::optional<std::errc>>> immediate_recv(
+coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> immediate_recv(
     Device &dev, std::span<std::byte> buf) {
   using Result = std::tuple<std::size_t, std::optional<std::errc>>;
   ssize_t n;
@@ -54,7 +54,8 @@ inline coro::Task<std::tuple<std::size_t, std::optional<std::errc>>> immediate_r
   co_return std::make_tuple(offset, std::nullopt);
 }
 
-inline coro::Task<std::tuple<std::size_t, std::optional<std::errc>>> immediate_send(
+template <class Executor = coro::ExecutorBase>
+coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> immediate_send(
     sys::io::AsyncWriteDevice &dev, std::span<const std::byte> data) {
   using Result = std::tuple<std::size_t, std::optional<std::errc>>;
   while (true) {
@@ -74,7 +75,8 @@ inline coro::Task<std::tuple<std::size_t, std::optional<std::errc>>> immediate_s
     }
   }
 }
-inline coro::Task<std::tuple<std::size_t, std::optional<std::errc>>> immediate_sendfile(
+template <class Executor = coro::ExecutorBase>
+coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> immediate_sendfile(
     sys::io::AsyncWriteDevice &dev, std::filesystem::path path) {
   using Result = std::tuple<std::size_t, std::optional<std::errc>>;
   int ffd = open(path.c_str(), O_RDONLY);

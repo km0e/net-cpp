@@ -58,8 +58,10 @@ public:
   TcpServer(std::shared_ptr<Poller> &&poller, sys::io::AsyncReadDevice &&dev)
       : poller(std::move(poller)), dev(std::move(dev)) {}
   TcpServer(TcpServer &&) = default;
+  template <class Executor = coro::ExecutorBase>
   coro::Task<
-      std::expected<std::tuple<sys::io::AsyncReadWriteDevice, sys::net::SockAddr>, std::errc>>
+      std::expected<std::tuple<sys::io::AsyncReadWriteDevice, sys::net::SockAddr>, std::errc>,
+      Executor>
   accept() noexcept {
     while (true) {
       auto res = sys::tcp::accept(this->dev.raw());

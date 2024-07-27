@@ -34,40 +34,4 @@ std::pair<io::AsyncReadDevice, io::AsyncWriteDevice> async_pipe(
   return {io::AsyncReadDevice(fds[0], read_sem), io::AsyncWriteDevice(fds[1], write_sem)};
 }
 
-static coro::Task<std::optional<std::errc>> splice_single(io::AsyncReadDevice from,
-                                                          io::AsyncWriteDevice to) {
-  while (true) {
-    ssize_t n = ::splice(from.raw(), nullptr, to.raw(), nullptr, MAX_SINGLE_FWD_SIZE,
-                         SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
-    LOG5("recv n: {}", n);
-    if (n == 0) {
-      co_return std::nullopt;
-    } else if (n == -1) {
-      if (errno == EAGAIN) {
-        LOG5("no data");
-        if (!co_await from.sem()) {
-          LOG5("from {} is invalid", from.raw());
-          co_return std::nullopt;
-        }
-      } else {
-        LOG2("Failed to recv data, err : {}", strerror(errno));
-        co_return std::errc(errno);
-      }
-    }
-    LOG5("fwd: recv {} bytes", n);
-  }
-  co_return std::nullopt;
-}
-
-inline coro::Lazy<void> splice(io::AsyncReadDevice from, io::AsyncWriteDevice to,
-                               io::AsyncReadDevice pipe_in, io::AsyncWriteDevice pipe_out) {
-  splice_single(std::move(from), std::move(pipe_out)).detach();
-  splice_single(std::move(pipe_in), std::move(to)).detach();
-  co_return;
-}
-coro::Lazy<void> splice(io::AsyncReadDevice from, io::AsyncWriteDevice to,
-                        std::shared_ptr<sync::Poller>& poller) {
-  auto [pipe_in, pipe_out] = async_pipe(poller);
-  return splice(std::move(from), std::move(to), std::move(pipe_in), std::move(pipe_out));
-}
 SYS_NE

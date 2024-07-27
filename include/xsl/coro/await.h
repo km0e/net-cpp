@@ -2,6 +2,7 @@
 #ifndef XSL_CORO_AWAIT
 #  define XSL_CORO_AWAIT
 #  include "xsl/coro/def.h"
+#  include "xsl/coro/executor.h"
 #  include "xsl/logctl.h"
 
 #  include <coroutine>
@@ -10,7 +11,7 @@
 
 XSL_CORO_NB
 
-template <class Executor>
+template <class Executor = ExecutorBase>
 class GetExecutor {
 public:
   using executor_type = Executor;

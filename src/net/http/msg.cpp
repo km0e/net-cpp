@@ -97,20 +97,5 @@ std::string ResponsePart::to_string() {
 HttpResponse::HttpResponse(ResponsePart&& part) : part(std::move(part)), body() {}
 
 HttpResponse::~HttpResponse() {}
-coro::Task<std::tuple<std::size_t, std::optional<std::errc>>> HttpResponse::sendto(
-    sys::io::AsyncWriteDevice& awd) {
-  auto str = this->part.to_string();
-  auto [sz, err] = co_await sys::net::immediate_send(awd, std::as_bytes(std::span(str)));
-  if (err) {
-    co_return std::make_tuple(sz, err);
-  };
-  if (!body) {
-    co_return std::make_tuple(sz, std::nullopt);
-  }
-  auto [bsz, berr] = co_await this->body(awd);
-  if (berr) {
-    co_return std::make_tuple(sz + bsz, berr);
-  }
-  co_return std::make_tuple(sz + bsz, std::nullopt);
-}
+
 HTTP_NE

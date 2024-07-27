@@ -30,7 +30,7 @@ protected:
   using Base::_handle;
 };
 
-template <class ResultType, class Executor = NoopExecutor>
+template <class ResultType, class Executor = ExecutorBase>
 class Task;
 
 template <class ResultType, class Executor>

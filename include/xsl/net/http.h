@@ -23,7 +23,7 @@ using http::Request;
 using http::to_string_view;
 using HttpResponsePart = http::ResponsePart;
 using http::HttpResponse;
-using http::RouteErrorKind;
+using http::RouteError;
 using http::StaticCreateResult;
 using HttpParseResult = http::ParseResult;
 NET_NE

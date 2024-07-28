@@ -6,7 +6,7 @@
 #  include "xsl/coro/task.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
-#  include "xsl/net/http/msg.h"
+#  include "xsl/net/http/proto.h"
 #  include "xsl/net/http/router.h"
 #  include "xsl/net/http/stream.h"
 #  include "xsl/net/transport/tcp/server.h"
@@ -34,13 +34,20 @@ coro::Task<void, Executor> http_connection(sys::io::AsyncReadWriteDevice dev,
     }
     auto ctx = RouteContext{std::move(*res)};
     auto rtres = router->route(ctx);
-    if (!rtres) {
-      LOG2("route error: {}", xsl::to_string(rtres.error()));
-      continue;
-    };
-    auto [sz, err] = co_await rtres->sendto<Executor>(awd);
-    if (err) {
-      LOG3("send error: {}", std::make_error_code(err.value()).message());
+    while (true) {
+      while (!rtres) {
+        rtres = std::move(router->error_handle(rtres.error()));
+      }
+      auto handle_res = co_await (**rtres)(ctx);
+      if (!handle_res) {
+        LOG3("handle error: {}", to_string_view(handle_res.error()));
+        continue;
+      }
+      auto [sz, err] = co_await handle_res->sendto(awd);
+      if (err) {
+        LOG3("send error: {}", std::make_error_code(err.value()).message());
+      }
+      break;
     }
     if (!keep_alive) {
       break;

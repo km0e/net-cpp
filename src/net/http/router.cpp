@@ -5,14 +5,13 @@
 #include "xsl/net/http/router.h"
 
 HTTP_NB
+std::string_view to_string_view(RouteError re) {
+  return ROUTE_ERROR_STRINGS[static_cast<uint8_t>(re)];
+}
+
 RouteContext::RouteContext(Request&& request)
     : current_path(request.view.url), request(std::move(request)) {}
 RouteContext::~RouteContext() {}
-
-RouteHandleError::RouteHandleError() : message("") {}
-RouteHandleError::RouteHandleError(std::string message) : message(message) {}
-RouteHandleError::~RouteHandleError() {}
-std::string RouteHandleError::to_string() const { return message; }
 
 AddRouteError::AddRouteError(AddRouteErrorKind kind)
     : kind(kind), message(ADD_ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]) {}
@@ -23,14 +22,13 @@ std::string AddRouteError::to_string() const {
   return std::string{ADD_ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]} + ": " + message;
 }
 
-RouteError::RouteError() : kind(RouteErrorKind::Unknown), message("") {}
-RouteError::RouteError(RouteErrorKind kind)
-    : kind(kind), message(ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]) {}
-RouteError::RouteError(RouteErrorKind kind, std::string message) : kind(kind), message(message) {}
-RouteError::~RouteError() {}
-std::string RouteError::to_string() const {
-  return std::string{ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]} + ": " + message;
-}
+// RouteError::RouteError() : kind(RouteErrorKind::Unknown), message("") {}
+// RouteError::RouteError(RouteErrorKind kind)
+//     : kind(kind), message(ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]) {}
+// RouteError::RouteError(RouteErrorKind kind, std::string message) : kind(kind), message(message)
+// {} RouteError::~RouteError() {} std::string RouteError::to_string() const {
+//   return std::string{ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]} + ": " + message;
+// }
 
 HttpParser::HttpParser() : view() {}
 
@@ -77,7 +75,7 @@ namespace router_details {
   RouteResult HttpRouteNode::route(RouteContext& ctx) {
     LOG6("Routing path: {}", ctx.current_path);
     if (ctx.current_path[0] != '/') {
-      return std::unexpected(RouteError(RouteErrorKind::NotFound, ""));
+      return std::unexpected{RouteError::NotFound};
     }
     auto pos = ctx.current_path.find('/', 1);
     do {
@@ -92,7 +90,7 @@ namespace router_details {
             return res;
           }
           if ((!res.has_value())
-              && res.error().kind != RouteErrorKind::NotFound) {  // if error but not found
+              && res.error() != RouteError::NotFound) {  // if error but not found
             return res;
           }
           ctx.current_path = current_path;  // restore current path
@@ -108,7 +106,7 @@ namespace router_details {
       if (dr_res.has_value()) {
         return dr_res;
       }
-      if ((!dr_res.has_value()) && dr_res.error().kind != RouteErrorKind::NotFound) {
+      if ((!dr_res.has_value()) && dr_res.error() != RouteError::NotFound) {
         return dr_res;
       }
     } while (false);
@@ -117,7 +115,7 @@ namespace router_details {
     if (iter != this->children.lock_shared()->end()) {
       return iter->second.direct_route(ctx);
     }
-    return std::unexpected{RouteError(RouteErrorKind::NotFound, "")};
+    return std::unexpected{RouteError::NotFound};
   }
 }  // namespace router_details
 
@@ -133,15 +131,9 @@ namespace router_details {
     LOG5("Direct routing path: {}", ctx.current_path);
     auto& handler = handlers[static_cast<uint8_t>(ctx.request.method)];
     if (handler == nullptr) {
-      return std::unexpected{RouteError(RouteErrorKind::Unimplemented, "")};
+      return std::unexpected{RouteError::Unimplemented};
     }
-    RouteHandleResult res = handler(ctx);
-    if (res.has_value()) {
-      LOG5("Route ok");
-      return {std::move(res.value())};
-    }
-    LOG2("Route error: {}", res.error().to_string());
-    return std::unexpected{RouteError(RouteErrorKind::Unknown, "")};
+    return &handler;
   }
 
 }  // namespace router_details
@@ -159,21 +151,24 @@ AddRouteResult HttpRouter::add_route(HttpMethod method, std::string_view path,
 RouteResult HttpRouter::route(RouteContext& ctx) {
   LOG4("Starting routing path: {}", ctx.current_path);
   if (ctx.request.method == HttpMethod::UNKNOWN) {
-    return std::unexpected{RouteError(RouteErrorKind::Unknown, "")};
+    return std::unexpected{RouteError::Unknown};
   }
   return root.route(ctx);
 }
 
-void HttpRouter::error_handler(RouteErrorKind kind, RouteHandler&& handler) {
-  if (kind == RouteErrorKind::NotFound) {
+void HttpRouter::set_error_handler(RouteError kind, RouteHandler&& handler) {
+  if (kind == RouteError::NotFound) {
     this->error_handlers[static_cast<uint8_t>(kind)]
         = make_shared<RouteHandler>(std::move(handler));
-  } else if (kind == RouteErrorKind::Unimplemented) {
+  } else if (kind == RouteError::Unimplemented) {
     this->error_handlers[static_cast<uint8_t>(kind)]
         = make_shared<RouteHandler>(std::move(handler));
   } else {
     this->error_handlers[0] = make_shared<RouteHandler>(std::move(handler));
   }
+}
+const RouteHandler* HttpRouter::error_handle(RouteError kind) {
+  return this->error_handlers[static_cast<uint8_t>(kind)].get();
 }
 
 HTTP_NE

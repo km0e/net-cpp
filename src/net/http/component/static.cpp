@@ -8,6 +8,7 @@
 #include <sys/io.h>
 #include <sys/stat.h>
 
+#include <expected>
 #include <filesystem>
 #include <functional>
 #include <system_error>
@@ -39,7 +40,7 @@ RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
   int res = stat(this->path.c_str(), &buf);
   if (res == -1) {
     LOG2("stat failed: {}", strerror(errno));
-    return std::unexpected(RouteHandleError("stat failed"));
+    co_return std::unexpected{RouteError::NotFound};
   }
   // auto send_file = [path = this->path](sys::io::AsyncWriteDevice& awd) {
   //   return sys::net::immediate_sendfile(awd, path);
@@ -48,7 +49,7 @@ RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
                              std::placeholders::_1, this->path);
   auto resp = HttpResponse(ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file));
   resp.part.headers.emplace("Content-Type", to_string(this->content_type));
-  return RouteHandleResult{std::move(resp)};
+  co_return std::move(resp);
 }
 
 class FolderRouteHandler {
@@ -72,11 +73,8 @@ RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
   }
   if (S_ISDIR(buf.st_mode)) {
     LOG5("FolderRouteHandler: is dir");
-    return RouteHandleResult(NOT_FOUND_HANDLER(ctx));
+    return {NOT_FOUND_HANDLER(ctx)};
   }
-  // auto send_file = [path = full_path](sys::io::AsyncWriteDevice& awd) {
-  //   return sys::io::immediate_sendfile(awd, path);
-  // };
   auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase>,
                              std::placeholders::_1, full_path);
   auto resp = HttpResponse(ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file));
@@ -87,7 +85,9 @@ RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
         to_string(ContentType{content_type::MediaType::from_extension(ext), Charset::UTF_8}));
     LOG5("FolderRouteHandler: Content-Type: {}", resp.part.headers["Content-Type"]);
   }
-  return RouteHandleResult{std::move(resp)};
+  return [](HttpResponse&& resp) -> RouteHandleResult {
+    co_return {std::move(resp)};
+  }(std::move(resp));
 }
 StaticCreateResult create_static_handler(std::string&& path) {
   if (path.empty()) {

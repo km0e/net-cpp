@@ -19,7 +19,7 @@ using xsl::net::HttpRouter;
 using xsl::net::HttpRouteResult;
 // using net::HttpServer;
 using xsl::net::HttpVersion;
-using xsl::net::RouteErrorKind;
+using xsl::net::RouteError;
 using xsl::net::to_string_view;
 
 namespace tcp {

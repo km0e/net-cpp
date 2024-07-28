@@ -15,6 +15,8 @@ HTTP_NB
 class RouteContext {
 public:
   RouteContext(Request&& request);
+  RouteContext(RouteContext&&) = default;
+  RouteContext& operator=(RouteContext&&) = default;
   ~RouteContext();
   std::string_view current_path;
   Request request;
@@ -60,17 +62,6 @@ public:
   std::string to_string() const;
 };
 
-// class RouteError {
-// public:
-//   RouteError();
-//   RouteError(RouteErrorKind kind);
-//   RouteError(RouteErrorKind kind, std::string message);
-//   ~RouteError();
-//   RouteErrorKind kind;
-//   std::string message;
-//   std::string to_string() const;
-// };
-
 using AddRouteResult = std::expected<void, AddRouteError>;
 
 using RouteResult = std::expected<const RouteHandler*, RouteError>;
@@ -103,16 +94,16 @@ namespace router_details {
 }  // namespace router_details
 
 const RouteHandler UNKNOWN_HANDLER = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
-  co_return {ResponsePart(HttpVersion::HTTP_1_1, 500, "Internal Server Error")};
+  co_return HttpResponse{{HttpVersion::HTTP_1_1, 500, "Internal Server Error"}};
 };
 
 const RouteHandler NOT_FOUND_HANDLER = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
-  co_return {ResponsePart(HttpVersion::HTTP_1_1, 404, "Not Found")};
+  co_return HttpResponse{{HttpVersion::HTTP_1_1, 404, "Not Found"}};
 };
 
 const RouteHandler UNIMPLEMENTED_HANDLER
     = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
-  co_return {ResponsePart(HttpVersion::HTTP_1_1, 501, "Not Implemented")};
+  co_return HttpResponse{{HttpVersion::HTTP_1_1, 501, "Not Implemented"}};
 };
 
 class HttpRouter {

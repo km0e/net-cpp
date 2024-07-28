@@ -24,7 +24,7 @@ Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
   if (!server) {
     co_return;
   }
-  auto serv = std::move(server.value());
+  auto serv = std::move(*server);
   while (true) {
     auto ac_res = co_await serv.accept();
     if (!ac_res) {

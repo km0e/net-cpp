@@ -45,7 +45,7 @@ coro::Task<void, Executor> http_connection(sys::io::AsyncReadWriteDevice dev,
       }
       auto [sz, err] = co_await handle_res->sendto(awd);
       if (err) {
-        LOG3("send error: {}", std::make_error_code(err.value()).message());
+        LOG3("send error: {}", std::make_error_code(*err).message());
       }
       break;
     }

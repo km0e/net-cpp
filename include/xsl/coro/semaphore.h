@@ -62,11 +62,11 @@ public:
       update -= wait_size;
       this->_sem.release(update);
       for (std::ptrdiff_t i = 0; i < wait_size; i++) {
-        this->_queue.pop().value()();
+        (*this->_queue.pop())();
       }
     } else {
       for (std::ptrdiff_t i = 0; i < update; i++) {
-        this->_queue.pop().value()();
+        (*this->_queue.pop())();
       }
     }
   }

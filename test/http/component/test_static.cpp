@@ -36,10 +36,9 @@ TEST(http_component_static, file_route_handler) {
   auto res = create_static_handler(std::move(file_path));
   ASSERT_TRUE(res.has_value());
   auto handler = res.value();
-  http::RouteContext ctx{Request{"", HttpRequestView{}}};
+  http::RouteContext ctx{Request{"", HttpRequestView{}, {}}};
   ctx.current_path = "file_route_handler_test.txt";
   auto result = handler(ctx);
-
 }
 
 int main() {

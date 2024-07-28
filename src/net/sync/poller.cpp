@@ -65,7 +65,7 @@ bool Poller::modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& hand
     return false;
   }
   if (handler.has_value()) {
-    this->handlers.lock()->insert_or_assign(fd, make_shared<PollHandler>(handler.value()));
+    this->handlers.lock()->insert_or_assign(fd, make_shared<PollHandler>(*handler));
   }
   return true;
 }

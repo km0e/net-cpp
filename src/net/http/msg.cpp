@@ -94,7 +94,7 @@ std::string ResponsePart::to_string() {
   res += "\r\n";
   return res;
 }
-HttpResponse::HttpResponse(ResponsePart&& part) : part(std::move(part)), body() {}
+HttpResponse::HttpResponse(ResponsePart&& part) : _part(std::move(part)), _body() {}
 
 HttpResponse::~HttpResponse() {}
 

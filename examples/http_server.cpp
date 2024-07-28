@@ -29,7 +29,7 @@ Task<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::
   }
   auto http_router = std::make_shared<http::HttpRouter>();
   auto get_handler = [](auto&) -> http::RouteHandleResult {
-    co_return {http::ResponsePart(HttpVersion::HTTP_1_1, 200, "OK")};
+    co_return http::HttpResponse{{HttpVersion::HTTP_1_1, 200, "OK"}};
   };
   if (!http_router->add_route(http::HttpMethod::GET, "/", get_handler)) {
     LOG5("add_route failed");

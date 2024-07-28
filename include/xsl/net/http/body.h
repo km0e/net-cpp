@@ -8,6 +8,7 @@
 HTTP_NB
 class BodyStream {
 public:
+  BodyStream() = default;
   BodyStream(std::shared_ptr<sys::io::AsyncReadDevice> ard) : _ard(std::move(ard)) {}
   BodyStream(BodyStream &&) = default;
   BodyStream &operator=(BodyStream &&) = default;

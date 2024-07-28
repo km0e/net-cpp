@@ -47,8 +47,8 @@ RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
   // };
   auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase>,
                              std::placeholders::_1, this->path);
-  auto resp = HttpResponse(ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file));
-  resp.part.headers.emplace("Content-Type", to_string(this->content_type));
+  auto resp = HttpResponse{{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file)};
+  resp._part.headers.emplace("Content-Type", to_string(this->content_type));
   co_return std::move(resp);
 }
 
@@ -77,13 +77,13 @@ RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
   }
   auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase>,
                              std::placeholders::_1, full_path);
-  auto resp = HttpResponse(ResponsePart{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file));
+  auto resp = HttpResponse{{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file)};
   if (auto point = ctx.current_path.rfind('.'); point != std::string::npos) {
     auto ext = ctx.current_path.substr(point + 1);
-    resp.part.headers.emplace(
+    resp._part.headers.emplace(
         "Content-Type",
         to_string(ContentType{content_type::MediaType::from_extension(ext), Charset::UTF_8}));
-    LOG5("FolderRouteHandler: Content-Type: {}", resp.part.headers["Content-Type"]);
+    LOG5("FolderRouteHandler: Content-Type: {}", resp._part.headers["Content-Type"]);
   }
   return [](HttpResponse&& resp) -> RouteHandleResult {
     co_return {std::move(resp)};

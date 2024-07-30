@@ -4,6 +4,7 @@
 #  define XSL_NET_HTTP_SERVER
 #  include "xsl/coro/await.h"
 #  include "xsl/coro/task.h"
+#  include "xsl/feature.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/proto.h"
@@ -16,7 +17,7 @@
 HTTP_NB
 
 template <class Executor = coro::ExecutorBase>
-coro::Task<void, Executor> http_connection(sys::io::AsyncReadWriteDevice dev,
+coro::Task<void, Executor> http_connection(sys::io::AsyncDevice<feature::In, feature::Out> dev,
                                            std::shared_ptr<HttpRouter> router) {
   auto [ard, awd] = std::move(dev).split();
   auto reader = HttpReader{std::move(ard)};

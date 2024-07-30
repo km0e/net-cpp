@@ -2,6 +2,7 @@
 #ifndef XSL_NET_HTTP_STREAM
 #  define XSL_NET_HTTP_STREAM
 #  include "xsl/coro/task.h"
+#  include "xsl/feature.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
@@ -15,8 +16,8 @@ HTTP_NB
 
 class HttpReader {
 public:
-  HttpReader(sys::io::AsyncReadDevice&& ard)
-      : _ard(std::make_shared<sys::io::AsyncReadDevice>(std::move(ard))),
+  HttpReader(sys::io::AsyncDevice<feature::In>&& ard)
+      : _ard(std::make_shared<sys::io::AsyncDevice<feature::In>>(std::move(ard))),
         buffer(),
         parse_len(0),
         parser() {
@@ -51,7 +52,7 @@ public:
   }
 
 private:
-  std::shared_ptr<sys::io::AsyncReadDevice> _ard;
+  std::shared_ptr<sys::io::AsyncDevice<feature::In>> _ard;
   std::string buffer;
   size_t parse_len;
   HttpParser parser;

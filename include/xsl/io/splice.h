@@ -6,7 +6,7 @@
 #  include "xsl/sys/io/dev.h"
 
 XSL_IO_NB
-coro::Lazy<void> splice(sys::io::AsyncReadDevice from, sys::io::AsyncWriteDevice to,
+coro::Lazy<void> splice(sys::io::AsyncDevice<feature::In> from, sys::io::AsyncDevice<feature::Out> to,
                         std::string buffer);
 XSL_IO_NE
 #endif

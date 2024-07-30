@@ -42,7 +42,7 @@ RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
     LOG2("stat failed: {}", strerror(errno));
     co_return std::unexpected{RouteError::NotFound};
   }
-  // auto send_file = [path = this->path](sys::io::AsyncWriteDevice& awd) {
+  // auto send_file = [path = this->path](sys::io::AsyncDevice<feature::Out>& awd) {
   //   return sys::net::immediate_sendfile(awd, path);
   // };
   auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase>,

@@ -2,13 +2,14 @@
 #ifndef XSL_NET_IO_SPLICE
 #  define XSL_NET_IO_SPLICE
 #  include "xsl/coro/lazy.h"
+#  include "xsl/feature.h"
 #  include "xsl/net/io/def.h"
 #  include "xsl/sys/io/dev.h"
 #  include "xsl/sys/net/io.h"
 XSL_NET_IO_NB
 template <class Executor = coro::ExecutorBase>
-coro::Lazy<void> splice(sys::io::AsyncReadDevice from, sys::io::AsyncWriteDevice to,
-                        std::string buffer) {
+coro::Lazy<void> splice(sys::io::AsyncDevice<feature::In> from,
+                        sys::io::AsyncDevice<feature::Out> to, std::string buffer) {
   while (true) {
     auto [sz, err] = co_await sys::net::immediate_recv<Executor>(
         from, std::as_writable_bytes(std::span(buffer)));

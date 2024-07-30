@@ -34,6 +34,6 @@ target("xsl")
 do
     set_kind("static")
     add_files("**.cpp")
-    add_deps("xsl_log_ctl")
+    -- add_deps("xsl_log_ctl")
     add_headerfiles(xsl_headers)
 end

@@ -26,6 +26,8 @@ namespace feature {
   struct Raw {};
   struct In {};
   struct Out {};
+  struct Own {};
+  struct Dyn {};
   // using for resolver
 
   namespace impl {

@@ -56,7 +56,7 @@ coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> immediat
 
 template <class Executor = coro::ExecutorBase>
 coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> immediate_send(
-    sys::io::AsyncWriteDevice &dev, std::span<const std::byte> data) {
+    sys::io::AsyncDevice<feature::Out> &dev, std::span<const std::byte> data) {
   using Result = std::tuple<std::size_t, std::optional<std::errc>>;
   while (true) {
     ssize_t n = ::send(dev.raw(), data.data(), data.size(), 0);
@@ -77,7 +77,7 @@ coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> immediat
 }
 template <class Executor = coro::ExecutorBase>
 coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> immediate_sendfile(
-    sys::io::AsyncWriteDevice &dev, std::filesystem::path path) {
+    sys::io::AsyncDevice<feature::Out> &dev, std::filesystem::path path) {
   using Result = std::tuple<std::size_t, std::optional<std::errc>>;
   int ffd = open(path.c_str(), O_RDONLY);
   if (ffd == -1) {

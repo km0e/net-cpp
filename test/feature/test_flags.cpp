@@ -6,12 +6,12 @@ template <class... Flags>
 struct Test;
 
 template <>
-struct Test<placeholder, int> {
+struct Test<placeholder, float> {
   static int f() { return 1; }
 };
 
 template <>
-struct Test<int, int> {
+struct Test<int, float> {
   static int f() { return 2; }
 };
 
@@ -26,10 +26,11 @@ struct Test<placeholder, char> {
 };
 
 template <class... Flags>
-using Test_t = origanize_feature_flags_t<Test<int, set<char, int>>, Flags...>;
+using Test_t = origanize_feature_flags_t<Test<int, set<char, float>>, Flags...>;
 
 TEST(feature, origanize_feature_flags_t) {
-  ASSERT_EQ((Test_t<placeholder, int>::f()), 1);
+  ASSERT_EQ((Test_t<float>::f()), 1);
+  ASSERT_EQ((Test_t<int,float>::f()), 2);
   ASSERT_EQ((Test_t<int>::f()), 3);
   ASSERT_EQ((Test_t<char>::f()), 4);
 };

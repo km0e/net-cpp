@@ -1,8 +1,8 @@
 #pragma once
-#include "xsl/feature.h"
 #ifndef XSL_NET_TRANSPORT_TCP_SERVER
 #  define XSL_NET_TRANSPORT_TCP_SERVER
 #  include "xsl/coro/task.h"
+#  include "xsl/feature.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/transport/tcp/def.h"
 #  include "xsl/sync.h"
@@ -54,14 +54,15 @@ public:
       return TcpServer{std::move(poller), std::move(skt)};
     });
   }
-  TcpServer(const std::shared_ptr<Poller> &poller, sys::io::AsyncDevice<feature::In> &&dev)
+  TcpServer(const std::shared_ptr<Poller> &poller,
+            sys::io::AsyncDevice<feature::In<std::byte>> &&dev)
       : poller(poller), dev(std::move(dev)) {}
-  TcpServer(std::shared_ptr<Poller> &&poller, sys::io::AsyncDevice<feature::In> &&dev)
+  TcpServer(std::shared_ptr<Poller> &&poller, sys::io::AsyncDevice<feature::In<std::byte>> &&dev)
       : poller(std::move(poller)), dev(std::move(dev)) {}
   TcpServer(TcpServer &&) = default;
   template <class Executor = coro::ExecutorBase>
   coro::Task<
-      std::expected<std::tuple<sys::io::AsyncDevice<feature::In, feature::Out>, sys::net::SockAddr>,
+      std::expected<std::tuple<sys::io::AsyncDevice<feature::InOut<std::byte>>, sys::net::SockAddr>,
                     std::errc>,
       Executor>
   accept() noexcept {
@@ -84,7 +85,7 @@ public:
 
 private:
   std::shared_ptr<Poller> poller;
-  sys::io::AsyncDevice<feature::In> dev;
+  sys::io::AsyncDevice<feature::In<std::byte>> dev;
 };
 
 TCP_NE

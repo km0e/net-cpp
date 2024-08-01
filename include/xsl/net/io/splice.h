@@ -8,8 +8,8 @@
 #  include "xsl/sys/net/io.h"
 XSL_NET_IO_NB
 template <class Executor = coro::ExecutorBase>
-coro::Lazy<void> splice(sys::io::AsyncDevice<feature::In> from,
-                        sys::io::AsyncDevice<feature::Out> to, std::string buffer) {
+coro::Lazy<void> splice(sys::io::AsyncDevice<feature::In<std::byte>> from,
+                        sys::io::AsyncDevice<feature::Out<std::byte>> to, std::string buffer) {
   while (true) {
     auto [sz, err] = co_await sys::net::immediate_recv<Executor>(
         from, std::as_writable_bytes(std::span(buffer)));

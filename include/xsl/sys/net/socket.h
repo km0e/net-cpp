@@ -74,8 +74,8 @@ private:
 // using IpV4Addr = impl::IpAddr<4>;
 // // ipv6
 // using IpV6Addr = impl::IpAddr<6>;
-using Socket = sys::io::Device<feature::In, feature::Out>;
-using AsyncSocket = sys::io::AsyncDevice<feature::In, feature::Out>;
+using Socket = sys::io::Device<feature::InOut<std::byte>>;
+using AsyncSocket = sys::io::AsyncDevice<feature::InOut<std::byte>>;
 
 SYS_NET_NE
 #endif

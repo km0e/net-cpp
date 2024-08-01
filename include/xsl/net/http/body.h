@@ -10,13 +10,14 @@ HTTP_NB
 class BodyStream {
 public:
   BodyStream() = default;
-  BodyStream(std::shared_ptr<sys::io::AsyncDevice<feature::In>> ard) : _ard(std::move(ard)) {}
+  BodyStream(std::shared_ptr<sys::io::AsyncDevice<feature::In<std::byte>>> ard)
+      : _ard(std::move(ard)) {}
   BodyStream(BodyStream &&) = default;
   BodyStream &operator=(BodyStream &&) = default;
   ~BodyStream() {}
 
 private:
-  std::shared_ptr<sys::io::AsyncDevice<feature::In>> _ard;
+  std::shared_ptr<sys::io::AsyncDevice<feature::In<std::byte>>> _ard;
 };
 HTTP_NE
 #endif

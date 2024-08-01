@@ -73,13 +73,13 @@ public:
 class HttpResponse {
 public:
   HttpResponse(ResponsePart&& part);
-  template <std::invocable<sys::io::AsyncDevice<feature::Out>&> F>
+  template <std::invocable<sys::io::AsyncDevice<feature::Out<std::byte>>&> F>
   HttpResponse(ResponsePart&& part, F&& body)
       : _part(std::move(part)), _body(std::forward<F>(body)) {}
   template <std::convertible_to<std::string_view> T>
   HttpResponse(ResponsePart&& part, T&& body)
       : _part(std::move(part)),
-        _body([body = std::forward<T>(body)](sys::io::AsyncDevice<feature::Out>& awd)
+        _body([body = std::forward<T>(body)](sys::io::AsyncDevice<feature::Out<std::byte>>& awd)
                   -> coro::Task<std::tuple<std::size_t, std::optional<std::errc>>> {
           return sys::net::immediate_send<coro::ExecutorBase>(awd, std::as_bytes(std::span(body)));
         }) {}
@@ -88,7 +88,7 @@ public:
   ~HttpResponse();
   template <class Executor = coro::ExecutorBase>
   coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> sendto(
-      sys::io::AsyncDevice<feature::Out>& awd) {
+      sys::io::AsyncDevice<feature::Out<std::byte>>& awd) {
     auto str = this->_part.to_string();
     auto [sz, err]
         = co_await sys::net::immediate_send<Executor>(awd, std::as_bytes(std::span(str)));
@@ -106,7 +106,7 @@ public:
   }
   ResponsePart _part;
   std::function<coro::Task<std::tuple<std::size_t, std::optional<std::errc>>>(
-      sys::io::AsyncDevice<feature::Out>&)>
+      sys::io::AsyncDevice<feature::Out<std::byte>>&)>
       _body;
 };
 HTTP_NE

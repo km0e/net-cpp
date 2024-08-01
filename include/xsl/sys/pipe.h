@@ -14,13 +14,14 @@
 SYS_NB
 
 const size_t MAX_SINGLE_FWD_SIZE = 4096;
-std::pair<sys::io::Device<feature::In>, sys::io::Device<feature::Out>> pipe();
-std::pair<sys::io::AsyncDevice<feature::In>, sys::io::AsyncDevice<feature::Out>> async_pipe(
-    std::shared_ptr<sync::Poller>& poller);
+std::pair<sys::io::Device<feature::In<std::byte>>, sys::io::Device<feature::Out<std::byte>>> pipe();
+std::pair<sys::io::AsyncDevice<feature::In<std::byte>>,
+          sys::io::AsyncDevice<feature::Out<std::byte>>>
+async_pipe(std::shared_ptr<sync::Poller>& poller);
 
 template <class Executor = coro::ExecutorBase>
-coro::Task<std::optional<std::errc>, Executor> splice_single(io::AsyncDevice<feature::In> from,
-                                                             io::AsyncDevice<feature::Out> to) {
+coro::Task<std::optional<std::errc>, Executor> splice_single(
+    io::AsyncDevice<feature::In<std::byte>> from, io::AsyncDevice<feature::Out<std::byte>> to) {
   while (true) {
     ssize_t n = ::splice(from.raw(), nullptr, to.raw(), nullptr, MAX_SINGLE_FWD_SIZE,
                          SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
@@ -45,10 +46,10 @@ coro::Task<std::optional<std::errc>, Executor> splice_single(io::AsyncDevice<fea
 }
 
 template <class Executor = coro::ExecutorBase>
-coro::Lazy<void, Executor> splice(io::AsyncDevice<feature::In> from,
-                                  io::AsyncDevice<feature::Out> to,
-                                  io::AsyncDevice<feature::In> pipe_in,
-                                  io::AsyncDevice<feature::Out> pipe_out) {
+coro::Lazy<void, Executor> splice(io::AsyncDevice<feature::In<std::byte>> from,
+                                  io::AsyncDevice<feature::Out<std::byte>> to,
+                                  io::AsyncDevice<feature::In<std::byte>> pipe_in,
+                                  io::AsyncDevice<feature::Out<std::byte>> pipe_out) {
   splice_single<Executor>(std::move(from), std::move(pipe_out))
       .detach(co_await coro::GetExecutor<Executor>());
   splice_single<Executor>(std::move(pipe_in), std::move(to))
@@ -56,8 +57,8 @@ coro::Lazy<void, Executor> splice(io::AsyncDevice<feature::In> from,
   co_return;
 }
 template <class Executor = coro::ExecutorBase>
-coro::Lazy<void, Executor> splice(io::AsyncDevice<feature::In> from,
-                                  io::AsyncDevice<feature::Out> to,
+coro::Lazy<void, Executor> splice(io::AsyncDevice<feature::In<std::byte>> from,
+                                  io::AsyncDevice<feature::Out<std::byte>> to,
                                   std::shared_ptr<sync::Poller>& poller) {
   auto [pipe_in, pipe_out] = async_pipe(poller);
   return splice<Executor>(std::move(from), std::move(to), std::move(pipe_in), std::move(pipe_out));

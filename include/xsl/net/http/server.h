@@ -17,7 +17,7 @@
 HTTP_NB
 
 template <class Executor = coro::ExecutorBase>
-coro::Task<void, Executor> http_connection(sys::io::AsyncDevice<feature::In, feature::Out> dev,
+coro::Task<void, Executor> http_connection(sys::io::AsyncDevice<feature::InOut<std::byte>> dev,
                                            std::shared_ptr<HttpRouter> router) {
   auto [ard, awd] = std::move(dev).split();
   auto reader = HttpReader{std::move(ard)};

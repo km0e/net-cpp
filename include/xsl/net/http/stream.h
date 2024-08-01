@@ -16,8 +16,8 @@ HTTP_NB
 
 class HttpReader {
 public:
-  HttpReader(sys::io::AsyncDevice<feature::In>&& ard)
-      : _ard(std::make_shared<sys::io::AsyncDevice<feature::In>>(std::move(ard))),
+  HttpReader(sys::io::AsyncDevice<feature::In<std::byte>>&& ard)
+      : _ard(std::make_shared<sys::io::AsyncDevice<feature::In<std::byte>>>(std::move(ard))),
         buffer(),
         parse_len(0),
         parser() {
@@ -52,7 +52,7 @@ public:
   }
 
 private:
-  std::shared_ptr<sys::io::AsyncDevice<feature::In>> _ard;
+  std::shared_ptr<sys::io::AsyncDevice<feature::In<std::byte>>> _ard;
   std::string buffer;
   size_t parse_len;
   HttpParser parser;

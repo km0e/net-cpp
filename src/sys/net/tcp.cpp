@@ -12,25 +12,7 @@
 
 #include <expected>
 #include <system_error>
-#include <tuple>
 SYS_NET_NB
-
-AcceptResult accept(int fd) {
-  SockAddr addr{};
-  auto [sockaddr, addrlen] = addr.raw();
-  int tmpfd = ::accept4(fd, sockaddr, addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
-  if (tmpfd < 0) {
-    return std::unexpected{std::errc(errno)};
-  }
-  LOG5("accept socket {}", tmpfd);
-  // char ip[NI_MAXHOST], port[NI_MAXSERV];
-  // if (getnameinfo(&addr, addrlen, ip, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST |
-  // NI_NUMERICSERV)
-  //     != 0) {
-  //   return std::unexpected{std::errc(errno)};
-  // }
-  return std::make_tuple(Socket(io::NativeDevice{tmpfd}), addr);
-}
 
 static inline std::expected<int, std::errc> bind(addrinfo *ai) {
   int tmpfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);

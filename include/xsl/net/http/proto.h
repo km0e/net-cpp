@@ -135,18 +135,18 @@ HTTP_NE
 #  include "xsl/convert.h"
 XSL_NB
 template <>
-net::http::HttpVersion from_string_view(std::string_view type);
+_net::http::HttpVersion from_string_view(std::string_view type);
 
 template <>
-net::http::HttpMethod from_string_view(std::string_view type);
+_net::http::HttpMethod from_string_view(std::string_view type);
 
 template <>
-net::http::content_type::Type from_string_view(std::string_view type);
+_net::http::content_type::Type from_string_view(std::string_view type);
 
 template <>
-net::http::content_type::SubType from_string_view(std::string_view type);
+_net::http::content_type::SubType from_string_view(std::string_view type);
 
 template <>
-net::http::content_type::MediaType from_string_view(std::string_view type);
+_net::http::content_type::MediaType from_string_view(std::string_view type);
 XSL_NE
 #endif

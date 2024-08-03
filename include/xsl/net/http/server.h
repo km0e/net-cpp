@@ -10,7 +10,7 @@
 #  include "xsl/net/http/proto.h"
 #  include "xsl/net/http/router.h"
 #  include "xsl/net/http/stream.h"
-#  include "xsl/net/transport/tcp/server.h"
+#  include "xsl/net/tcp.h"
 
 #  include <string_view>
 
@@ -58,26 +58,25 @@ coro::Task<void, Executor> http_connection(sys::io::AsyncDevice<feature::InOut<s
 
 class HttpServer {
 public:
-  HttpServer(transport::tcp::TcpServer server, std::shared_ptr<HttpRouter> router)
+  HttpServer(_net::TcpServer server, std::shared_ptr<HttpRouter> router)
       : server(std::move(server)), router(std::move(router)) {}
   ~HttpServer() {}
   template <class Executor = coro::ExecutorBase>
   coro::Task<std::expected<void, std::errc>, Executor> run() {
     LOG4("HttpServer start");
     while (true) {
-      auto res = co_await this->server.accept<Executor>();
+      auto res = co_await this->server.accept<Executor>(nullptr);
       if (!res) {
         LOG2("accept error: {}", std::make_error_code(res.error()).message());
         continue;
       }
-      auto [arwd, addr] = std::move(*res);
-      http_connection<Executor>(std::move(arwd), this->router)
+      http_connection<Executor>(std::move(*res), this->router)
           .detach(co_await coro::GetExecutor<Executor>());
     }
   }
 
 private:
-  transport::tcp::TcpServer server;
+  _net::TcpServer server;
   std::shared_ptr<HttpRouter> router;
 };
 HTTP_NE

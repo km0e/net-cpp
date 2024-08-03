@@ -26,12 +26,11 @@ Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
   }
   auto serv = std::move(*server);
   while (true) {
-    auto ac_res = co_await serv.accept();
+    auto ac_res = co_await serv.accept(nullptr);
     if (!ac_res) {
       continue;
     }
-    auto [rw, addr] = std::move(*ac_res);
-    auto [r, w] = std::move(rw).split();
+    auto [r, w] = std::move(*ac_res).split();
     net::splice(std::move(r), std::move(w), std::string(4096, '\0'))
         .detach(co_await coro::GetExecutor());
   }

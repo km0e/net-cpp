@@ -99,12 +99,11 @@ namespace impl_dev {
      */
 
     template <class... Flags>
-    inline AsyncDeviceCompose<feature::In<T>, Flags...> async(
-        std::shared_ptr<sync::Poller> &poller) && noexcept {
+    inline AsyncDeviceCompose<feature::In<T>, Flags...> async(sync::Poller &poller) && noexcept {
       auto sem = std::make_shared<coro::CountingSemaphore<1>>();
-      poller->add(_dev->raw(), sync::IOM_EVENTS::IN | sync::IOM_EVENTS::ET,
-                  sync::PollCallback<sync::IOM_EVENTS::IN>{sem});
-      return {std::move(_dev), std::move(sem)};
+      poller.add(_dev->raw(), sync::IOM_EVENTS::IN | sync::IOM_EVENTS::ET,
+                 sync::PollCallback<sync::IOM_EVENTS::IN>{sem});
+      return {std::move(sem), std::move(_dev)};
     }
   };
 
@@ -122,12 +121,11 @@ namespace impl_dev {
     // AsyncDeviceCompose<feature::Out<T>, Flags...> async(
     //     std::shared_ptr<sync::Poller> &poller) && noexcept;
     template <class... Flags>
-    inline AsyncDeviceCompose<feature::Out<T>, Flags...> async(
-        std::shared_ptr<sync::Poller> &poller) && noexcept {
+    inline AsyncDeviceCompose<feature::Out<T>, Flags...> async(sync::Poller &poller) && noexcept {
       auto sem = std::make_shared<coro::CountingSemaphore<1>>();
-      poller->add(_dev->raw(), sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-                  sync::PollCallback<sync::IOM_EVENTS::OUT>{sem});
-      return {std::move(_dev), std::move(sem)};
+      poller.add(_dev->raw(), sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
+                 sync::PollCallback<sync::IOM_EVENTS::OUT>{sem});
+      return {std::move(sem), std::move(_dev)};
     }
   };
 
@@ -142,21 +140,21 @@ namespace impl_dev {
   public:
     using Base::Base;
     std::tuple<DeviceCompose<feature::In<T>>, DeviceCompose<feature::Out<T>>> split() && noexcept {
-      return {DeviceCompose<feature::In<T>>{std::move(_dev)},
-              DeviceCompose<feature::Out<T>>{std::move(_dev)}};
+      auto r = DeviceCompose<feature::In<T>>{_dev};
+      auto w = DeviceCompose<feature::Out<T>>{std::move(_dev)};
+      return {std::move(r), std::move(w)};
     }
     // template <class... Flags>
     // AsyncDeviceCompose<feature::InOut<T>, Flags...> async(
     //     std::shared_ptr<sync::Poller> &poller) && noexcept;
     template <class... Flags>
-    inline AsyncDeviceCompose<feature::InOut<T>, Flags...> async(
-        std::shared_ptr<sync::Poller> &poller) && noexcept {
+    inline AsyncDeviceCompose<feature::InOut<T>, Flags...> async(sync::Poller &poller) && noexcept {
       auto read_sem = std::make_shared<coro::CountingSemaphore<1>>();
       auto write_sem = std::make_shared<coro::CountingSemaphore<1>>();
-      poller->add(
+      poller.add(
           _dev->raw(), sync::IOM_EVENTS::IN | sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
           sync::PollCallback<sync::IOM_EVENTS::IN, sync::IOM_EVENTS::OUT>{read_sem, write_sem});
-      return {std::move(_dev), std::move(read_sem), std::move(write_sem)};
+      return {std::move(read_sem), std::move(write_sem), std::move(_dev)};
     }
   };
 
@@ -169,31 +167,30 @@ namespace impl_dev {
       : public std::conditional_t<std::is_same_v<U, feature::Dyn>,
                                   ai::AsyncDevice<feature::In<T>, V>, feature::placeholder> {
   public:
-    AsyncDevice(NativeDevice &&dev, std::shared_ptr<coro::CountingSemaphore<1>> sem) noexcept
-        : _dev(std::make_shared<NativeDevice>(std::move(dev))), _sem(std::move(sem)) {}
-
-    AsyncDevice(std::shared_ptr<NativeDevice> dev,
-                std::shared_ptr<coro::CountingSemaphore<1>> sem) noexcept
-        : _dev(std::move(dev)), _sem(std::move(sem)) {}
+    template <class... Args>
+    AsyncDevice(std::shared_ptr<coro::CountingSemaphore<1>> sem, Args &&...args) noexcept
+        : _sem(std::move(sem)), _dev(std::forward<Args>(args)...) {}
 
     AsyncDevice(AsyncDevice &&rhs) noexcept
-        : _dev(std::move(rhs._dev)), _sem(std::move(rhs._sem)) {}
+        : _sem(std::move(rhs._sem)), _dev(std::move(rhs._dev)) {}
 
     AsyncDevice &operator=(AsyncDevice &&rhs) noexcept {
-      _dev = std::move(rhs._dev);
       _sem = std::move(rhs._sem);
+      _dev = std::move(rhs._dev);
       return *this;
     }
 
     ~AsyncDevice() noexcept { LOG6("AsyncDevice dtor, use count: {}", _sem.use_count()); }
 
-    int raw() const noexcept { return _dev->raw(); }
+    DeviceCompose<feature::In<T>> &inner() noexcept { return _dev; }
+
+    int raw() const noexcept { return _dev.raw(); }
 
     coro::CountingSemaphore<1> &sem() noexcept { return *_sem; }
 
   protected:
-    std::shared_ptr<NativeDevice> _dev;
     std::shared_ptr<coro::CountingSemaphore<1>> _sem;
+    DeviceCompose<feature::In<T>> _dev;
   };
 
   static_assert(
@@ -226,31 +223,30 @@ namespace impl_dev {
       : public std::conditional_t<std::is_same_v<U, feature::Dyn>,
                                   ai::AsyncDevice<feature::Out<T>, V>, feature::placeholder> {
   public:
-    AsyncDevice(NativeDevice &&dev, std::shared_ptr<coro::CountingSemaphore<1>> sem) noexcept
-        : _dev(std::make_shared<NativeDevice>(std::move(dev))), _sem(std::move(sem)) {}
-
-    AsyncDevice(std::shared_ptr<NativeDevice> dev,
-                std::shared_ptr<coro::CountingSemaphore<1>> sem) noexcept
-        : _dev(std::move(dev)), _sem(std::move(sem)) {}
+    template <class... Args>
+    AsyncDevice(std::shared_ptr<coro::CountingSemaphore<1>> sem, Args &&...args) noexcept
+        : _sem(std::move(sem)), _dev(std::forward<Args>(args)...) {}
 
     AsyncDevice(AsyncDevice &&rhs) noexcept
-        : _dev(std::move(rhs._dev)), _sem(std::move(rhs._sem)) {}
+        : _sem(std::move(rhs._sem)), _dev(std::move(rhs._dev)) {}
 
     AsyncDevice &operator=(AsyncDevice &&rhs) noexcept {
-      _dev = std::move(rhs._dev);
       _sem = std::move(rhs._sem);
+      _dev = std::move(rhs._dev);
       return *this;
     }
 
     ~AsyncDevice() noexcept { LOG6("AsyncDevice dtor, use count: {}", _sem.use_count()); }
 
-    int raw() const noexcept { return _dev->raw(); }
+    DeviceCompose<feature::Out<T>> &inner() noexcept { return _dev; }
+
+    int raw() const noexcept { return _dev.raw(); }
 
     coro::CountingSemaphore<1> &sem() noexcept { return *_sem; }
 
   protected:
-    std::shared_ptr<NativeDevice> _dev;
     std::shared_ptr<coro::CountingSemaphore<1>> _sem;
+    DeviceCompose<feature::Out<T>> _dev;
   };
 
   static_assert(
@@ -283,20 +279,22 @@ namespace impl_dev {
       : public std::conditional_t<std::is_same_v<U, feature::Dyn>,
                                   ai::AsyncDevice<feature::InOut<T>, V>, feature::placeholder> {
   public:
-    AsyncDevice(std::shared_ptr<NativeDevice> dev,
-                std::shared_ptr<coro::CountingSemaphore<1>> read_sem,
-                std::shared_ptr<coro::CountingSemaphore<1>> write_sem) noexcept
-        : _dev(std::move(dev)), _read_sem(std::move(read_sem)), _write_sem(std::move(write_sem)) {}
+    template <class... Args>
+    AsyncDevice(std::shared_ptr<coro::CountingSemaphore<1>> read_sem,
+                std::shared_ptr<coro::CountingSemaphore<1>> write_sem, Args &&...args) noexcept
+        : _read_sem(std::move(read_sem)),
+          _write_sem(std::move(write_sem)),
+          _dev(std::forward<Args>(args)...) {}
 
     AsyncDevice(AsyncDevice &&rhs) noexcept
-        : _dev(std::move(rhs._dev)),
-          _read_sem(std::move(rhs._read_sem)),
-          _write_sem(std::move(rhs._write_sem)) {}
+        : _read_sem(std::move(rhs._read_sem)),
+          _write_sem(std::move(rhs._write_sem)),
+          _dev(std::move(rhs._dev)) {}
 
     AsyncDevice &operator=(AsyncDevice &&rhs) noexcept {
-      _dev = std::move(rhs._dev);
       _read_sem = std::move(rhs._read_sem);
       _write_sem = std::move(rhs._write_sem);
+      _dev = std::move(rhs._dev);
       return *this;
     }
 
@@ -305,23 +303,27 @@ namespace impl_dev {
            _write_sem.use_count());
     }
 
-    int raw() const noexcept { return _dev->raw(); }
+    int raw() const noexcept { return _dev.raw(); }
+
+    DeviceCompose<feature::InOut<T>> &inner() noexcept { return _dev; }
 
     coro::CountingSemaphore<1> &read_sem() noexcept { return *_read_sem; }
 
     coro::CountingSemaphore<1> &write_sem() noexcept { return *_write_sem; }
 
     auto split() && noexcept {
+      auto [sync_r, sync_w] = std::move(this->inner()).split();
       using ReadDevice = AsyncDevice<feature::In<T>, U, V>;
+      auto r = ReadDevice{std::move(_read_sem), std::move(sync_r)};
       using WriteDevice = AsyncDevice<feature::Out<T>, U, V>;
-      return std::make_tuple(ReadDevice{_dev, std::move(_read_sem)},
-                             WriteDevice{_dev, std::move(_write_sem)});
+      auto w = WriteDevice{std::move(_write_sem), std::move(sync_w)};
+      return std::make_tuple(std::move(r), std::move(w));
     }
 
   protected:
-    std::shared_ptr<NativeDevice> _dev;
     std::shared_ptr<coro::CountingSemaphore<1>> _read_sem;
     std::shared_ptr<coro::CountingSemaphore<1>> _write_sem;
+    DeviceCompose<feature::InOut<T>> _dev;
   };
 
   static_assert(

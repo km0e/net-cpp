@@ -8,7 +8,6 @@
 #  include "xsl/net/io/splice.h"
 #  include "xsl/net/tcp.h"
 // #  include "xsl/net/transport/tcp.h"
-#  include "xsl/net/transport/tcp/server.h"
 XSL_NB
 namespace net {
   using xsl::_net::io::splice;
@@ -25,8 +24,10 @@ namespace tcp {
 namespace http {
   using xsl::_net::http::create_static_handler;
   using xsl::_net::http::HttpMethod;
+  using xsl::_net::http::HttpParser;
   using xsl::_net::http::HttpResponse;
   using xsl::_net::http::HttpRouter;
+  using xsl::_net::http::HttpStatus;
   using xsl::_net::http::RequestView;
   using xsl::_net::http::ResponsePart;
   using xsl::_net::http::RouteContext;

@@ -1,6 +1,5 @@
 #include "xsl/logctl.h"
 #include "xsl/net/http/msg.h"
-#include "xsl/net/http/parse.h"
 #include "xsl/net/http/proto.h"
 #include "xsl/net/http/router.h"
 
@@ -30,9 +29,6 @@ std::string AddRouteError::to_string() const {
 //   return std::string{ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]} + ": " + message;
 // }
 
-HttpParser::HttpParser() : view() {}
-
-HttpParser::~HttpParser() {}
 
 namespace router_details {
   HttpRouteNode::HttpRouteNode() : handlers(), children() {}

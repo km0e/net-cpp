@@ -1,7 +1,6 @@
 #include <CLI/CLI.hpp>
 #include <xsl/logctl.h>
 #include <xsl/net.h>
-#include <xsl/sys/pipe.h>
 
 #include <expected>
 #include <memory>
@@ -23,8 +22,12 @@ Task<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::
     co_return;
   }
   auto http_router = std::make_shared<http::HttpRouter>();
-  auto get_handler = [](auto&) -> http::RouteHandleResult {
-    co_return http::HttpResponse{{http::HttpVersion::HTTP_1_1, 200, "OK"}};
+  auto get_handler = [](auto& rc) -> http::RouteHandleResult {
+    LOG4("{} {}", http::to_string_view(rc.request.method), rc.request.view.url);
+    for (auto& [k, v] : rc.request.view.headers) {
+      LOG4("{}: {}", k, v);
+    }
+    co_return http::HttpResponse{{http::HttpVersion::HTTP_1_1, http::HttpStatus::OK}};
   };
   if (!http_router->add_route(http::HttpMethod::GET, "/", get_handler)) {
     LOG5("add_route failed");
@@ -35,7 +38,7 @@ Task<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::
 }
 
 int main(int argc, char* argv[]) {
-  set_log_level(xsl::LogLevel::LOG5);
+  set_log_level(xsl::LogLevel::LOG4);
   // xsl::no_log();
   CLI::App app{"Echo server"};
   app.add_option("-i,--ip", ip, "IP address");

@@ -7,12 +7,10 @@
 #  include "xsl/feature.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
+#  include "xsl/net/http/parse.h"
 #  include "xsl/net/http/proto.h"
 #  include "xsl/net/http/router.h"
-#  include "xsl/net/http/stream.h"
 #  include "xsl/net/tcp.h"
-
-#  include <string_view>
 
 HTTP_NB
 
@@ -20,14 +18,14 @@ template <class Executor = coro::ExecutorBase>
 coro::Task<void, Executor> http_connection(sys::io::AsyncDevice<feature::InOut<std::byte>> dev,
                                            std::shared_ptr<HttpRouter> router) {
   auto [ard, awd] = std::move(dev).split();
-  auto reader = HttpReader{std::move(ard)};
+  auto reader = HttpParser{std::move(ard)};
   while (true) {
     auto res = co_await reader.recv<Executor>();
     if (!res.has_value()) {
       LOG3("recv error: {}", std::make_error_code(res.error()).message());
       continue;
     }
-    LOG5("{}", std::string_view(res->raw).substr(0, res->view.length));
+    // LOG5("{}", std::string_view(res->raw).substr(0, res->view.length));
     bool keep_alive = true;
     if (auto iter = res->view.headers.find("Connection");
         iter == res->view.headers.end() || iter->second != "keep-alive") {

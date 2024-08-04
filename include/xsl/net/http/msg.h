@@ -8,6 +8,7 @@
 #  include "xsl/net/http/body.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/proto.h"
+#  include "xsl/net/io/buffer.h"
 #  include "xsl/sys/net/io.h"
 
 #  include <concepts>
@@ -16,6 +17,7 @@
 #  include <optional>
 #  include <string_view>
 #  include <tuple>
+#  include <utility>
 HTTP_NB
 
 class RequestView {
@@ -29,22 +31,25 @@ public:
   std::unordered_map<std::string_view, std::string_view> query;
   std::string_view version;
   std::unordered_map<std::string_view, std::string_view> headers;
-  std::size_t length;
   std::string to_string();
   void clear();
 };
 
 class Request {
 public:
-  Request(std::string&& raw, RequestView&& view, BodyStream&& body);
+  Request(io::Buffer&& raw, RequestView&& view, BodyStream&& body)
+      : method(xsl::from_string_view<HttpMethod>(view.method)),
+        view(std::move(view)),
+        raw(std::move(raw)),
+        body(std::move(body)) {}
+
   Request(Request&&) = default;
   Request& operator=(Request&&) = default;
-  ~Request();
+  ~Request() {}
   HttpMethod method;
   RequestView view;
-  std::string raw;
+  io::Buffer raw;
 
-private:
   BodyStream body;
 };
 
@@ -61,10 +66,14 @@ const int DEFAULT_HEADER_COUNT = 16;
 class ResponsePart {
 public:
   ResponsePart();
-  ResponsePart(HttpVersion version, int status_code, std::string&& status_message);
+  ResponsePart(HttpVersion version, HttpStatus status_code, std::string_view&& status_message);
+  ResponsePart(HttpVersion version, HttpStatus status_code);
+  ResponsePart(HttpVersion version, uint16_t status_code);
+  ResponsePart(ResponsePart&&) = default;
+  ResponsePart& operator=(ResponsePart&&) = default;
   ~ResponsePart();
-  int status_code;
-  std::string status_message;
+  HttpStatus status_code;
+  std::string_view status_message;
   HttpVersion version;
   std::unordered_map<std::string, std::string> headers;
   std::string to_string();

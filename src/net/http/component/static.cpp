@@ -42,12 +42,9 @@ RouteHandleResult FileRouteHandler::operator()(RouteContext& ctx) {
     LOG2("stat failed: {}", strerror(errno));
     co_return std::unexpected{RouteError::NotFound};
   }
-  // auto send_file = [path = this->path](sys::io::AsyncDevice<feature::Out>& awd) {
-  //   return sys::net::immediate_sendfile(awd, path);
-  // };
   auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase>,
                              std::placeholders::_1, this->path);
-  auto resp = HttpResponse{{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file)};
+  auto resp = HttpResponse{{HttpVersion::HTTP_1_1, HttpStatus::OK}, std::move(send_file)};
   resp._part.headers.emplace("Content-Type", to_string(this->content_type));
   co_return std::move(resp);
 }
@@ -77,7 +74,7 @@ RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
   }
   auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase>,
                              std::placeholders::_1, full_path);
-  auto resp = HttpResponse{{HttpVersion::HTTP_1_1, 200, "OK"}, std::move(send_file)};
+  auto resp = HttpResponse{{HttpVersion::HTTP_1_1, HttpStatus::OK}, std::move(send_file)};
   if (auto point = ctx.current_path.rfind('.'); point != std::string::npos) {
     auto ext = ctx.current_path.substr(point + 1);
     resp._part.headers.emplace(

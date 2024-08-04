@@ -94,16 +94,17 @@ namespace router_details {
 }  // namespace router_details
 
 const RouteHandler UNKNOWN_HANDLER = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
-  co_return HttpResponse{{HttpVersion::HTTP_1_1, 500, "Internal Server Error"}};
+  co_return HttpResponse{
+      {HttpVersion::HTTP_1_1, HttpStatus::INTERNAL_SERVER_ERROR, "Internal Server Error"}};
 };
 
 const RouteHandler NOT_FOUND_HANDLER = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
-  co_return HttpResponse{{HttpVersion::HTTP_1_1, 404, "Not Found"}};
+  co_return HttpResponse{{HttpVersion::HTTP_1_1, HttpStatus::NOT_FOUND, "Not Found"}};
 };
 
-const RouteHandler UNIMPLEMENTED_HANDLER
+const RouteHandler NOT_IMPLEMENTED_HANDLER
     = []([[maybe_unused]] RouteContext& ctx) -> RouteHandleResult {
-  co_return HttpResponse{{HttpVersion::HTTP_1_1, 501, "Not Implemented"}};
+  co_return HttpResponse{{HttpVersion::HTTP_1_1, HttpStatus::NOT_IMPLEMENTED, "Not Implemented"}};
 };
 
 class HttpRouter {
@@ -119,7 +120,7 @@ private:
   router_details::HttpRouteNode root;
   std::array<std::shared_ptr<RouteHandler>, ROUTE_ERROR_COUNT> error_handlers
       = {make_shared<RouteHandler>(UNKNOWN_HANDLER), make_shared<RouteHandler>(NOT_FOUND_HANDLER),
-         make_shared<RouteHandler>(UNIMPLEMENTED_HANDLER)};
+         make_shared<RouteHandler>(NOT_IMPLEMENTED_HANDLER)};
 };
 
 static_assert(Router<HttpRouter>, "HttpRouter is not a Router");

@@ -5,9 +5,10 @@
 #include <system_error>
 
 HTTP_NB
+HttpParseUnit::HttpParseUnit() : view() {}
 
-ParseResult HttpParser::parse(const char* data, size_t& len) {//TODO: request target
-  ParseResult res{std::unexpected{std::errc()}};
+ParseResult HttpParseUnit::parse(const char* data, size_t len) {  // TODO: request target
+  std::expected<RequestView, std::errc> res = std::unexpected{std::errc()};
   std::string_view view(data, len);
   size_t pos = 0, parse_end = 0;
   while (pos < len) {
@@ -89,17 +90,13 @@ ParseResult HttpParser::parse(const char* data, size_t& len) {//TODO: request ta
       pos = vend + 2;
     }
   }
-  len = pos + parse_end;
-  return res;
+  return {pos + parse_end, std::move(res)};
 }
 
-ParseResult HttpParser::parse(std::string_view& data) {
-  size_t len = data.size();
-  auto res = this->parse(data.data(), len);
-  data = data.substr(len);
-  return res;
+ParseResult HttpParseUnit::parse(std::string_view data) {
+  return this->parse(data.data(), data.length());
 }
 
-void HttpParser::clear() { this->view.clear(); }
+void HttpParseUnit::clear() { this->view.clear(); }
 
 HTTP_NE

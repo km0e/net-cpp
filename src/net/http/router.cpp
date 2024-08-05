@@ -9,17 +9,8 @@ std::string_view to_string_view(RouteError re) {
 }
 
 RouteContext::RouteContext(Request&& request)
-    : current_path(request.view.url), request(std::move(request)) {}
+    : current_path(request.view.path), request(std::move(request)) {}
 RouteContext::~RouteContext() {}
-
-AddRouteError::AddRouteError(AddRouteErrorKind kind)
-    : kind(kind), message(ADD_ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]) {}
-AddRouteError::AddRouteError(AddRouteErrorKind kind, std::string message)
-    : kind(kind), message(message) {}
-AddRouteError::~AddRouteError() {}
-std::string AddRouteError::to_string() const {
-  return std::string{ADD_ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]} + ": " + message;
-}
 
 // RouteError::RouteError() : kind(RouteErrorKind::Unknown), message("") {}
 // RouteError::RouteError(RouteErrorKind kind)
@@ -29,7 +20,6 @@ std::string AddRouteError::to_string() const {
 //   return std::string{ROUTE_ERROR_STRINGS[static_cast<uint8_t>(kind)]} + ": " + message;
 // }
 
-
 namespace router_details {
   HttpRouteNode::HttpRouteNode() : handlers(), children() {}
   HttpRouteNode::HttpRouteNode(HttpMethod method, RouteHandler&& handler) : handlers(), children() {
@@ -37,11 +27,10 @@ namespace router_details {
   }
   HttpRouteNode::~HttpRouteNode() {}
 
-  AddRouteResult HttpRouteNode::add_route(HttpMethod method, std::string_view path,
-                                          RouteHandler&& handler) {
+  void HttpRouteNode::add_route(HttpMethod method, std::string_view path, RouteHandler&& handler) {
     LOG5("Adding route: {}", path);
     if (path[0] != '/') {
-      return std::unexpected(AddRouteError(AddRouteErrorKind::InvalidPath, ""));
+      throw std::invalid_argument("Invalid path");
     }
     auto pos = path.find('/', 1);
 
@@ -60,12 +49,12 @@ namespace router_details {
 
     if (child == children.lock()->end()) {
       children.lock()->try_emplace(std::string{sub_path}, method, std::move(handler));
-      return AddRouteResult();
+      return;
     }
     if (child->second.add(method, std::move(handler))) {
-      return AddRouteResult();
+      return;
     }
-    return std::unexpected(AddRouteError(AddRouteErrorKind::Conflict, ""));
+    throw std::invalid_argument("Route already exists");
   }
 
   RouteResult HttpRouteNode::route(RouteContext& ctx) {
@@ -138,8 +127,7 @@ HttpRouter::HttpRouter() : root() {}
 
 HttpRouter::~HttpRouter() {}
 
-AddRouteResult HttpRouter::add_route(HttpMethod method, std::string_view path,
-                                     RouteHandler&& handler) {
+void HttpRouter::add_route(HttpMethod method, std::string_view path, RouteHandler&& handler) {
   LOG4("Adding route: {}", path);
   return root.add_route(method, path, std::move(handler));
 }

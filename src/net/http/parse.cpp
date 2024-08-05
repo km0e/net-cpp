@@ -1,5 +1,6 @@
 #include "xsl/net/http/parse.h"
 #include "xsl/net/http/proto.h"
+#include "xsl/regex.h"
 
 #include <regex>
 #include <system_error>
@@ -22,7 +23,8 @@ ParseResult HttpParseUnit::parse(const char* data, size_t len) {  // TODO: reque
       this->view = RequestView();
       break;
     }
-    if (this->view.version.empty() || this->view.method.empty() || this->view.url.empty()) {
+    if (this->view.version.empty() || this->view.method.empty()
+        || (this->view.path.empty() && this->view.authority.empty())) {
       auto line = view.substr(pos, end - pos);
       size_t _1sp = line.find(' ');
       if (_1sp == std::string_view::npos) {
@@ -35,35 +37,7 @@ ParseResult HttpParseUnit::parse(const char* data, size_t len) {  // TODO: reque
         res = std::unexpected{std::errc::illegal_byte_sequence};
         break;
       }
-      this->view.url = line.substr(_1sp + 1, _2sp - _1sp - 1);
-      // query map
-      size_t query_pos = this->view.url.find('?');
-      if (query_pos != std::string_view::npos) {
-        auto query_start = query_pos + 1;
-        while (true) {
-          auto and_pos = this->view.url.find('&', query_start);
-          if (and_pos == std::string_view::npos) {
-            break;
-          }
-          auto eq_pos = this->view.url.find('=', query_start);
-          if (eq_pos == std::string_view::npos) {
-            this->view.query[this->view.url.substr(query_start)] = "";
-            break;
-          } else {
-            this->view.query[this->view.url.substr(query_start, eq_pos - query_start)]
-                = this->view.url.substr(eq_pos + 1, and_pos - eq_pos - 1);
-          }
-          query_start = and_pos + 1;
-        }
-        auto eq_pos = this->view.url.find('=', query_start);
-        if (eq_pos != std::string_view::npos) {
-          this->view.query[this->view.url.substr(query_start, eq_pos - query_start)]
-              = this->view.url.substr(eq_pos + 1);
-        } else {
-          this->view.query[this->view.url.substr(query_start)] = "";
-        }
-        this->view.url = this->view.url.substr(0, query_pos);
-      }
+      this->parse_request_target(line.substr(_1sp + 1, _2sp - _1sp - 1));
       auto tmpv = line.substr(_2sp + 1);
       if (std::regex_match(tmpv.begin(), tmpv.end(), HTTP_VERSION_REGEX)) {
         this->view.version = tmpv;
@@ -98,5 +72,46 @@ ParseResult HttpParseUnit::parse(std::string_view data) {
 }
 
 void HttpParseUnit::clear() { this->view.clear(); }
+
+void HttpParseUnit::parse_request_target(std::string_view target) {
+  static const std::regex REQUEST_TARGET_REGEX(std::format(
+      R"({}|{}|([^/?#]*)|{})", regex::origin_form, regex::absolute_form, regex::asterisk_form));
+  static const std::regex QUERY_REGEX(R"(([^&=]+)=([^&=]+))");
+  std::cmatch match;
+  if (std::regex_match(target.begin(), target.end(), match, REQUEST_TARGET_REGEX)) {
+    this->view.query.clear();
+    if (match[1].matched) {
+      this->view.scheme = "";
+      this->view.authority = "";
+      this->view.path = std::string_view(match[1].first, match[1].length());
+      std::cregex_iterator query_start(match[2].first, match[2].second, QUERY_REGEX);
+      std::cregex_iterator query_end;
+      while (query_start != query_end) {
+        this->view.query[std::string_view((*query_start)[1].first, (*query_start)[1].length())]
+            = std::string_view((*query_start)[2].first, (*query_start)[2].length());
+        ++query_start;
+      }
+    } else if (match[3].matched) {
+      this->view.scheme = std::string_view(match[3].first, match[3].length());
+      this->view.authority = std::string_view(match[4].first, match[4].length());
+      this->view.path = std::string_view(match[5].first, match[5].length());
+      std::cregex_iterator query_start(match[6].first, match[6].second, QUERY_REGEX);
+      std::cregex_iterator query_end;
+      while (query_start != query_end) {
+        this->view.query[std::string_view((*query_start)[1].first, (*query_start)[1].length())]
+            = std::string_view((*query_start)[2].first, (*query_start)[2].length());
+        ++query_start;
+      }
+    } else if (match[7].matched) {
+      this->view.scheme = "";
+      this->view.authority = std::string_view(match[7].first, match[7].length());
+      this->view.path = "";
+    } else if (match[8].matched) {
+      this->view.scheme = "";
+      this->view.authority = "";
+      this->view.path = "*";
+    }
+  }
+}
 
 HTTP_NE

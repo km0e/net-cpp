@@ -47,6 +47,9 @@ public:
   ParseResult parse(std::string_view data);
   RequestView view;
   void clear();
+
+private:
+  void parse_request_target(std::string_view target);
 };
 
 const std::size_t HTTP_BUFFER_BLOCK_SIZE = 1024;

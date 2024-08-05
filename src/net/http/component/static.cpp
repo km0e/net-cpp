@@ -5,9 +5,6 @@
 #include "xsl/net/http/router.h"
 #include "xsl/sys/net/io.h"
 
-#include <sys/io.h>
-#include <sys/stat.h>
-
 #include <expected>
 #include <filesystem>
 #include <functional>
@@ -86,22 +83,21 @@ RouteHandleResult FolderRouteHandler::operator()(RouteContext& ctx) {
     co_return {std::move(resp)};
   }(std::move(resp));
 }
-StaticCreateResult create_static_handler(std::string&& path) {
+RouteHandler create_static_handler(std::string&& path) {
   if (path.empty()) {
-    return std::unexpected{AddRouteError{AddRouteErrorKind::InvalidPath}};
+    throw std::invalid_argument("path is empty");
   }
   std::error_code ec;
   auto status = std::filesystem::status(path, ec);
   if (ec) {
-    LOG2("filesystem::status failed: {}", ec.message());
-    return std::unexpected{AddRouteError{AddRouteErrorKind::InvalidPath}};
+    throw std::system_error(ec);
   }
   if (status.type() == std::filesystem::file_type::directory) {
     return RouteHandler{FolderRouteHandler{std::move(path)}};
   } else if (status.type() == std::filesystem::file_type::regular) {
     return RouteHandler{FileRouteHandler{std::move(path)}};
   }
-  return std::unexpected{AddRouteError{AddRouteErrorKind::InvalidPath}};
+  throw std::invalid_argument("path is not a file or directory");
 }
 
 HTTP_HELPER_NE

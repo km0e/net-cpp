@@ -1,4 +1,4 @@
-#include "xsl/net/http.h"
+#include "xsl/net.h"
 
 #include <gtest/gtest.h>
 
@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <system_error>
 using namespace std;
+using namespace xsl;
 static string tmp_dir = "";
 static void init() {
   error_code ec;
@@ -33,12 +34,11 @@ TEST(http_component_static, file_route_handler) {
   ofstream file(file_path);
   file << "hello world";
   file.close();
-  auto res = create_static_handler(std::move(file_path));
-  ASSERT_TRUE(res.has_value());
-  auto handler = res.value();
-  http::RouteContext ctx{Request{"", HttpRequestView{}, {}}};
+  auto handler = http::create_static_handler(std::move(file_path));
+  http::RouteContext ctx{http::Request{{}, http::RequestView{}, {}}};
   ctx.current_path = "file_route_handler_test.txt";
-  auto result = handler(ctx);
+  auto result = handler(ctx).block();
+  ASSERT_TRUE(result.has_value());
 }
 
 int main() {

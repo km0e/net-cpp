@@ -27,11 +27,16 @@ public:
   RequestView& operator=(RequestView&&) = default;
   ~RequestView();
   std::string_view method;
-  std::string_view url;
+
+  std::string_view scheme;
+  std::string_view authority;
+  std::string_view path;
   std::unordered_map<std::string_view, std::string_view> query;
+
   std::string_view version;
   std::unordered_map<std::string_view, std::string_view> headers;
   std::string to_string();
+
   void clear();
 };
 
@@ -85,13 +90,16 @@ public:
   template <std::invocable<sys::io::AsyncDevice<feature::Out<std::byte>>&> F>
   HttpResponse(ResponsePart&& part, F&& body)
       : _part(std::move(part)), _body(std::forward<F>(body)) {}
-  template <std::convertible_to<std::string_view> T>
-  HttpResponse(ResponsePart&& part, T&& body)
+  template <class... Args>
+    requires std::constructible_from<std::string, Args...>
+  HttpResponse(ResponsePart&& part, Args&&... args)
       : _part(std::move(part)),
-        _body([body = std::forward<T>(body)](sys::io::AsyncDevice<feature::Out<std::byte>>& awd)
+        _body([body = std::string(std::forward<Args>(args)...)]
+              (sys::io::AsyncDevice<feature::Out<std::byte>>& awd)
                   -> coro::Task<std::tuple<std::size_t, std::optional<std::errc>>> {
-          return sys::net::immediate_send<coro::ExecutorBase>(awd, std::as_bytes(std::span(body)));
-        }) {}
+                return sys::net::immediate_send<coro::ExecutorBase>(awd,
+                                                                    std::as_bytes(std::span(body)));
+              }) {}
   HttpResponse(HttpResponse&&) = default;
   HttpResponse& operator=(HttpResponse&&) = default;
   ~HttpResponse();

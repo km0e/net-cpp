@@ -9,7 +9,7 @@
 HTTP_NB
 class BodyStream {
 public:
-  BodyStream() = default;
+  BodyStream() : _ard(nullptr), content_part() {}
   BodyStream(std::shared_ptr<sys::io::AsyncDevice<feature::In<std::byte>>> ard,
              std::string_view content)
       : _ard(std::move(ard)), content_part(content) {}

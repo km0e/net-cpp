@@ -5,42 +5,12 @@
 
 HTTP_NB
 
-RequestView::RequestView() : method(), url(), query(), version(), headers() {}
+RequestView::RequestView() : method(), scheme(), authority(), path(), query(), version(), headers() {}
 
 RequestView::~RequestView() {}
 
-std::string RequestView::to_string() {
-  std::string res;
-  res.reserve(1024);
-  res += method;
-  res += " ";
-  res += url;
-  if (!query.empty()) {
-    res += "?";
-    for (const auto& [key, value] : query) {
-      res += key;
-      res += "=";
-      res += value;
-      res += "&";
-    }
-    res.pop_back();
-  }
-  res += " ";
-  res += version;
-  res += "\r\n";
-  for (const auto& [key, value] : headers) {
-    res += key;
-    res += ": ";
-    res += value;
-    res += "\r\n";
-  }
-  res += "\r\n";
-  return res;
-}
-
 void RequestView::clear() {
   method = std::string_view{};
-  url = std::string_view{};
   query.clear();
   version = std::string_view{};
   headers.clear();

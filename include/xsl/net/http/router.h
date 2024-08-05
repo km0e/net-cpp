@@ -41,35 +41,12 @@ using RouteHandleResult = coro::Task<std::expected<HttpResponse, RouteError>>;
 
 using RouteHandler = std::function<RouteHandleResult(RouteContext& ctx)>;
 
-enum class AddRouteErrorKind {
-  Unknown,
-  InvalidPath,
-  Conflict,
-};
-const int ADD_ROUTE_ERROR_COUNT = 3;
-const std::array<std::string_view, ADD_ROUTE_ERROR_COUNT> ADD_ROUTE_ERROR_STRINGS = {
-    "Unknown",
-    "InvalidPath",
-    "Conflict",
-};
-class AddRouteError {
-public:
-  AddRouteError(AddRouteErrorKind kind);
-  AddRouteError(AddRouteErrorKind kind, std::string message);
-  ~AddRouteError();
-  AddRouteErrorKind kind;
-  std::string message;
-  std::string to_string() const;
-};
-
-using AddRouteResult = std::expected<void, AddRouteError>;
-
 using RouteResult = std::expected<const RouteHandler*, RouteError>;
 
 template <class R>
 concept Router = requires(R r, HttpMethod hm, std::string_view path, RouteHandler&& handler,
                           RouteContext& ctx) {
-  { r.add_route(hm, path, std::move(handler)) } -> std::same_as<AddRouteResult>;
+  { r.add_route(hm, path, std::move(handler)) } -> std::same_as<void>;
   { r.route(ctx) } -> std::same_as<RouteResult>;
   { r.set_error_handler(RouteError{}, std::move(handler)) };
   { r.error_handle(RouteError{}) } -> std::same_as<const RouteHandler*>;
@@ -81,7 +58,7 @@ namespace router_details {
     HttpRouteNode();
     HttpRouteNode(HttpMethod method, RouteHandler&& handler);
     ~HttpRouteNode();
-    AddRouteResult add_route(HttpMethod method, std::string_view path, RouteHandler&& handler);
+    void add_route(HttpMethod method, std::string_view path, RouteHandler&& handler);
     RouteResult route(RouteContext& ctx);
 
   private:
@@ -111,7 +88,7 @@ class HttpRouter {
 public:
   HttpRouter();
   ~HttpRouter();
-  AddRouteResult add_route(HttpMethod method, std::string_view path, RouteHandler&& handler);
+  void add_route(HttpMethod method, std::string_view path, RouteHandler&& handler);
   RouteResult route(RouteContext& ctx);
   void set_error_handler(RouteError kind, RouteHandler&& handler);
   const RouteHandler* error_handle(RouteError kind);

@@ -35,7 +35,7 @@ public:
   }
 
   template <std::invocable<result_type> _Transform>
-  decltype(auto) transform(_Transform &&transform) {
+  decltype(auto) transform(_Transform &&transform) && {
     using Next = ChainAwaiter<AwaiterType, std::tuple<_Transform, Transform, Transforms...>>;
     // next transforms
     auto next_transforms
@@ -71,7 +71,7 @@ public:
   result_type await_resume() { return Base::await_resume(); }
 
   template <std::invocable<result_type> _Transform>
-  decltype(auto) transform(_Transform &&transform) {
+  decltype(auto) transform(_Transform &&transform) && {
     using Next = ChainAwaiter<AwaiterType, std::tuple<_Transform>>;
     // next transforms
     return Next{std::exchange(this->_handle, {}),

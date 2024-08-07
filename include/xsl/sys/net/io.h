@@ -45,7 +45,10 @@ coro::Task<ai::Result, Executor> immediate_recv(AsyncDevice<feature::In<std::byt
       }
     } else if (n == 0) {
       LOG5("recv eof");
-      co_return Result(offset, {std::errc::no_message});
+      if (offset == 0) {
+        co_return Result(offset, {std::errc::no_message});
+      }
+      co_return Result(offset, std::nullopt);
     }
     LOG6("recv {} bytes", n);
     offset += n;

@@ -6,4 +6,4 @@ if is_mode("coverage") then
     add_ldflags("-fprofile-arcs", "-ftest-coverage")
 end
 
-includes("http", "transport", "feature", "coro", "convert", "regex")
+includes("http", "transport", "feature", "coro", "convert", "regex", "wheel")

@@ -16,12 +16,16 @@ coro::Lazy<ai::Result> splice(ai::AsyncDevice<feature::In<std::byte>>& from,
   while (true) {
     auto [sz, err] = co_await from.read(std::as_writable_bytes(std::span(buffer)));
     if (err) {
+      WARN("Failed to read data from the device, err: {}", std::make_error_code(*err).message());
       co_return {total, err};
     }
+    WARN("Read {} bytes from the device", sz);
     auto [s_sz, s_err] = co_await to.write(std::as_bytes(std::span(buffer).subspan(0, sz)));
     if (s_err) {
+      WARN("Failed to write data to the device, err: {}", std::make_error_code(*s_err).message());
       co_return {total, s_err};
     }
+    WARN("Write {} bytes to the device", s_sz);
     total += s_sz;
   }
 }
@@ -49,7 +53,7 @@ namespace impl_splice {
     ~Splice() = default;
 
     coro::Task<ai::Result> write(ai::AsyncDevice<feature::Out<value_type>>& awd) {
-      std::string buffer;
+      std::string buffer(4096, '\0');
       co_return co_await splice(*_from, awd, buffer);
     }
 

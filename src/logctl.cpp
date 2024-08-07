@@ -17,6 +17,7 @@ LogCtl::LogCtl() : logger(nullptr) {
       "[%(time)][%(thread_id)] %(short_source_location:<28) %(log_level:<6) "
       "%(message)",
       "%H:%M:%S.%Qus");
+  set_log_level(LogLevel::LOG7);
 }
 LogCtl::~LogCtl() {
   quill::Frontend::remove_logger(logger);

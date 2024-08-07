@@ -12,13 +12,18 @@
 #  include <memory>
 NET_NB
 template <class... Flags>
-coro::Task<std::expected<sys::net::Socket, std::errc>> tcp_dial(const char *host, const char *port,
-                                                                sync::Poller &poller) {
-  auto addr = xsl::net::Resolver{}.resolve<Flags...>(host, port, xsl::net::CLIENT_FLAGS);
-  if (!addr) {
-    return std::unexpected(addr.error());
+coro::Task<std::expected<sys::net::Socket, std::error_condition>> tcp_dial(const char *host,
+                                                                           const char *port,
+                                                                           sync::Poller &poller) {
+  auto res = xsl::net::Resolver{}.resolve<Flags...>(host, port, xsl::net::CLIENT_FLAGS);
+  if (!res) {
+    co_return std::unexpected{res.error()};
   }
-  return sys::tcp::connect(*addr, poller);
+  auto conn_res = co_await sys::tcp::connect(*res, poller);
+  if (!conn_res) {
+    co_return std::unexpected{conn_res.error()};
+  }
+  co_return std::move(*conn_res);
 }
 
 template <class... Flags>
@@ -67,6 +72,7 @@ public:
   TcpServer(P &&poller, Args &&...args)
       : poller(std::forward<P>(poller)), _ac(std::forward<Args>(args)...) {}
   TcpServer(TcpServer &&) = default;
+  TcpServer &operator=(TcpServer &&) = default;
   template <class Executor = coro::ExecutorBase>
   decltype(auto) accept(sys::net::SockAddr *addr) noexcept {
     return this->_ac.accept<Executor>(addr).transform([this](auto &&res) {

@@ -1,18 +1,31 @@
 #include "xsl/wheel/def.h"
 #include "xsl/wheel/str.h"
 
+#include <algorithm>
+
 WHEEL_NB
-void i32_to_bytes(int32_t value, char* bytes) {
-  bytes[0] = (value >> 24) & 0xFF;
-  bytes[1] = (value >> 16) & 0xFF;
-  bytes[2] = (value >> 8) & 0xFF;
-  bytes[3] = value & 0xFF;
+
+void i32_to_bytes(int32_t value, std::span<std::byte> bytes) {
+  // bytes[0] = (value >> 24) & 0xFF;
+  // bytes[1] = (value >> 16) & 0xFF;
+  // bytes[2] = (value >> 8) & 0xFF;
+  // bytes[3] = value & 0xFF;
+
+  auto raw = std::as_bytes(std::span(&value, 1));
+  std::copy(raw.begin(), raw.end(), bytes.begin());
 }
-int32_t i32_from_bytes(const char* bytes) {
-  return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
+
+int32_t i32_from_bytes(std::span<const std::byte> bytes) {
+  int32_t value;
+  std::copy(bytes.begin(), bytes.begin() + sizeof(int32_t),
+            std::as_writable_bytes(std::span(&value, 1)).begin());
+  return value;
 }
-void bool_to_bytes(bool value, char* bytes) { bytes[0] = value ? 1 : 0; }
-bool bool_from_bytes(const char* bytes) { return bytes[0] == 1; }
+
+// void bool_to_bytes(bool value, std::byte* bytes) { bytes[0] = value ? 1 : 0; }
+
+// bool bool_from_bytes(const std::byte* bytes) { return bytes[0] == 1; }
+
 std::strong_ordering operator<=>(const FixedString& lhs, const FixedString& rhs) {
   return lhs.compare(std::string_view(rhs.data(), rhs.size())) <=> 0;
 }

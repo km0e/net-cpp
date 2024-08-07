@@ -4,20 +4,22 @@
 #  include "xsl/wheel/def.h"
 
 #  include <compare>
+#  include <cstddef>
 #  include <cstring>
 #  include <memory>
+#  include <span>
 #  include <string>
 #  include <string_view>
 
 WHEEL_NB
 
-void i32_to_bytes(int32_t value, char* bytes);
+void i32_to_bytes(int32_t value, std::span<std::byte> bytes);
 
-int32_t i32_from_bytes(const char* bytes);
+int32_t i32_from_bytes(std::span<const std::byte> bytes);
 
-void bool_to_bytes(bool value, char* bytes);
+void bool_to_bytes(bool value, std::byte* bytes);
 
-bool bool_from_bytes(const char* bytes);
+bool bool_from_bytes(const std::byte* bytes);
 
 class FixedString {
 public:

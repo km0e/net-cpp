@@ -104,7 +104,9 @@ public:
     return self.move_handle();
   }
 
-  auto transform(this auto &&self, std::invocable<result_type> auto &&f) {
+  template <class Self>
+    requires(!std::is_reference_v<Self>)
+  auto transform(this Self &&self, std::invocable<result_type> auto &&f) {
     using awaiter_type = typename std::decay_t<decltype(self)>::awaiter_type;
     return ChainAwaiter<awaiter_type>(self.move_handle()).transform(std::forward<decltype(f)>(f));
   }

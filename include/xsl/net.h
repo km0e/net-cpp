@@ -22,8 +22,7 @@ namespace net {
 namespace tcp {
   using Server = xsl::_net::TcpServer;
   template <class... Flags>
-  coro::Task<std::expected<sys::net::Socket, std::errc>> dial(const char *host, const char *port,
-                                                              sync::Poller &poller) {
+  decltype(auto) dial(const char *host, const char *port, sync::Poller &poller) {
     return xsl::_net::tcp_dial<Flags...>(host, port, poller);
   }
   template <class... Flags>

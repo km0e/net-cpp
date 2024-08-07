@@ -5,7 +5,8 @@
 
 HTTP_NB
 
-RequestView::RequestView() : method(), scheme(), authority(), path(), query(), version(), headers() {}
+RequestView::RequestView()
+    : method(), scheme(), authority(), path(), query(), version(), headers() {}
 
 RequestView::~RequestView() {}
 
@@ -20,7 +21,7 @@ ResponseError::ResponseError(int code, std::string_view message) : code(code), m
 ResponseError::~ResponseError() {}
 
 ResponsePart::ResponsePart()
-    : ResponsePart(HttpVersion::HTTP_1_1, HttpStatus::OK, to_string_view(HttpStatus::OK)) {}
+    : ResponsePart(HttpVersion::HTTP_1_1, HttpStatus::OK, to_reason_phrase(HttpStatus::OK)) {}
 
 ResponsePart::ResponsePart(HttpVersion version, HttpStatus status_code,
                            std::string_view&& status_message)
@@ -29,7 +30,7 @@ ResponsePart::ResponsePart(HttpVersion version, HttpStatus status_code,
       version(version),
       headers() {}
 ResponsePart::ResponsePart(HttpVersion version, HttpStatus status_code)
-    : ResponsePart(version, status_code, to_string_view(status_code)) {}
+    : ResponsePart(version, status_code, to_reason_phrase(status_code)) {}
 ResponsePart::ResponsePart(HttpVersion version, uint16_t status_code)
     : ResponsePart(version, static_cast<HttpStatus>(status_code)) {}
 
@@ -39,7 +40,7 @@ std::string ResponsePart::to_string() {
   res.reserve(1024);
   res += http::to_string_view(version);
   res += " ";
-  res += to_string_view(status_code);
+  res += http::to_string_view(status_code);
   res += " ";
   res += status_message;
   res += "\r\n";

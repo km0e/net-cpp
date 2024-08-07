@@ -89,15 +89,12 @@ namespace impl_dev {
   public:
     using Base::Base;
     /**
-    @brief Create an async device for reading
+    @brief convert to AsyncDevice
 
-    @tparam Flags, list is <feature::Dyn, feature::Own>
     @param poller
-    @return AsyncDevice<feature::In, feature::placeholder, Flags...>
+    @return AsyncDeviceCompose<feature::In<T>>, aka AsyncDevice<feature::In<T>>
      */
-
-    template <class... Flags>
-    inline AsyncDeviceCompose<feature::In<T>, Flags...> async(sync::Poller &poller) && noexcept {
+    inline AsyncDeviceCompose<feature::In<T>> async(sync::Poller &poller) && noexcept {
       auto sem = std::make_shared<coro::CountingSemaphore<1>>();
       poller.add(_dev->raw(), sync::IOM_EVENTS::IN | sync::IOM_EVENTS::ET,
                  sync::PollCallback<sync::IOM_EVENTS::IN>{sem});
@@ -115,11 +112,13 @@ namespace impl_dev {
 
   public:
     using Base::Base;
-    // template <class... Flags>
-    // AsyncDeviceCompose<feature::Out<T>, Flags...> async(
-    //     std::shared_ptr<sync::Poller> &poller) && noexcept;
-    template <class... Flags>
-    inline AsyncDeviceCompose<feature::Out<T>, Flags...> async(sync::Poller &poller) && noexcept {
+    /**
+    @brief convert to AsyncDevice
+
+    @param poller
+    @return AsyncDeviceCompose<feature::Out<T>>, aka AsyncDevice<feature::Out<T>>
+     */
+    inline AsyncDeviceCompose<feature::Out<T>> async(sync::Poller &poller) && noexcept {
       auto sem = std::make_shared<coro::CountingSemaphore<1>>();
       poller.add(_dev->raw(), sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
                  sync::PollCallback<sync::IOM_EVENTS::OUT>{sem});
@@ -142,11 +141,13 @@ namespace impl_dev {
       auto w = DeviceCompose<feature::Out<T>>{std::move(_dev)};
       return {std::move(r), std::move(w)};
     }
-    // template <class... Flags>
-    // AsyncDeviceCompose<feature::InOut<T>, Flags...> async(
-    //     std::shared_ptr<sync::Poller> &poller) && noexcept;
-    template <class... Flags>
-    inline AsyncDeviceCompose<feature::InOut<T>, Flags...> async(sync::Poller &poller) && noexcept {
+    /**
+    @brief convert to AsyncDevice
+
+    @param poller
+    @return AsyncDeviceCompose<feature::InOut<T>>, aka AsyncDevice<feature::InOut<T>>
+     */
+    inline AsyncDeviceCompose<feature::InOut<T>> async(sync::Poller &poller) && noexcept {
       auto read_sem = std::make_shared<coro::CountingSemaphore<1>>();
       auto write_sem = std::make_shared<coro::CountingSemaphore<1>>();
       poller.add(
@@ -193,16 +194,6 @@ namespace impl_dev {
       std::is_same_v<AsyncDevice<feature::In<int>>, AsyncDeviceCompose<feature::In<int>>>,
       "AsyncDevice<feature::In, feature::placeholder> is not AsyncDeviceCompose<feature::In>");
 
-  // template <class... Flags>
-  // inline AsyncDeviceCompose<feature::In, feature::placeholder, Flags...>
-  // Device<feature::In, feature::placeholder>::async(
-  //     std::shared_ptr<sync::Poller> &poller) && noexcept {
-  //   auto sem = std::make_shared<coro::CountingSemaphore<1>>();
-  //   poller->add(_dev->raw(), sync::IOM_EVENTS::IN | sync::IOM_EVENTS::ET,
-  //               sync::PollCallback<sync::IOM_EVENTS::IN>{sem});
-  //   return {std::move(_dev), std::move(sem)};
-  // }
-
   template <class T>
   class AsyncDevice<feature::Out<T>> {
   public:
@@ -235,16 +226,6 @@ namespace impl_dev {
   static_assert(
       std::is_same_v<AsyncDevice<feature::Out<int>>, AsyncDeviceCompose<feature::Out<int>>>,
       "AsyncDevice<feature::placeholder, feature::Out> is not AsyncDeviceCompose<feature::Out>");
-
-  // template <class... Flags>
-  // inline AsyncDeviceCompose<feature::placeholder, feature::Out, Flags...>
-  // Device<feature::placeholder, feature::Out>::async(
-  //     std::shared_ptr<sync::Poller> &poller) && noexcept {
-  //   auto sem = std::make_shared<coro::CountingSemaphore<1>>();
-  //   poller->add(_dev->raw(), sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-  //               sync::PollCallback<sync::IOM_EVENTS::OUT>{sem});
-  //   return {std::move(_dev), std::move(sem)};
-  // }
 
   template <class T>
   class AsyncDevice<feature::InOut<T>> {
@@ -301,16 +282,6 @@ namespace impl_dev {
       "AsyncDevice<feature::In, feature::Out> is not AsyncDeviceCompose<feature::In, "
       "feature::Out>");
 
-  // template <class... Flags>
-  // inline AsyncDeviceCompose<feature::In, feature::Out, Flags...>
-  // Device<feature::In, feature::Out>::async(std::shared_ptr<sync::Poller> &poller) && noexcept {
-  //   auto read_sem = std::make_shared<coro::CountingSemaphore<1>>();
-  //   auto write_sem = std::make_shared<coro::CountingSemaphore<1>>();
-  //   poller->add(
-  //       _dev->raw(), sync::IOM_EVENTS::IN | sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-  //       sync::PollCallback<sync::IOM_EVENTS::IN, sync::IOM_EVENTS::OUT>{read_sem, write_sem});
-  //   return {std::move(_dev), std::move(read_sem), std::move(write_sem)};
-  // }
 }  // namespace impl_dev
 
 template <class... Flags>

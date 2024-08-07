@@ -76,101 +76,105 @@ std::string to_string(const ContentType& content_type) {
   return result;
 }
 
-std::string_view to_string_view(HttpStatus status) {
+static uint16_t to_index(HttpStatus status) {
   switch (status) {
     case HttpStatus::CONTINUE:
-      return "Continue";
+      return 0;
     case HttpStatus::SWITCHING_PROTOCOLS:
-      return "Switching Protocols";
+      return 1;
     case HttpStatus::OK:
-      return "OK";
+      return 2;
     case HttpStatus::CREATED:
-      return "Created";
+      return 3;
     case HttpStatus::ACCEPTED:
-      return "Accepted";
+      return 4;
     case HttpStatus::NON_AUTHORITATIVE_INFORMATION:
-      return "Non-Authoritative Information";
+      return 5;
     case HttpStatus::NO_CONTENT:
-      return "No Content";
+      return 6;
     case HttpStatus::RESET_CONTENT:
-      return "Reset Content";
+      return 7;
     case HttpStatus::PARTIAL_CONTENT:
-      return "Partial Content";
+      return 8;
     case HttpStatus::MULTIPLE_CHOICES:
-      return "Multiple Choices";
+      return 9;
     case HttpStatus::MOVED_PERMANENTLY:
-      return "Moved Permanently";
+      return 10;
     case HttpStatus::FOUND:
-      return "Found";
+      return 11;
     case HttpStatus::SEE_OTHER:
-      return "See Other";
+      return 12;
     case HttpStatus::NOT_MODIFIED:
-      return "Not Modified";
+      return 13;
     case HttpStatus::USE_PROXY:
-      return "Use Proxy";
+      return 14;
     case HttpStatus::TEMPORARY_REDIRECT:
-      return "Temporary Redirect";
+      return 15;
     case HttpStatus::PERMANENT_REDIRECT:
-      return "Permanent Redirect";
+      return 16;
     case HttpStatus::BAD_REQUEST:
-      return "Bad Request";
+      return 17;
     case HttpStatus::UNAUTHORIZED:
-      return "Unauthorized";
+      return 18;
     case HttpStatus::PAYMENT_REQUIRED:
-      return "Payment Required";
+      return 19;
     case HttpStatus::FORBIDDEN:
-      return "Forbidden";
+      return 20;
     case HttpStatus::NOT_FOUND:
-      return "Not Found";
+      return 21;
     case HttpStatus::METHOD_NOT_ALLOWED:
-      return "Method Not Allowed";
+      return 22;
     case HttpStatus::NOT_ACCEPTABLE:
-      return "Not Acceptable";
+      return 23;
     case HttpStatus::PROXY_AUTHENTICATION_REQUIRED:
-      return "Proxy Authentication Required";
+      return 24;
     case HttpStatus::REQUEST_TIMEOUT:
-      return "Request Timeout";
+      return 25;
     case HttpStatus::CONFLICT:
-      return "Conflict";
+      return 26;
     case HttpStatus::GONE:
-      return "Gone";
+      return 27;
     case HttpStatus::LENGTH_REQUIRED:
-      return "Length Required";
+      return 28;
     case HttpStatus::PRECONDITION_FAILED:
-      return "Precondition Failed";
+      return 29;
     case HttpStatus::PAYLOAD_TOO_LARGE:
-      return "Payload Too Large";
+      return 30;
     case HttpStatus::URI_TOO_LONG:
-      return "URI Too Long";
+      return 31;
     case HttpStatus::UNSUPPORTED_MEDIA_TYPE:
-      return "Unsupported Media Type";
+      return 32;
     case HttpStatus::RANGE_NOT_SATISFIABLE:
-      return "Range Not Satisfiable";
+      return 33;
     case HttpStatus::EXPECTATION_FAILED:
-      return "Expectation Failed";
+      return 34;
     case HttpStatus::MISDIRECTED_REQUEST:
-      return "Misdirected Request";
+      return 35;
     case HttpStatus::UNPROCESSABLE_CONTENT:
-      return "Unprocessable Content";
+      return 36;
     case HttpStatus::UPGRADE_REQUIRED:
-      return "Upgrade Required";
+      return 37;
     case HttpStatus::INTERNAL_SERVER_ERROR:
-      return "Internal Server Error";
+      return 38;
     case HttpStatus::NOT_IMPLEMENTED:
-      return "Not Implemented";
+      return 39;
     case HttpStatus::BAD_GATEWAY:
-      return "Bad Gateway";
+      return 40;
     case HttpStatus::SERVICE_UNAVAILABLE:
-      return "Service Unavailable";
+      return 41;
     case HttpStatus::GATEWAY_TIMEOUT:
-      return "Gateway Timeout";
+      return 42;
     case HttpStatus::HTTP_VERSION_NOT_SUPPORTED:
-      return "HTTP Version Not Supported";
-    case HttpStatus::UNKNOWN:
-      return "Unknown";
+      return 43;
     default:
-      return "Unknown";
+      return 44;
   }
+}
+
+std::string_view to_string_view(HttpStatus status) { return HTTP_STATUS_STRINGS[to_index(status)]; }
+
+std::string_view to_reason_phrase(HttpStatus status) {
+  return HTTP_REASON_PHRASES[to_index(status)];
 }
 
 HTTP_NE

@@ -7,17 +7,7 @@
 #  include <quill/Logger.h>
 XSL_NB
 
-enum class LogLevel {
-  NONE,
-  LOG1,
-  LOG2,
-  LOG3,
-  LOG4,
-  LOG5,
-  LOG6,
-  LOG7,
-  LOG8
-};
+enum class LogLevel { NONE, LOG1, LOG2, LOG3, LOG4, LOG5, LOG6, LOG7, LOG8 };
 
 class LogCtl {
 private:
@@ -90,6 +80,18 @@ public:
 #  define LOG7(fmt, ...) LOG_TRACE_L2(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
 #  define LOG8(fmt, ...) LOG_TRACE_L3(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+
+#  define TRACE(fmt, ...) LOG_TRACE_L1(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+
+#  define DEBUG(fmt, ...) LOG_DEBUG(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+
+#  define INFO(fmt, ...) LOG_INFO(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+
+#  define WARN(fmt, ...) LOG_WARNING(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+
+#  define ERROR(fmt, ...) LOG_ERROR(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+
+#  define CRITICAL(fmt, ...) LOG_CRITICAL(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
 constexpr void set_log_level(LogLevel level) { xsl::LogCtl::set_log_level(level); }
 

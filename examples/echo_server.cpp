@@ -31,8 +31,11 @@ Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
       continue;
     }
     auto [r, w] = std::move(*ac_res).split();
-    net::splice(std::move(r), std::move(w), std::string(4096, '\0'))
-        .detach(co_await coro::GetExecutor());
+    [r = std::move(r), w = std::move(w)]() mutable -> Task<void> {
+      std::string buffer(4096, '\0');
+      co_await net::splice(r, w, buffer);
+    }()
+                                                          .detach(co_await coro::GetExecutor());
   }
 }
 

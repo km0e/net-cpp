@@ -64,8 +64,8 @@ public:
   using parse_unit = typename Trait::parse_unit;
   using request_type = Request;
 
-  HttpParser(sys::io::AsyncDevice<feature::In<std::byte>>&& ard)
-      : _ard(std::make_shared<sys::io::AsyncDevice<feature::In<std::byte>>>(std::move(ard))),
+  HttpParser(sys::net::AsyncDevice<feature::In<std::byte>>&& ard)
+      : _ard(std::make_shared<sys::net::AsyncDevice<feature::In<std::byte>>>(std::move(ard))),
         buffer(),
         used_size(0),
         parsed_size(0),
@@ -77,8 +77,8 @@ public:
   template <class Executor = coro::ExecutorBase>
   coro::Task<std::expected<request_type, std::errc>, Executor> recv() {
     while (true) {
-      auto [sz, err] = co_await sys::net::immediate_recv<Executor>(
-          *this->_ard, this->buffer.front().span(this->used_size));
+      auto [sz, err] = co_await this->_ard->template read<Executor>(
+          this->buffer.front().span(this->used_size));
       if (err) {
         LOG3("recv error: {}", std::make_error_code(*err).message());
         continue;
@@ -92,8 +92,8 @@ public:
   }
 
 private:
-  std::shared_ptr<sys::io::AsyncDevice<feature::In<std::byte>>> _ard;
-  io::Buffer buffer;
+  std::shared_ptr<sys::net::AsyncDevice<feature::In<std::byte>>> _ard;
+  io::Buffer<> buffer;
   std::size_t used_size;
   std::size_t parsed_size;
   parse_unit parser;
@@ -103,6 +103,7 @@ private:
     auto [len, req] = this->parser.parse(
         reinterpret_cast<const char*>(front.data.get() + this->parsed_size), sz);
     if (req) {
+      front.valid_size = this->parsed_size + sz;
       auto body = BodyStream(
           this->_ard,
           std::string_view(
@@ -117,6 +118,7 @@ private:
         io::Block block{HTTP_BUFFER_BLOCK_SIZE};
         std::copy(front.data.get() + this->parsed_size, front.data.get() + HTTP_BUFFER_BLOCK_SIZE,
                   block.data.get());
+        front.valid_size = this->parsed_size;
         this->buffer.append(std::move(block));
         this->used_size = HTTP_BUFFER_BLOCK_SIZE - this->parsed_size;
         this->parsed_size = 0;

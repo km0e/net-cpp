@@ -1,7 +1,6 @@
 #pragma once
 #ifndef XSL_SYS_IO_DEV
 #  define XSL_SYS_IO_DEV
-#  include "xsl/ai/dev.h"
 #  include "xsl/coro/semaphore.h"
 #  include "xsl/feature.h"
 #  include "xsl/logctl.h"
@@ -48,8 +47,7 @@ namespace impl_dev {
   template <class... Flags>
   using AsyncDeviceCompose = feature::origanize_feature_flags_t<
       impl_dev::AsyncDevice<feature::Item<wheel::type_traits::is_same_pack, feature::In<void>,
-                                          feature::Out<void>, feature::InOut<void>>,
-                            feature::Dyn, feature::Own>,
+                                          feature::Out<void>, feature::InOut<void>>>,
       Flags...>;
 
   template <class... Flags>
@@ -162,10 +160,8 @@ namespace impl_dev {
       std::is_same_v<Device<feature::InOut<int>>, DeviceCompose<feature::InOut<int>>>,
       "Device<feature::In, feature::Out> is not DeviceCompose<feature::In, feature::Out>");
 
-  template <class T, class U, class V>
-  class AsyncDevice<feature::In<T>, U, V>
-      : public std::conditional_t<std::is_same_v<U, feature::Dyn>,
-                                  ai::AsyncDevice<feature::In<T>, V>, feature::placeholder> {
+  template <class T>
+  class AsyncDevice<feature::In<T>> {
   public:
     template <class... Args>
     AsyncDevice(std::shared_ptr<coro::CountingSemaphore<1>> sem, Args &&...args) noexcept
@@ -182,9 +178,9 @@ namespace impl_dev {
 
     ~AsyncDevice() noexcept { LOG6("AsyncDevice dtor, use count: {}", _sem.use_count()); }
 
-    DeviceCompose<feature::In<T>> &inner() noexcept { return _dev; }
-
     int raw() const noexcept { return _dev.raw(); }
+
+    DeviceCompose<feature::In<T>> &inner() noexcept { return _dev; }
 
     coro::CountingSemaphore<1> &sem() noexcept { return *_sem; }
 
@@ -194,19 +190,8 @@ namespace impl_dev {
   };
 
   static_assert(
-      std::is_same_v<AsyncDevice<feature::In<int>, feature::placeholder, feature::placeholder>,
-                     AsyncDeviceCompose<feature::In<int>>>,
+      std::is_same_v<AsyncDevice<feature::In<int>>, AsyncDeviceCompose<feature::In<int>>>,
       "AsyncDevice<feature::In, feature::placeholder> is not AsyncDeviceCompose<feature::In>");
-
-  static_assert(std::is_same_v<AsyncDevice<feature::In<int>, feature::Dyn, feature::placeholder>,
-                               AsyncDeviceCompose<feature::In<int>, feature::Dyn>>,
-                "AsyncDevice<feature::In, feature::placeholder, feature::Dyn> is not "
-                "AsyncDeviceCompose<feature::In, feature::Dyn>");
-
-  static_assert(std::is_base_of_v<ai::AsyncDevice<feature::In<int>>,
-                                  AsyncDeviceCompose<feature::In<int>, feature::Dyn>>,
-                "AsyncDeviceCompose<feature::In, feature::Dyn> is not derived from "
-                "ai::Device<feature::In>");
 
   // template <class... Flags>
   // inline AsyncDeviceCompose<feature::In, feature::placeholder, Flags...>
@@ -218,10 +203,8 @@ namespace impl_dev {
   //   return {std::move(_dev), std::move(sem)};
   // }
 
-  template <class T, class U, class V>
-  class AsyncDevice<feature::Out<T>, U, V>
-      : public std::conditional_t<std::is_same_v<U, feature::Dyn>,
-                                  ai::AsyncDevice<feature::Out<T>, V>, feature::placeholder> {
+  template <class T>
+  class AsyncDevice<feature::Out<T>> {
   public:
     template <class... Args>
     AsyncDevice(std::shared_ptr<coro::CountingSemaphore<1>> sem, Args &&...args) noexcept
@@ -238,9 +221,9 @@ namespace impl_dev {
 
     ~AsyncDevice() noexcept { LOG6("AsyncDevice dtor, use count: {}", _sem.use_count()); }
 
-    DeviceCompose<feature::Out<T>> &inner() noexcept { return _dev; }
-
     int raw() const noexcept { return _dev.raw(); }
+
+    DeviceCompose<feature::Out<T>> &inner() noexcept { return _dev; }
 
     coro::CountingSemaphore<1> &sem() noexcept { return *_sem; }
 
@@ -250,19 +233,8 @@ namespace impl_dev {
   };
 
   static_assert(
-      std::is_same_v<AsyncDevice<feature::Out<int>, feature::placeholder, feature::placeholder>,
-                     AsyncDeviceCompose<feature::Out<int>>>,
+      std::is_same_v<AsyncDevice<feature::Out<int>>, AsyncDeviceCompose<feature::Out<int>>>,
       "AsyncDevice<feature::placeholder, feature::Out> is not AsyncDeviceCompose<feature::Out>");
-
-  static_assert(std::is_same_v<AsyncDevice<feature::Out<int>, feature::Dyn, feature::placeholder>,
-                               AsyncDeviceCompose<feature::Out<int>, feature::Dyn>>,
-                "AsyncDevice<feature::placeholder, feature::Out, feature::Dyn> is not "
-                "AsyncDeviceCompose<feature::Out, feature::Dyn>");
-
-  static_assert(std::is_base_of_v<ai::AsyncDevice<feature::Out<int>>,
-                                  AsyncDeviceCompose<feature::Out<int>, feature::Dyn>>,
-                "AsyncDeviceCompose<feature::Out, feature::Dyn> is not derived from "
-                "ai::Device<feature::Out>");
 
   // template <class... Flags>
   // inline AsyncDeviceCompose<feature::placeholder, feature::Out, Flags...>
@@ -274,10 +246,8 @@ namespace impl_dev {
   //   return {std::move(_dev), std::move(sem)};
   // }
 
-  template <class T, class U, class V>
-  class AsyncDevice<feature::InOut<T>, U, V>
-      : public std::conditional_t<std::is_same_v<U, feature::Dyn>,
-                                  ai::AsyncDevice<feature::InOut<T>, V>, feature::placeholder> {
+  template <class T>
+  class AsyncDevice<feature::InOut<T>> {
   public:
     template <class... Args>
     AsyncDevice(std::shared_ptr<coro::CountingSemaphore<1>> read_sem,
@@ -313,9 +283,9 @@ namespace impl_dev {
 
     auto split() && noexcept {
       auto [sync_r, sync_w] = std::move(this->inner()).split();
-      using ReadDevice = AsyncDevice<feature::In<T>, U, V>;
+      using ReadDevice = AsyncDeviceCompose<feature::In<T>>;
       auto r = ReadDevice{std::move(_read_sem), std::move(sync_r)};
-      using WriteDevice = AsyncDevice<feature::Out<T>, U, V>;
+      using WriteDevice = AsyncDeviceCompose<feature::Out<T>>;
       auto w = WriteDevice{std::move(_write_sem), std::move(sync_w)};
       return std::make_tuple(std::move(r), std::move(w));
     }
@@ -327,20 +297,9 @@ namespace impl_dev {
   };
 
   static_assert(
-      std::is_same_v<AsyncDevice<feature::InOut<int>, feature::placeholder, feature::placeholder>,
-                     AsyncDeviceCompose<feature::InOut<int>>>,
+      std::is_same_v<AsyncDevice<feature::InOut<int>>, AsyncDeviceCompose<feature::InOut<int>>>,
       "AsyncDevice<feature::In, feature::Out> is not AsyncDeviceCompose<feature::In, "
       "feature::Out>");
-
-  static_assert(std::is_same_v<AsyncDevice<feature::InOut<int>, feature::Dyn, feature::placeholder>,
-                               AsyncDeviceCompose<feature::InOut<int>, feature::Dyn>>,
-                "AsyncDevice<feature::In, feature::Out, feature::Dyn> is not "
-                "AsyncDeviceCompose<feature::In, feature::Out, feature::Dyn>");
-
-  static_assert(std::is_base_of_v<ai::AsyncDevice<feature::InOut<int>>,
-                                  AsyncDeviceCompose<feature::InOut<int>, feature::Dyn>>,
-                "AsyncDeviceCompose<feature::In, feature::Out, feature::Dyn> is not derived from "
-                "ai::Device<>");
 
   // template <class... Flags>
   // inline AsyncDeviceCompose<feature::In, feature::Out, Flags...>

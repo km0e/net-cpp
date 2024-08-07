@@ -4,6 +4,7 @@
 #  include "xsl/feature.h"
 #  include "xsl/sys/io/dev.h"
 #  include "xsl/sys/net/def.h"
+#  include "xsl/sys/net/dev.h"
 
 #  include <sys/socket.h>
 
@@ -75,7 +76,7 @@ private:
 // // ipv6
 // using IpV6Addr = impl::IpAddr<6>;
 using Socket = sys::io::Device<feature::InOut<std::byte>>;
-using AsyncSocket = sys::io::AsyncDevice<feature::InOut<std::byte>>;
+using AsyncSocket = sys::net::AsyncDevice<feature::InOut<std::byte>>;
 
 SYS_NET_NE
 #endif

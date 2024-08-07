@@ -11,6 +11,7 @@
 #  include <tuple>
 
 XSL_AI_NB
+using Result = std::tuple<std::size_t, std::optional<std::errc>>;
 namespace impl_dev {
   template <class... Flags>
   class AsyncDevice;
@@ -22,17 +23,22 @@ namespace impl_dev {
   class AsyncDevice<feature::In<T>, feature::placeholder> {
   public:
     virtual ~AsyncDevice() = default;
-    virtual coro::Task<std::tuple<std::size_t, std::optional<std::errc>>> read(std::span<T> buf)
-        = 0;
+    /**
+    @brief read data from the device
+
+    @param buf the buffer to indicate the data
+    @return coro::Task<Result> the result of the read, the
+    first element is the size of the data read, the second element is the error code, if there is
+    error,
+     */
+    virtual coro::Task<Result> read(std::span<T> buf) = 0;
   };
 
   template <class T>
   class AsyncDevice<feature::Out<T>, feature::placeholder> {
   public:
     virtual ~AsyncDevice() = default;
-    virtual coro::Task<std::tuple<std::size_t, std::optional<std::errc>>> write(
-        std::span<const T> buf)
-        = 0;
+    virtual coro::Task<Result> write(std::span<const T> buf) = 0;
   };
 
   template <class T>
@@ -48,5 +54,17 @@ using AsyncDevice = feature::origanize_feature_flags_t<
                           feature::Own>,
     Flags...>;
 
+template <class T>
+class AsyncWritable {
+public:
+  virtual ~AsyncWritable() {}
+  virtual coro::Task<Result> write(ai::AsyncDevice<feature::Out<T>>& awd) = 0;
+};
+template <class T>
+class AsyncReadable {
+public:
+  virtual ~AsyncReadable() {}
+  virtual coro::Task<Result> read(ai::AsyncDevice<feature::In<T>>& ard) = 0;
+};
 XSL_AI_NE
 #endif

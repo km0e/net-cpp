@@ -12,11 +12,9 @@
 #  include <memory>
 SYS_NET_NB
 
-
 namespace impl_connect {
   template <class Executor = coro::ExecutorBase>
-  coro::Task<std::expected<int, std::errc>, Executor> connect(addrinfo *ai,
-                                                              std::shared_ptr<Poller> &poller) {
+  coro::Task<std::expected<int, std::errc>, Executor> connect(addrinfo *ai, Poller &poller) {
     int tmpfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
     if (tmpfd == -1) [[unlikely]] {
       co_return std::unexpected{std::errc{errno}};
@@ -31,8 +29,8 @@ namespace impl_connect {
     if (ec != 0) {
       LOG3("Failed to connect to fd: {}", tmpfd);
       auto sem = std::make_shared<coro::CountingSemaphore<1>>();
-      poller->add(tmpfd, sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-                  sync::PollCallback<sync::IOM_EVENTS::OUT>{sem});
+      poller.add(tmpfd, sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
+                 sync::PollCallback<sync::IOM_EVENTS::OUT>{sem});
       co_await *sem;
       auto check = [](int fd) {
         int opt;
@@ -61,15 +59,14 @@ namespace impl_connect {
 using ConnectResult = std::expected<Socket, std::errc>;
 
 template <class Executor = coro::ExecutorBase>
-inline decltype(auto) connect(const Endpoint &ep, std::shared_ptr<Poller> poller) {
+inline decltype(auto) connect(const Endpoint &ep, Poller &poller) {
   return impl_connect::connect<Executor>(ep.raw(), poller).transform([](auto &&exp) {
     exp.transform([](auto fd) { return Socket(fd); });
   });
 }
 
 template <class Executor = coro::ExecutorBase>
-coro::Task<ConnectResult, Executor> connect(const EndpointSet &eps,
-                                            std::shared_ptr<Poller> poller) {
+coro::Task<ConnectResult, Executor> connect(const EndpointSet &eps, Poller &poller) {
   for (auto &ep : eps) {
     auto res = co_await impl_connect::connect<Executor>(ep.raw(), poller);
     if (res) {

@@ -6,6 +6,7 @@
 #  include "xsl/sync/poller.h"
 #  include "xsl/sys/net.h"
 #  include "xsl/sys/net/accept.h"
+#  include "xsl/sys/net/dev.h"
 #  include "xsl/sys/net/socket.h"
 TRANSPORT_NB
 class Acceptor {
@@ -15,7 +16,7 @@ public:
     auto async = std::move(socket).async(poller);
     return Acceptor{std::move(async)};
   }
-  Acceptor(sys::io::AsyncDevice<feature::InOut<std::byte>> &&dev) : dev(std::move(dev)) {}
+  Acceptor(sys::net::AsyncDevice<feature::InOut<std::byte>> &&dev) : dev(std::move(dev)) {}
   Acceptor(Acceptor &&) = default;
   Acceptor &operator=(Acceptor &&) = default;
   ~Acceptor() {}
@@ -39,7 +40,7 @@ public:
   }
 
 private:
-  sys::io::AsyncDevice<feature::InOut<std::byte>> dev;
+  sys::net::AsyncDevice<feature::InOut<std::byte>> dev;
 };
 
 TRANSPORT_NE

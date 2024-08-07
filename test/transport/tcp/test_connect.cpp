@@ -2,6 +2,7 @@
 #include "xsl/logctl.h"
 #include "xsl/sync.h"
 #include "xsl/sys.h"
+#include "xsl/sys/net/tcp.h"
 
 #include <CLI/CLI.hpp>
 #include <gtest/gtest.h>
@@ -28,7 +29,7 @@ TEST(connect, connect) {
     }
     LOG5("Poller shutdown");
   });
-  auto sock = connect(ai, poller);
+  auto sock = sys::net::connect(ai, *poller);
   auto skt = sock.block();
   LOG5("Socket connected");
   xsl::flush_log();

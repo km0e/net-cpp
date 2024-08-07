@@ -5,6 +5,7 @@
 #  include "xsl/feature.h"
 #  include "xsl/sys/io/dev.h"
 #  include "xsl/sys/net/def.h"
+#  include "xsl/sys/net/dev.h"
 
 #  include <fcntl.h>
 #  include <sys/sendfile.h>
@@ -17,11 +18,10 @@
 #  include <system_error>
 #  include <tuple>
 SYS_NET_NB
-template <class Executor = coro::ExecutorBase, class Device>
-  requires wheel::type_traits::existing_v<feature::In<std::byte>, Device>
-coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> immediate_recv(
-    Device &dev, std::span<std::byte> buf) {
-  using Result = std::tuple<std::size_t, std::optional<std::errc>>;
+template <class Executor = coro::ExecutorBase, class... T>
+coro::Task<ai::Result, Executor> immediate_recv(AsyncDevice<feature::In<std::byte>, T...> &dev,
+                                                std::span<std::byte> buf) {
+  using Result = ai::Result;
   ssize_t n;
   size_t offset = 0;
   while (true) {
@@ -54,10 +54,10 @@ coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> immediat
   co_return std::make_tuple(offset, std::nullopt);
 }
 
-template <class Executor = coro::ExecutorBase>
-coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> immediate_send(
-    sys::io::AsyncDevice<feature::Out<std::byte>> &dev, std::span<const std::byte> data) {
-  using Result = std::tuple<std::size_t, std::optional<std::errc>>;
+template <class Executor = coro::ExecutorBase, class... T>
+coro::Task<ai::Result, Executor> immediate_send(AsyncDevice<feature::Out<std::byte>, T...> &dev,
+                                                std::span<const std::byte> data) {
+  using Result = ai::Result;
   while (true) {
     ssize_t n = ::send(dev.raw(), data.data(), data.size(), 0);
     if (static_cast<size_t>(n) == data.size()) {
@@ -75,10 +75,10 @@ coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> immediat
     }
   }
 }
-template <class Executor = coro::ExecutorBase>
-coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> immediate_sendfile(
-    sys::io::AsyncDevice<feature::Out<std::byte>> &dev, std::filesystem::path path) {
-  using Result = std::tuple<std::size_t, std::optional<std::errc>>;
+template <class Executor = coro::ExecutorBase, class... T>
+coro::Task<ai::Result, Executor> immediate_sendfile(AsyncDevice<feature::Out<std::byte>, T...> &dev,
+                                                    std::filesystem::path path) {
+  using Result = ai::Result;
   int ffd = open(path.c_str(), O_RDONLY);
   if (ffd == -1) {
     LOG2("open file failed");

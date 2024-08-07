@@ -10,6 +10,7 @@ XSL_NB
 namespace net {
   using sys::net::accept;
   using sys::net::AcceptResult;
+  using sys::net::CLIENT_FLAGS;
   using sys::net::Resolver;
   using sys::net::SERVER_FLAGS;
 }  // namespace net

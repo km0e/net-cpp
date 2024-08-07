@@ -1,6 +1,7 @@
 #pragma once
 #ifndef XSL_NET_H
 #  define XSL_NET_H
+#  include "xsl/coro/task.h"
 #  include "xsl/net/def.h"
 #  include "xsl/net/http/component.h"
 #  include "xsl/net/http/parse.h"
@@ -20,6 +21,11 @@ namespace net {
 }  // namespace net
 namespace tcp {
   using Server = xsl::_net::TcpServer;
+  template <class... Flags>
+  coro::Task<std::expected<sys::net::Socket, std::errc>> dial(const char *host, const char *port,
+                                                              sync::Poller &poller) {
+    return xsl::_net::tcp_dial<Flags...>(host, port, poller);
+  }
   template <class... Flags>
   std::expected<sys::net::Socket, std::error_condition> serv(const char *host, const char *port) {
     return xsl::_net::tcp_serv<Flags...>(host, port);

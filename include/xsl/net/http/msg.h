@@ -9,7 +9,7 @@
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/proto.h"
 #  include "xsl/net/io/buffer.h"
-#  include "xsl/sys/net/io.h"
+#  include "xsl/sys/net/dev.h"
 
 #  include <concepts>
 #  include <cstddef>
@@ -42,7 +42,7 @@ public:
 
 class Request {
 public:
-  Request(io::Buffer&& raw, RequestView&& view, BodyStream&& body)
+  Request(io::Buffer<>&& raw, RequestView&& view, BodyStream&& body)
       : method(xsl::from_string_view<HttpMethod>(view.method)),
         view(std::move(view)),
         raw(std::move(raw)),
@@ -53,7 +53,7 @@ public:
   ~Request() {}
   HttpMethod method;
   RequestView view;
-  io::Buffer raw;
+  io::Buffer<> raw;
 
   BodyStream body;
 };
@@ -87,28 +87,24 @@ public:
 class HttpResponse {
 public:
   HttpResponse(ResponsePart&& part);
-  template <std::invocable<sys::io::AsyncDevice<feature::Out<std::byte>>&> F>
+  template <std::invocable<sys::net::AsyncDevice<feature::Out<std::byte>>&> F>
   HttpResponse(ResponsePart&& part, F&& body)
       : _part(std::move(part)), _body(std::forward<F>(body)) {}
   template <class... Args>
     requires std::constructible_from<std::string, Args...>
   HttpResponse(ResponsePart&& part, Args&&... args)
       : _part(std::move(part)),
-        _body([body = std::string(std::forward<Args>(args)...)]
-              (sys::io::AsyncDevice<feature::Out<std::byte>>& awd)
-                  -> coro::Task<std::tuple<std::size_t, std::optional<std::errc>>> {
-                return sys::net::immediate_send<coro::ExecutorBase>(awd,
-                                                                    std::as_bytes(std::span(body)));
-              }) {}
+        _body([body = std::string(std::forward<Args>(args)...)](
+                  sys::net::AsyncDevice<feature::Out<std::byte>>& awd) -> coro::Task<ai::Result> {
+          return awd.write(std::as_bytes(std::span(body)));
+        }) {}
   HttpResponse(HttpResponse&&) = default;
   HttpResponse& operator=(HttpResponse&&) = default;
   ~HttpResponse();
   template <class Executor = coro::ExecutorBase>
-  coro::Task<std::tuple<std::size_t, std::optional<std::errc>>, Executor> sendto(
-      sys::io::AsyncDevice<feature::Out<std::byte>>& awd) {
+  coro::Task<ai::Result, Executor> sendto(sys::net::AsyncDevice<feature::Out<std::byte>>& awd) {
     auto str = this->_part.to_string();
-    auto [sz, err]
-        = co_await sys::net::immediate_send<Executor>(awd, std::as_bytes(std::span(str)));
+    auto [sz, err] = co_await awd.write<Executor>(std::as_bytes(std::span(str)));
     if (err) {
       co_return std::make_tuple(sz, err);
     };
@@ -122,9 +118,7 @@ public:
     co_return std::make_tuple(sz + bsz, std::nullopt);
   }
   ResponsePart _part;
-  std::function<coro::Task<std::tuple<std::size_t, std::optional<std::errc>>>(
-      sys::io::AsyncDevice<feature::Out<std::byte>>&)>
-      _body;
+  std::function<coro::Task<ai::Result>(sys::net::AsyncDevice<feature::Out<std::byte>>&)> _body;
 };
 HTTP_NE
 #endif

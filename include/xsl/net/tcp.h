@@ -1,14 +1,26 @@
 #pragma once
 #ifndef XSL_NET_TCP
 #  define XSL_NET_TCP
+#  include "xsl/coro/task.h"
 #  include "xsl/net/def.h"
 #  include "xsl/net/transport/accept.h"
+#  include "xsl/sync/poller.h"
 #  include "xsl/sys.h"
 #  include "xsl/sys/net/socket.h"
 
 #  include <expected>
 #  include <memory>
 NET_NB
+template <class... Flags>
+coro::Task<std::expected<sys::net::Socket, std::errc>> tcp_dial(const char *host, const char *port,
+                                                                sync::Poller &poller) {
+  auto addr = xsl::net::Resolver{}.resolve<Flags...>(host, port, xsl::net::CLIENT_FLAGS);
+  if (!addr) {
+    return std::unexpected(addr.error());
+  }
+  return sys::tcp::connect(*addr, poller);
+}
+
 template <class... Flags>
 std::expected<sys::net::Socket, std::error_condition> tcp_serv(const char *host, const char *port) {
   auto addr = xsl::net::Resolver{}.resolve<Flags...>(host, port, xsl::net::SERVER_FLAGS);
@@ -58,12 +70,15 @@ public:
   template <class Executor = coro::ExecutorBase>
   decltype(auto) accept(sys::net::SockAddr *addr) noexcept {
     return this->_ac.accept<Executor>(addr).transform([this](auto &&res) {
-      return res.transform([this](auto &&skt) { return std::move(skt).async(*this->poller); });
+      return res.transform([this](auto &&skt) {
+        return sys::net::AsyncSocket{std::move(skt).async(*this->poller)};
+      });
     });
   }
 
-private:
   std::shared_ptr<Poller> poller;
+
+private:
   transport::Acceptor _ac;
 };
 NET_NE

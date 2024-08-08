@@ -46,8 +46,11 @@ Poller::Poller(std::shared_ptr<HandleProxy>&& proxy) : fd(-1), handlers(), proxy
 bool Poller::valid() { return this->fd != -1; }
 
 bool Poller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
+  if (this->handlers.lock_shared()->contains(fd)) {
+    return this->modify(fd, events, std::move(handler));
+  }
   epoll_event event;
-  event.events = (uint32_t)events;
+  event.events = static_cast<uint32_t>(events);
   event.data.fd = fd;
   if (epoll_ctl(this->fd, EPOLL_CTL_ADD, fd, &event) == -1) {
     return false;
@@ -88,8 +91,10 @@ void Poller::poll() {
   // LOG6("Polling {} events", n);
   for (int i = 0; i < n; i++) {
     auto handler = this->handlers.lock_shared()->at(events[i].data.fd);
-    PollHandleHint hint
-        = (*this->proxy)(bind(*handler, (int)events[i].data.fd, (IOM_EVENTS)events[i].events));
+    auto fd = events[i].data.fd;
+    auto ev = static_cast<IOM_EVENTS>(events[i].events);
+    LOG5("Handling {} for fd: {}", static_cast<uint32_t>(ev), fd);
+    PollHandleHint hint = (*this->proxy)(bind(*handler, fd, ev));
     LOG5("Handling {} for fd: {}", to_string(hint.tag), (int)events[i].data.fd);
     switch (hint.tag) {
       case PollHandleHintTag::DELETE:

@@ -21,8 +21,29 @@ add_requires("toml++", {configs = {header_only = true}})
 add_requires("thread-pool", "cli11", "gtest", "quill")
 
 -- log level
--- set_config("log_level", "none")
-set_config("log_level", "trace")
+
+option("log_level")
+    set_showmenu(true)
+    set_default("info")
+    set_values("trace", "debug", "info", "warning", "error", "critical", "none")
+    set_description("Set the log level")
+option_end()
+
+function set_log_level(target)
+    local log_level = get_config("log_level")
+    local log_levels = {"none", "trace", "debug", "info", "warning", "error", "critical"}
+    local log_level_map = {}
+    log_level_map[log_levels[1]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=8"
+    log_level_map[log_levels[2]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_TRACE_L3"
+    log_level_map[log_levels[3]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_DEBUG"
+    log_level_map[log_levels[4]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_INFO"
+    log_level_map[log_levels[5]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_WARNING"
+    log_level_map[log_levels[6]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_ERROR"
+    log_level_map[log_levels[7]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_CRITICAL"
+    target:add("defines", log_level_map[log_level], { public = true }) -- public is important
+    print("log define: ", log_level_map[log_level])
+    print("log define: ", target:get("defines"))
+end
 
 add_packages("quill")
 

@@ -125,7 +125,7 @@ public:
   }
 
   void release(bool ready = true) {
-    LOG5("semaphore release");
+    LOG5("semaphore release {}", ready);
     this->_mtx.lock();
     this->_ready = ready;
     if (this->_cb) {

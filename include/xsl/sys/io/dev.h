@@ -28,7 +28,7 @@ public:
     if (_fd == -1) {
       return;
     }
-    LOG5("close fd: {}", _fd);
+    WARN("close fd: {}", _fd);
     close(_fd);
   }
 

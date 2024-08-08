@@ -4,31 +4,55 @@
 #  include "xsl/ai/dev.h"
 #  include "xsl/coro/lazy.h"
 #  include "xsl/io/def.h"
+#  include "xsl/wheel/ptr.h"
 
 #  include <expected>
 #  include <memory>
 
 XSL_IO_NB
-template <class Executor = coro::ExecutorBase>
-coro::Lazy<ai::Result> splice(ai::AsyncDevice<feature::In<std::byte>>& from,
-                              ai::AsyncDevice<feature::Out<std::byte>>& to, std::string& buffer) {
-  std::size_t total = 0;
-  while (true) {
+
+namespace impl_splice {
+  template <class Executor = coro::ExecutorBase>
+  coro::Lazy<ai::Result> splice_once(ai::AsyncDevice<feature::In<std::byte>>& from,
+                                     ai::AsyncDevice<feature::Out<std::byte>>& to,
+                                     std::string& buffer) {
     auto [sz, err] = co_await from.read(std::as_writable_bytes(std::span(buffer)));
     if (err) {
       WARN("Failed to read data from the device, err: {}", std::make_error_code(*err).message());
-      co_return {total, err};
+      co_return {sz, err};
     }
-    WARN("Read {} bytes from the device", sz);
+    DEBUG("Read {} bytes from the device", sz);
     auto [s_sz, s_err] = co_await to.write(std::as_bytes(std::span(buffer).subspan(0, sz)));
     if (s_err) {
       WARN("Failed to write data to the device, err: {}", std::make_error_code(*s_err).message());
-      co_return {total, s_err};
+      co_return {s_sz, s_err};
     }
-    WARN("Write {} bytes to the device", s_sz);
-    total += s_sz;
+    DEBUG("Write {} bytes to the device", s_sz);
+    co_return {s_sz, std::nullopt};
+  }
+}  // namespace impl_splice
+
+template <class Executor = coro::ExecutorBase,
+          wheel::PtrLike<ai::AsyncDevice<feature::In<std::byte>>> FromPtr,
+          wheel::PtrLike<ai::AsyncDevice<feature::Out<std::byte>>> ToPtr>
+coro::Lazy<ai::Result> splice_once(FromPtr from, ToPtr to, std::string buffer) {
+  return impl_splice::splice_once(*from, *to, buffer);
+}
+
+template <class Executor = coro::ExecutorBase,
+          wheel::PtrLike<ai::AsyncDevice<feature::In<std::byte>>> FromPtr,
+          wheel::PtrLike<ai::AsyncDevice<feature::Out<std::byte>>> ToPtr>
+coro::Lazy<ai::Result> splice(FromPtr from, ToPtr to, std::string buffer) {
+  std::size_t total = 0;
+  while (true) {
+    auto [sz, err] = co_await impl_splice::splice_once(*from, *to, buffer);
+    if (err) {
+      co_return {total, err};
+    }
+    total += sz;
   }
 }
+
 namespace impl_splice {
   template <class... Flags>
   class Splice;
@@ -53,8 +77,7 @@ namespace impl_splice {
     ~Splice() = default;
 
     coro::Task<ai::Result> write(ai::AsyncDevice<feature::Out<value_type>>& awd) {
-      std::string buffer(4096, '\0');
-      co_return co_await splice(*_from, awd, buffer);
+      co_return co_await splice(std::move(_from), &awd, std::string(4096, '\0'));
     }
 
   private:

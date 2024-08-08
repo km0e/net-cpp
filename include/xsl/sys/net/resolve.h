@@ -37,6 +37,7 @@ namespace impl {
 }  // namespace impl
 
 enum class ResolveFlag : int {
+  ZERO = 0,
   V4MAPPED = AI_V4MAPPED,
   ALL = AI_ALL,
   ADDRCONFIG = AI_ADDRCONFIG,

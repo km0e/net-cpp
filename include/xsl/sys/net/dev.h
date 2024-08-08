@@ -62,28 +62,31 @@ namespace impl_dev {
       size_t offset = 0;
       while (true) {
         n = ::recv(this->_dev.raw(), buf.data() + offset, buf.size() - offset, 0);
-        LOG5("recv n: {}", n);
+        WARN("{} recv n: {}", this->_dev.raw(), n);
         if (n == -1) {
           if (errno == EAGAIN || errno == EWOULDBLOCK) {
             if (offset != 0) {
-              LOG5("recv over");
+              WARN("recv over");
               break;
             }
-            LOG5("no data");
+            WARN("no data");
             if (!co_await this->_dev.sem()) {
               co_return Result(offset, {std::errc::not_connected});
             }
             continue;
           } else {
-            LOG2("Failed to recv data, err : {}", strerror(errno));
+            WARN("Failed to recv data, err : {}", strerror(errno));
             // TODO: handle recv error
             co_return Result(offset, {std::errc(errno)});
           }
         } else if (n == 0) {
-          LOG5("recv eof");
-          co_return Result(offset, {std::errc::no_message});
+          WARN("recv eof");
+          if (offset == 0) {
+            co_return Result(offset, {std::errc::no_message});
+          }
+          co_return Result(offset, std::nullopt);
         }
-        LOG6("recv {} bytes", n);
+        WARN("recv {} bytes", n);
         offset += n;
       };
       LOG5("end recv string");
@@ -143,9 +146,11 @@ namespace impl_dev {
       while (true) {
         ssize_t n = ::send(this->_dev.raw(), buf.data(), buf.size(), 0);
         if (static_cast<size_t>(n) == buf.size()) {
+          WARN("send {} bytes", n);
           co_return {n, std::nullopt};
         }
         if (n > 0) {
+          WARN("send {} bytes", n);
           buf = buf.subspan(n);
           continue;
         }

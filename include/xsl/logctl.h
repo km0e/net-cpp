@@ -18,7 +18,7 @@ private:
 public:
   ~LogCtl();
   quill::Logger* logger;
-#  if QUILL_COMPILE_ACTIVE_LOG_LEVEL <= QUILL_LOG_LEVEL_CRITICAL
+#  if QUILL_COMPILE_ACTIVE_LOG_LEVEL <= QUILL_COMPILE_ACTIVE_LOG_LEVEL_CRITICAL
   static LogCtl instance;
 
   static constexpr void no_log() { set_log_level(LogLevel::NONE); }

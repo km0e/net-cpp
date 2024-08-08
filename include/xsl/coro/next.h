@@ -33,7 +33,7 @@ public:
   Awaiter(const Awaiter &) = delete;
   Awaiter &operator=(const Awaiter &) = delete;
   ~Awaiter() {
-    LOG5("TaskAwaiter destructor for {}", (uint64_t)_handle.address());
+    LOG6("TaskAwaiter destructor for {}", (uint64_t)_handle.address());
     if (_handle) {
       assert(_handle.done());
       _handle.destroy();
@@ -42,7 +42,7 @@ public:
 
   template <class _Promise>
   void await_suspend(std::coroutine_handle<_Promise> handle) {
-    LOG5("await_suspend: {} -> {}", (uint64_t)_handle.address(), (uint64_t)handle.address());
+    LOG6("await_suspend: {} -> {}", (uint64_t)_handle.address(), (uint64_t)handle.address());
     if constexpr (std::is_same_v<typename _Promise::executor_type, void>) {
       this->_handle.promise().next(handle);
     } else {
@@ -57,7 +57,7 @@ public:
   }
 
   result_type await_resume() {
-    LOG5("task await_resume for {}", (uint64_t)_handle.address());
+    LOG6("task await_resume for {}", (uint64_t)_handle.address());
     return *_handle.promise();
   }
 
@@ -79,13 +79,13 @@ public:
   template <class Promise>
   void resume(std::coroutine_handle<Promise> handle) {
     this->dispatch([handle, this]() mutable {
-      LOG5("task resume {}", (uint64_t)handle.address());
+      LOG6("task resume {}", (uint64_t)handle.address());
       handle();
-      LOG5("task resume {} done", (uint64_t)handle.address());
+      LOG6("task resume {} done", (uint64_t)handle.address());
       if (handle.done()) {
-        LOG5("task resume handle done");
+        LOG6("task resume handle done");
         if (this->_next_resume) {
-          LOG5("task resume next_resume");
+          LOG6("task resume next_resume");
           (*this->_next_resume)();
         }
       }

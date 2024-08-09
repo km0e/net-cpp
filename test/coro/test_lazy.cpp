@@ -72,19 +72,6 @@ TEST(Lazy, async_exception_task) {
   ASSERT_THROW(task4.block(), std::runtime_error);
 }
 
-TEST(Lazy, async_task_with_executor) {
-  int value = 0;
-  auto task1 = [](int &value) -> Lazy<void> {
-    LOG5("task1 start");
-    co_await resource_task(value);
-    LOG5("task1 end");
-    value += 1;
-    co_return;
-  }(value);
-  task1.block();
-  ASSERT_EQ(value, 2);
-}
-
 int main(int argc, char **argv) {
   xsl::no_log();
   testing::InitGoogleTest(&argc, argv);

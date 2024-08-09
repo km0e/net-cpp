@@ -68,5 +68,4 @@ std::string ResponsePart::to_string() {
   res += "\r\n";
   return res;
 }
-
 HTTP_NE

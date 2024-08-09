@@ -20,7 +20,7 @@ using namespace xsl::coro;
 using namespace xsl;
 
 Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
-  auto server = tcp::Server::create<Ip<4>, Tcp>(poller, ip.data(), port.data());
+  auto server = tcp::Server<Ip<4>>::create(poller, ip.data(), port.data());
   if (!server) {
     co_return;
   }
@@ -31,17 +31,17 @@ Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
       continue;
     }
     auto [r, w] = std::move(*ac_res).split();
-    [r = std::move(r), w = std::move(w)]() mutable -> Task<void> {
+    [](auto r, auto w) mutable -> Task<void> {
       std::string buffer(4096, '\0');
       co_await net::splice(r, w, buffer);
-    }()
-                                                          .detach(co_await coro::GetExecutor());
+    }(std::move(r), std::move(w))
+                                      .detach(co_await coro::GetExecutor());
   }
 }
 
 int main(int argc, char *argv[]) {
-  // set_log_level(xsl::LogLevel::LOG1);
-  xsl::no_log();
+  set_log_level(xsl::LogLevel::LOG5);
+  // xsl::no_log();
   CLI::App app{"Echo server"};
   app.add_option("-i,--ip", ip, "IP address");
   app.add_option("-p,--port", port, "Port");

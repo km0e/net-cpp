@@ -36,6 +36,35 @@ protected:
   int _fd;
 };
 
+class NativeDeviceOwner {
+public:
+  NativeDeviceOwner(int fd) noexcept : _dev(std::make_shared<NativeDevice>(fd)) {}
+
+  template <class... Args>
+  NativeDeviceOwner(Args &&...args) noexcept : _dev(std::forward<Args>(args)...) {}
+
+  NativeDeviceOwner(const NativeDeviceOwner &rhs) noexcept : _dev(rhs._dev) {}
+
+  NativeDeviceOwner &operator=(const NativeDeviceOwner &rhs) noexcept {
+    _dev = rhs._dev;
+    return *this;
+  }
+
+  NativeDeviceOwner(NativeDeviceOwner &&rhs) noexcept : _dev(std::move(rhs._dev)) {}
+
+  NativeDeviceOwner &operator=(NativeDeviceOwner &&rhs) noexcept {
+    _dev = std::move(rhs._dev);
+    return *this;
+  }
+
+  ~NativeDeviceOwner() noexcept {}
+
+  int raw() const noexcept { return _dev->raw(); }
+
+protected:
+  std::shared_ptr<NativeDevice> _dev;
+};
+
 namespace impl_dev {
   template <class... Flags>
   class AsyncDevice;
@@ -45,7 +74,7 @@ namespace impl_dev {
   // using AsyncReadWriteDevice = AsyncDevice<feature::In, feature::Out>;
 
   template <class... Flags>
-  using AsyncDeviceCompose = feature::origanize_feature_flags_t<
+  using AsyncDeviceCompose = feature::organize_feature_flags_t<
       impl_dev::AsyncDevice<feature::Item<wheel::type_traits::is_same_pack, feature::In<void>,
                                           feature::Out<void>, feature::InOut<void>>>,
       Flags...>;
@@ -58,7 +87,7 @@ namespace impl_dev {
   // using ReadWriteDevice = Device<feature::In, feature::Out>;
 
   template <class... Flags>
-  using DeviceCompose = feature::origanize_feature_flags_t<
+  using DeviceCompose = feature::organize_feature_flags_t<
       impl_dev::Device<feature::Item<wheel::type_traits::is_same_pack, feature::In<void>,
                                      feature::Out<void>, feature::InOut<void>>>,
       Flags...>;
@@ -97,7 +126,7 @@ namespace impl_dev {
     inline AsyncDeviceCompose<feature::In<T>> async(sync::Poller &poller) && noexcept {
       auto sem = std::make_shared<coro::CountingSemaphore<1>>();
       poller.add(_dev->raw(), sync::IOM_EVENTS::IN | sync::IOM_EVENTS::ET,
-                 sync::PollCallback<sync::IOM_EVENTS::IN>{sem});
+                 sync::PollCallback<sync::PollTraits, sync::IOM_EVENTS::IN>{sem});
       return {std::move(sem), std::move(_dev)};
     }
   };
@@ -121,7 +150,7 @@ namespace impl_dev {
     inline AsyncDeviceCompose<feature::Out<T>> async(sync::Poller &poller) && noexcept {
       auto sem = std::make_shared<coro::CountingSemaphore<1>>();
       poller.add(_dev->raw(), sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-                 sync::PollCallback<sync::IOM_EVENTS::OUT>{sem});
+                 sync::PollCallback<sync::PollTraits, sync::IOM_EVENTS::OUT>{sem});
       return {std::move(sem), std::move(_dev)};
     }
   };
@@ -136,6 +165,7 @@ namespace impl_dev {
 
   public:
     using Base::Base;
+
     std::tuple<DeviceCompose<feature::In<T>>, DeviceCompose<feature::Out<T>>> split() && noexcept {
       auto r = DeviceCompose<feature::In<T>>{_dev};
       auto w = DeviceCompose<feature::Out<T>>{std::move(_dev)};
@@ -150,9 +180,9 @@ namespace impl_dev {
     inline AsyncDeviceCompose<feature::InOut<T>> async(sync::Poller &poller) && noexcept {
       auto read_sem = std::make_shared<coro::CountingSemaphore<1>>();
       auto write_sem = std::make_shared<coro::CountingSemaphore<1>>();
-      poller.add(
-          _dev->raw(), sync::IOM_EVENTS::IN | sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-          sync::PollCallback<sync::IOM_EVENTS::IN, sync::IOM_EVENTS::OUT>{read_sem, write_sem});
+      poller.add(_dev->raw(), sync::IOM_EVENTS::IN | sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
+                 sync::PollCallback<sync::PollTraits, sync::IOM_EVENTS::IN, sync::IOM_EVENTS::OUT>{
+                     read_sem, write_sem});
       return {std::move(read_sem), std::move(write_sem), std::move(_dev)};
     }
   };

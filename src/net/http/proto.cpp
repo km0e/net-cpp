@@ -2,13 +2,13 @@
 #include "xsl/net/http/proto.h"
 HTTP_NB
 
-std::string_view to_string_view(const HttpVersion& version) {
-  if (version == HttpVersion::UNKNOWN) return "Unknown";
+std::string_view to_string_view(const Version& version) {
+  if (version == Version::UNKNOWN) return "Unknown";
   return HTTP_VERSION_STRINGS[static_cast<uint8_t>(version)];
 }
 
-std::string_view to_string_view(const HttpMethod& method) {
-  if (method == HttpMethod::UNKNOWN) return "Unknown";
+std::string_view to_string_view(const Method& method) {
+  if (method == Method::UNKNOWN) return "Unknown";
   return HTTP_METHOD_STRINGS[static_cast<uint8_t>(method)];
 }
 
@@ -76,104 +76,104 @@ std::string to_string(const ContentType& content_type) {
   return result;
 }
 
-static uint16_t to_index(HttpStatus status) {
+static uint16_t to_index(Status status) {
   switch (status) {
-    case HttpStatus::CONTINUE:
+    case Status::CONTINUE:
       return 0;
-    case HttpStatus::SWITCHING_PROTOCOLS:
+    case Status::SWITCHING_PROTOCOLS:
       return 1;
-    case HttpStatus::OK:
+    case Status::OK:
       return 2;
-    case HttpStatus::CREATED:
+    case Status::CREATED:
       return 3;
-    case HttpStatus::ACCEPTED:
+    case Status::ACCEPTED:
       return 4;
-    case HttpStatus::NON_AUTHORITATIVE_INFORMATION:
+    case Status::NON_AUTHORITATIVE_INFORMATION:
       return 5;
-    case HttpStatus::NO_CONTENT:
+    case Status::NO_CONTENT:
       return 6;
-    case HttpStatus::RESET_CONTENT:
+    case Status::RESET_CONTENT:
       return 7;
-    case HttpStatus::PARTIAL_CONTENT:
+    case Status::PARTIAL_CONTENT:
       return 8;
-    case HttpStatus::MULTIPLE_CHOICES:
+    case Status::MULTIPLE_CHOICES:
       return 9;
-    case HttpStatus::MOVED_PERMANENTLY:
+    case Status::MOVED_PERMANENTLY:
       return 10;
-    case HttpStatus::FOUND:
+    case Status::FOUND:
       return 11;
-    case HttpStatus::SEE_OTHER:
+    case Status::SEE_OTHER:
       return 12;
-    case HttpStatus::NOT_MODIFIED:
+    case Status::NOT_MODIFIED:
       return 13;
-    case HttpStatus::USE_PROXY:
+    case Status::USE_PROXY:
       return 14;
-    case HttpStatus::TEMPORARY_REDIRECT:
+    case Status::TEMPORARY_REDIRECT:
       return 15;
-    case HttpStatus::PERMANENT_REDIRECT:
+    case Status::PERMANENT_REDIRECT:
       return 16;
-    case HttpStatus::BAD_REQUEST:
+    case Status::BAD_REQUEST:
       return 17;
-    case HttpStatus::UNAUTHORIZED:
+    case Status::UNAUTHORIZED:
       return 18;
-    case HttpStatus::PAYMENT_REQUIRED:
+    case Status::PAYMENT_REQUIRED:
       return 19;
-    case HttpStatus::FORBIDDEN:
+    case Status::FORBIDDEN:
       return 20;
-    case HttpStatus::NOT_FOUND:
+    case Status::NOT_FOUND:
       return 21;
-    case HttpStatus::METHOD_NOT_ALLOWED:
+    case Status::METHOD_NOT_ALLOWED:
       return 22;
-    case HttpStatus::NOT_ACCEPTABLE:
+    case Status::NOT_ACCEPTABLE:
       return 23;
-    case HttpStatus::PROXY_AUTHENTICATION_REQUIRED:
+    case Status::PROXY_AUTHENTICATION_REQUIRED:
       return 24;
-    case HttpStatus::REQUEST_TIMEOUT:
+    case Status::REQUEST_TIMEOUT:
       return 25;
-    case HttpStatus::CONFLICT:
+    case Status::CONFLICT:
       return 26;
-    case HttpStatus::GONE:
+    case Status::GONE:
       return 27;
-    case HttpStatus::LENGTH_REQUIRED:
+    case Status::LENGTH_REQUIRED:
       return 28;
-    case HttpStatus::PRECONDITION_FAILED:
+    case Status::PRECONDITION_FAILED:
       return 29;
-    case HttpStatus::PAYLOAD_TOO_LARGE:
+    case Status::PAYLOAD_TOO_LARGE:
       return 30;
-    case HttpStatus::URI_TOO_LONG:
+    case Status::URI_TOO_LONG:
       return 31;
-    case HttpStatus::UNSUPPORTED_MEDIA_TYPE:
+    case Status::UNSUPPORTED_MEDIA_TYPE:
       return 32;
-    case HttpStatus::RANGE_NOT_SATISFIABLE:
+    case Status::RANGE_NOT_SATISFIABLE:
       return 33;
-    case HttpStatus::EXPECTATION_FAILED:
+    case Status::EXPECTATION_FAILED:
       return 34;
-    case HttpStatus::MISDIRECTED_REQUEST:
+    case Status::MISDIRECTED_REQUEST:
       return 35;
-    case HttpStatus::UNPROCESSABLE_CONTENT:
+    case Status::UNPROCESSABLE_CONTENT:
       return 36;
-    case HttpStatus::UPGRADE_REQUIRED:
+    case Status::UPGRADE_REQUIRED:
       return 37;
-    case HttpStatus::INTERNAL_SERVER_ERROR:
+    case Status::INTERNAL_SERVER_ERROR:
       return 38;
-    case HttpStatus::NOT_IMPLEMENTED:
+    case Status::NOT_IMPLEMENTED:
       return 39;
-    case HttpStatus::BAD_GATEWAY:
+    case Status::BAD_GATEWAY:
       return 40;
-    case HttpStatus::SERVICE_UNAVAILABLE:
+    case Status::SERVICE_UNAVAILABLE:
       return 41;
-    case HttpStatus::GATEWAY_TIMEOUT:
+    case Status::GATEWAY_TIMEOUT:
       return 42;
-    case HttpStatus::HTTP_VERSION_NOT_SUPPORTED:
+    case Status::HTTP_VERSION_NOT_SUPPORTED:
       return 43;
     default:
       return 44;
   }
 }
 
-std::string_view to_string_view(HttpStatus status) { return HTTP_STATUS_STRINGS[to_index(status)]; }
+std::string_view to_string_view(Status status) { return HTTP_STATUS_STRINGS[to_index(status)]; }
 
-std::string_view to_reason_phrase(HttpStatus status) {
+std::string_view to_reason_phrase(Status status) {
   return HTTP_REASON_PHRASES[to_index(status)];
 }
 
@@ -183,16 +183,16 @@ HTTP_NE
 
 XSL_NB
 template <>
-_net::http::HttpVersion from_string_view<_net::http::HttpVersion>(std::string_view version) {
+_net::http::Version from_string_view<_net::http::Version>(std::string_view version) {
   auto iter = std::ranges::find(_net::http::HTTP_VERSION_STRINGS, version);
-  if (iter == _net::http::HTTP_VERSION_STRINGS.end()) return _net::http::HttpVersion::UNKNOWN;
-  return static_cast<_net::http::HttpVersion>(iter - _net::http::HTTP_VERSION_STRINGS.begin());
+  if (iter == _net::http::HTTP_VERSION_STRINGS.end()) return _net::http::Version::UNKNOWN;
+  return static_cast<_net::http::Version>(iter - _net::http::HTTP_VERSION_STRINGS.begin());
 }
 template <>
-_net::http::HttpMethod from_string_view<_net::http::HttpMethod>(std::string_view method) {
+_net::http::Method from_string_view<_net::http::Method>(std::string_view method) {
   auto iter = std::ranges::find(_net::http::HTTP_METHOD_STRINGS, method);
-  if (iter == _net::http::HTTP_METHOD_STRINGS.end()) return _net::http::HttpMethod::UNKNOWN;
-  return static_cast<_net::http::HttpMethod>(iter - _net::http::HTTP_METHOD_STRINGS.begin());
+  if (iter == _net::http::HTTP_METHOD_STRINGS.end()) return _net::http::Method::UNKNOWN;
+  return static_cast<_net::http::Method>(iter - _net::http::HTTP_METHOD_STRINGS.begin());
 }
 
 template <>

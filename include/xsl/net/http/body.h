@@ -7,19 +7,18 @@
 
 #  include <memory>
 HTTP_NB
+template <class ByteReader>
 class BodyStream {
 public:
   BodyStream() : _ard(nullptr), content_part() {}
-  BodyStream(std::shared_ptr<sys::net::AsyncDevice<feature::In<std::byte>>> ard,
-             std::string_view content)
+  BodyStream(std::shared_ptr<ByteReader> ard, std::string_view content)
       : _ard(std::move(ard)), content_part(content) {}
-  BodyStream(std::shared_ptr<sys::net::AsyncDevice<feature::In<std::byte>>> ard)
-      : _ard(std::move(ard)), content_part() {}
+  BodyStream(std::shared_ptr<ByteReader> ard) : _ard(std::move(ard)), content_part() {}
   BodyStream(BodyStream &&) = default;
   BodyStream &operator=(BodyStream &&) = default;
   ~BodyStream() {}
 
-  std::shared_ptr<sys::net::AsyncDevice<feature::In<std::byte>>> _ard;
+  std::shared_ptr<ByteReader> _ard;
   std::string_view content_part;
 };
 HTTP_NE

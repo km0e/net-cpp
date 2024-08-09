@@ -10,6 +10,7 @@
 #  include <utility>
 
 SYS_NET_NB
+template <class Traits>
 class Endpoint {
 public:
   Endpoint(addrinfo *info) : info(info) {}
@@ -18,13 +19,14 @@ public:
 private:
   addrinfo *info;
 };
+template <class Traits>
 class EndpointSet {
   class Iterator {
   public:
-    using value_type = Endpoint;
+    using value_type = Endpoint<Traits>;
     using difference_type = std::ptrdiff_t;
-    using pointer = Endpoint *;
-    using reference = Endpoint &;
+    using pointer = value_type *;
+    using reference = value_type &;
     using iterator_category = std::forward_iterator_tag;
 
     Iterator() : _ep(nullptr) {}
@@ -50,7 +52,7 @@ class EndpointSet {
     bool operator==(const Iterator &rhs) const { return _ep.raw() == rhs._ep.raw(); }
 
   private:
-    Endpoint _ep;
+    value_type _ep;
   };
 
   // static_assert(std::forward_iterator<Iterator>);

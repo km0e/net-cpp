@@ -172,6 +172,17 @@ namespace type_traits {
 
   template <class Pack1, class Pack2>
   inline constexpr bool is_same_pack_v = impl_is_same_pack::is_same_pack<Pack1, Pack2>::value;
+
+  namespace impl_inner {
+    template <class T>
+    struct inner;
+
+    template <template <class...> class Pack, class T, class... Ts>
+    struct inner<Pack<T, Ts...>> : _1<T> {};
+  }  // namespace impl_inner
+
+  template <class T>
+  using inner_t = typename impl_inner::inner<T>::type;
 }  // namespace type_traits
 
 WHEEL_NE

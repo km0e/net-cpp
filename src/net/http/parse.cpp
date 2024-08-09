@@ -6,9 +6,9 @@
 #include <system_error>
 
 HTTP_NB
-HttpParseUnit::HttpParseUnit() : view() {}
+ParseUnit::ParseUnit() : view() {}
 
-ParseResult HttpParseUnit::parse(const char* data, size_t len) {  // TODO: request target
+ParseResult ParseUnit::parse(const char* data, size_t len) {  // TODO: request target
   std::expected<RequestView, std::errc> res = std::unexpected{std::errc()};
   std::string_view view(data, len);
   size_t pos = 0, parse_end = 0;
@@ -38,9 +38,9 @@ ParseResult HttpParseUnit::parse(const char* data, size_t len) {  // TODO: reque
         break;
       }
       this->parse_request_target(line.substr(_1sp + 1, _2sp - _1sp - 1));
-      auto tmpv = line.substr(_2sp + 1);
-      if (std::regex_match(tmpv.begin(), tmpv.end(), HTTP_VERSION_REGEX)) {
-        this->view.version = tmpv;
+      auto tmp_version = line.substr(_2sp + 1);
+      if (std::regex_match(tmp_version.begin(), tmp_version.end(), HTTP_VERSION_REGEX)) {
+        this->view.version = tmp_version;
       } else {
         res = std::unexpected{std::errc::illegal_byte_sequence};
         break;
@@ -67,13 +67,13 @@ ParseResult HttpParseUnit::parse(const char* data, size_t len) {  // TODO: reque
   return {pos + parse_end, std::move(res)};
 }
 
-ParseResult HttpParseUnit::parse(std::string_view data) {
+ParseResult ParseUnit::parse(std::string_view data) {
   return this->parse(data.data(), data.length());
 }
 
-void HttpParseUnit::clear() { this->view.clear(); }
+void ParseUnit::clear() { this->view.clear(); }
 
-void HttpParseUnit::parse_request_target(std::string_view target) {
+void ParseUnit::parse_request_target(std::string_view target) {
   static const std::regex REQUEST_TARGET_REGEX(std::format(
       R"({}|{}|([^/?#]*)|{})", regex::origin_form, regex::absolute_form, regex::asterisk_form));
   static const std::regex QUERY_REGEX(R"(([^&=]+)=([^&=]+))");

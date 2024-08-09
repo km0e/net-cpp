@@ -27,9 +27,9 @@ async_pipe(std::shared_ptr<sync::Poller>& poller) {
   auto read_sem = std::make_shared<coro::CountingSemaphore<1>>();
   auto write_sem = std::make_shared<coro::CountingSemaphore<1>>();
   poller->add(fds[0], sync::IOM_EVENTS::IN | sync::IOM_EVENTS::ET,
-              sync::PollCallback<sync::IOM_EVENTS::IN>{read_sem});
+              sync::PollCallback<sync::PollTraits, sync::IOM_EVENTS::IN>{read_sem});
   poller->add(fds[1], sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-              sync::PollCallback<sync::IOM_EVENTS::OUT>{write_sem});
+              sync::PollCallback<sync::PollTraits, sync::IOM_EVENTS::OUT>{write_sem});
   return {io::AsyncDevice<feature::In<std::byte>>(read_sem, fds[0]),
           io::AsyncDevice<feature::Out<std::byte>>(write_sem, fds[1])};
 }

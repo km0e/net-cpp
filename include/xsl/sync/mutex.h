@@ -44,10 +44,10 @@ concept Lockable = BasicLockable<T> && requires(T t) {
 };
 
 template <class T>
-class ShrdGuard {
+class ShardGuard {
 public:
-  ShrdGuard(std::shared_mutex& m, T& t) : m(m), t(t) { m.lock_shared(); }
-  ~ShrdGuard() { m.unlock_shared(); }
+  ShardGuard(std::shared_mutex& m, T& t) : m(m), t(t) { m.lock_shared(); }
+  ~ShardGuard() { m.unlock_shared(); }
   decltype(auto) operator->(this auto&& self) { return &self.t; }
   decltype(auto) operator*(this auto&& self) { return self.t; }
 
@@ -57,12 +57,12 @@ private:
 };
 
 template <class R>
-class ShrdRes {  // rename to SharedResource
+class ShardRes {  // rename to SharedResource
 public:
-  ShrdRes() : src(), mutex() {}
-  ShrdRes(R&& src) : src(std::move(src)), mutex() {}
-  ~ShrdRes() {}
-  decltype(auto) lock_shared(this auto&& self) { return ShrdGuard<R>(self.mutex, self.src); }
+  ShardRes() : src(), mutex() {}
+  ShardRes(R&& src) : src(std::move(src)), mutex() {}
+  ~ShardRes() {}
+  decltype(auto) lock_shared(this auto&& self) { return ShardGuard<R>(self.mutex, self.src); }
   decltype(auto) lock(this auto&& self) {
     return LockGuard<std::shared_mutex, R>(self.mutex, self.src);
   }

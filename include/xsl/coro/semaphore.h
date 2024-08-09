@@ -23,9 +23,9 @@ public:
 
   template <class Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) {
-    LOG5("semaphore await_suspend for {}", (uint64_t)handle.address());
+    LOG6("semaphore await_suspend for {}", (uint64_t)handle.address());
     _queue.push([handle]() mutable {
-      LOG5("semaphore resume for {}", (uint64_t)handle.address());
+      LOG6("semaphore resume for {}", (uint64_t)handle.address());
       handle.promise().resume(handle);
     });
   }
@@ -80,21 +80,21 @@ public:
       : _mtx(mtx), _ready(ready), _cb(cb) {}
 
   bool await_ready() noexcept(noexcept(_mtx.lock())) {
-    LOG5("semaphore await_ready");
+    LOG6("semaphore await_ready");
     this->_mtx.lock();
     return this->_ready.has_value();
   }
 
   template <class Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) {
-    LOG5("semaphore await_suspend for {}", (uint64_t)handle.address());
+    LOG6("semaphore await_suspend for {}", (uint64_t)handle.address());
     this->_cb = [handle]() mutable { handle.promise().resume(handle); };
     this->_mtx.unlock();
   }
 
   [[nodiscard("must use the result of await_resume to confirm the semaphore is ready")]] bool
   await_resume() {
-    LOG5("semaphore await_resume");
+    LOG6("semaphore await_resume");
     this->_mtx.unlock();
     return *std::exchange(this->_ready, std::nullopt);
   }
@@ -125,7 +125,7 @@ public:
   }
 
   void release(bool ready = true) {
-    LOG5("semaphore release {}", ready);
+    LOG6("semaphore release {}", ready);
     this->_mtx.lock();
     this->_ready = ready;
     if (this->_cb) {

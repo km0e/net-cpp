@@ -2,6 +2,7 @@
 
 #ifndef XSL_NET_HTTP_PARSE
 #  define XSL_NET_HTTP_PARSE
+#  include "xsl/ai/dev.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/io/buffer.h"
@@ -15,11 +16,11 @@
 HTTP_NB
 using ParseResult = std::tuple<std::size_t, std::expected<RequestView, std::errc>>;
 
-class HttpParseUnit {
+class ParseUnit {
 public:
-  HttpParseUnit();
-  HttpParseUnit(HttpParseUnit&&) = default;
-  ~HttpParseUnit() = default;
+  ParseUnit();
+  ParseUnit(ParseUnit&&) = default;
+  ~ParseUnit() = default;
   /**
    @brief parse the http request
    @param data: the data to be parsed
@@ -55,36 +56,38 @@ private:
 const std::size_t HTTP_BUFFER_BLOCK_SIZE = 1024;
 
 struct HttpParseTrait {
-  using parse_unit = HttpParseUnit;
+  using parser_type = ParseUnit;
+};
+
+struct ParseData {
+  io::Buffer<> buffer;
+  RequestView request;
+  std::string_view content_part;
 };
 
 template <class Trait = HttpParseTrait>
-class HttpParser {
+class Parser {
 public:
-  using parse_unit = typename Trait::parse_unit;
-  using request_type = Request;
+  using parser_type = typename Trait::parser_type;
+  using request_type = RequestView;
 
-  HttpParser(sys::net::AsyncDevice<feature::In<std::byte>>&& ard)
-      : _ard(std::make_shared<sys::net::AsyncDevice<feature::In<std::byte>>>(std::move(ard))),
-        buffer(),
-        used_size(0),
-        parsed_size(0),
-        parser() {
+  Parser() : buffer(), used_size(0), parsed_size(0), parser() {
     buffer.append(HTTP_BUFFER_BLOCK_SIZE);
   }
-  HttpParser(HttpParser&&) = default;
-  ~HttpParser() {}
-  template <class Executor = coro::ExecutorBase>
-  coro::Task<std::expected<request_type, std::errc>, Executor> recv() {
+
+  Parser(Parser&&) = default;
+  ~Parser() {}
+  template <class Executor = coro::ExecutorBase, ai::AsyncReadDeviceLike<std::byte> Reader>
+  coro::Task<std::expected<void, std::errc>, Executor> read(Reader& reader, ParseData& buf) {
     while (true) {
-      auto [sz, err] = co_await this->_ard->template read<Executor>(
-          this->buffer.front().span(this->used_size));
+      auto [sz, err]
+          = co_await reader.template read<Executor>(this->buffer.front().span(this->used_size));
       if (err) {
         LOG3("recv error: {}", std::make_error_code(*err).message());
         continue;
       }
       this->used_size += sz;
-      auto req = this->parse_request(sz);
+      auto req = this->parse_request(sz, buf);
       if (req || req.error() != std::errc::resource_unavailable_try_again) {
         co_return std::move(req);
       }
@@ -92,25 +95,23 @@ public:
   }
 
 private:
-  std::shared_ptr<sys::net::AsyncDevice<feature::In<std::byte>>> _ard;
   io::Buffer<> buffer;
   std::size_t used_size;
   std::size_t parsed_size;
-  parse_unit parser;
+  parser_type parser;
 
-  std::expected<request_type, std::errc> parse_request(std::size_t sz) {
+  std::expected<void, std::errc> parse_request(std::size_t sz, ParseData& buf) {
     auto& front = this->buffer.front();
     auto [len, req] = this->parser.parse(
         reinterpret_cast<const char*>(front.data.get() + this->parsed_size), sz);
     if (req) {
       front.valid_size = this->parsed_size + sz;
-      auto body = BodyStream(
-          this->_ard,
-          std::string_view(
-              reinterpret_cast<const char*>(front.data.get() + this->parsed_size + len), sz - len));
+      auto content_part = std::string_view(
+          reinterpret_cast<const char*>(front.data.get() + this->parsed_size + len), sz - len);
       this->used_size = 0;
       this->parsed_size = 0;
-      return request_type{std::exchange(this->buffer, {}), std::move(*req), std::move(body)};
+      buf = ParseData{std::exchange(this->buffer, {}), std::move(*req), std::move(content_part)};
+      return {};
     }
     if (req.error() == std::errc::resource_unavailable_try_again) {
       this->parsed_size += len;

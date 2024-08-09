@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 std::string ip = "127.0.0.1";
@@ -17,20 +18,22 @@ using namespace xsl::coro;
 using namespace xsl;
 
 Task<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
-  auto tcp_server = tcp::Server::create<Ip<4>, Tcp>(poller, ip.data(), port.data());
+  auto tcp_server = tcp::Server<Ip<4>>::create(poller, ip.data(), port.data());
   if (!tcp_server) {
     co_return;
   }
-  auto http_router = std::make_shared<http::HttpRouter>();
-  auto get_handler = [](auto& rc) -> http::RouteHandleResult {
-    LOG4("{} {}", rc.request.view.method, rc.request.view.path);
-    for (auto& [k, v] : rc.request.view.headers) {
+  using HttpServer = http::Server<std::remove_reference_t<decltype(*tcp_server)>>;
+  auto http_router = std::make_shared<HttpServer::router_type>();
+  auto get_handler = [](auto& hc) -> http::HandleResult {
+    LOG4("{} {}", hc.request.view.method, hc.request.view.path);
+    for (auto& [k, v] : hc.request.view.headers) {
       LOG4("{}: {}", k, v);
     }
-    co_return http::HttpResponse{{http::HttpVersion::HTTP_1_1, http::HttpStatus::OK}};
+    hc.easy_resp(http::Status::OK);
+    co_return;
   };
-  http_router->add_route(http::HttpMethod::GET, "/", get_handler);
-  auto http_server = http::HttpServer(std::move(*tcp_server), http_router);
+  auto http_server = HttpServer(std::move(*tcp_server), http_router);
+  http_server.add_route(http::Method::GET, "/", get_handler);
   co_await http_server.run();
 }
 

@@ -4,10 +4,10 @@
 #  include "xsl/ai/dev.h"
 #  include "xsl/coro/lazy.h"
 #  include "xsl/io/def.h"
+#  include "xsl/logctl.h"
 #  include "xsl/wheel/ptr.h"
 
 #  include <expected>
-#  include <memory>
 
 XSL_IO_NB
 
@@ -51,6 +51,7 @@ coro::Lazy<ai::Result> splice(FromPtr from, ToPtr to, std::string buffer) {
     }
     total += sz;
   }
+  DEBUG("Spliced {} bytes", total);
 }
 
 namespace impl_splice {
@@ -58,20 +59,20 @@ namespace impl_splice {
   class Splice;
 
   template <class... Flags>
-  using SpliceCompose = feature::origanize_feature_flags_t<
+  using SpliceCompose = feature::organize_feature_flags_t<
       Splice<feature::Item<wheel::type_traits::is_same_pack, feature::In<void>, feature::Out<void>,
                            feature::InOut<void>>,
              feature::Dyn>,
       Flags...>;
 
-  template <class T>
-  class Splice<feature::In<std::byte>, T>
+  template <class T, wheel::PtrLike<ai::AsyncDevice<feature::In<std::byte>>> FromPtr>
+  class Splice<feature::In<std::byte>, T, FromPtr>
       : public std::conditional_t<std::is_same_v<T, feature::Dyn>, ai::AsyncWritable<std::byte>,
                                   feature::placeholder> {
   public:
     using value_type = std::byte;
 
-    Splice(std::shared_ptr<ai::AsyncDevice<feature::In<value_type>>> from) : _from(from) {}
+    Splice(FromPtr from) : _from(std::move(from)) {}
     Splice(Splice&&) = default;
     Splice& operator=(Splice&&) = default;
     ~Splice() = default;
@@ -81,8 +82,20 @@ namespace impl_splice {
     }
 
   private:
-    std::shared_ptr<ai::AsyncDevice<feature::In<value_type>>> _from;
+    FromPtr _from;
   };
+
+  template <class T>
+  class Splice<feature::In<std::byte>, T>
+      : public std::conditional_t<std::is_same_v<T, feature::Dyn>, ai::AsyncWritable<std::byte>,
+                                  feature::placeholder> {
+  public:
+    template <wheel::PtrLike<ai::AsyncDevice<feature::In<std::byte>>> FromPtr>
+    static decltype(auto) make_unique(FromPtr from) {
+      return std::make_unique<Splice<feature::In<std::byte>, T, FromPtr>>(std::move(from));
+    }
+  };
+
 }  // namespace impl_splice
 /**
 @brief Splice the data from the input device to the output device

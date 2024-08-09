@@ -46,16 +46,13 @@ Poller::Poller(std::shared_ptr<HandleProxy>&& proxy) : fd(-1), handlers(), proxy
 bool Poller::valid() { return this->fd != -1; }
 
 bool Poller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
-  if (this->handlers.lock_shared()->contains(fd)) {
-    return this->modify(fd, events, std::move(handler));
-  }
   epoll_event event;
   event.events = static_cast<uint32_t>(events);
   event.data.fd = fd;
   if (epoll_ctl(this->fd, EPOLL_CTL_ADD, fd, &event) == -1) {
     return false;
   }
-  LOG5("Handler registered for fd: {}", fd);
+  LOG5("Register {} for fd: {}", static_cast<uint32_t>(events), fd);
   // there should be a lock here?
   this->handlers.lock()->insert_or_assign(fd, make_shared<PollHandler>(handler));
   return true;
@@ -65,6 +62,7 @@ bool Poller::modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& hand
   event.events = (uint32_t)events;
   event.data.fd = fd;
   if (epoll_ctl(this->fd, EPOLL_CTL_MOD, fd, &event) == -1) {
+    WARN("Failed to modify handler for fd: {}, {}:{}", fd, errno, strerror(errno));
     return false;
   }
   if (handler.has_value()) {
@@ -95,7 +93,7 @@ void Poller::poll() {
     auto ev = static_cast<IOM_EVENTS>(events[i].events);
     LOG5("Handling {} for fd: {}", static_cast<uint32_t>(ev), fd);
     PollHandleHint hint = (*this->proxy)(bind(*handler, fd, ev));
-    LOG5("Handling {} for fd: {}", to_string(hint.tag), (int)events[i].data.fd);
+    LOG5("HandleRes {} for fd: {}", to_string(hint.tag), (int)events[i].data.fd);
     switch (hint.tag) {
       case PollHandleHintTag::DELETE:
         this->remove(events[i].data.fd);
@@ -121,7 +119,6 @@ void Poller::shutdown() {
   for (auto& [key, value] : *this->handlers.lock()) {
     (*value)(key, IOM_EVENTS::NONE);
   }
-  this->handlers.lock()->clear();
   LOG5("close poller");
   close(this->fd);
   this->fd = -1;

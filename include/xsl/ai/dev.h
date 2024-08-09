@@ -47,8 +47,21 @@ namespace impl_dev {
         public AsyncDevice<feature::Out<T>, feature::placeholder> {};
 }  // namespace impl_dev
 
+template <class Device, class T>
+concept AsyncReadDeviceLike = requires(Device t, std::span<T> buf) {
+  { t.read(buf) } -> std::same_as<coro::Task<Result>>;
+};
+
+template <class Device, class T>
+concept AsyncWriteDeviceLike = requires(Device t, std::span<const T> buf) {
+  { t.write(buf) } -> std::same_as<coro::Task<Result>>;
+};
+
+template <class Device, class T>
+concept AsyncReadWriteDeviceLike = AsyncReadDeviceLike<Device, T> && AsyncWriteDeviceLike<Device, T>;
+
 template <class... Flags>
-using AsyncDevice = feature::origanize_feature_flags_t<
+using AsyncDevice = feature::organize_feature_flags_t<
     impl_dev::AsyncDevice<feature::Item<wheel::type_traits::is_same_pack, feature::In<void>,
                                         feature::Out<void>, feature::InOut<void>>,
                           feature::Own>,

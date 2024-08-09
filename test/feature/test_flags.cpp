@@ -26,7 +26,7 @@ struct Test<placeholder, char> {
 };
 
 template <class... Flags>
-using Test_t = origanize_feature_flags_t<Test<int, set<char, float>>, Flags...>;
+using Test_t = organize_feature_flags_t<Test<int, set<char, float>>, Flags...>;
 
 TEST(feature, origanize_feature_flags_t) {
   ASSERT_EQ((Test_t<float>::f()), 1);

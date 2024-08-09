@@ -2,14 +2,12 @@
 
 #ifndef XSL_NET_HTTP_MSG
 #  define XSL_NET_HTTP_MSG
+#  include "xsl/ai/dev.h"
 #  include "xsl/coro/executor.h"
 #  include "xsl/coro/task.h"
-#  include "xsl/feature.h"
-#  include "xsl/net/http/body.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/proto.h"
 #  include "xsl/net/io/buffer.h"
-#  include "xsl/sys/net/dev.h"
 
 #  include <concepts>
 #  include <cstddef>
@@ -19,6 +17,63 @@
 #  include <tuple>
 #  include <utility>
 HTTP_NB
+
+class ResponseError {
+public:
+  ResponseError(int code, std::string_view message);
+  ~ResponseError();
+  int code;
+  std::string_view message;
+};
+
+const int DEFAULT_HEADER_COUNT = 16;
+
+class ResponsePart {
+public:
+  ResponsePart();
+  ResponsePart(Version version, Status status_code, std::string_view&& status_message);
+  ResponsePart(Version version, Status status_code);
+  ResponsePart(Version version, uint16_t status_code);
+  ResponsePart(Status status_code);
+  ResponsePart(uint16_t status_code);
+  ResponsePart(ResponsePart&&) = default;
+  ResponsePart& operator=(ResponsePart&&) = default;
+  ~ResponsePart();
+  Status status_code;
+  std::string_view status_message;
+  Version version;
+  std::unordered_map<std::string, std::string> headers;
+  std::string to_string();
+};
+
+template <ai::AsyncWriteDeviceLike<std::byte> ByteWriter>
+class Response {
+public:
+  template <class... Args>
+  Response(ResponsePart&& part, Args&&... args)
+      : _part(std::move(part)), _body(std::forward<Args>(args)...) {}
+  Response(Response&&) = default;
+  Response& operator=(Response&&) = default;
+  ~Response() {}
+  template <class Executor = coro::ExecutorBase>
+  coro::Task<ai::Result, Executor> sendto(ByteWriter& awd) {
+    auto str = this->_part.to_string();
+    auto [sz, err] = co_await awd.template write<Executor>(std::as_bytes(std::span(str)));
+    if (err) {
+      co_return std::make_tuple(sz, err);
+    };
+    if (!_body) {
+      co_return std::make_tuple(sz, std::nullopt);
+    }
+    auto [bsz, berr] = co_await this->_body(awd);
+    if (berr) {
+      co_return std::make_tuple(sz + bsz, berr);
+    }
+    co_return std::make_tuple(sz + bsz, std::nullopt);
+  }
+  ResponsePart _part;
+  std::function<coro::Task<ai::Result>(ByteWriter&)> _body;
+};
 
 class RequestView {
 public:
@@ -40,85 +95,123 @@ public:
   void clear();
 };
 
+template <ai::AsyncReadDeviceLike<std::byte> ByteReader>
 class Request {
 public:
-  Request(io::Buffer<>&& raw, RequestView&& view, BodyStream&& body)
-      : method(xsl::from_string_view<HttpMethod>(view.method)),
+  Request(io::Buffer<>&& raw, RequestView&& view, std::string_view content_part, ByteReader& ard)
+      : method(xsl::from_string_view<Method>(view.method)),
         view(std::move(view)),
         raw(std::move(raw)),
-        body(std::move(body)) {}
+        content_part(content_part),
+        _ard(ard) {}
 
   Request(Request&&) = default;
   Request& operator=(Request&&) = default;
   ~Request() {}
-  HttpMethod method;
+  Method method;
   RequestView view;
   io::Buffer<> raw;
 
-  BodyStream body;
+  std::string_view content_part;
+  ByteReader& _ard;
 };
 
-class ResponseError {
+template <ai::AsyncReadDeviceLike<std::byte> ByteReader,
+          ai::AsyncWriteDeviceLike<std::byte> ByteWriter>
+class HandleContext {
 public:
-  ResponseError(int code, std::string_view message);
-  ~ResponseError();
-  int code;
-  std::string_view message;
-};
+  HandleContext(std::string_view current_path, Request<ByteReader>&& request)
+      : current_path(current_path), request(std::move(request)), _response(std::nullopt) {}
+  HandleContext(HandleContext&&) = default;
+  HandleContext& operator=(HandleContext&&) = default;
+  ~HandleContext() {}
 
-const int DEFAULT_HEADER_COUNT = 16;
+  void easy_resp(Status status_code) {
+    this->_response
+        = Response<ByteWriter>{{Version::HTTP_1_1, status_code, to_reason_phrase(status_code)}};
+  }
 
-class ResponsePart {
-public:
-  ResponsePart();
-  ResponsePart(HttpVersion version, HttpStatus status_code, std::string_view&& status_message);
-  ResponsePart(HttpVersion version, HttpStatus status_code);
-  ResponsePart(HttpVersion version, uint16_t status_code);
-  ResponsePart(ResponsePart&&) = default;
-  ResponsePart& operator=(ResponsePart&&) = default;
-  ~ResponsePart();
-  HttpStatus status_code;
-  std::string_view status_message;
-  HttpVersion version;
-  std::unordered_map<std::string, std::string> headers;
-  std::string to_string();
-};
+  template <std::invocable<ByteWriter&> F>
+  void easy_resp(Status status_code, F&& body) {
+    this->_response = Response<ByteWriter>{
+        {Version::HTTP_1_1, status_code, to_reason_phrase(status_code)}, std::forward<F>(body)};
+  }
 
-class HttpResponse {
-public:
-  HttpResponse(ResponsePart&& part);
-  template <std::invocable<sys::net::AsyncDevice<feature::Out<std::byte>>&> F>
-  HttpResponse(ResponsePart&& part, F&& body)
-      : _part(std::move(part)), _body(std::forward<F>(body)) {}
   template <class... Args>
     requires std::constructible_from<std::string, Args...>
-  HttpResponse(ResponsePart&& part, Args&&... args)
-      : _part(std::move(part)),
-        _body([body = std::string(std::forward<Args>(args)...)](
-                  sys::net::AsyncDevice<feature::Out<std::byte>>& awd) -> coro::Task<ai::Result> {
-          return awd.write(std::as_bytes(std::span(body)));
-        }) {}
-  HttpResponse(HttpResponse&&) = default;
-  HttpResponse& operator=(HttpResponse&&) = default;
-  ~HttpResponse();
-  template <class Executor = coro::ExecutorBase>
-  coro::Task<ai::Result, Executor> sendto(sys::net::AsyncDevice<feature::Out<std::byte>>& awd) {
-    auto str = this->_part.to_string();
-    auto [sz, err] = co_await awd.write<Executor>(std::as_bytes(std::span(str)));
-    if (err) {
-      co_return std::make_tuple(sz, err);
-    };
-    if (!_body) {
-      co_return std::make_tuple(sz, std::nullopt);
-    }
-    auto [bsz, berr] = co_await this->_body(awd);
-    if (berr) {
-      co_return std::make_tuple(sz + bsz, berr);
-    }
-    co_return std::make_tuple(sz + bsz, std::nullopt);
+  void easy_resp(Status status_code, Args&&... args) {
+    this->_response = Response<ByteWriter>{
+        {Version::HTTP_1_1, status_code, to_reason_phrase(status_code)},
+        [body = std::string(std::forward<Args>(args)...)](ByteWriter& awd)
+            -> coro::Task<ai::Result> { return awd.write(std::as_bytes(std::span(body))); }};
   }
-  ResponsePart _part;
-  std::function<coro::Task<ai::Result>(sys::net::AsyncDevice<feature::Out<std::byte>>&)> _body;
+
+  void resp(ResponsePart&& part) { this->_response = Response<ByteWriter>{std::move(part)}; }
+
+  template <std::invocable<ByteWriter&> F>
+  void resp(ResponsePart&& part, F&& body) {
+    this->_response = Response<ByteWriter>{{std::move(part)}, std::forward<F>(body)};
+  }
+
+  template <class... Args>
+    requires std::constructible_from<std::string, Args...>
+  void resp(ResponsePart&& part, Args&&... args) {
+    this->_response = Response<ByteWriter>{{std::move(part)},
+                                           [body = std::string(std::forward<Args>(args)...)](
+                                               ByteWriter& awd) -> coro::Task<ai::Result> {
+                                             return awd.write(std::as_bytes(std::span(body)));
+                                           }};
+  }
+
+  std::string_view current_path;
+
+  Request<ByteReader> request;
+
+  std::optional<Response<ByteWriter>> _response;
 };
+
+enum class RouteError : uint8_t {
+  Unknown,
+  NotFound,
+  Unimplemented,
+};
+
+const int ROUTE_ERROR_COUNT = 3;
+const std::array<std::string_view, ROUTE_ERROR_COUNT> ROUTE_ERROR_STRINGS = {
+    "Unknown",
+    "NotFound",
+    "Unimplemented",
+};
+
+inline std::string_view to_string_view(RouteError re) {
+  return ROUTE_ERROR_STRINGS[static_cast<uint8_t>(re)];
+}
+
+using HandleResult = coro::Task<void>;
+
+template <class ByteReader, class ByteWriter>
+using RouteHandler = std::function<HandleResult(HandleContext<ByteReader, ByteWriter>& ctx)>;
+
+template <class ByteReader, class ByteWriter>
+const RouteHandler<ByteReader, ByteWriter> UNKNOWN_HANDLER
+    = []([[maybe_unused]] HandleContext<ByteReader, ByteWriter>& ctx) -> HandleResult {
+  ctx.easy_resp(Status::INTERNAL_SERVER_ERROR);
+  co_return;
+};
+
+template <class ByteReader, class ByteWriter>
+const RouteHandler<ByteReader, ByteWriter> NOT_FOUND_HANDLER
+    = []([[maybe_unused]] HandleContext<ByteReader, ByteWriter>& ctx) -> HandleResult {
+  ctx.easy_resp(Status::NOT_FOUND);
+  co_return;
+};
+
+template <class ByteReader, class ByteWriter>
+const RouteHandler<ByteReader, ByteWriter> NOT_IMPLEMENTED_HANDLER
+    = []([[maybe_unused]] HandleContext<ByteReader, ByteWriter>& ctx) -> HandleResult {
+  ctx.easy_resp(Status::NOT_IMPLEMENTED);
+  co_return;
+};
+
 HTTP_NE
 #endif

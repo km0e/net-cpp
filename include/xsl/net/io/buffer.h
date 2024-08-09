@@ -55,7 +55,7 @@ namespace impl_buffer {
 
   template <class... Flags>
   using BufferCompose
-      = feature::origanize_feature_flags_t<impl_buffer::Buffer<feature::Dyn>, Flags...>;
+      = feature::organize_feature_flags_t<impl_buffer::Buffer<feature::Dyn>, Flags...>;
 
   template <class T>
   class Buffer<T> : public std::conditional_t<std::is_same_v<T, feature::Dyn>,

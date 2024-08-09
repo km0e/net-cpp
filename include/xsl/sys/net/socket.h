@@ -2,7 +2,6 @@
 #ifndef XSL_SYS_NET_SOCKET
 #  define XSL_SYS_NET_SOCKET
 #  include "xsl/feature.h"
-#  include "xsl/sys/io/dev.h"
 #  include "xsl/sys/net/def.h"
 #  include "xsl/sys/net/dev.h"
 
@@ -75,8 +74,37 @@ private:
 // using IpV4Addr = impl::IpAddr<4>;
 // // ipv6
 // using IpV6Addr = impl::IpAddr<6>;
-using Socket = sys::io::Device<feature::InOut<std::byte>>;
-using AsyncSocket = sys::net::AsyncDevice<feature::InOut<std::byte>>;
+
+template <class Traits>
+using Socket = sys::net::Device<feature::InOut<Traits>>;
+
+template <class LowerLayer>
+using TcpSocket = Socket<SocketTraits<feature::Tcp, LowerLayer>>;
+
+template <class Traits>
+using AsyncSocket = sys::net::AsyncDevice<feature::InOut<Traits>>;
+
+template <class LowerLayer>
+using AsyncTcpSocket = AsyncSocket<SocketTraits<feature::Tcp, LowerLayer>>;
+
+template <class LowerLayer>
+using DynAsyncTcpSocket
+    = sys::net::AsyncDevice<feature::InOut<SocketTraits<feature::Tcp, LowerLayer>>, feature::Dyn>;
+
+namespace impl_socket {
+  template <class S>
+  struct SocketLike : std::false_type {};
+  template <class... TraitFlags, class... FeatureFlags>
+  struct SocketLike<
+      sys::net::impl_dev::Device<feature::InOut<SocketTraits<TraitFlags...>>, FeatureFlags...>>
+      : std::true_type {
+    using traits_type = SocketTraits<TraitFlags...>;
+  };
+
+}  // namespace impl_socket
+
+template <class S>
+concept SocketLike = impl_socket::SocketLike<S>::value;
 
 SYS_NET_NE
 #endif

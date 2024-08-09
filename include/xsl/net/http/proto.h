@@ -9,7 +9,7 @@
 
 HTTP_NB
 
-enum class HttpVersion : uint8_t {
+enum class Version : uint8_t {
   EXT,
   HTTP_1_0,
   HTTP_1_1,
@@ -27,9 +27,9 @@ const std::array<std::string_view, HTTP_VERSION_COUNT> HTTP_VERSION_STRINGS = {
 
 const std::regex HTTP_VERSION_REGEX = std::regex(R"(HTTP/(\d)\.(\d))");
 
-std::string_view to_string_view(const HttpVersion& method);
+std::string_view to_string_view(const Version& method);
 
-enum class HttpMethod : uint8_t {
+enum class Method : uint8_t {
   EXT,
   GET,
   POST,
@@ -47,7 +47,7 @@ const std::array<std::string_view, HTTP_METHOD_COUNT> HTTP_METHOD_STRINGS = {
     "EXT", "GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "TRACE", "CONNECT",
 };
 
-std::string_view to_string_view(const HttpMethod& method);
+std::string_view to_string_view(const Method& method);
 
 enum class Charset : uint8_t {
   UTF_8,
@@ -130,7 +130,7 @@ public:
 std::string to_string(const ContentType& content_type);
 std::string& operator+=(std::string& lhs, const ContentType& rhs);
 
-enum class HttpStatus : uint16_t {
+enum class Status : uint16_t {
   CONTINUE = 100,
   SWITCHING_PROTOCOLS = 101,
   OK = 200,
@@ -186,7 +186,7 @@ const std::array<std::string_view, HTTP_STATUS_COUNT> HTTP_STATUS_STRINGS = {
     "422", "426", "500", "501", "502", "503", "504", "505", "UNKNOWN",
 };
 
-std::string_view to_string_view(HttpStatus status);
+std::string_view to_string_view(Status status);
 
 const std::array<std::string_view, HTTP_STATUS_COUNT> HTTP_REASON_PHRASES = {
     "Continue",
@@ -235,17 +235,17 @@ const std::array<std::string_view, HTTP_STATUS_COUNT> HTTP_REASON_PHRASES = {
     "HTTP Version Not Supported",
 };
 
-std::string_view to_reason_phrase(HttpStatus status);
+std::string_view to_reason_phrase(Status status);
 
 HTTP_NE
 
 #  include "xsl/convert.h"
 XSL_NB
 template <>
-_net::http::HttpVersion from_string_view(std::string_view type);
+_net::http::Version from_string_view(std::string_view type);
 
 template <>
-_net::http::HttpMethod from_string_view(std::string_view type);
+_net::http::Method from_string_view(std::string_view type);
 
 template <>
 _net::http::content_type::Type from_string_view(std::string_view type);

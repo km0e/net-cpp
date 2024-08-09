@@ -6,20 +6,20 @@
 #include <system_error>
 using namespace xsl::http;
 TEST(http_parse, complete) {
-  HttpParseUnit parser;
+  ParseUnit parser;
   const char* data = "GET / HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
   size_t len = strlen(data);
   auto [sz, res] = parser.parse(data, len);
   ASSERT_TRUE(res.has_value());
   auto view = std::move(*res);
-  ASSERT_EQ(xsl::from_string_view<HttpMethod>(view.method), HttpMethod::GET);
+  ASSERT_EQ(xsl::from_string_view<Method>(view.method), Method::GET);
   ASSERT_EQ(view.path, "/");
-  ASSERT_EQ(xsl::from_string_view<HttpVersion>(view.version), HttpVersion::HTTP_1_1);
+  ASSERT_EQ(xsl::from_string_view<Version>(view.version), Version::HTTP_1_1);
   ASSERT_EQ(view.headers.size(), 1);
   ASSERT_EQ(view.headers["Host"], "localhost:8080");
 }
 TEST(http_parse, partial) {
-  HttpParseUnit parser;
+  ParseUnit parser;
   const char* data = "GET / HTTP/1.1\r\nHost: localhost:8080";
   size_t len = strlen(data);
   auto [sz, res] = parser.parse(data, len);
@@ -28,7 +28,7 @@ TEST(http_parse, partial) {
   ASSERT_EQ(err, std::errc::resource_unavailable_try_again);
 }
 TEST(http_parse, invalid_format) {
-  HttpParseUnit parser;
+  ParseUnit parser;
   const char* data = "GET / HTTP/1.1\rHost: localhost:8080\r\n\r\n";
   size_t len = strlen(data);
   auto [sz, res] = parser.parse(data, len);
@@ -37,7 +37,7 @@ TEST(http_parse, invalid_format) {
   ASSERT_EQ(err, std::errc::illegal_byte_sequence);
 }
 TEST(http_parse, test_version) {
-  HttpParseUnit parser;
+  ParseUnit parser;
   const char* data = "GET / HTT/1.0\r\nHost: localhost:8080\r\n\r\n";
   size_t len = strlen(data);
   auto [sz, res] = parser.parse(data, len);
@@ -46,7 +46,7 @@ TEST(http_parse, test_version) {
   ASSERT_EQ(err, std::errc::illegal_byte_sequence);
 }
 TEST(http_parse, test_query) {
-  HttpParseUnit parser;
+  ParseUnit parser;
   const char* data = "GET /?a=1&b=2 HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
   size_t len = strlen(data);
   auto [sz, res] = parser.parse(data, len);
@@ -57,7 +57,7 @@ TEST(http_parse, test_query) {
   ASSERT_EQ(view.query["b"], "2");
 }
 TEST(http_parse, test_query_empty) {
-  HttpParseUnit parser;
+  ParseUnit parser;
   const char* data = "GET /?a=1&b=2 HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
   size_t len = strlen(data);
   auto [sz, res] = parser.parse(data, len);
@@ -69,7 +69,7 @@ TEST(http_parse, test_query_empty) {
 }
 
 TEST(request_target, origin_form) {
-  HttpParseUnit parser;
+  ParseUnit parser;
   const std::string_view example1 = "GET / HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
   auto [sz, res] = parser.parse(example1);
   ASSERT_TRUE(res.has_value());
@@ -89,7 +89,7 @@ TEST(request_target, origin_form) {
 }
 
 TEST(request_target, absolute_form) {
-  HttpParseUnit parser;
+  ParseUnit parser;
   const std::string_view example1 = "GET http://localhost/ HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
   auto [sz, res] = parser.parse(example1);
   ASSERT_TRUE(res.has_value());
@@ -109,7 +109,7 @@ TEST(request_target, absolute_form) {
 }
 
 TEST(request_target, authority_form) {
-  HttpParseUnit parser;
+  ParseUnit parser;
   const std::string_view example1 = "GET localhost HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
   auto [sz, res] = parser.parse(example1);
   ASSERT_TRUE(res.has_value());

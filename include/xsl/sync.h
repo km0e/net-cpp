@@ -19,12 +19,19 @@ using sync::Poller;
 using sync::PollHandleHint;
 using sync::PollHandleHintTag;
 using sync::PollHandler;
-using sync::ShrdGuard;
-using sync::ShrdRes;
+using sync::ShardRes;
+using sync::ShardGuard;
 using sync::SPSC;
 
 namespace sync {
-  template <IOM_EVENTS... Events>
+  struct PollTraits {
+    static PollHandleHintTag poll_check(IOM_EVENTS events) {
+      return ((!events) || !!(events & IOM_EVENTS::HUP)) ? PollHandleHintTag::DELETE
+                                                         : PollHandleHintTag::NONE;
+    }
+  };
+
+  template <class Traits, IOM_EVENTS... Events>
   class PollCallback {
   public:
     PollCallback(std::array<std::shared_ptr<coro::CountingSemaphore<1>>, sizeof...(Events)> sems)
@@ -34,7 +41,7 @@ namespace sync {
     PollCallback(Sems &&...sems) : sems{std::forward<Sems>(sems)...} {}
     sync::PollHandleHint operator()(int, sync::IOM_EVENTS events) {
       LOG5("Poll Event: {}", static_cast<uint32_t>(events));
-      if (!events || !!(events & sync::IOM_EVENTS::HUP)) {
+      if (Traits::poll_check(events) == sync::PollHandleHintTag::DELETE) {
         for (auto &sem : sems) {
           sem->release(false);
         }

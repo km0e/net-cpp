@@ -21,18 +21,22 @@ ResponseError::ResponseError(int code, std::string_view message) : code(code), m
 ResponseError::~ResponseError() {}
 
 ResponsePart::ResponsePart()
-    : ResponsePart(HttpVersion::HTTP_1_1, HttpStatus::OK, to_reason_phrase(HttpStatus::OK)) {}
+    : ResponsePart(Version::HTTP_1_1, Status::OK, to_reason_phrase(Status::OK)) {}
 
-ResponsePart::ResponsePart(HttpVersion version, HttpStatus status_code,
+ResponsePart::ResponsePart(Version version, Status status_code,
                            std::string_view&& status_message)
     : status_code(status_code),
       status_message(std::move(status_message)),
       version(version),
       headers() {}
-ResponsePart::ResponsePart(HttpVersion version, HttpStatus status_code)
+ResponsePart::ResponsePart(Version version, Status status_code)
     : ResponsePart(version, status_code, to_reason_phrase(status_code)) {}
-ResponsePart::ResponsePart(HttpVersion version, uint16_t status_code)
-    : ResponsePart(version, static_cast<HttpStatus>(status_code)) {}
+ResponsePart::ResponsePart(Version version, uint16_t status_code)
+    : ResponsePart(version, static_cast<Status>(status_code)) {}
+ResponsePart::ResponsePart(Status status_code)
+    : ResponsePart(Version::HTTP_1_1, status_code) {}
+ResponsePart::ResponsePart(uint16_t status_code)
+    : ResponsePart(Version::HTTP_1_1, status_code) {}
 
 ResponsePart::~ResponsePart() {}
 std::string ResponsePart::to_string() {
@@ -64,8 +68,5 @@ std::string ResponsePart::to_string() {
   res += "\r\n";
   return res;
 }
-HttpResponse::HttpResponse(ResponsePart&& part) : _part(std::move(part)), _body() {}
-
-HttpResponse::~HttpResponse() {}
 
 HTTP_NE

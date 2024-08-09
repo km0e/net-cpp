@@ -123,7 +123,7 @@ namespace feature {
   }  // namespace impl
   using impl::Item;
   template <class FullFlag, class... Flags>
-  using origanize_feature_flags_t = impl::off_compose_t<FullFlag, Flags...>;
+  using organize_feature_flags_t = impl::off_compose_t<FullFlag, Flags...>;
 
 }  // namespace feature
 XSL_NE

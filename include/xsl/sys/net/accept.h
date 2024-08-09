@@ -7,9 +7,24 @@
 #  include <expected>
 SYS_NET_NB
 
-using AcceptResult = std::expected<Socket, std::errc>;
+template <class Traits>
+using AcceptResult = std::expected<Socket<Traits>, std::errc>;
 
-AcceptResult accept(Socket &socket, SockAddr *addr);
-
+template <SocketLike S>
+std::expected<Socket<typename S::traits_type>, std::errc> accept(S &socket, SockAddr *addr) {
+  auto [sockaddr, addrlen] = addr->raw();
+  int tmp_fd = ::accept4(socket.raw(), sockaddr, addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
+  if (tmp_fd < 0) {
+    return std::unexpected{std::errc(errno)};
+  }
+  LOG5("accept socket {}", tmp_fd);
+  // char ip[NI_MAXHOST], port[NI_MAXSERV];
+  // if (getnameinfo(&addr, addrlen, ip, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST |
+  // NI_NUMERICSERV)
+  //     != 0) {
+  //   return std::unexpected{std::errc(errno)};
+  // }
+  return Socket<typename S::traits_type>(tmp_fd);
+}
 SYS_NET_NE
 #endif

@@ -80,7 +80,7 @@ public:
 
 private:
   int fd;
-  ShrdRes<std::unordered_map<int, std::shared_ptr<PollHandler>>> handlers;
+  ShardRes<std::unordered_map<int, std::shared_ptr<PollHandler>>> handlers;
   std::shared_ptr<HandleProxy> proxy;
 };
 

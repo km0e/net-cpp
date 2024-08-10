@@ -20,7 +20,7 @@ using namespace xsl::coro;
 using namespace xsl;
 
 Task<void> echo(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
-  auto server = tcp::Server<Ip<4>>::create(ip.data(), port.data(), poller);
+  auto server = tcp::Server<Ip<4>>::create(ip, port, poller);
   if (!server) {
     co_return;
   }

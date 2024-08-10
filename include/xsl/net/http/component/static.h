@@ -8,88 +8,82 @@
 #  include "xsl/sys/net/io.h"
 
 #  include <filesystem>
+#  include <string_view>
+#  include <system_error>
 HTTP_HELPER_NB
 
 template <ai::AsyncReadDeviceLike<std::byte> ByteReader,
           ai::AsyncWriteDeviceLike<std::byte> ByteWriter>
 class FileRouteHandler {
 public:
-  FileRouteHandler(std::string&& path)
-      : path(std::move(path)), content_type(content_type::MediaType{}, Charset::UTF_8) {
-    if (auto point = this->path.rfind('.'); point != std::string::npos) {
-      auto ext = std::string_view(this->path).substr(point + 1);
-      this->content_type.media_type = content_type::MediaType::from_extension(ext);
-    }
+  FileRouteHandler(std::string_view path)
+      : path(path), content_type(content_type::MediaType{}, Charset::UTF_8) {
+    this->content_type.media_type
+        = content_type::MediaType::from_extension(this->path.extension().native());
   }
   ~FileRouteHandler() {}
   HandleResult operator()(HandleContext<ByteReader, ByteWriter>& ctx) {
     (void)ctx;
-
-    using response_body_type = HandleContext<ByteReader, ByteWriter>::response_body_type;
-
-    struct stat buf;
-    int res = stat(this->path.c_str(), &buf);
-    if (res == -1) {
-      LOG2("stat failed: {}", strerror(errno));
-      co_return std::unexpected{RouteError::NotFound};
+    std::error_code ec;
+    auto status = std::filesystem::status(this->path, ec);
+    if (ec || status.type() != std::filesystem::file_type::regular) {
+      LOG2("stat failed: path: {} error: {}", this->path.native(), ec.message());
+      return NOT_FOUND_HANDLER<ByteReader, ByteWriter>(ctx);
     }
-    auto send_file = std::bind<response_body_type>(sys::net::immediate_sendfile<coro::ExecutorBase>,
-                                                   std::placeholders::_1, this->path);
+
+    auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase, ByteWriter>,
+                               std::placeholders::_1, this->path);
     ResponsePart part{Status::OK};
     part.headers.emplace("Content-Type", to_string(this->content_type));
+    part.headers.emplace("Content-Length", std::to_string(std::filesystem::file_size(this->path)));
     ctx.resp(std::move(part), std::move(send_file));
-    co_return;
+    return []() -> HandleResult { co_return; }();
   }
-  std::string path;
+  std::filesystem::path path;
   ContentType content_type;
 };
 template <ai::AsyncReadDeviceLike<std::byte> ByteReader,
           ai::AsyncWriteDeviceLike<std::byte> ByteWriter>
 class FolderRouteHandler {
 public:
-  FolderRouteHandler(std::string&& path) : path(std::move(path)) {}
+  FolderRouteHandler(std::string_view path) : path(path) {}
   ~FolderRouteHandler() {}
   HandleResult operator()(HandleContext<ByteReader, ByteWriter>& ctx) {
-    using response_body_type = HandleContext<ByteReader, ByteWriter>::response_body_type;
-
     LOG5("FolderRouteHandler: {}", ctx.current_path);
-    std::string full_path = this->path;
-    full_path.append(ctx.current_path.substr(1));
-    struct stat buf;
-    int res = stat(full_path.c_str(), &buf);
-    if (res == -1) {
-      LOG2("stat failed: path: {} error: {}", full_path, strerror(errno));
-      return NOT_FOUND_HANDLER<ByteReader, ByteWriter>(ctx);
-    }
-    if (S_ISDIR(buf.st_mode)) {
-      LOG5("FolderRouteHandler: is dir");
+    if (ctx.current_path.empty()) {
+      LOG5("FolderRouteHandler: empty path");
       return {NOT_FOUND_HANDLER<ByteReader, ByteWriter>(ctx)};
     }
-    auto send_file = std::bind<response_body_type>(sys::net::immediate_sendfile<coro::ExecutorBase>,
-                                                   std::placeholders::_1, full_path);
-    ResponsePart part{Status::OK};
-    if (auto point = ctx.current_path.rfind('.'); point != std::string::npos) {
-      auto ext = ctx.current_path.substr(point + 1);
-      part.headers.emplace(
-          "Content-Type",
-          to_string(ContentType{content_type::MediaType::from_extension(ext), Charset::UTF_8}));
-      LOG5("FolderRouteHandler: Content-Type: {}", part.headers["Content-Type"]);
+    auto full_path = this->path;
+    full_path.append(ctx.current_path.substr(1));
+
+    std::error_code ec;
+    auto status = std::filesystem::status(full_path, ec);
+    if (ec || status.type() != std::filesystem::file_type::regular) {
+      LOG2("stat failed: path: {} error: {}", full_path.native(), ec.message());
+      return NOT_FOUND_HANDLER<ByteReader, ByteWriter>(ctx);
     }
+
+    auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase, ByteWriter>,
+                               std::placeholders::_1, full_path);
+    ResponsePart part{Status::OK};
+    part.headers.emplace(
+        "Content-Type", to_string(ContentType{
+                            content_type::MediaType::from_extension(full_path.extension().native()),
+                            Charset::UTF_8}));
+    part.headers.emplace("Content-Length", std::to_string(std::filesystem::file_size(full_path)));
     ctx.resp(std::move(part), std::move(send_file));
+    return []() -> HandleResult { co_return; }();
   }
-  std::string path;
+  std::filesystem::path path;
 };
 template <ai::AsyncReadDeviceLike<std::byte> ByteReader,
           ai::AsyncWriteDeviceLike<std::byte> ByteWriter>
-RouteHandler<ByteReader, ByteWriter> create_static_handler(std::string&& path) {
-  if (path.empty()) {
-    throw std::invalid_argument("path is empty");
-  }
+RouteHandler<ByteReader, ByteWriter> create_static_handler(std::string_view path) {
+  wheel::dynamic_assert(!path.empty(), "path is empty");
   std::error_code ec;
   auto status = std::filesystem::status(path, ec);
-  if (ec) {
-    throw std::system_error(ec);
-  }
+  wheel::dynamic_assert(!ec, std::format("stat failed: {}", ec.message()));
   if (status.type() == std::filesystem::file_type::directory) {
     return RouteHandler<ByteReader, ByteWriter>{
         FolderRouteHandler<ByteReader, ByteWriter>{std::move(path)}};
@@ -97,7 +91,8 @@ RouteHandler<ByteReader, ByteWriter> create_static_handler(std::string&& path) {
     return RouteHandler<ByteReader, ByteWriter>{
         FileRouteHandler<ByteReader, ByteWriter>{std::move(path)}};
   }
-  throw std::invalid_argument("path is not a file or directory");
+  wheel::dynamic_assert(false, "path is not a file or directory");
+  return {};
 }
 HTTP_HELPER_NE
 #endif  // XSL_NET_HTTP_HELPER_STATIC

@@ -39,7 +39,7 @@ public:
   };
 
   static std::expected<Server, std::error_condition> create(
-      const char* host, const char* port, const std::shared_ptr<sync::Poller>& poller) {
+      std::string_view host, std::string_view port, const std::shared_ptr<sync::Poller>& poller) {
     auto res = _CreateFeature<LowerLayer>::type::create(host, port, poller);
     if (!res) {
       return std::unexpected{res.error()};
@@ -49,8 +49,8 @@ public:
 
   using server_type = _CreateFeature<LowerLayer>::type;
   using io_dev_type = typename server_type::io_dev_type;
-  using in_dev_type = io_dev_type::template rebind_type<feature::In>;
-  using out_dev_type = io_dev_type::template rebind_type<feature::Out>;
+  using in_dev_type = typename server_type::in_dev_type;
+  using out_dev_type = typename server_type::out_dev_type;
   using context_type = HandleContext<in_dev_type, out_dev_type>;
   using handler_type = RouteHandler<in_dev_type, out_dev_type>;
   using router_type = R;
@@ -59,19 +59,37 @@ public:
   Server(server_type&& server, std::shared_ptr<router_type> router)
       : server(std::move(server)),
         router(std::move(router)),
-        tag(0),
+        tag(1),
         handlers(std::make_shared<ShardRes<std::unordered_map<std::size_t, handler_type>>>()) {}
+
   Server(Server&&) = default;
   Server& operator=(Server&&) = default;
   ~Server() {}
-  void add_static(std::string_view path) {
-    this->add_route(Method::GET, path, create_static_handler<in_dev_type, out_dev_type>(path));
+
+  void add_static(std::string_view path, std::string_view prefix) {
+    this->add_route(Method::GET, path, create_static_handler<in_dev_type, out_dev_type>(prefix));
   }
 
   void add_route(Method method, std::string_view path, handler_type&& handler) {
+    LOG4("Adding route: {}", path);
     auto tag = this->tag.fetch_add(1);
     this->handlers->lock()->try_emplace(tag, std::move(handler));
     this->router->add_route(method, path, std::move(tag));
+  }
+
+  void add_fallback(Method method, std::string_view path, handler_type&& handler) {
+    LOG4("Adding fallback: {}", path);
+    auto tag = this->tag.fetch_add(1);
+    this->handlers->lock()->try_emplace(tag, std::move(handler));
+    this->router->add_fallback(method, path, std::move(tag));
+  }
+
+  void redirect(Method method, std::string_view path, std::string_view target) {
+    LOG4("Redirecting: {} -> {}", path, target);
+    auto tag = this->tag.fetch_add(1);
+    this->handlers->lock()->try_emplace(tag,
+                                        create_redirect_handler<in_dev_type, out_dev_type>(target));
+    this->router->add_fallback(method, path, std::move(tag));
   }
 
   void set_error_handler(RouteError kind, handler_type&& handler) {
@@ -80,7 +98,7 @@ public:
 
   template <class Executor = coro::ExecutorBase>
   coro::Task<std::expected<void, std::errc>, Executor> run() {
-    LOG4("HttpServer start");
+    LOG4("HttpServer start at: {}:{}", this->server.host, this->server.port);
     while (true) {
       auto res = co_await this->server.template accept<Executor>(nullptr);
       if (!res) {
@@ -113,8 +131,9 @@ private:
         auto res = co_await parser.template read<Executor>(ard, parse_data);
         if (!res) {
           LOG3("recv error: {}", std::make_error_code(res.error()).message());
-          continue;
+          break;
         }
+        LOG4("New request: {} {}", parse_data.request.method, parse_data.request.path);
       }
 
       bool keep_alive = true;

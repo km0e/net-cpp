@@ -41,7 +41,7 @@ Poller::Poller()
           std::make_shared<HandleProxy>([](std::function<PollHandleHint()>&& f) { return f(); })) {}
 Poller::Poller(std::shared_ptr<HandleProxy>&& proxy) : fd(-1), handlers(), proxy(std::move(proxy)) {
   this->fd = epoll_create(1);
-  LOG5("Poller fd: {}", this->fd);
+  LOG5("Poller fd: {}", this->fd.load());
 }
 bool Poller::valid() { return this->fd != -1; }
 
@@ -91,7 +91,7 @@ void Poller::poll() {
     auto handler = this->handlers.lock_shared()->at(events[i].data.fd);
     auto fd = events[i].data.fd;
     auto ev = static_cast<IOM_EVENTS>(events[i].events);
-    LOG5("Handling {} for fd: {}", static_cast<uint32_t>(ev), fd);
+    LOG6("Handling {} for fd: {}", static_cast<uint32_t>(ev), fd);
     PollHandleHint hint = (*this->proxy)(bind(*handler, fd, ev));
     LOG5("HandleRes {} for fd: {}", to_string(hint.tag), (int)events[i].data.fd);
     switch (hint.tag) {

@@ -8,6 +8,7 @@
 #  include "xsl/sync.h"
 #  include "xsl/wheel.h"
 
+#  include <cassert>
 #  include <cstddef>
 #  include <expected>
 #  include <string_view>
@@ -30,6 +31,7 @@ using RouteResult = std::expected<const std::size_t*, RouteError>;
 template <class R, class Tag>
 concept RouterLike = requires(R r, Method hm, std::string_view path, Tag&& tag, RouteContext& ctx) {
   { r.add_route(hm, path, std::move(tag)) } -> std::same_as<void>;
+  { r.add_fallback(hm, path, std::move(tag)) } -> std::same_as<void>;
   { r.route(ctx) } -> std::same_as<RouteResult>;
 };
 
@@ -37,17 +39,15 @@ namespace router_details {
   class HttpRouteNode {
   public:
     using tag_type = std::size_t;
-    HttpRouteNode() : handlers(), children() {}
-    HttpRouteNode(Method method, tag_type&& tag) : handlers(), children() {
+    HttpRouteNode() : handlers(), fallbacks(), children() {}
+    HttpRouteNode(Method method, tag_type&& tag) : handlers(), fallbacks(), children() {
       handlers[static_cast<uint8_t>(method)] = std::move(tag);
     }
     ~HttpRouteNode() {}
 
     void add_route(Method method, std::string_view path, tag_type&& tag) {
       LOG5("Adding route: {}", path);
-      if (path[0] != '/') {
-        throw std::invalid_argument("Invalid path");
-      }
+      wheel::dynamic_assert(path[0] == '/', "Invalid path");
       auto pos = path.find('/', 1);
 
       if (pos != std::string_view::npos) {
@@ -70,7 +70,29 @@ namespace router_details {
       if (child->second.add(method, std::move(tag))) {
         return;
       }
-      throw std::invalid_argument("Route already exists");
+      wheel::dynamic_assert(false, "Route already exists");
+    }
+
+    void add_fallback(Method method, std::string_view path, tag_type&& tag) {
+      LOG5("Adding fallback route: {}", path);
+      wheel::dynamic_assert(path[0] == '/', "Invalid path");
+      auto pos = path.find('/', 1);
+
+      if (pos != std::string_view::npos) {
+        auto sub = path.substr(1, pos - 1);
+        auto res = children.lock()->find(sub);
+        if (res != children.lock()->end()) {
+          return res->second.add_fallback(method, path.substr(sub.length() + 1), std::move(tag));
+        }
+        return children.lock()
+            ->try_emplace(std::string{sub})
+            .first->second.add_fallback(method, path.substr(sub.length() + 1), std::move(tag));
+      }
+      auto sub_path = path.substr(1);
+      wheel::dynamic_assert(sub_path.empty(), "Fallback path must be empty");
+      wheel::dynamic_assert(fallbacks[static_cast<uint8_t>(method)] == tag_type{},
+                            "Fallback already exists");
+      fallbacks[static_cast<uint8_t>(method)] = std::move(tag);
     }
 
     RouteResult route(RouteContext& ctx) {
@@ -98,7 +120,15 @@ namespace router_details {
           }
           break;
         }
-        auto child = children.lock_shared()->find(ctx.current_path.substr(1));
+        auto sub_path = ctx.current_path.substr(1);
+        if (sub_path.empty()) {  // if the path is empty
+          auto& handler = fallbacks[static_cast<uint8_t>(ctx.method)];
+          if (handler != tag_type{}) {
+            return &handler;
+          }
+          return std::unexpected{RouteError::Unimplemented};
+        }
+        auto child = children.lock_shared()->find(sub_path);
         if (child == children.lock_shared()->end()) {  // if the path is not found
           break;
         }
@@ -121,10 +151,11 @@ namespace router_details {
 
   private:
     std::array<std::size_t, HTTP_METHOD_COUNT> handlers;
+    std::array<std::size_t, HTTP_METHOD_COUNT> fallbacks;
     ShardRes<us_map<HttpRouteNode>> children;
 
     bool add(Method method, tag_type&& tag) {
-      if (handlers[static_cast<uint8_t>(method)]) {
+      if (handlers[static_cast<uint8_t>(method)] != tag_type{}) {
         return false;
       }
       handlers[static_cast<uint8_t>(method)] = std::move(tag);
@@ -148,12 +179,17 @@ public:
 
   ~Router() {}
   void add_route(Method method, std::string_view path, tag_type&& tag) {
-    LOG4("Adding route: {}", path);
+    LOG5("Adding route: {}", path);
     return root.add_route(method, path, std::move(tag));
   }
 
+  void add_fallback(Method method, std::string_view path, tag_type&& tag) {
+    LOG5("Adding fallback route: {}", path);
+    return root.add_fallback(method, path, std::move(tag));
+  }
+
   RouteResult route(RouteContext& ctx) {
-    LOG4("Starting routing path: {}", ctx.current_path);
+    LOG5("Starting routing path: {}", ctx.current_path);
     if (ctx.method == Method::UNKNOWN) {
       return std::unexpected{RouteError::Unknown};
     }

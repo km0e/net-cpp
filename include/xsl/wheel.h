@@ -12,5 +12,6 @@ using wheel::FixedString;
 using wheel::i32_from_bytes;
 using wheel::i32_to_bytes;
 using wheel::us_map;
+using wheel::dynamic_assert;
 XSL_NE
 #endif  // XSL_UTILS_WHEEL

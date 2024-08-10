@@ -17,21 +17,19 @@ using namespace xsl;
 
 Task<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
   using HttpServer = http::Server<Tcp<Ip<4>>>;
-  auto server = HttpServer::create(ip.data(), port.data(), poller);
+  auto server = HttpServer::create(ip, port, poller);
   if (!server) {
     co_return;
   }
-  using context_type = typename HttpServer::context_type;
-  auto get_handler = [](context_type& hc) -> http::HandleResult {
-    LOG4("{} {}", hc.request.view.method, hc.request.view.path);
-    for (auto& [k, v] : hc.request.view.headers) {
-      LOG4("{}: {}", k, v);
-    }
-    hc.easy_resp(http::Status::OK);
-    co_return;
-  };
-  server->add_route(http::Method::GET, "/", get_handler);
-  co_await server->run();
+  server->redirect(http::Method::GET, "/", "/index.html");
+  server->add_static("/", "./build/html/");
+  try {
+    co_await (*server).run();
+  } catch (const std::exception& e) {
+    LOG4("Exception: {}", e.what());
+  }
+  poller->shutdown();
+  co_return;
 }
 
 int main(int argc, char* argv[]) {
@@ -44,7 +42,7 @@ int main(int argc, char* argv[]) {
 
   auto poller = std::make_shared<xsl::Poller>();
   run(ip, port, poller).detach();
-  while (true) {
+  while (poller->valid()) {
     poller->poll();
   }
   return 0;

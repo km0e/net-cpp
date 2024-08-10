@@ -83,15 +83,24 @@ public:
       auto [sz, err]
           = co_await reader.template read<Executor>(this->buffer.front().span(this->used_size));
       if (err) {
-        LOG3("recv error: {}", std::make_error_code(*err).message());
-        continue;
+        LOG3("recv error {}: {}", static_cast<int>(*err), std::make_error_code(*err).message());
+        co_return std::unexpected{*err};
       }
       this->used_size += sz;
       auto req = this->parse_request(sz, buf);
       if (req || req.error() != std::errc::resource_unavailable_try_again) {
+        this->used_size = 0;
+        this->parsed_size = 0;
+
         co_return std::move(req);
       }
     }
+  }
+  void reset() {
+    this->used_size = 0;
+    this->parsed_size = 0;
+    this->buffer.clear();
+    this->buffer.append(HTTP_BUFFER_BLOCK_SIZE);
   }
 
 private:
@@ -108,9 +117,8 @@ private:
       front.valid_size = this->parsed_size + sz;
       auto content_part = std::string_view(
           reinterpret_cast<const char*>(front.data.get() + this->parsed_size + len), sz - len);
-      this->used_size = 0;
-      this->parsed_size = 0;
       buf = ParseData{std::exchange(this->buffer, {}), std::move(*req), std::move(content_part)};
+      this->reset();
       return {};
     }
     if (req.error() == std::errc::resource_unavailable_try_again) {
@@ -124,6 +132,8 @@ private:
         this->used_size = HTTP_BUFFER_BLOCK_SIZE - this->parsed_size;
         this->parsed_size = 0;
       }
+    } else {
+      this->reset();
     }
     LOG3("parse error: {}", std::make_error_code(req.error()).message());
     return std::unexpected{req.error()};

@@ -66,11 +66,11 @@ public:
     if (!_body) {
       co_return std::make_tuple(sz, std::nullopt);
     }
-    auto [bsz, berr] = co_await this->_body(awd);
-    if (berr) {
-      co_return std::make_tuple(sz + bsz, berr);
+    auto [bodySize, bodyError] = co_await this->_body(awd);
+    if (bodyError) {
+      co_return std::make_tuple(sz + bodySize, bodyError);
     }
-    co_return std::make_tuple(sz + bsz, std::nullopt);
+    co_return std::make_tuple(sz + bodySize, std::nullopt);
   }
   ResponsePart _part;
   std::function<coro::Task<ai::Result>(ByteWriter&)> _body;

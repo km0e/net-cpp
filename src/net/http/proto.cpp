@@ -33,15 +33,15 @@ namespace content_type {
     return lhs.append(SUB_TYPE_STRINGS[static_cast<uint8_t>(rhs)]);
   }
   MediaType MediaType::from_extension(std::string_view extension) {
-    if (extension == "html" || extension == "htm") {
+    if (extension == ".html" || extension == ".htm") {
       return {Type::TEXT, SubType::HTML};
-    } else if (extension == "css") {
+    } else if (extension == ".css") {
       return {Type::TEXT, SubType::CSS};
-    } else if (extension == "js") {
+    } else if (extension == ".js") {
       return {Type::APPLICATION, SubType::JAVASCRIPT};
-    } else if (extension == "json") {
+    } else if (extension == ".json") {
       return {Type::APPLICATION, SubType::JSON};
-    } else if (extension == "xml") {
+    } else if (extension == ".xml") {
       return {Type::APPLICATION, SubType::XML};
     } else {
       // TODO: add more content type

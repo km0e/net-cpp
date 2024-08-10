@@ -59,10 +59,10 @@ public:
   using out_dev_type = io_dev_type::template rebind_type<feature::Out>;
 
   static std::expected<TcpServer, std::error_condition> create(
-      const char *host, const char *port, const std::shared_ptr<Poller> &poller) {
+      std::string_view host, std::string_view port, const std::shared_ptr<Poller> &poller) {
     LOG5("Start listening on {}:{}", host, port);
     auto copy_poller = poller;
-    auto skt = tcp_serv<lower_layer_type>(host, port);
+    auto skt = tcp_serv<lower_layer_type>(host.data(), port.data());
     if (!skt) {
       return std::unexpected(skt.error());
     }
@@ -70,12 +70,12 @@ public:
     if (!ac) {
       return std::unexpected(ac.error());
     }
-    return TcpServer{std::move(copy_poller), std::move(*ac)};
+    return TcpServer{host, port, std::move(copy_poller), std::move(*ac)};
   }
 
   template <class P, class... Args>
-  TcpServer(P &&poller, Args &&...args)
-      : poller(std::forward<P>(poller)), _ac(std::forward<Args>(args)...) {}
+  TcpServer(std::string_view host, std::string_view port, P &&poller, Args &&...args)
+      : host(host), port(port), poller(std::forward<P>(poller)), _ac(std::forward<Args>(args)...) {}
   TcpServer(TcpServer &&) = default;
   TcpServer &operator=(TcpServer &&) = default;
   template <class Executor = coro::ExecutorBase>
@@ -85,6 +85,9 @@ public:
           [this](auto &&skt) { return io_dev_type{std::move(skt).async(*this->poller)}; });
     });
   }
+
+  std::string host;
+  std::string port;
 
   std::shared_ptr<Poller> poller;
 

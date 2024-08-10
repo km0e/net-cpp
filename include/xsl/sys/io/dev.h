@@ -28,7 +28,7 @@ public:
     if (_fd == -1) {
       return;
     }
-    WARN("close fd: {}", _fd);
+    DEBUG("close fd: {}", _fd);
     close(_fd);
   }
 

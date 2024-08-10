@@ -23,7 +23,7 @@ TEST(http_router, route) {
   router->add_route(Method::GET, "/hello", 11);
   router->add_route(Method::GET, "/world/", 12);
   router->add_route(Method::GET, "/world/name", 13);
-  ParseUnit parser;
+
   auto ctx = RouteContext{Method::GET, "/hello"};
   auto res5 = router->route(ctx);
   ASSERT_TRUE(res5.has_value());
@@ -38,6 +38,30 @@ TEST(http_router, route) {
   auto res9 = router->route(ctx);
   ASSERT_TRUE(res9.has_value());
   ASSERT_EQ(**res9, 13);
+}
+
+TEST(http_router, route_fallback) {
+  using namespace xsl::http;
+  auto router = make_unique<Router>();
+  router->add_route(Method::GET, "/hello", 11);
+  router->add_route(Method::GET, "/world/", 12);
+  router->add_route(Method::GET, "/world/name", 13);
+  router->add_fallback(Method::GET, "/world/", 14);
+
+  auto ctx = RouteContext{Method::GET, "/world/abc"};
+  auto res7 = router->route(ctx);
+  ASSERT_TRUE(res7.has_value());
+  EXPECT_EQ(**res7, 12);
+
+  ctx = RouteContext{Method::GET, "/world/name"};
+  auto res9 = router->route(ctx);
+  ASSERT_TRUE(res9.has_value());
+  EXPECT_EQ(**res9, 13);
+
+  ctx = RouteContext{Method::GET, "/world/"};
+  auto res11 = router->route(ctx);
+  ASSERT_TRUE(res11.has_value());
+  EXPECT_EQ(**res11, 14);
 }
 
 int main() {

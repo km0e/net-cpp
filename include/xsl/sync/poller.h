@@ -8,6 +8,7 @@
 #  include <sys/socket.h>
 #  include <sys/types.h>
 
+#  include <atomic>
 #  include <functional>
 #  include <memory>
 XSL_SYNC_NB
@@ -79,7 +80,7 @@ public:
   void shutdown();
 
 private:
-  int fd;
+  std::atomic_int fd;
   ShardRes<std::unordered_map<int, std::shared_ptr<PollHandler>>> handlers;
   std::shared_ptr<HandleProxy> proxy;
 };

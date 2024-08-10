@@ -148,7 +148,7 @@ public:
   }
 
   void detach(this auto &&self) {
-    LOG5("task detach");
+    LOG6("task detach");
     coro::detach(std::move(self));
   }
   template <class E>

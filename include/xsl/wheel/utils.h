@@ -5,6 +5,8 @@
 #  include "xsl/wheel/str.h"
 
 #  include <functional>
+#  include <iostream>
+#  include <source_location>
 #  include <string>
 XSL_WHEEL_NB
 namespace detail {
@@ -25,5 +27,19 @@ namespace detail {
  */
 template <typename T>
 using us_map = std::unordered_map<std::string, T, detail::string_hasher, std::equal_to<>>;
+
+void dynamic_assert(bool cond, std::string_view msg,
+                    std::source_location loc = std::source_location::current());
+
+template <typename T>
+void dynamic_assert(bool cond, T msg, std::source_location loc = std::source_location::current()) {
+  if (!cond) {
+    std::println(std::cerr, "file: {}", loc.file_name());
+    std::println(std::cerr, "line: {}", loc.line());
+    std::println(std::cerr, "function: {}", loc.function_name());
+    std::println(std::cerr, "Assertion failed: {}", msg);
+    std::terminate();
+  }
+}
 XSL_WHEEL_NE
 #endif

@@ -15,6 +15,7 @@
 #  include <cstddef>
 #  include <filesystem>
 #  include <optional>
+#  include <string_view>
 #  include <system_error>
 #  include <tuple>
 XSL_SYS_NET_NB
@@ -25,7 +26,7 @@ coro::Task<ai::Result, Executor> immediate_recv(S &skt, std::span<std::byte> buf
   size_t offset = 0;
   while (true) {
     n = ::recv(skt.raw(), buf.data() + offset, buf.size() - offset, 0);
-    LOG5("recv n: {}", n);
+    LOG5("{} recv {} bytes", skt.raw(), n);
     if (n == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         if (offset != 0) {
@@ -47,12 +48,12 @@ coro::Task<ai::Result, Executor> immediate_recv(S &skt, std::span<std::byte> buf
       if (offset == 0) {
         co_return Result(offset, {std::errc::no_message});
       }
-      co_return Result(offset, std::nullopt);
+      break;
     }
-    LOG6("recv {} bytes", n);
     offset += n;
   };
   LOG5("end recv string");
+  LOG6("recv string:\n{}", std::string_view{reinterpret_cast<const char *>(buf.data()), offset});
   co_return std::make_tuple(offset, std::nullopt);
 }
 
@@ -95,6 +96,7 @@ coro::Task<ai::Result, Executor> immediate_sendfile(S &skt, std::filesystem::pat
     ssize_t n = ::sendfile(skt.raw(), file.raw(), &offset, st.st_size);
     // TODO: handle sendfile error
     if (n == st.st_size) {
+      DEBUG("{} send {} bytes file", skt.raw(), n);
       co_return Result{static_cast<std::size_t>(offset), std::nullopt};
     }
     if (n > 0) {

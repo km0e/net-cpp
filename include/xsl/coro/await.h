@@ -21,7 +21,7 @@ public:
   template <class Promise>
     requires std::is_same_v<executor_type, typename Promise::executor_type>
   bool await_suspend(std::coroutine_handle<Promise> handle) noexcept {
-    LOG5("GetExecutor await_suspend for {}", (uint64_t)handle.address());
+    LOG6("GetExecutor await_suspend for {}", (uint64_t)handle.address());
     _executor = handle.promise().executor();
     return false;
   }

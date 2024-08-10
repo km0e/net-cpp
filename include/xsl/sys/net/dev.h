@@ -215,21 +215,23 @@ namespace impl_dev {
   };
 
   static_assert(
-      std::is_same_v<AsyncDevice<feature::In<SocketTraits<feature::Tcp>>, feature::placeholder,
-                                 feature::placeholder>,
-                     AsyncDeviceCompose<feature::In<SocketTraits<feature::Tcp>>>>,
+      std::is_same_v<AsyncDevice<feature::In<SocketTraits<feature::Tcp<feature::Ip<4>>>>,
+                                 feature::placeholder, feature::placeholder>,
+                     AsyncDeviceCompose<feature::In<SocketTraits<feature::Tcp<feature::Ip<4>>>>>>,
       "AsyncDevice<feature::In, feature::placeholder> is not AsyncDeviceCompose<feature::In>");
 
   static_assert(
-      std::is_same_v<
-          AsyncDevice<feature::In<SocketTraits<feature::Tcp>>, feature::Dyn, feature::placeholder>,
-          AsyncDeviceCompose<feature::In<SocketTraits<feature::Tcp>>, feature::Dyn>>,
+      std::is_same_v<AsyncDevice<feature::In<SocketTraits<feature::Tcp<feature::Ip<4>>>>,
+                                 feature::Dyn, feature::placeholder>,
+                     AsyncDeviceCompose<feature::In<SocketTraits<feature::Tcp<feature::Ip<4>>>>,
+                                        feature::Dyn>>,
       "AsyncDevice<feature::In, feature::placeholder, feature::Dyn> is not "
       "AsyncDeviceCompose<feature::In, feature::Dyn>");
 
   static_assert(
       std::is_base_of_v<ai::AsyncDevice<feature::In<std::byte>>,
-                        AsyncDeviceCompose<feature::In<SocketTraits<feature::Tcp>>, feature::Dyn>>,
+                        AsyncDeviceCompose<feature::In<SocketTraits<feature::Tcp<feature::Ip<4>>>>,
+                                           feature::Dyn>>,
       "AsyncDeviceCompose<feature::In, feature::Dyn> is not derived from "
       "ai::Device<feature::In>");
 
@@ -306,21 +308,23 @@ namespace impl_dev {
   };
 
   static_assert(
-      std::is_same_v<AsyncDevice<feature::Out<SocketTraits<feature::Tcp>>, feature::placeholder,
-                                 feature::placeholder>,
-                     AsyncDeviceCompose<feature::Out<SocketTraits<feature::Tcp>>>>,
+      std::is_same_v<AsyncDevice<feature::Out<SocketTraits<feature::Tcp<feature::Ip<4>>>>,
+                                 feature::placeholder, feature::placeholder>,
+                     AsyncDeviceCompose<feature::Out<SocketTraits<feature::Tcp<feature::Ip<4>>>>>>,
       "AsyncDevice<feature::placeholder, feature::Out> is not AsyncDeviceCompose<feature::Out>");
 
   static_assert(
-      std::is_same_v<
-          AsyncDevice<feature::Out<SocketTraits<feature::Tcp>>, feature::Dyn, feature::placeholder>,
-          AsyncDeviceCompose<feature::Out<SocketTraits<feature::Tcp>>, feature::Dyn>>,
+      std::is_same_v<AsyncDevice<feature::Out<SocketTraits<feature::Tcp<feature::Ip<4>>>>,
+                                 feature::Dyn, feature::placeholder>,
+                     AsyncDeviceCompose<feature::Out<SocketTraits<feature::Tcp<feature::Ip<4>>>>,
+                                        feature::Dyn>>,
       "AsyncDevice<feature::placeholder, feature::Out, feature::Dyn> is not "
       "AsyncDeviceCompose<feature::Out, feature::Dyn>");
 
   static_assert(
       std::is_base_of_v<ai::AsyncDevice<feature::Out<std::byte>>,
-                        AsyncDeviceCompose<feature::Out<SocketTraits<feature::Tcp>>, feature::Dyn>>,
+                        AsyncDeviceCompose<feature::Out<SocketTraits<feature::Tcp<feature::Ip<4>>>>,
+                                           feature::Dyn>>,
       "AsyncDeviceCompose<feature::Out, feature::Dyn> is not derived from "
       "ai::Device<feature::Out>");
   template <class Traits, class T, class U>
@@ -395,22 +399,25 @@ namespace impl_dev {
     DeviceCompose<feature::InOut<traits_type>> _dev;
   };
 
-  static_assert(std::is_same_v<AsyncDevice<feature::InOut<SocketTraits<feature::Tcp>>,
-                                           feature::placeholder, feature::placeholder>,
-                               AsyncDeviceCompose<feature::InOut<SocketTraits<feature::Tcp>>>>,
+  static_assert(std::is_same_v<
+                    AsyncDevice<feature::InOut<SocketTraits<feature::Tcp<feature::Ip<4>>>>,
+                                feature::placeholder, feature::placeholder>,
+                    AsyncDeviceCompose<feature::InOut<SocketTraits<feature::Tcp<feature::Ip<4>>>>>>,
                 "AsyncDevice<feature::In, feature::Out> is not AsyncDeviceCompose<feature::In, "
                 "feature::Out>");
 
   static_assert(
-      std::is_same_v<AsyncDevice<feature::InOut<SocketTraits<feature::Tcp>>, feature::Dyn,
-                                 feature::placeholder>,
-                     AsyncDeviceCompose<feature::InOut<SocketTraits<feature::Tcp>>, feature::Dyn>>,
+      std::is_same_v<AsyncDevice<feature::InOut<SocketTraits<feature::Tcp<feature::Ip<4>>>>,
+                                 feature::Dyn, feature::placeholder>,
+                     AsyncDeviceCompose<feature::InOut<SocketTraits<feature::Tcp<feature::Ip<4>>>>,
+                                        feature::Dyn>>,
       "AsyncDevice<feature::In, feature::Out, feature::Dyn> is not "
       "AsyncDeviceCompose<feature::In, feature::Out, feature::Dyn>");
 
   static_assert(std::is_base_of_v<
                     ai::AsyncDevice<feature::InOut<std::byte>>,
-                    AsyncDeviceCompose<feature::InOut<SocketTraits<feature::Tcp>>, feature::Dyn>>,
+                    AsyncDeviceCompose<feature::InOut<SocketTraits<feature::Tcp<feature::Ip<4>>>>,
+                                       feature::Dyn>>,
                 "AsyncDeviceCompose<feature::In, feature::Out, feature::Dyn> is not derived from "
                 "ai::Device<>");
 

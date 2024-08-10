@@ -16,11 +16,13 @@ namespace feature {
 
   struct node {};
   // using for tcp component
+  template <class LowerLayer = placeholder>
   struct Tcp {};
   // using for resolver
+  template <class LowerLayer = placeholder>
   struct Udp {};
   // using for resolver
-  template <uint8_t version>
+  template <uint8_t version = 4>
   struct Ip {};
   struct Exact {};
   struct Raw {};

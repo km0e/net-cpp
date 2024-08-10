@@ -1,5 +1,7 @@
 #pragma once
 
+#include <expected>
+#include <utility>
 #ifndef XSL_NET_HTTP_SERVER
 #  define XSL_NET_HTTP_SERVER
 #  include "xsl/coro/await.h"
@@ -12,6 +14,7 @@
 #  include "xsl/net/http/parse.h"
 #  include "xsl/net/http/proto.h"
 #  include "xsl/net/http/router.h"
+#  include "xsl/net/tcp.h"
 #  include "xsl/sync.h"
 
 #  include <memory>
@@ -20,22 +23,47 @@
 
 HTTP_NB
 
-template <class LowerLayer>
+template <class LowerLayer, RouterLike<std::size_t> R = Router>
 class Server {
 public:
-  using server_type = LowerLayer;
+  template <class... Flags>
+  struct _CreateFeature;
+
+  template <class _LowerLayer>
+  struct _CreateFeature<feature::Tcp<_LowerLayer>> {
+    using type = _net::TcpServer<_LowerLayer>;
+  };
+
+  template <class _LowerLayer>
+  struct _CreateFeature<_LowerLayer> {
+    static_assert(false, "unsupported feature");
+  };
+
+  static std::expected<Server, std::error_condition> create(
+      const char* host, const char* port, const std::shared_ptr<sync::Poller>& poller) {
+    auto res = _CreateFeature<LowerLayer>::type::create(host, port, poller);
+    if (!res) {
+      return std::unexpected{res.error()};
+    }
+    return std::move(*res);
+  }
+
+  using server_type = _CreateFeature<LowerLayer>::type;
   using io_dev_type = typename server_type::io_dev_type;
   using in_dev_type = io_dev_type::template rebind_type<feature::In>;
   using out_dev_type = io_dev_type::template rebind_type<feature::Out>;
   using context_type = HandleContext<in_dev_type, out_dev_type>;
   using handler_type = RouteHandler<in_dev_type, out_dev_type>;
-  using router_type = Router;
+  using router_type = R;
 
-  Server(server_type server, std::shared_ptr<router_type> router)
+  Server(server_type&& server) : Server(std::move(server), std::make_shared<router_type>()) {}
+  Server(server_type&& server, std::shared_ptr<router_type> router)
       : server(std::move(server)),
         router(std::move(router)),
         tag(0),
         handlers(std::make_shared<ShardRes<std::unordered_map<std::size_t, handler_type>>>()) {}
+  Server(Server&&) = default;
+  Server& operator=(Server&&) = default;
   ~Server() {}
   void add_static(std::string_view path) {
     this->add_route(Method::GET, path, create_static_handler<in_dev_type, out_dev_type>(path));

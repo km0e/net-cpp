@@ -6,8 +6,6 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <type_traits>
-#include <utility>
 
 std::string ip = "127.0.0.1";
 std::string port = "8080";
@@ -18,13 +16,13 @@ using namespace xsl::coro;
 using namespace xsl;
 
 Task<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
-  auto tcp_server = tcp::Server<Ip<4>>::create(poller, ip.data(), port.data());
-  if (!tcp_server) {
+  using HttpServer = http::Server<Tcp<Ip<4>>>;
+  auto server = HttpServer::create(ip.data(), port.data(), poller);
+  if (!server) {
     co_return;
   }
-  using HttpServer = http::Server<std::remove_reference_t<decltype(*tcp_server)>>;
-  auto http_router = std::make_shared<HttpServer::router_type>();
-  auto get_handler = [](auto& hc) -> http::HandleResult {
+  using context_type = typename HttpServer::context_type;
+  auto get_handler = [](context_type& hc) -> http::HandleResult {
     LOG4("{} {}", hc.request.view.method, hc.request.view.path);
     for (auto& [k, v] : hc.request.view.headers) {
       LOG4("{}: {}", k, v);
@@ -32,9 +30,8 @@ Task<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::
     hc.easy_resp(http::Status::OK);
     co_return;
   };
-  auto http_server = HttpServer(std::move(*tcp_server), http_router);
-  http_server.add_route(http::Method::GET, "/", get_handler);
-  co_await http_server.run();
+  server->add_route(http::Method::GET, "/", get_handler);
+  co_await server->run();
 }
 
 int main(int argc, char* argv[]) {

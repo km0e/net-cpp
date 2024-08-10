@@ -32,7 +32,7 @@ template <class LowerLayer>
 std::expected<sys::net::TcpSocket<LowerLayer>, std::error_condition> tcp_serv(const char *host,
                                                                               const char *port) {
   auto addr
-      = xsl::net::Resolver{}.resolve<feature::Tcp, LowerLayer>(host, port, xsl::net::SERVER_FLAGS);
+      = xsl::net::Resolver{}.resolve<feature::Tcp<LowerLayer>>(host, port, xsl::net::SERVER_FLAGS);
   if (!addr) {
     return std::unexpected(addr.error());
   }
@@ -59,8 +59,8 @@ public:
   using out_dev_type = io_dev_type::template rebind_type<feature::Out>;
 
   static std::expected<TcpServer, std::error_condition> create(
-      const std::shared_ptr<Poller> &poller, const char *host, const char *port) {
-    LOG4("Start listening on {}:{}", host, port);
+      const char *host, const char *port, const std::shared_ptr<Poller> &poller) {
+    LOG5("Start listening on {}:{}", host, port);
     auto copy_poller = poller;
     auto skt = tcp_serv<lower_layer_type>(host, port);
     if (!skt) {
@@ -72,17 +72,7 @@ public:
     }
     return TcpServer{std::move(copy_poller), std::move(*ac)};
   }
-  template <class... Flags>
-  static std::expected<TcpServer, std::error_condition> create(std::shared_ptr<Poller> &&poller,
-                                                               const char *host, const char *port) {
-    return tcp_serv<Flags...>(host, port)
-        .and_then([&poller](auto &&skt) {
-          return transport::Acceptor<lower_layer_type>::create(*poller, std::move(skt));
-        })
-        .transform([poller = std::move(poller)](auto &&ac) {
-          return TcpServer{std::move(poller), std::move(ac)};
-        });
-  }
+
   template <class P, class... Args>
   TcpServer(P &&poller, Args &&...args)
       : poller(std::forward<P>(poller)), _ac(std::forward<Args>(args)...) {}

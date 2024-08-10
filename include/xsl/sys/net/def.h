@@ -29,28 +29,26 @@ namespace impl_socket {
   };
 
   template <>
-  struct SocketTraits<xsl::feature::Tcp, xsl::feature::Ip<4>>
+  struct SocketTraits<feature::Tcp<feature::Ip<4>>>
       : FamilyTraits<AF_INET>, TypeTraits<SOCK_STREAM>, ProtocolTraits<IPPROTO_TCP> {
-    using poll_traits = xsl::sync::PollTraits;
+    using poll_traits = sync::PollTraits;
   };
 
   template <>
-  struct SocketTraits<xsl::feature::Tcp, xsl::feature::Ip<6>>
+  struct SocketTraits<feature::Tcp<feature::Ip<6>>>
       : FamilyTraits<AF_INET6>, TypeTraits<SOCK_STREAM>, ProtocolTraits<IPPROTO_TCP> {
-    using poll_traits = xsl::sync::PollTraits;
+    using poll_traits = sync::PollTraits;
   };
 
   template <>
-  struct SocketTraits<xsl::feature::Tcp, xsl::feature::placeholder>
+  struct SocketTraits<feature::Tcp<feature::placeholder>>
       : FamilyTraits<AF_UNSPEC>, TypeTraits<SOCK_STREAM>, ProtocolTraits<IPPROTO_TCP> {
-    using poll_traits = xsl::sync::PollTraits;
+    using poll_traits = sync::PollTraits;
   };
 
   template <class... Flags>
-  using SocketTraitsCompose = xsl::feature::organize_feature_flags_t<
-      SocketTraits<xsl::feature::set<xsl::feature::Tcp>,
-                   xsl::feature::set<xsl::feature::Ip<4>, xsl::feature::Ip<6>>>,
-      Flags...>;
+  using SocketTraitsCompose = feature::organize_feature_flags_t<
+      SocketTraits<feature::Item<wheel::type_traits::is_same_pack, feature::Tcp<void>>>, Flags...>;
 
 }  // namespace impl_socket
 

@@ -15,7 +15,7 @@ uint16_t port = 12348;
 TEST(bind, create) {
   using namespace xsl::net;
   using namespace xsl::feature;
-  auto res = Resolver{}.resolve<Ip<4>, Tcp>(port);
+  auto res = Resolver{}.resolve<Tcp<Ip<4>>>(port);
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());
   auto skt = xsl::sys::tcp::bind(ai);

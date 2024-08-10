@@ -79,17 +79,17 @@ template <class Traits>
 using Socket = sys::net::Device<feature::InOut<Traits>>;
 
 template <class LowerLayer>
-using TcpSocket = Socket<SocketTraits<feature::Tcp, LowerLayer>>;
+using TcpSocket = Socket<SocketTraits<feature::Tcp<LowerLayer>>>;
 
 template <class Traits>
 using AsyncSocket = sys::net::AsyncDevice<feature::InOut<Traits>>;
 
 template <class LowerLayer>
-using AsyncTcpSocket = AsyncSocket<SocketTraits<feature::Tcp, LowerLayer>>;
+using AsyncTcpSocket = AsyncSocket<SocketTraits<feature::Tcp<LowerLayer>>>;
 
 template <class LowerLayer>
 using DynAsyncTcpSocket
-    = sys::net::AsyncDevice<feature::InOut<SocketTraits<feature::Tcp, LowerLayer>>, feature::Dyn>;
+    = sys::net::AsyncDevice<feature::InOut<SocketTraits<feature::Tcp<LowerLayer>>>, feature::Dyn>;
 
 namespace impl_socket {
   template <class S>

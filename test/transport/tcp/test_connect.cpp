@@ -19,7 +19,7 @@ std::string port = "12347";
 TEST(connect, connect) {
   using namespace xsl::net;
   using namespace xsl::feature;
-  auto res = Resolver{}.resolve<Ip<4>, Tcp>(host.c_str(), port.c_str());
+  auto res = Resolver{}.resolve<Tcp<Ip<4>>>(host.c_str(), port.c_str());
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());
   auto poller = std::make_shared<Poller>();

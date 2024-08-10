@@ -12,7 +12,7 @@
 
 #  include <expected>
 #  include <memory>
-NET_NB
+XSL_NET_NB
 template <class... Flags>
 coro::Task<
     std::expected<sys::net::AsyncSocket<sys::net::SocketTraits<Flags...>>, std::error_condition>>
@@ -91,5 +91,5 @@ public:
 private:
   transport::Acceptor<lower_layer_type> _ac;
 };
-NET_NE
+XSL_NET_NE
 #endif

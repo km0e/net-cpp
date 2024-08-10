@@ -1,11 +1,11 @@
 #pragma once
 #ifndef XSL_SYS_NET_IO
 #  define XSL_SYS_NET_IO
+#  include "xsl/ai/dev.h"
 #  include "xsl/coro/task.h"
 #  include "xsl/feature.h"
 #  include "xsl/sys/io/dev.h"
 #  include "xsl/sys/net/def.h"
-#  include "xsl/sys/net/dev.h"
 
 #  include <fcntl.h>
 #  include <sys/sendfile.h>
@@ -17,15 +17,14 @@
 #  include <optional>
 #  include <system_error>
 #  include <tuple>
-SYS_NET_NB
-template <class Executor = coro::ExecutorBase, class... T>
-coro::Task<ai::Result, Executor> immediate_recv(AsyncDevice<feature::In<std::byte>, T...> &dev,
-                                                std::span<std::byte> buf) {
+XSL_SYS_NET_NB
+template <class Executor = coro::ExecutorBase, AsyncSocketLike<feature::In> S>
+coro::Task<ai::Result, Executor> immediate_recv(S &skt, std::span<std::byte> buf) {
   using Result = ai::Result;
   ssize_t n;
   size_t offset = 0;
   while (true) {
-    n = ::recv(dev.raw(), buf.data() + offset, buf.size() - offset, 0);
+    n = ::recv(skt.raw(), buf.data() + offset, buf.size() - offset, 0);
     LOG5("recv n: {}", n);
     if (n == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -34,7 +33,7 @@ coro::Task<ai::Result, Executor> immediate_recv(AsyncDevice<feature::In<std::byt
           break;
         }
         LOG5("no data");
-        if (!co_await dev.sem()) {
+        if (!co_await skt.sem()) {
           co_return Result(offset, {std::errc::not_connected});
         }
         continue;
@@ -57,12 +56,11 @@ coro::Task<ai::Result, Executor> immediate_recv(AsyncDevice<feature::In<std::byt
   co_return std::make_tuple(offset, std::nullopt);
 }
 
-template <class Executor = coro::ExecutorBase, class... T>
-coro::Task<ai::Result, Executor> immediate_send(AsyncDevice<feature::Out<std::byte>, T...> &dev,
-                                                std::span<const std::byte> data) {
+template <class Executor = coro::ExecutorBase, AsyncSocketLike<feature::Out> S>
+coro::Task<ai::Result, Executor> immediate_send(S &skt, std::span<const std::byte> data) {
   using Result = ai::Result;
   while (true) {
-    ssize_t n = ::send(dev.raw(), data.data(), data.size(), 0);
+    ssize_t n = ::send(skt.raw(), data.data(), data.size(), 0);
     if (static_cast<size_t>(n) == data.size()) {
       co_return {n, std::nullopt};
     }
@@ -73,14 +71,13 @@ coro::Task<ai::Result, Executor> immediate_send(AsyncDevice<feature::Out<std::by
     if (n == -1 && !(errno == EAGAIN || errno == EWOULDBLOCK)) {
       co_return Result{0, {std::errc(errno)}};
     }
-    if (!co_await dev.sem()) {
+    if (!co_await skt.sem()) {
       co_return Result{0, {std::errc::not_connected}};
     }
   }
 }
-template <class Executor = coro::ExecutorBase, class... T>
-coro::Task<ai::Result, Executor> immediate_sendfile(AsyncDevice<feature::Out<std::byte>, T...> &dev,
-                                                    std::filesystem::path path) {
+template <class Executor = coro::ExecutorBase, AsyncSocketLike<feature::Out> S>
+coro::Task<ai::Result, Executor> immediate_sendfile(S &skt, std::filesystem::path path) {
   using Result = ai::Result;
   int ffd = open(path.c_str(), O_RDONLY);
   if (ffd == -1) {
@@ -95,7 +92,7 @@ coro::Task<ai::Result, Executor> immediate_sendfile(AsyncDevice<feature::Out<std
   }
   off_t offset = 0;
   while (true) {
-    ssize_t n = ::sendfile(dev.raw(), file.raw(), &offset, st.st_size);
+    ssize_t n = ::sendfile(skt.raw(), file.raw(), &offset, st.st_size);
     // TODO: handle sendfile error
     if (n == st.st_size) {
       co_return Result{static_cast<std::size_t>(offset), std::nullopt};
@@ -109,10 +106,10 @@ coro::Task<ai::Result, Executor> immediate_sendfile(AsyncDevice<feature::Out<std
       co_return Result{static_cast<std::size_t>(offset), {std::errc(errno)}};
     }
 
-    if (!co_await dev.sem()) {
+    if (!co_await skt.sem()) {
       co_return Result{static_cast<std::size_t>(offset), {std::errc::not_connected}};
     }
   }
 }
-SYS_NET_NE
+XSL_SYS_NET_NE
 #endif

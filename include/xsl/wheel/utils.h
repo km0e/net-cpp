@@ -6,7 +6,7 @@
 
 #  include <functional>
 #  include <string>
-WHEEL_NB
+XSL_WHEEL_NB
 namespace detail {
 
   class string_hasher : public std::hash<std::string>, public std::hash<std::string_view> {
@@ -18,7 +18,12 @@ namespace detail {
     auto operator()(const FixedString& str) const { return this->operator()(str.to_string_view()); }
   };
 }  // namespace detail
+/**
+@brief A hash map with string key
+
+@tparam T
+ */
 template <typename T>
-using sumap = std::unordered_map<std::string, T, detail::string_hasher, std::equal_to<>>;
-WHEEL_NE
+using us_map = std::unordered_map<std::string, T, detail::string_hasher, std::equal_to<>>;
+XSL_WHEEL_NE
 #endif

@@ -5,13 +5,13 @@
 #  include "xsl/sys/net/socket.h"
 
 #  include <expected>
-SYS_NET_NB
+XSL_SYS_NET_NB
 
 template <class Traits>
 using AcceptResult = std::expected<Socket<Traits>, std::errc>;
 
 template <SocketLike S>
-std::expected<Socket<typename S::traits_type>, std::errc> accept(S &socket, SockAddr *addr) {
+std::expected<S, std::errc> accept(S &socket, SockAddr *addr) {
   auto [sockaddr, addrlen] = addr->raw();
   int tmp_fd = ::accept4(socket.raw(), sockaddr, addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
   if (tmp_fd < 0) {
@@ -24,7 +24,7 @@ std::expected<Socket<typename S::traits_type>, std::errc> accept(S &socket, Sock
   //     != 0) {
   //   return std::unexpected{std::errc(errno)};
   // }
-  return Socket<typename S::traits_type>(tmp_fd);
+  return S(tmp_fd);
 }
-SYS_NET_NE
+XSL_SYS_NET_NE
 #endif

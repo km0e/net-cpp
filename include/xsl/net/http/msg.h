@@ -8,6 +8,7 @@
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/proto.h"
 #  include "xsl/net/io/buffer.h"
+#  include "xsl/wheel.h"
 
 #  include <concepts>
 #  include <cstddef>
@@ -16,7 +17,7 @@
 #  include <string_view>
 #  include <tuple>
 #  include <utility>
-HTTP_NB
+XSL_HTTP_NB
 
 class ResponseError {
 public:
@@ -42,7 +43,7 @@ public:
   Status status_code;
   std::string_view status_message;
   Version version;
-  std::unordered_map<std::string, std::string> headers;
+  us_map<std::string> headers;
   std::string to_string();
 };
 
@@ -120,6 +121,7 @@ template <ai::AsyncReadDeviceLike<std::byte> ByteReader,
           ai::AsyncWriteDeviceLike<std::byte> ByteWriter>
 class HandleContext {
 public:
+  using response_body_type = coro::Task<ai::Result>(ByteWriter&);
   HandleContext(std::string_view current_path, Request<ByteReader>&& request)
       : current_path(current_path), request(std::move(request)), _response(std::nullopt) {}
   HandleContext(HandleContext&&) = default;
@@ -213,5 +215,5 @@ const RouteHandler<ByteReader, ByteWriter> NOT_IMPLEMENTED_HANDLER
   co_return;
 };
 
-HTTP_NE
+XSL_HTTP_NE
 #endif

@@ -9,7 +9,7 @@
 #  include <iterator>
 #  include <utility>
 
-SYS_NET_NB
+XSL_SYS_NET_NB
 template <class Traits>
 class Endpoint {
 public:
@@ -79,5 +79,5 @@ public:
 
   addrinfo *info;
 };
-SYS_NET_NE
+XSL_SYS_NET_NE
 #endif

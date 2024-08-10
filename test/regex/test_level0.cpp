@@ -28,22 +28,22 @@ TEST(regex, authority) {
 TEST(regex, absoulte_uri) {
   std::string_view uri = "http://www.ics.uci.edu/pub/ietf/uri/?a=1";
   std::cmatch m;
-  ASSERT_TRUE(std::regex_match(uri.begin(), uri.end(), absoulte_uri_re));
-  ASSERT_TRUE(std::regex_search(uri.begin(), uri.end(), m, absoulte_uri_re));
+  ASSERT_TRUE(std::regex_match(uri.begin(), uri.end(), absolute_uri_re));
+  ASSERT_TRUE(std::regex_search(uri.begin(), uri.end(), m, absolute_uri_re));
   ASSERT_EQ(m[1].str(), "http");
   ASSERT_EQ(m[2].str(), "www.ics.uci.edu");
   ASSERT_EQ(m[3].str(), "/pub/ietf/uri/");
   ASSERT_EQ(m[4].str(), "a=1");
   std::string_view uri2 = "http://www.ics.uci.edu/pub/ietf/uri/";
-  ASSERT_TRUE(std::regex_match(uri2.begin(), uri2.end(), absoulte_uri_re));
-  ASSERT_TRUE(std::regex_search(uri2.begin(), uri2.end(), m, absoulte_uri_re));
+  ASSERT_TRUE(std::regex_match(uri2.begin(), uri2.end(), absolute_uri_re));
+  ASSERT_TRUE(std::regex_search(uri2.begin(), uri2.end(), m, absolute_uri_re));
   ASSERT_EQ(m[1].str(), "http");
   ASSERT_EQ(m[2].str(), "www.ics.uci.edu");
   ASSERT_EQ(m[3].str(), "/pub/ietf/uri/");
   ASSERT_EQ(m[4].str(), "");
   std::string_view uri3 = "http://www.ics.uci.edu/pub/ietf/uri";
-  ASSERT_TRUE(std::regex_match(uri3.begin(), uri3.end(), absoulte_uri_re));
-  ASSERT_TRUE(std::regex_search(uri3.begin(), uri3.end(), m, absoulte_uri_re));
+  ASSERT_TRUE(std::regex_match(uri3.begin(), uri3.end(), absolute_uri_re));
+  ASSERT_TRUE(std::regex_search(uri3.begin(), uri3.end(), m, absolute_uri_re));
   ASSERT_EQ(m[1].str(), "http");
   ASSERT_EQ(m[2].str(), "www.ics.uci.edu");
   ASSERT_EQ(m[3].str(), "/pub/ietf/uri");

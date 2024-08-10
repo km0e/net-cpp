@@ -10,7 +10,7 @@
 #  include <cstdint>
 #  include <expected>
 #  include <string>
-SYS_NET_NB
+XSL_SYS_NET_NB
 
 namespace impl {
   class IpBase {
@@ -40,41 +40,6 @@ private:
   socklen_t _len;
 };
 
-// namespace impl {
-//   class IpAddrBase {
-//   public:
-//     IpAddrBase() = default;
-//     IpAddrBase(IpAddrBase &&) = default;
-//     IpAddrBase &operator=(IpAddrBase &&) = default;
-//     IpAddrBase(const IpAddrBase &) = default;
-//     IpAddrBase &operator=(const IpAddrBase &) = default;
-//     IpAddrBase(const char *ip, const char *port) : ip(ip), port(port) {}
-//     IpAddrBase(std::string_view ip, std::string_view port) : ip(ip), port(port) {}
-//     IpAddrBase(std::string_view sa4) : ip(), port() {
-//       size_t pos = sa4.find(':');
-//       if (pos == std::string_view::npos) {
-//         ip = sa4;
-//         port = "";
-//       } else {
-//         ip = sa4.substr(0, pos);
-//         port = sa4.substr(pos + 1);
-//       }
-//     }
-//     bool operator==(const IpAddrBase &rhs) const { return ip == rhs.ip && port == rhs.port; }
-//     std::string to_string() const { return ip + ":" + port; }
-//     std::string ip;
-//     std::string port;
-//   };
-//   template <uint8_t version>
-//   class IpAddr : public IpAddrBase {};
-// }  // namespace impl
-
-// using IpAddr = impl::IpAddrBase;
-// // ipv4
-// using IpV4Addr = impl::IpAddr<4>;
-// // ipv6
-// using IpV6Addr = impl::IpAddr<6>;
-
 template <class Traits>
 using Socket = sys::net::Device<feature::InOut<Traits>>;
 
@@ -91,20 +56,5 @@ template <class LowerLayer>
 using DynAsyncTcpSocket
     = sys::net::AsyncDevice<feature::InOut<SocketTraits<feature::Tcp<LowerLayer>>>, feature::Dyn>;
 
-namespace impl_socket {
-  template <class S>
-  struct SocketLike : std::false_type {};
-  template <class... TraitFlags, class... FeatureFlags>
-  struct SocketLike<
-      sys::net::impl_dev::Device<feature::InOut<SocketTraits<TraitFlags...>>, FeatureFlags...>>
-      : std::true_type {
-    using traits_type = SocketTraits<TraitFlags...>;
-  };
-
-}  // namespace impl_socket
-
-template <class S>
-concept SocketLike = impl_socket::SocketLike<S>::value;
-
-SYS_NET_NE
+XSL_SYS_NET_NE
 #endif

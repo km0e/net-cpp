@@ -12,7 +12,7 @@
 #  include <expected>
 #  include <string_view>
 
-HTTP_NB
+XSL_HTTP_NB
 
 class RouteContext {
 public:
@@ -121,7 +121,7 @@ namespace router_details {
 
   private:
     std::array<std::size_t, HTTP_METHOD_COUNT> handlers;
-    ShardRes<sumap<HttpRouteNode>> children;
+    ShardRes<us_map<HttpRouteNode>> children;
 
     bool add(Method method, tag_type&& tag) {
       if (handlers[static_cast<uint8_t>(method)]) {
@@ -166,5 +166,5 @@ private:
 
 static_assert(RouterLike<Router, std::size_t>, "Router is not a Router");
 
-HTTP_NE
+XSL_HTTP_NE
 #endif

@@ -7,7 +7,7 @@
 #  include <cstddef>
 #  include <type_traits>
 #  include <utility>
-WHEEL_NB
+XSL_WHEEL_NB
 namespace type_traits {
   // Template unit
   template <class T>
@@ -185,5 +185,5 @@ namespace type_traits {
   using inner_t = typename impl_inner::inner<T>::type;
 }  // namespace type_traits
 
-WHEEL_NE
+XSL_WHEEL_NE
 #endif

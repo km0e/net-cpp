@@ -7,7 +7,7 @@
 
 #  include <expected>
 #  include <system_error>
-SYS_NB
+XSL_SYS_NB
 
 template <bool is_blocking>
 std::expected<void, std::errc> set_blocking(int fd) {
@@ -28,5 +28,5 @@ std::expected<void, std::errc> set_blocking(int fd) {
 }
 std::expected<void, std::errc> set_blocking(int fd, bool blocking);
 
-SYS_NE
+XSL_SYS_NE
 #endif

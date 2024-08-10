@@ -3,7 +3,7 @@
 #  define XSL_NET_HTTP_HELPER
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/component/static.h"
-HTTP_NB
+XSL_HTTP_NB
 using component::create_static_handler;
-HTTP_NE
+XSL_HTTP_NE
 #endif  // XSL_NET_HTTP_HELPER

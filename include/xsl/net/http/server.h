@@ -1,7 +1,4 @@
 #pragma once
-
-#include <expected>
-#include <utility>
 #ifndef XSL_NET_HTTP_SERVER
 #  define XSL_NET_HTTP_SERVER
 #  include "xsl/coro/await.h"
@@ -17,11 +14,13 @@
 #  include "xsl/net/tcp.h"
 #  include "xsl/sync.h"
 
+#  include <expected>
 #  include <memory>
 #  include <string_view>
 #  include <unordered_map>
+#  include <utility>
 
-HTTP_NB
+XSL_HTTP_NB
 
 template <class LowerLayer, RouterLike<std::size_t> R = Router>
 class Server {
@@ -152,5 +151,5 @@ private:
     }
   }
 };
-HTTP_NE
+XSL_HTTP_NE
 #endif

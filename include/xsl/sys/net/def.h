@@ -1,14 +1,17 @@
 #pragma once
 #ifndef XSL_SYS_NET_DEF
 #  define XSL_SYS_NET_DEF
-#  define SYS_NET_NB namespace xsl::sys::net {
-#  define SYS_NET_NE }
+#  define XSL_SYS_NET_NB namespace xsl::sys::net {
+#  define XSL_SYS_NET_NE }
+#  include "xsl/coro/semaphore.h"
 #  include "xsl/feature.h"
 #  include "xsl/sync.h"
 
 #  include <netinet/in.h>
 #  include <sys/socket.h>
-SYS_NET_NB
+
+#  include <concepts>
+XSL_SYS_NET_NB
 namespace impl_socket {
   template <class... Flags>
   struct SocketTraits;
@@ -54,5 +57,15 @@ namespace impl_socket {
 
 template <class... Flags>
 using SocketTraits = impl_socket::SocketTraitsCompose<Flags...>;
-SYS_NET_NE
+
+template <class S, template <class> class IO = feature::InOut>
+concept SocketLike
+    = wheel::type_traits::is_same_pack_v<typename S::socket_traits_type, SocketTraits<void>>
+      && wheel::type_traits::is_same_pack_v<typename S::device_traits_type, IO<void>>;
+
+template <class S, template <class> class IO = feature::InOut>
+concept AsyncSocketLike = SocketLike<S, IO> && requires(S &s) {
+  { s.sem() } -> std::convertible_to<coro::CountingSemaphore<1> &>;
+};
+XSL_SYS_NET_NE
 #endif

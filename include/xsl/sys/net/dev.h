@@ -17,12 +17,13 @@
 #  include "xsl/feature.h"
 #  include "xsl/sys/io/dev.h"
 #  include "xsl/sys/net/def.h"
+#  include "xsl/sys/net/io.h"
 
 #  include <cassert>
 #  include <cstddef>
 #  include <tuple>
 
-SYS_NET_NB
+XSL_SYS_NET_NB
 namespace impl_dev {
   using ai::Result;
 
@@ -52,6 +53,8 @@ namespace impl_dev {
 
   public:
     using Base::Base;
+    using device_traits_type = feature::In<Traits>;
+    using socket_traits_type = Traits;
     /**
     @brief convert to AsyncDevice
 
@@ -76,6 +79,8 @@ namespace impl_dev {
 
   public:
     using Base::Base;
+    using device_traits_type = feature::Out<Traits>;
+    using socket_traits_type = Traits;
     /**
     @brief convert to AsyncDevice
 
@@ -100,7 +105,8 @@ namespace impl_dev {
 
   public:
     using Base::Base;
-    using traits_type = Traits;
+    using device_traits_type = feature::InOut<Traits>;
+    using socket_traits_type = Traits;
 
     std::tuple<DeviceCompose<feature::In<Traits>>, DeviceCompose<feature::Out<Traits>>> split()
         && noexcept {
@@ -138,13 +144,14 @@ namespace impl_dev {
     friend class AsyncDevice;
 
   public:
+    using device_traits_type = feature::In<Traits>;
+    using socket_traits_type = Traits;
     using value_type = std::byte;
-    using traits_type = Traits;
     using sem_type = coro::CountingSemaphore<1>;
 
     template <class Sem, class... Args>
       requires std::constructible_from<std::shared_ptr<sem_type>, Sem>
-                   && std::constructible_from<Device<feature::In<traits_type>>, Args...>
+                   && std::constructible_from<Device<device_traits_type>, Args...>
     AsyncDevice(Sem &&sem, Args &&...args) noexcept
         : _sem(std::forward<Sem>(sem)), _dev(std::forward<Args>(args)...) {}
 
@@ -164,54 +171,23 @@ namespace impl_dev {
 
     template <class Executor = coro::ExecutorBase>
     coro::Task<Result, Executor> read(std::span<value_type> buf) {
-      ssize_t n;
-      size_t offset = 0;
-      while (true) {
-        n = ::recv(this->_dev.raw(), buf.data() + offset, buf.size() - offset, 0);
-        DEBUG("{} recv n: {}", this->_dev.raw(), n);
-        if (n == -1) {
-          if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            if (offset != 0) {
-              WARN("recv over");
-              break;
-            }
-            WARN("no data");
-            if (!co_await *this->_sem) {
-              co_return Result(offset, {std::errc::not_connected});
-            }
-            continue;
-          } else {
-            WARN("Failed to recv data, err : {}", strerror(errno));
-            // TODO: handle recv error
-            co_return Result(offset, {std::errc(errno)});
-          }
-        } else if (n == 0) {
-          WARN("recv eof");
-          if (offset == 0) {
-            co_return Result(offset, {std::errc::no_message});
-          }
-          co_return Result(offset, std::nullopt);
-        }
-        DEBUG("recv {} bytes", n);
-        offset += n;
-      };
-      LOG5("end recv string");
-      co_return std::make_tuple(offset, std::nullopt);
+      return immediate_recv<Executor>(*this, buf);
     }
+
     coro::Task<Result> read(std::span<value_type> buf) { return this->read<>(buf); }
 
-    AsyncDeviceCompose<feature::In<traits_type>, feature::Dyn, U> to_dyn() && noexcept {
+    AsyncDeviceCompose<device_traits_type, feature::Dyn, U> to_dyn() && noexcept {
       return {std::move(*this)};
     }
 
     decltype(auto) to_unique_dyn() && noexcept {
-      return std::make_unique<AsyncDeviceCompose<feature::In<traits_type>, feature::Dyn, U>>(
+      return std::make_unique<AsyncDeviceCompose<device_traits_type, feature::Dyn, U>>(
           std::move(*this));
     }
 
   protected:
     std::shared_ptr<sem_type> _sem;
-    Device<feature::In<traits_type>> _dev;
+    Device<device_traits_type> _dev;
   };
 
   static_assert(
@@ -244,13 +220,14 @@ namespace impl_dev {
     friend class AsyncDevice;
 
   public:
+    using device_traits_type = feature::Out<Traits>;
+    using socket_traits_type = Traits;
     using value_type = std::byte;
-    using traits_type = Traits;
     using sem_type = coro::CountingSemaphore<1>;
 
     template <class Sem, class... Args>
       requires std::constructible_from<std::shared_ptr<sem_type>, Sem>
-                   && std::constructible_from<Device<feature::Out<traits_type>>, Args...>
+                   && std::constructible_from<Device<device_traits_type>, Args...>
     AsyncDevice(Sem &&sem, Args &&...args) noexcept
         : _sem(std::forward<Sem>(sem)), _dev(std::forward<Args>(args)...) {}
 
@@ -270,41 +247,23 @@ namespace impl_dev {
 
     template <class Executor = coro::ExecutorBase>
     coro::Task<Result, Executor> write(std::span<const value_type> buf) {
-      using Result = ai::Result;
-      while (true) {
-        ssize_t n = ::send(this->_dev.raw(), buf.data(), buf.size(), 0);
-        if (static_cast<size_t>(n) == buf.size()) {
-          DEBUG("{} send {} bytes", this->_dev.raw(), n);
-          co_return {n, std::nullopt};
-        }
-        if (n > 0) {
-          DEBUG("{} send {} bytes", this->_dev.raw(), n);
-          buf = buf.subspan(n);
-          continue;
-        }
-        if (n == -1 && !(errno == EAGAIN || errno == EWOULDBLOCK)) {
-          co_return Result{0, {std::errc(errno)}};
-        }
-        if (!co_await *this->_sem) {
-          co_return Result{0, {std::errc::not_connected}};
-        }
-      }
+      return immediate_send<Executor>(*this, buf);
     }
 
     coro::Task<Result> write(std::span<const value_type> buf) { return this->write<>(buf); }
 
-    AsyncDeviceCompose<feature::Out<traits_type>, feature::Dyn, U> to_dyn() && noexcept {
+    AsyncDeviceCompose<device_traits_type, feature::Dyn, U> to_dyn() && noexcept {
       return {std::move(*this)};
     }
 
     decltype(auto) to_unique_dyn() && noexcept {
-      return std::make_unique<AsyncDeviceCompose<feature::Out<traits_type>, feature::Dyn, U>>(
+      return std::make_unique<AsyncDeviceCompose<device_traits_type, feature::Dyn, U>>(
           std::move(*this));
     }
 
   protected:
     std::shared_ptr<sem_type> _sem;
-    Device<feature::Out<traits_type>> _dev;
+    Device<device_traits_type> _dev;
   };
 
   static_assert(
@@ -336,13 +295,14 @@ namespace impl_dev {
     friend class AsyncDevice;
 
   public:
+    using device_traits_type = feature::InOut<Traits>;
+    using socket_traits_type = Traits;
     using value_type = std::byte;
-    using traits_type = Traits;
     using sem_type = coro::CountingSemaphore<1>;
-    using inner_type = DeviceCompose<feature::InOut<traits_type>>;
+    using inner_type = DeviceCompose<device_traits_type>;
 
     template <template <class> class InOut>
-    using rebind_type = AsyncDevice<InOut<traits_type>, T, U>;
+    using rebind_type = AsyncDevice<InOut<socket_traits_type>, T, U>;
 
     template <class ReadSem, class WriteSem, class... Args>
     AsyncDevice(ReadSem &&read_sem, WriteSem &&write_sem, Args &&...args) noexcept
@@ -370,25 +330,29 @@ namespace impl_dev {
 
     sem_type &write_sem() { return *_write_sem; }
 
-    coro::Task<Result> read(std::span<std::byte> buf) { assert(false && "Not implemented"); }
+    coro::Task<Result> read(std::span<std::byte> buf) {
+      return immediate_recv<coro::ExecutorBase>(*this, buf);
+    }
 
-    coro::Task<Result> write(std::span<const std::byte> buf) { assert(false && "Not implemented"); }
+    coro::Task<Result> write(std::span<const std::byte> buf) {
+      return immediate_send<coro::ExecutorBase>(*this, buf);
+    }
 
-    AsyncDeviceCompose<feature::InOut<traits_type>, feature::Dyn, U> to_dyn() && noexcept {
+    AsyncDeviceCompose<device_traits_type, feature::Dyn, U> to_dyn() && noexcept {
       return {std::move(*this)};
     }
 
     decltype(auto) to_unique_dyn() && noexcept {
-      return std::make_unique<AsyncDeviceCompose<feature::InOut<traits_type>, feature::Dyn, U>>(
+      return std::make_unique<AsyncDeviceCompose<device_traits_type, feature::Dyn, U>>(
           std::move(*this));
     }
 
-    std::tuple<AsyncDevice<feature::In<traits_type>, T, U>,
-               AsyncDevice<feature::Out<traits_type>, T, U>>
+    std::tuple<AsyncDevice<feature::In<socket_traits_type>, T, U>,
+               AsyncDevice<feature::Out<socket_traits_type>, T, U>>
     split() && noexcept {
       auto [r, w] = std::move(_dev).split();
-      using In = AsyncDevice<feature::In<traits_type>, T, U>;
-      using Out = AsyncDevice<feature::Out<traits_type>, T, U>;
+      using In = AsyncDevice<feature::In<socket_traits_type>, T, U>;
+      using Out = AsyncDevice<feature::Out<socket_traits_type>, T, U>;
       auto _in = In{std::move(_read_sem), std::move(r)};
       auto _out = Out{std::move(_write_sem), std::move(w)};
       return {std::move(_in), std::move(_out)};
@@ -396,7 +360,7 @@ namespace impl_dev {
 
   protected:
     std::shared_ptr<sem_type> _read_sem, _write_sem;
-    DeviceCompose<feature::InOut<traits_type>> _dev;
+    DeviceCompose<device_traits_type> _dev;
   };
 
   static_assert(std::is_same_v<
@@ -429,5 +393,5 @@ using Device = impl_dev::DeviceCompose<Flags...>;
 template <class... Flags>
 using AsyncDevice = impl_dev::AsyncDeviceCompose<Flags...>;
 
-SYS_NET_NE
+XSL_SYS_NET_NE
 #endif

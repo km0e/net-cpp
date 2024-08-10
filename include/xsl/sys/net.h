@@ -4,8 +4,8 @@
 
 #  include "xsl/sys/def.h"
 #  include "xsl/sys/net/socket.h"
-SYS_NB
+XSL_SYS_NB
 using net::IpAddr;
 using net::Socket;
-SYS_NE
+XSL_SYS_NE
 #endif

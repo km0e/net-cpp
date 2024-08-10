@@ -11,7 +11,7 @@
 #  include <string>
 #  include <string_view>
 
-WHEEL_NB
+XSL_WHEEL_NB
 
 void i32_to_bytes(int32_t value, std::span<std::byte> bytes);
 
@@ -121,5 +121,5 @@ inline std::string_view to_string_view(const FixedString& str) {
 std::strong_ordering operator<=>(const FixedString& lhs, const FixedString& rhs);
 std::strong_ordering operator<=>(const FixedString& lhs, std::string_view rhs);
 std::strong_ordering operator<=>(const FixedString& lhs, const char* rhs);
-WHEEL_NE
+XSL_WHEEL_NE
 #endif

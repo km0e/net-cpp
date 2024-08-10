@@ -24,14 +24,17 @@ public:
   ~FileRouteHandler() {}
   HandleResult operator()(HandleContext<ByteReader, ByteWriter>& ctx) {
     (void)ctx;
+
+    using response_body_type = HandleContext<ByteReader, ByteWriter>::response_body_type;
+
     struct stat buf;
     int res = stat(this->path.c_str(), &buf);
     if (res == -1) {
       LOG2("stat failed: {}", strerror(errno));
       co_return std::unexpected{RouteError::NotFound};
     }
-    auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase>,
-                               std::placeholders::_1, this->path);
+    auto send_file = std::bind<response_body_type>(sys::net::immediate_sendfile<coro::ExecutorBase>,
+                                                   std::placeholders::_1, this->path);
     ResponsePart part{Status::OK};
     part.headers.emplace("Content-Type", to_string(this->content_type));
     ctx.resp(std::move(part), std::move(send_file));
@@ -47,6 +50,8 @@ public:
   FolderRouteHandler(std::string&& path) : path(std::move(path)) {}
   ~FolderRouteHandler() {}
   HandleResult operator()(HandleContext<ByteReader, ByteWriter>& ctx) {
+    using response_body_type = HandleContext<ByteReader, ByteWriter>::response_body_type;
+
     LOG5("FolderRouteHandler: {}", ctx.current_path);
     std::string full_path = this->path;
     full_path.append(ctx.current_path.substr(1));
@@ -60,8 +65,8 @@ public:
       LOG5("FolderRouteHandler: is dir");
       return {NOT_FOUND_HANDLER<ByteReader, ByteWriter>(ctx)};
     }
-    auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase>,
-                               std::placeholders::_1, full_path);
+    auto send_file = std::bind<response_body_type>(sys::net::immediate_sendfile<coro::ExecutorBase>,
+                                                   std::placeholders::_1, full_path);
     ResponsePart part{Status::OK};
     if (auto point = ctx.current_path.rfind('.'); point != std::string::npos) {
       auto ext = ctx.current_path.substr(point + 1);

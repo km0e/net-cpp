@@ -10,7 +10,7 @@
 
 #  include <expected>
 #  include <memory>
-SYS_NET_NB
+XSL_SYS_NET_NB
 
 namespace impl_connect {
   template <class Traits, class Executor = coro::ExecutorBase>
@@ -134,5 +134,5 @@ std::expected<void, std::errc> listen(S &skt, int max_connections = 10) {
   return {};
 }
 
-SYS_NET_NE
+XSL_SYS_NET_NE
 #endif

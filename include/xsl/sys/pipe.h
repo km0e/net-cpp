@@ -11,7 +11,7 @@
 #  include <fcntl.h>
 
 #  include <utility>
-SYS_NB
+XSL_SYS_NB
 
 const size_t MAX_SINGLE_FWD_SIZE = 4096;
 std::pair<sys::io::Device<feature::In<std::byte>>, sys::io::Device<feature::Out<std::byte>>> pipe();
@@ -63,5 +63,5 @@ coro::Lazy<void, Executor> splice(io::AsyncDevice<feature::In<std::byte>> from,
   auto [pipe_in, pipe_out] = async_pipe(poller);
   return splice<Executor>(std::move(from), std::move(to), std::move(pipe_in), std::move(pipe_out));
 }
-SYS_NE
+XSL_SYS_NE
 #endif

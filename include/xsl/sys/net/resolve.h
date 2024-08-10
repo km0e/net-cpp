@@ -13,7 +13,7 @@
 #  include <string>
 #  include <system_error>
 
-SYS_NET_NB
+XSL_SYS_NET_NB
 namespace impl {
   class ResolveCategory : public std::error_category {
   public:
@@ -132,5 +132,5 @@ namespace impl {
   };
 }  // namespace impl
 using Resolver = impl::Resolver;
-SYS_NET_NE
+XSL_SYS_NET_NE
 #endif

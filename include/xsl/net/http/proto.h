@@ -7,7 +7,7 @@
 #  include <regex>
 #  include <string_view>
 
-HTTP_NB
+XSL_HTTP_NB
 
 enum class Version : uint8_t {
   EXT,
@@ -237,7 +237,7 @@ const std::array<std::string_view, HTTP_STATUS_COUNT> HTTP_REASON_PHRASES = {
 
 std::string_view to_reason_phrase(Status status);
 
-HTTP_NE
+XSL_HTTP_NE
 
 #  include "xsl/convert.h"
 XSL_NB

@@ -13,7 +13,7 @@
 #  include <string_view>
 #  include <tuple>
 #  include <utility>
-HTTP_NB
+XSL_HTTP_NB
 using ParseResult = std::tuple<std::size_t, std::expected<RequestView, std::errc>>;
 
 class ParseUnit {
@@ -130,5 +130,5 @@ private:
   }
 };
 
-HTTP_NE
+XSL_HTTP_NE
 #endif

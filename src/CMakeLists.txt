@@ -12,9 +12,11 @@ set_log_level(xsl_log_ctl)
 
 link_libraries(xsl_log_ctl)
 
+add_subdirectory(sys)
 add_subdirectory(net)
 add_subdirectory(coro)
 add_subdirectory(utils)
+add_subdirectory(wheel)
 
 add_library(xsl_convert STATIC)
 

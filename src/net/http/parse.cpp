@@ -5,7 +5,7 @@
 #include <regex>
 #include <system_error>
 
-HTTP_NB
+XSL_HTTP_NB
 ParseUnit::ParseUnit() : view() {}
 
 ParseResult ParseUnit::parse(const char* data, size_t len) {  // TODO: request target
@@ -114,4 +114,4 @@ void ParseUnit::parse_request_target(std::string_view target) {
   }
 }
 
-HTTP_NE
+XSL_HTTP_NE

@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 #include <utility>
-SYS_NB
+XSL_SYS_NB
 std::pair<io::Device<feature::In<std::byte>>, io::Device<feature::Out<std::byte>>> pipe() {
   int fds[2];
   if (pipe2(fds, O_NONBLOCK) == -1) {
@@ -34,4 +34,4 @@ async_pipe(std::shared_ptr<sync::Poller>& poller) {
           io::AsyncDevice<feature::Out<std::byte>>(write_sem, fds[1])};
 }
 
-SYS_NE
+XSL_SYS_NE

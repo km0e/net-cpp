@@ -1,9 +1,10 @@
 #include "xsl/net/http/msg.h"
 #include "xsl/net/http/proto.h"
+#  include "xsl/net/http/def.h"
 
 #include <expected>
 
-HTTP_NB
+XSL_HTTP_NB
 
 RequestView::RequestView()
     : method(), scheme(), authority(), path(), query(), version(), headers() {}
@@ -68,4 +69,4 @@ std::string ResponsePart::to_string() {
   res += "\r\n";
   return res;
 }
-HTTP_NE
+XSL_HTTP_NE

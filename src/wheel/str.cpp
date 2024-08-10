@@ -3,7 +3,7 @@
 
 #include <algorithm>
 
-WHEEL_NB
+XSL_WHEEL_NB
 
 void i32_to_bytes(int32_t value, std::span<std::byte> bytes) {
   // bytes[0] = (value >> 24) & 0xFF;
@@ -35,4 +35,4 @@ std::strong_ordering operator<=>(const FixedString& lhs, std::string_view rhs) {
 std::strong_ordering operator<=>(const FixedString& lhs, const char* rhs) {
   return lhs.compare(std::string_view(rhs)) <=> 0;
 }
-WHEEL_NE
+XSL_WHEEL_NE

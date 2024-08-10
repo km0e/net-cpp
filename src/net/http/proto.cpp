@@ -1,6 +1,6 @@
 #include "xsl/net/http/def.h"
 #include "xsl/net/http/proto.h"
-HTTP_NB
+XSL_HTTP_NB
 
 std::string_view to_string_view(const Version& version) {
   if (version == Version::UNKNOWN) return "Unknown";
@@ -177,7 +177,7 @@ std::string_view to_reason_phrase(Status status) {
   return HTTP_REASON_PHRASES[to_index(status)];
 }
 
-HTTP_NE
+XSL_HTTP_NE
 
 #include "xsl/def.h"
 
@@ -224,4 +224,4 @@ _net::http::content_type::MediaType from_string_view(std::string_view type) {
   return _net::http::content_type::MediaType{type_enum, sub_type_enum};
 }
 
-XSL_NE
+XSL_HTTP_NE

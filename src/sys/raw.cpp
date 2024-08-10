@@ -5,7 +5,7 @@
 
 #include <expected>
 #include <system_error>
-SYS_NB
+XSL_SYS_NB
 std::expected<void, std::errc> set_blocking(int fd, bool blocking) {
   int flags = fcntl(fd, F_GETFL, 0);
   if (flags == -1) {
@@ -22,4 +22,4 @@ std::expected<void, std::errc> set_blocking(int fd, bool blocking) {
   }
   return {};
 }
-SYS_NE
+XSL_SYS_NE

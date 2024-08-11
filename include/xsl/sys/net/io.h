@@ -13,9 +13,7 @@
 #  include <sys/types.h>
 
 #  include <cstddef>
-#  include <filesystem>
 #  include <optional>
-#  include <string_view>
 #  include <system_error>
 #  include <tuple>
 XSL_SYS_NET_NB
@@ -77,31 +75,45 @@ coro::Task<ai::Result, Executor> immediate_send(S &skt, std::span<const std::byt
     }
   }
 }
+
+struct SendfileHint {
+  std::string
+      path;  ///< file path, must be string, not string_view. Because this function will be called
+             ///< in coroutine, and the path may be destroyed before the function is called.
+  std::size_t offset;
+  std::size_t size;
+};
+/**
+ * @brief send file to socket
+ *
+ * @tparam Executor default is coro::ExecutorBase
+ * @tparam S socket type
+ * @param skt socket
+ * @param hint sendfile hint
+ * @return coro::Task<ai::Result, Executor>
+ * @note The skt must keep alive until the task is finished, that is, the task and the socket must
+ * have the same lifetime.
+ */
 template <class Executor = coro::ExecutorBase, AsyncSocketLike<feature::Out> S>
-coro::Task<ai::Result, Executor> immediate_sendfile(S &skt, std::filesystem::path path) {
+coro::Task<ai::Result, Executor> immediate_sendfile(S &skt, SendfileHint hint) {
   using Result = ai::Result;
-  int ffd = open(path.c_str(), O_RDONLY);
+  int ffd = open(hint.path.c_str(), O_RDONLY);
   if (ffd == -1) {
     LOG2("open file failed");
     co_return Result{0, {std::errc(errno)}};
   }
   sys::io::NativeDevice file{ffd};
-  struct stat st;
-  if (fstat(file.raw(), &st) == -1) {
-    LOG2("fstat failed");
-    co_return Result{0, {std::errc(errno)}};
-  }
-  off_t offset = 0;
+  off_t offset = hint.offset;
   while (true) {
-    ssize_t n = ::sendfile(skt.raw(), file.raw(), &offset, st.st_size);
+    ssize_t n = ::sendfile(skt.raw(), file.raw(), &offset, hint.size);
     // TODO: handle sendfile error
-    if (n == st.st_size) {
+    if (n == static_cast<ssize_t>(hint.size)) {
       DEBUG("{} send {} bytes file", skt.raw(), n);
       co_return Result{static_cast<std::size_t>(offset), std::nullopt};
     }
     if (n > 0) {
       LOG5("[sendfile] send {} bytes", n);
-      st.st_size -= n;
+      hint.size -= n;
       continue;
     }
     if ((n == -1) && !(errno == EAGAIN || errno == EWOULDBLOCK)) {

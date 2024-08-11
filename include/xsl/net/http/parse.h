@@ -83,7 +83,6 @@ public:
       auto [sz, err]
           = co_await reader.template read<Executor>(this->buffer.front().span(this->used_size));
       if (err) {
-        LOG3("recv error {}: {}", static_cast<int>(*err), std::make_error_code(*err).message());
         co_return std::unexpected{*err};
       }
       this->used_size += sz;

@@ -10,7 +10,7 @@ endif()
 
 # ---- Add libraries ----
 link_libraries(xsl_log_ctl)
-link_libraries(testlib)
+link_libraries(GTest::gtest_main)
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 # ---- Add Subdirectories ----

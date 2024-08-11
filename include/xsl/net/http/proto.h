@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #ifndef XSL_NET_HTTP_PROTO
 #  define XSL_NET_HTTP_PROTO
 #  include "xsl/net/http/def.h"
@@ -81,7 +82,7 @@ namespace content_type {
       "application",
       "multipart",
   };
-  std::string_view to_string(Type type);
+  std::string_view to_string_view(Type type);
   std::string& operator+=(std::string& lhs, Type rhs);
   enum class SubType : uint8_t {
     PLAIN,
@@ -113,8 +114,8 @@ namespace content_type {
     ~MediaType();
     Type type;
     SubType sub_type;
+    std::string to_string();
   };
-  std::string to_string(const MediaType& media_type);
   std::string& operator+=(std::string& lhs, const MediaType& rhs);
 }  // namespace content_type
 
@@ -125,9 +126,9 @@ public:
   ~ContentType();
   content_type::MediaType media_type;
   Charset charset;
+  std::string to_string();
 };
 
-std::string to_string(const ContentType& content_type);
 std::string& operator+=(std::string& lhs, const ContentType& rhs);
 
 enum class Status : uint16_t {
@@ -236,6 +237,13 @@ const std::array<std::string_view, HTTP_STATUS_COUNT> HTTP_REASON_PHRASES = {
 };
 
 std::string_view to_reason_phrase(Status status);
+
+template <class Clock, class Duration>
+[[nodiscard("The return http date string should be used")]]
+std::string to_date_string(const std::chrono::time_point<Clock, Duration>& time) {
+  return std::format("{:%a, %d %b %Y %T %Z}",
+                     std::chrono::time_point_cast<std::chrono::seconds>(time));
+}
 
 XSL_HTTP_NE
 

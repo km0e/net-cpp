@@ -1,6 +1,5 @@
 #include "coro/tool.h"
-#include "xsl/coro/executor.h"
-#include "xsl/coro/task.h"
+#include "xsl/coro.h"
 #include "xsl/logctl.h"
 
 #include <gtest/gtest.h>

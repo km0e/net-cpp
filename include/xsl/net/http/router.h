@@ -3,7 +3,6 @@
 #  define XSL_NET_HTTP_ROUTER
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
-#  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/proto.h"
 #  include "xsl/sync.h"
 #  include "xsl/wheel.h"
@@ -14,6 +13,23 @@
 #  include <string_view>
 
 XSL_HTTP_NB
+
+enum class RouteError : uint8_t {
+  Unknown,
+  NotFound,
+  Unimplemented,
+};
+
+const int ROUTE_ERROR_COUNT = 3;
+const std::array<std::string_view, ROUTE_ERROR_COUNT> ROUTE_ERROR_STRINGS = {
+    "Unknown",
+    "NotFound",
+    "Unimplemented",
+};
+
+inline std::string_view to_string_view(RouteError re) {
+  return ROUTE_ERROR_STRINGS[static_cast<uint8_t>(re)];
+}
 
 class RouteContext {
 public:

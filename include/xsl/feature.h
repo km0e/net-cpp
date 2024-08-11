@@ -49,7 +49,6 @@ namespace feature {
     @brief format a single flag
 
     @tparam Flag
-    @example int -> Item<std::is_same, int>
      */
     template <class Flag>
     struct off_fmt_single : wheel::type_traits::_1<Item<std::is_same, Flag>> {};
@@ -57,7 +56,6 @@ namespace feature {
     @brief format a set of flags
 
     @tparam Flags
-    @example set<int, float> -> Item<std::is_same, int, float>
      */
     template <class... Flags>
     struct off_fmt_single<set<Flags...>> : wheel::type_traits::_1<Item<std::is_same, Flags...>> {};

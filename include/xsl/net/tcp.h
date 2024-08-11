@@ -1,7 +1,7 @@
 #pragma once
 #ifndef XSL_NET_TCP
 #  define XSL_NET_TCP
-#  include "xsl/coro/task.h"
+#  include "xsl/coro.h"
 #  include "xsl/feature.h"
 #  include "xsl/net/def.h"
 #  include "xsl/net/transport/accept.h"
@@ -47,6 +47,11 @@ std::expected<sys::net::TcpSocket<LowerLayer>, std::error_condition> tcp_serv(co
   return sys::net::TcpSocket<LowerLayer>{std::move(*bind_res)};
 }
 
+/**
+ * @brief TcpServer
+ *
+ * @tparam LowerLayer, such as feature::Ip<Version>(Version = 4 or 6)
+ */
 template <class LowerLayer>
 class TcpServer;
 
@@ -57,7 +62,14 @@ public:
   using io_dev_type = sys::net::AsyncTcpSocket<lower_layer_type>;
   using in_dev_type = io_dev_type::template rebind_type<feature::In>;
   using out_dev_type = io_dev_type::template rebind_type<feature::Out>;
-
+  /**
+   * @brief Construct a new Tcp Server object
+   *
+   * @param host the host to listen on
+   * @param port the port to listen on
+   * @param poller the poller to use
+   * @return std::expected<TcpServer, std::error_condition>
+   */
   static std::expected<TcpServer, std::error_condition> create(
       std::string_view host, std::string_view port, const std::shared_ptr<Poller> &poller) {
     LOG5("Start listening on {}:{}", host, port);
@@ -78,6 +90,13 @@ public:
       : host(host), port(port), poller(std::forward<P>(poller)), _ac(std::forward<Args>(args)...) {}
   TcpServer(TcpServer &&) = default;
   TcpServer &operator=(TcpServer &&) = default;
+  /**
+   * @brief accept a connection
+   *
+   * @tparam Executor the executor type, default is coro::ExecutorBase
+   * @param addr the address of the local socket
+   * @return decltype(auto) the io_dev_type
+   */
   template <class Executor = coro::ExecutorBase>
   decltype(auto) accept(sys::net::SockAddr *addr) noexcept {
     return this->_ac.template accept<Executor>(addr).transform([this](auto &&res) {

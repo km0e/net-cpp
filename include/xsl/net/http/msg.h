@@ -3,14 +3,12 @@
 #ifndef XSL_NET_HTTP_MSG
 #  define XSL_NET_HTTP_MSG
 #  include "xsl/ai/dev.h"
-#  include "xsl/coro/executor.h"
-#  include "xsl/coro/task.h"
+#  include "xsl/coro.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/proto.h"
 #  include "xsl/net/io/buffer.h"
 #  include "xsl/wheel.h"
 
-#  include <concepts>
 #  include <cstddef>
 #  include <functional>
 #  include <optional>
@@ -115,104 +113,6 @@ public:
 
   std::string_view content_part;
   ByteReader& _ard;
-};
-
-template <ai::AsyncReadDeviceLike<std::byte> ByteReader,
-          ai::AsyncWriteDeviceLike<std::byte> ByteWriter>
-class HandleContext {
-public:
-  using response_body_type = coro::Task<ai::Result>(ByteWriter&);
-  HandleContext(std::string_view current_path, Request<ByteReader>&& request)
-      : current_path(current_path), request(std::move(request)), _response(std::nullopt) {}
-  HandleContext(HandleContext&&) = default;
-  HandleContext& operator=(HandleContext&&) = default;
-  ~HandleContext() {}
-
-  void easy_resp(Status status_code) {
-    this->_response
-        = Response<ByteWriter>{{Version::HTTP_1_1, status_code, to_reason_phrase(status_code)}};
-  }
-
-  template <std::invocable<ByteWriter&> F>
-  void easy_resp(Status status_code, F&& body) {
-    this->_response = Response<ByteWriter>{
-        {Version::HTTP_1_1, status_code, to_reason_phrase(status_code)}, std::forward<F>(body)};
-  }
-
-  template <class... Args>
-    requires std::constructible_from<std::string, Args...>
-  void easy_resp(Status status_code, Args&&... args) {
-    this->_response = Response<ByteWriter>{
-        {Version::HTTP_1_1, status_code, to_reason_phrase(status_code)},
-        [body = std::string(std::forward<Args>(args)...)](ByteWriter& awd)
-            -> coro::Task<ai::Result> { return awd.write(std::as_bytes(std::span(body))); }};
-  }
-
-  void resp(ResponsePart&& part) { this->_response = Response<ByteWriter>{std::move(part)}; }
-
-  template <std::invocable<ByteWriter&> F>
-  void resp(ResponsePart&& part, F&& body) {
-    this->_response = Response<ByteWriter>{{std::move(part)}, std::forward<F>(body)};
-  }
-
-  template <class... Args>
-    requires std::constructible_from<std::string, Args...>
-  void resp(ResponsePart&& part, Args&&... args) {
-    this->_response = Response<ByteWriter>{{std::move(part)},
-                                           [body = std::string(std::forward<Args>(args)...)](
-                                               ByteWriter& awd) -> coro::Task<ai::Result> {
-                                             return awd.write(std::as_bytes(std::span(body)));
-                                           }};
-  }
-
-  std::string_view current_path;
-
-  Request<ByteReader> request;
-
-  std::optional<Response<ByteWriter>> _response;
-};
-
-enum class RouteError : uint8_t {
-  Unknown,
-  NotFound,
-  Unimplemented,
-};
-
-const int ROUTE_ERROR_COUNT = 3;
-const std::array<std::string_view, ROUTE_ERROR_COUNT> ROUTE_ERROR_STRINGS = {
-    "Unknown",
-    "NotFound",
-    "Unimplemented",
-};
-
-inline std::string_view to_string_view(RouteError re) {
-  return ROUTE_ERROR_STRINGS[static_cast<uint8_t>(re)];
-}
-
-using HandleResult = coro::Task<void>;
-
-template <class ByteReader, class ByteWriter>
-using RouteHandler = std::function<HandleResult(HandleContext<ByteReader, ByteWriter>& ctx)>;
-
-template <class ByteReader, class ByteWriter>
-const RouteHandler<ByteReader, ByteWriter> UNKNOWN_HANDLER
-    = []([[maybe_unused]] HandleContext<ByteReader, ByteWriter>& ctx) -> HandleResult {
-  ctx.easy_resp(Status::INTERNAL_SERVER_ERROR);
-  co_return;
-};
-
-template <class ByteReader, class ByteWriter>
-const RouteHandler<ByteReader, ByteWriter> NOT_FOUND_HANDLER
-    = []([[maybe_unused]] HandleContext<ByteReader, ByteWriter>& ctx) -> HandleResult {
-  ctx.easy_resp(Status::NOT_FOUND);
-  co_return;
-};
-
-template <class ByteReader, class ByteWriter>
-const RouteHandler<ByteReader, ByteWriter> NOT_IMPLEMENTED_HANDLER
-    = []([[maybe_unused]] HandleContext<ByteReader, ByteWriter>& ctx) -> HandleResult {
-  ctx.easy_resp(Status::NOT_IMPLEMENTED);
-  co_return;
 };
 
 XSL_HTTP_NE

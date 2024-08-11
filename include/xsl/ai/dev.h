@@ -2,7 +2,7 @@
 #ifndef XSL_AI_DEV
 #  define XSL_AI_DEV
 #  include "xsl/ai/def.h"
-#  include "xsl/coro/task.h"
+#  include "xsl/coro.h"
 #  include "xsl/feature.h"
 
 #  include <cstddef>
@@ -58,7 +58,8 @@ concept AsyncWriteDeviceLike = requires(Device t, std::span<const T> buf) {
 };
 
 template <class Device, class T>
-concept AsyncReadWriteDeviceLike = AsyncReadDeviceLike<Device, T> && AsyncWriteDeviceLike<Device, T>;
+concept AsyncReadWriteDeviceLike
+    = AsyncReadDeviceLike<Device, T> && AsyncWriteDeviceLike<Device, T>;
 
 template <class... Flags>
 using AsyncDevice = feature::organize_feature_flags_t<

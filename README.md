@@ -19,4 +19,4 @@ $ doxygen
 
 ## Usage
 
-Please see the [examples](./examples) directory.
+Please see the [examples](./doc/example.md).

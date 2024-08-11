@@ -7,25 +7,32 @@
 #  include <functional>
 XSL_CORO_NB
 
+#  ifndef __cpp_lib_move_only_function
+template <class F>
+using move_only_function = std::function<F>;
+#  else
+using std::move_only_function;
+#  endif  // __cpp_lib_move_only_function
+
 class ExecutorBase {
 public:
   virtual ~ExecutorBase() = default;
-  virtual void schedule(std::move_only_function<void()> &&func) = 0;
+  virtual void schedule(move_only_function<void()> &&func) = 0;
 };
 
 template <class T>
-concept Executor = requires(T t, std::move_only_function<void()> func) {
+concept Executor = requires(T t, move_only_function<void()> func) {
   { t.schedule(std::move(func)) };
 };
 
 class NoopExecutor : public ExecutorBase {
 public:
-  void schedule(std::move_only_function<void()> &&func);
+  void schedule(move_only_function<void()> &&func);
 };
 
 class NewThreadExecutor : public ExecutorBase {
 public:
-  void schedule(std::move_only_function<void()> &&func);
+  void schedule(move_only_function<void()> &&func);
 };
 
 XSL_CORO_NE

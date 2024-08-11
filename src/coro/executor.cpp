@@ -3,9 +3,9 @@
 
 #include <thread>
 XSL_CORO_NB
-void NoopExecutor::schedule(std::move_only_function<void()> &&func) { func(); }
+void NoopExecutor::schedule(move_only_function<void()> &&func) { func(); }
 
-void NewThreadExecutor::schedule(std::move_only_function<void()> &&func) {
+void NewThreadExecutor::schedule(move_only_function<void()> &&func) {
   std::thread(std::move(func)).detach();
 }
 

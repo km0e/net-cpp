@@ -1,5 +1,4 @@
-#include "xsl/coro/semaphore.h"
-#include "xsl/coro/task.h"
+#include "xsl/coro.h"
 
 #include <gtest/gtest.h>
 
@@ -13,8 +12,9 @@ TEST(SemaphoreTest, Basic) {
   int res = 0;
   std::thread t1([&] {
     [&]() -> Task<void> {
-      co_await sem;
-      res = value;
+      if (co_await sem) {
+        res = value;
+      }
       co_return;
     }()
                  .block();

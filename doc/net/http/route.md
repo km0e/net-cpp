@@ -2,16 +2,16 @@
 
 
 ## add path to route
-- `(/{segment})+` - Matche a path with one or more segments
+- `(/{segment})+` - Match a path with one or more segments
     e.g.
     - path `/foo/bar`
-        - only matche `/foo/bar`
+        - only match `/foo/bar`
 
-- `(/{segment})*/` - Matche any path which has same prefix
+- `(/{segment})*/` - Match any path which has same prefix
     e.g.
     - path `/foo/`
-        - matche `/foo/(.*)` , such as `/foo/bar`, `/foo/bar/baz`
-        - not matche `/foo`
+        - match `/foo/(.*)` , such as `/foo/bar`, `/foo/bar/baz`
+        - not match `/foo`
 ## route with path
 e.g.
 - `/foo/bar`

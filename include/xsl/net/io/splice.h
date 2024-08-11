@@ -2,9 +2,20 @@
 #ifndef XSL_NET_IO_SPLICE
 #  define XSL_NET_IO_SPLICE
 #  include "xsl/ai/dev.h"
-#  include "xsl/coro/lazy.h"
+#  include "xsl/coro.h"
 #  include "xsl/net/io/def.h"
 XSL_NET_IO_NB
+/**
+ * @brief splice data from one device to another
+ *
+ * @tparam Executor the executor type
+ * @tparam From the device type to read data from
+ * @tparam To the device type to write data to
+ * @param from the device to read data from
+ * @param to the device to write data to
+ * @param buffer the buffer used to store the temporary data
+ * @return coro::Lazy<void>
+ */
 template <class Executor = coro::ExecutorBase, ai::AsyncReadDeviceLike<std::byte> From,
           ai::AsyncWriteDeviceLike<std::byte> To>
 coro::Lazy<void> splice(From& from, To& to, std::string& buffer) {

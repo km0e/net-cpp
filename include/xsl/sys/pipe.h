@@ -1,9 +1,7 @@
 #pragma once
 #ifndef XSL_SYS_PIPE
 #  define XSL_SYS_PIPE
-#  include "xsl/coro/await.h"
-#  include "xsl/coro/lazy.h"
-#  include "xsl/coro/task.h"
+#  include "xsl/coro.h"
 #  include "xsl/feature.h"
 #  include "xsl/sys/def.h"
 #  include "xsl/sys/io/dev.h"

@@ -2,7 +2,9 @@
 #ifndef XSL_NET_HTTP_COMPONENT_STATIC
 #  define XSL_NET_HTTP_COMPONENT_STATIC
 #  include "xsl/ai/dev.h"
+#  include "xsl/coro.h"
 #  include "xsl/net/http/component/def.h"
+#  include "xsl/net/http/context.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/proto.h"
 #  include "xsl/sys/net/io.h"
@@ -28,14 +30,31 @@ public:
     auto status = std::filesystem::status(this->path, ec);
     if (ec || status.type() != std::filesystem::file_type::regular) {
       LOG2("stat failed: path: {} error: {}", this->path.native(), ec.message());
-      return NOT_FOUND_HANDLER<ByteReader, ByteWriter>(ctx);
+      if (status.type() == std::filesystem::file_type::not_found) {
+        return NOT_FOUND_HANDLER<ByteReader, ByteWriter>(ctx);
+      }
+      return INTERNAL_SERVER_ERROR_HANDLER<ByteReader, ByteWriter>(ctx);
     }
 
-    auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase, ByteWriter>,
-                               std::placeholders::_1, this->path);
     ResponsePart part{Status::OK};
-    part.headers.emplace("Content-Type", to_string(this->content_type));
-    part.headers.emplace("Content-Length", std::to_string(std::filesystem::file_size(this->path)));
+    auto file_size = std::filesystem::file_size(this->path, ec);
+    if (ec) {
+      LOG2("file_size failed: path: {} error: {}", this->path.native(), ec.message());
+      return INTERNAL_SERVER_ERROR_HANDLER<ByteReader, ByteWriter>(ctx);
+    }
+    auto last_modified = std::filesystem::last_write_time(this->path, ec);
+    if (ec) {
+      LOG2("last_write_time failed: path: {} error: {}", this->path.native(), ec.message());
+      return INTERNAL_SERVER_ERROR_HANDLER<ByteReader, ByteWriter>(ctx);
+    }
+    part.headers.emplace("Content-Length", std::to_string(file_size));
+    part.headers.emplace("Last-Modified", to_date_string(last_modified));
+    part.headers.emplace("Content-Type", this->content_type.to_string());
+
+    auto send_file
+        = [hint = sys::net::SendfileHint{this->path.native(), 0, file_size}](ByteWriter& awd) {
+            return sys::net::immediate_sendfile(awd, std::move(hint));
+          };
     ctx.resp(std::move(part), std::move(send_file));
     return []() -> HandleResult { co_return; }();
   }
@@ -61,17 +80,34 @@ public:
     auto status = std::filesystem::status(full_path, ec);
     if (ec || status.type() != std::filesystem::file_type::regular) {
       LOG2("stat failed: path: {} error: {}", full_path.native(), ec.message());
-      return NOT_FOUND_HANDLER<ByteReader, ByteWriter>(ctx);
+      if (status.type() == std::filesystem::file_type::not_found) {
+        return NOT_FOUND_HANDLER<ByteReader, ByteWriter>(ctx);
+      }
+      return INTERNAL_SERVER_ERROR_HANDLER<ByteReader, ByteWriter>(ctx);
     }
 
-    auto send_file = std::bind(sys::net::immediate_sendfile<coro::ExecutorBase, ByteWriter>,
-                               std::placeholders::_1, full_path);
     ResponsePart part{Status::OK};
+    auto file_size = std::filesystem::file_size(full_path, ec);
+    if (ec) {
+      LOG2("file_size failed: path: {} error: {}", full_path.native(), ec.message());
+      return INTERNAL_SERVER_ERROR_HANDLER<ByteReader, ByteWriter>(ctx);
+    }
+    auto last_modified = std::filesystem::last_write_time(full_path, ec);
+    if (ec) {
+      LOG2("last_write_time failed: path: {} error: {}", full_path.native(), ec.message());
+      return INTERNAL_SERVER_ERROR_HANDLER<ByteReader, ByteWriter>(ctx);
+    }
+    part.headers.emplace("Content-Length", std::to_string(file_size));
+    part.headers.emplace("Last-Modified", to_date_string(last_modified));
     part.headers.emplace(
-        "Content-Type", to_string(ContentType{
-                            content_type::MediaType::from_extension(full_path.extension().native()),
-                            Charset::UTF_8}));
-    part.headers.emplace("Content-Length", std::to_string(std::filesystem::file_size(full_path)));
+        "Content-Type",
+        ContentType{content_type::MediaType::from_extension(full_path.extension().native()),
+                    Charset::UTF_8}
+            .to_string());
+    auto send_file = [hint
+                      = sys::net::SendfileHint{full_path.native(), 0, file_size}](ByteWriter& awd) {
+      return sys::net::immediate_sendfile<coro::ExecutorBase, ByteWriter>(awd, std::move(hint));
+    };
     ctx.resp(std::move(part), std::move(send_file));
     return []() -> HandleResult { co_return; }();
   }

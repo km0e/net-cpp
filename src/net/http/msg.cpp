@@ -55,12 +55,6 @@ std::string ResponsePart::to_string() {
     res += value;
     res += "\r\n";
   }
-  if (!headers.contains("Date")) {
-    res += "Date: ";
-    res += format("{:%a, %d %b %Y %T %Z}", std::chrono::time_point_cast<std::chrono::seconds>(
-                                               std::chrono::utc_clock::now()));
-    res += "\r\n";
-  }
   if (!headers.contains("Server")) {
     res += "Server: ";
     res += SERVER_VERSION;

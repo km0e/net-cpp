@@ -1,7 +1,7 @@
 #pragma once
 #ifndef XSL_SYNC
 #  define XSL_SYNC
-#  include "xsl/coro/semaphore.h"
+#  include "xsl/coro.h"
 #  include "xsl/def.h"
 #  include "xsl/sync/mutex.h"
 #  include "xsl/sync/poller.h"
@@ -17,8 +17,8 @@ using sync::Poller;
 using sync::PollHandleHint;
 using sync::PollHandleHintTag;
 using sync::PollHandler;
-using sync::ShardRes;
 using sync::ShardGuard;
+using sync::ShardRes;
 using sync::SPSC;
 
 namespace sync {
@@ -60,7 +60,7 @@ namespace sync {
 
     template <IOM_EVENTS E, std::size_t I>
     bool handle_event(sync::IOM_EVENTS events) {
-      if (!sems[I].unique()) {
+      if (sems[I].use_count() > 1) {
         if (!!(events & E)) {
           sems[I]->release();
         }

@@ -1,4 +1,4 @@
-#include "xsl/coro/executor.h"
+#include "xsl/coro.h"
 
 #include <gtest/gtest.h>
 using namespace xsl::coro;

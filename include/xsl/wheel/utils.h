@@ -4,6 +4,7 @@
 #  include "xsl/wheel/def.h"
 #  include "xsl/wheel/str.h"
 
+#  include <exception>
 #  include <functional>
 #  include <iostream>
 #  include <source_location>

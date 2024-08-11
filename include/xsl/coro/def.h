@@ -1,7 +1,7 @@
 #pragma once
 #ifndef XSL_CORO_DEF
 #  define XSL_CORO_DEF
-#  define XSL_CORO_NB namespace xsl::coro {
+#  define XSL_CORO_NB namespace xsl::_coro {
 #  define XSL_CORO_NE }
 #  include <coroutine>
 #  include <exception>

@@ -10,6 +10,8 @@ project(
 )
 
 set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 
@@ -63,9 +65,7 @@ if(NOT googletest_FOUND)
   FetchContent_MakeAvailable(googletest)
 endif()
 
-add_library(testlib ALIAS gtest_main)
-
-add_link_options(-fuse-ld=mold)
+# add_link_options(-fuse-ld=mold)
 
 # --- Logging ----
 # set(LOG_LEVEL "INFO" CACHE STRING "Set the log level (NONE, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL)")

@@ -144,13 +144,22 @@ public:
 
   template <class Self>
   result_type block(this Self &&self) {
-    return coro::block(std::forward<Self>(self));
+    return _coro::block(std::forward<Self>(self));
   }
 
   void detach(this auto &&self) {
     LOG6("task detach");
-    coro::detach(std::move(self));
+    _coro::detach(std::move(self));
   }
+
+  /**
+   * @brief detach the task with the executor
+   *
+   * @tparam E the executor type
+   * @param self the task
+   * @param executor the executor
+   * @return void
+   */
   template <class E>
     requires std::constructible_from<std::shared_ptr<Executor>, E>
   void detach(this auto &&self, E &&executor) {

@@ -2,7 +2,7 @@
 #ifndef XSL_IO_SPLICE
 #  define XSL_IO_SPLICE
 #  include "xsl/ai/dev.h"
-#  include "xsl/coro/lazy.h"
+#  include "xsl/coro.h"
 #  include "xsl/io/def.h"
 #  include "xsl/logctl.h"
 #  include "xsl/wheel/ptr.h"

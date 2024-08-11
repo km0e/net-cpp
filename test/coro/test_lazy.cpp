@@ -1,5 +1,5 @@
 #include "coro/tool.h"
-#include "xsl/coro/lazy.h"
+#include "xsl/coro.h"
 #include "xsl/logctl.h"
 
 #include <gtest/gtest.h>

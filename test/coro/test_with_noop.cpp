@@ -1,5 +1,5 @@
 #include "coro/tool.h"
-#include "xsl/coro/task.h"
+#include "xsl/coro.h"
 
 #include <gtest/gtest.h>
 using namespace xsl::coro;

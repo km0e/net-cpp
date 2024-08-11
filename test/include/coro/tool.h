@@ -1,7 +1,7 @@
 #pragma once
 #ifndef XSL_TEST_CORO_TOOL_
 #  define XSL_TEST_CORO_TOOL_
-#  include "xsl/coro/task.h"
+#  include "xsl/coro.h"
 
 #  include <semaphore>
 #  include <stdexcept>

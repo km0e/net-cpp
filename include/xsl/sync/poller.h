@@ -77,6 +77,10 @@ public:
   bool modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler);
   void poll();
   void remove(int fd);
+  /**
+   * @brief Shutdown the poller
+   *
+   */
   void shutdown();
 
 private:

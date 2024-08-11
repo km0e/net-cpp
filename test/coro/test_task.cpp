@@ -1,5 +1,5 @@
 #include "coro/tool.h"
-#include "xsl/coro/task.h"
+#include "xsl/coro.h"
 #include "xsl/logctl.h"
 
 #include <gtest/gtest.h>
@@ -71,7 +71,6 @@ TEST(Task, async_exception_task) {
 
   ASSERT_THROW(task4.block(), std::runtime_error);
 }
-
 
 int main(int argc, char **argv) {
   xsl::no_log();

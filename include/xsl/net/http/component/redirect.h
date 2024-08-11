@@ -3,6 +3,7 @@
 #  define XSL_NET_HTTP_COMPONENT_REDIRECT
 #  include "xsl/ai/dev.h"
 #  include "xsl/net/http/component/def.h"
+#  include "xsl/net/http/context.h"
 #  include "xsl/net/http/msg.h"
 
 HTTP_HELPER_NB

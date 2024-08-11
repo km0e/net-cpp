@@ -1,5 +1,7 @@
 #include "xsl/net/http/def.h"
 #include "xsl/net/http/proto.h"
+
+#include <algorithm>
 XSL_HTTP_NB
 
 std::string_view to_string_view(const Version& version) {
@@ -18,7 +20,7 @@ std::string_view to_string_view(const Charset& charset) {
 }
 
 namespace content_type {
-  std::string_view to_string(Type type) {
+  std::string_view to_string_view(Type type) {
     if (type == Type::UNKNOWN) return "Unknown";
     return TYPE_STRINGS[static_cast<uint8_t>(type)];
   }
@@ -51,13 +53,14 @@ namespace content_type {
 
   MediaType::MediaType() : type(Type::UNKNOWN), sub_type(SubType::UNKNOWN) {}
   MediaType::MediaType(Type type, SubType sub_type) : type(type), sub_type(sub_type) {}
-  MediaType::~MediaType() {}
-  std::string to_string(const MediaType& media_type) {
-    return std::string{to_string(media_type.type)}.append("/").append(
-        to_string_view(media_type.sub_type));
+  std::string MediaType::to_string() {
+    return std::string{content_type::to_string_view(this->type)}.append("/").append(
+        to_string_view(this->sub_type));
   }
+  MediaType::~MediaType() {}
+
   std::string& operator+=(std::string& lhs, MediaType rhs) {
-    lhs += to_string(rhs.type);
+    lhs += to_string_view(rhs.type);
     lhs += '/';
     lhs += to_string_view(rhs.sub_type);
     return lhs;
@@ -67,11 +70,11 @@ ContentType::ContentType() : media_type(content_type::MediaType{}), charset(Char
 ContentType::ContentType(content_type::MediaType media_type, Charset charset)
     : media_type(media_type), charset(charset) {}
 ContentType::~ContentType() {}
-std::string to_string(const ContentType& content_type) {
-  std::string result{to_string(content_type.media_type)};
-  if (content_type.charset != Charset::UNKNOWN) {
+std::string ContentType::to_string() {
+  auto result{this->media_type.to_string()};
+  if (this->charset != Charset::UNKNOWN) {
     result += "; charset=";
-    result += to_string_view(content_type.charset);
+    result += to_string_view(this->charset);
   }
   return result;
 }
@@ -173,9 +176,7 @@ static uint16_t to_index(Status status) {
 
 std::string_view to_string_view(Status status) { return HTTP_STATUS_STRINGS[to_index(status)]; }
 
-std::string_view to_reason_phrase(Status status) {
-  return HTTP_REASON_PHRASES[to_index(status)];
-}
+std::string_view to_reason_phrase(Status status) { return HTTP_REASON_PHRASES[to_index(status)]; }
 
 XSL_HTTP_NE
 

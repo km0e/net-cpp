@@ -347,6 +347,12 @@ namespace impl_dev {
           std::move(*this));
     }
 
+    /**
+     * @brief split the device into two devices
+     *
+     * @return std::tuple<AsyncDevice<feature::In<socket_traits_type>, T, U>,
+     * AsyncDevice<feature::Out<socket_traits_type>, T, U>>
+     */
     std::tuple<AsyncDevice<feature::In<socket_traits_type>, T, U>,
                AsyncDevice<feature::Out<socket_traits_type>, T, U>>
     split() && noexcept {

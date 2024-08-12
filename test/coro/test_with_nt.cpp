@@ -15,7 +15,7 @@ TEST(Task, just_return) {
   ASSERT_EQ(value, 1);
 
   std::binary_semaphore sem(0);
-  sync_no_return_task(value, sem).by(executor).detach();
+  sync_no_return_lazy(value, sem).by(executor).detach();
   sem.acquire();
   ASSERT_EQ(value, 2);
 
@@ -35,6 +35,7 @@ TEST(Task, async_task) {
 
   auto executor = std::make_shared<NewThreadExecutor>();
   int value = 0;
+
   auto task1 = [&sem](int &value) -> Task<void> {
     co_await no_return_task(value);
     value += 1;
@@ -45,7 +46,13 @@ TEST(Task, async_task) {
   sem.acquire();
   ASSERT_EQ(value, 2);
 
-  task1(value).by(executor).detach();
+  auto lazy1 = [&sem](int &value) -> Lazy<void> {
+    co_await no_return_task(value);
+    value += 1;
+    sem.release();
+    co_return;
+  };
+  lazy1(value).by(executor).detach();
   sem.acquire();
   EXPECT_EQ(value, 4);
 
@@ -58,7 +65,12 @@ TEST(Task, async_task) {
   sem.acquire();
   ASSERT_EQ(value, 2);
 
-  task2(value).by(executor).detach();
+  auto lazy2 = [&sem](int &value) -> Lazy<void> {
+    value = co_await return_task() + 1;
+    sem.release();
+    co_return;
+  };
+  lazy2(value).by(executor).detach();
   sem.acquire();
   EXPECT_EQ(value, 2);
 
@@ -88,7 +100,13 @@ TEST(Task, async_lazy) {
   sem.acquire();
   ASSERT_EQ(value, 2);
 
-  task1(value).by(executor).detach();
+  auto lazy1 = [&sem](int &value) -> Lazy<void> {
+    co_await no_return_task(value);
+    value += 1;
+    sem.release();
+    co_return;
+  };
+  lazy1(value).by(executor).detach();
   sem.acquire();
   EXPECT_EQ(value, 4);
 
@@ -101,7 +119,12 @@ TEST(Task, async_lazy) {
   sem.acquire();
   ASSERT_EQ(value, 2);
 
-  task2(value).by(executor).detach();
+  auto lazy2 = [&sem](int &value) -> Lazy<void> {
+    value = co_await return_task() + 1;
+    sem.release();
+    co_return;
+  };
+  lazy2(value).by(executor).detach();
   sem.acquire();
   EXPECT_EQ(value, 2);
 

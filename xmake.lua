@@ -41,7 +41,6 @@ function set_log_level(target)
     log_level_map[log_levels[6]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_ERROR"
     log_level_map[log_levels[7]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_CRITICAL"
     target:add("defines", log_level_map[log_level], { public = true }) -- public is important
-    print("log define: ", log_level_map[log_level])
     print("log define: ", target:get("defines"))
 end
 
@@ -49,6 +48,14 @@ add_packages("quill")
 
 
 -- flags
+set_policy("build.optimization.lto", true)
+
+-- set_policy("build.sanitizer.thread", true)
+-- set_policy("build.sanitizer.address", true)
+-- set_policy("build.sanitizer.memory", true)
+-- set_policy("build.sanitizer.leak", true)
+-- set_policy("build.sanitizer.undefined", true)
+
 add_ldflags("-fuse-ld=mold")
 
 add_includedirs("$(projectdir)/include", { public = true })

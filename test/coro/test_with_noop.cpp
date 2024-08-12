@@ -11,7 +11,7 @@ TEST(Task, just_return) {
   no_return_task(value).by(executor).block();
   EXPECT_EQ(value, 1);
 
-  no_return_task(value).by(executor).detach();
+  no_return_lazy(value).by(executor).detach();
   EXPECT_EQ(value, 2);
 
   EXPECT_EQ(return_task().by(executor).block(), 1);
@@ -27,6 +27,7 @@ TEST(Task, just_throw) {
 TEST(Task, async_task) {
   auto executor = std::make_shared<NoopExecutor>();
   int value = 0;
+
   auto task1 = [](int &value) -> Task<void> {
     co_await no_return_task(value);
     value += 1;
@@ -35,7 +36,12 @@ TEST(Task, async_task) {
   task1(value).by(executor).block();
   EXPECT_EQ(value, 2);
 
-  task1(value).by(executor).detach();
+  auto lazy1 = [](int &value) -> Lazy<void> {
+    co_await no_return_task(value);
+    value += 1;
+    co_return;
+  };
+  lazy1(value).by(executor).detach();
   ASSERT_EQ(value, 4);
 
   auto task2 = [](int &value) -> Task<void> {
@@ -45,7 +51,11 @@ TEST(Task, async_task) {
   task2(value).by(executor).block();
   EXPECT_EQ(value, 2);
 
-  task2(value).by(executor).detach();
+  auto lazy2 = [](int &value) -> Lazy<void> {
+    value = co_await return_task() + 1;
+    co_return;
+  };
+  lazy2(value).by(executor).detach();
   ASSERT_EQ(value, 2);
 
   auto task3 = []() -> Task<int> {

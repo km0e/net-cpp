@@ -6,6 +6,7 @@
 #  include <concepts>
 #  include <coroutine>
 #  include <cstdint>
+#  include <memory>
 #  include <tuple>
 #  include <type_traits>
 #  include <utility>
@@ -21,6 +22,7 @@ private:
 
 public:
   using result_type = std::invoke_result_t<Transform, typename Last::result_type>;
+  using executor_type = typename Base::executor_type;
 
   template <class _Promise>
   ChainAwaiter(std::coroutine_handle<_Promise> handle,
@@ -41,6 +43,13 @@ public:
     auto next_transforms
         = std::tuple_cat(std::make_tuple(std::forward<_Transform>(transform)), this->_transforms);
     return Next{this->_handle, next_transforms};
+  }
+
+  template <class E>
+    requires std::constructible_from<std::shared_ptr<executor_type>, E>
+  auto &&by(this auto &&self, E &&executor) {
+    self._handle.promise().by(std::forward<E>(executor));
+    return std::forward<decltype(self)>(self);
   }
 
 protected:

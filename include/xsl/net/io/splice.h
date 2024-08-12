@@ -18,7 +18,7 @@ XSL_NET_IO_NB
  */
 template <class Executor = coro::ExecutorBase, ai::AsyncReadDeviceLike<std::byte> From,
           ai::AsyncWriteDeviceLike<std::byte> To>
-coro::Lazy<void> splice(From& from, To& to, std::string& buffer) {
+coro::Lazy<void, Executor> splice(From& from, To& to, std::string& buffer) {
   while (true) {
     auto [sz, err]
         = co_await from.template read<Executor>(std::as_writable_bytes(std::span(buffer)));

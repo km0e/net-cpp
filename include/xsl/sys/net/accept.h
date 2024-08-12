@@ -12,7 +12,7 @@ using AcceptResult = std::expected<Socket<Traits>, std::errc>;
 
 template <SocketLike S>
 std::expected<S, std::errc> accept(S &socket, SockAddr *addr) {
-  auto [sockaddr, addrlen] = addr->raw();
+  auto [sockaddr, addrlen] = addr == nullptr ? SockAddr::null() : addr->raw();
   int tmp_fd = ::accept4(socket.raw(), sockaddr, addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
   if (tmp_fd < 0) {
     return std::unexpected{std::errc(errno)};

@@ -1,4 +1,6 @@
+
 #include <CLI/CLI.hpp>
+#include <xsl/coro.h>
 #include <xsl/logctl.h>
 #include <xsl/net.h>
 
@@ -10,23 +12,26 @@ using namespace xsl::feature;
 using namespace xsl::coro;
 using namespace xsl;
 
-Task<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
+template <class Executor = ExecutorBase>
+Lazy<void, Executor> run(std::string_view ip, std::string_view port,
+                         std::shared_ptr<xsl::Poller> poller) {
   auto server = http::Server<Tcp<Ip<4>>>::create(ip, port, poller).value();
   server.redirect(http::Method::GET, "/", "/index.html");
   server.add_static("/", "./build/html/");
-  co_await server.run();
+  co_await server.template run<Executor>();
   poller->shutdown();
   co_return;
 }
 
 int main(int argc, char* argv[]) {
-  set_log_level(xsl::LogLevel::LOG4);
   CLI::App app{"Echo server"};
   app.add_option("-i,--ip", ip, "IP address");
   app.add_option("-p,--port", port, "Port");
   CLI11_PARSE(app, argc, argv);
 
   auto poller = std::make_shared<xsl::Poller>();
+  auto executor = std::make_shared<NewThreadExecutor>();
+  // run<NewThreadExecutor>(ip, port, poller).detach(std::move(executor));
   run(ip, port, poller).detach();
   while (poller->valid()) {
     poller->poll();

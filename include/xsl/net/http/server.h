@@ -129,7 +129,7 @@ public:
    * @return coro::Task<std::expected<void, std::errc>, Executor>
    */
   template <class Executor = coro::ExecutorBase>
-  coro::Task<std::expected<void, std::errc>, Executor> run() {
+  coro::Lazy<std::expected<void, std::errc>, Executor> run() {
     LOG4("HttpServer start at: {}:{}", this->server.host, this->server.port);
     while (true) {
       auto res = co_await this->server.template accept<Executor>(nullptr);
@@ -152,7 +152,7 @@ private:
          NOT_IMPLEMENTED_HANDLER<in_dev_type, out_dev_type>};
 
   template <class Executor = coro::ExecutorBase>
-  coro::Task<void, Executor> http_connection(
+  coro::Lazy<void, Executor> http_connection(
       io_dev_type dev, std::shared_ptr<router_type> router,
       std::shared_ptr<ShardRes<std::unordered_map<std::size_t, handler_type>>> handlers) {
     auto [ard, awd] = std::move(dev).split();
@@ -190,7 +190,7 @@ private:
         handler = &handlers->lock_shared()->at(**route_res);
       }
       co_await (*handler)(ctx);
-      auto [sz, err] = co_await ctx.template sendto<Executor>(awd);
+      auto [sz, err] = co_await ctx.sendto(awd);
       if (err) {
         LOG3("send error: {}", std::make_error_code(*err).message());
       }

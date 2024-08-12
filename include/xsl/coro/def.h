@@ -6,6 +6,7 @@
 #  include <coroutine>
 #  include <exception>
 #  include <expected>
+#  include <utility>
 XSL_CORO_NB
 
 /*
@@ -46,7 +47,7 @@ struct noop_coroutine {
     void return_void() {}
     void unhandled_exception() {}
     template <class F>
-    void dispatch(F&&) {}
+    void dispatch(F &&) {}
     template <class Promise>
     void resume(std::coroutine_handle<Promise>) {}
   };
@@ -54,7 +55,7 @@ struct noop_coroutine {
 };
 
 template <class Awaiter, class Coroutine = noop_coroutine>
-concept Awaitable = requires() { [](Awaiter& a) -> Coroutine { co_await a; }; };
+concept Awaitable = requires() { [](Awaiter &a) -> Coroutine { co_await a; }; };
 
 template <class Awaiter>
 class awaiter_traits {
@@ -67,6 +68,12 @@ using to_awaiter_t = decltype(operator co_await(std::declval<ToAwaiter>()));
 
 template <class ResultType>
 using Result = std::expected<ResultType, std::exception_ptr>;
+
+class HandleControl {
+protected:
+  auto &&get_handle(this auto &&self) { return self._handle; }
+  auto move_handle(this auto &&self) { return std::exchange(self._handle, {}); }
+};
 
 XSL_CORO_NE
 

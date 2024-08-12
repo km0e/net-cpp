@@ -3,6 +3,7 @@
 #  define XSL_CORO_LAZY
 #  include "xsl/coro/base.h"
 #  include "xsl/coro/def.h"
+#  include "xsl/coro/detach.h"
 #  include "xsl/coro/executor.h"
 #  include "xsl/coro/next.h"
 #  include "xsl/logctl.h"
@@ -12,9 +13,9 @@
 #  include <expected>
 XSL_CORO_NB
 template <class Promise>
-class LazyAwaiter : public Awaiter<Promise> {
+class LazyAwaiter : public NextAwaiter<Promise> {
 private:
-  using Base = Awaiter<Promise>;
+  using Base = NextAwaiter<Promise>;
 
 protected:
   using promise_type = Promise;
@@ -71,6 +72,25 @@ public:
   Lazy(Lazy &&task) noexcept : _handle(std::exchange(task._handle, {})) {}
 
   ~Lazy() { assert(!_handle); }
+
+  void detach(this auto &&self) {
+    LOG6("task detach");
+    _coro::detach(std::move(self));
+  }
+
+  /**
+   * @brief detach the task with the executor
+   *
+   * @tparam E the executor type
+   * @param self the task
+   * @param executor the executor
+   * @return void
+   */
+  template <class E>
+    requires std::constructible_from<std::shared_ptr<Executor>, E>
+  void detach(this auto &&self, E &&executor) {
+    self.by(std::forward<E>(executor)).detach();
+  }
 
 protected:
   std::coroutine_handle<promise_type> _handle;

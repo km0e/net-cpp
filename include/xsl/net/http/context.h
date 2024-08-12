@@ -1,5 +1,4 @@
 #pragma once
-#include <chrono>
 #ifndef XSL_NET_HTTP_CONTEXT
 #  define XSL_NET_HTTP_CONTEXT
 #  include "xsl/ai/dev.h"
@@ -7,6 +6,7 @@
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/proto.h"
 
+#  include <chrono>
 #  include <optional>
 XSL_HTTP_NB
 template <ai::AsyncReadDeviceLike<std::byte> ByteReader,
@@ -57,8 +57,7 @@ public:
                                            }};
   }
 
-  template <class Executor = coro::ExecutorBase>
-  coro::Task<ai::Result, Executor> sendto(ByteWriter& awd) {
+  coro::Task<ai::Result> sendto(ByteWriter& awd) {
     if (!this->_response) {
       this->easy_resp(Status::INTERNAL_SERVER_ERROR);
     }

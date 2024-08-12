@@ -13,9 +13,9 @@
 XSL_CORO_NB
 
 template <class Promise>
-class TaskAwaiter : public Awaiter<Promise> {
+class TaskAwaiter : public NextAwaiter<Promise> {
 private:
-  using Base = Awaiter<Promise>;
+  using Base = NextAwaiter<Promise>;
 
 protected:
   using promise_type = Promise;

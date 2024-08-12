@@ -35,14 +35,14 @@ namespace impl_splice {
 template <class Executor = coro::ExecutorBase,
           wheel::PtrLike<ai::AsyncDevice<feature::In<std::byte>>> FromPtr,
           wheel::PtrLike<ai::AsyncDevice<feature::Out<std::byte>>> ToPtr>
-coro::Lazy<ai::Result> splice_once(FromPtr from, ToPtr to, std::string buffer) {
+coro::Lazy<ai::Result, Executor> splice_once(FromPtr from, ToPtr to, std::string buffer) {
   return impl_splice::splice_once(*from, *to, buffer);
 }
 
 template <class Executor = coro::ExecutorBase,
           wheel::PtrLike<ai::AsyncDevice<feature::In<std::byte>>> FromPtr,
           wheel::PtrLike<ai::AsyncDevice<feature::Out<std::byte>>> ToPtr>
-coro::Lazy<ai::Result> splice(FromPtr from, ToPtr to, std::string buffer) {
+coro::Lazy<ai::Result, Executor> splice(FromPtr from, ToPtr to, std::string buffer) {
   std::size_t total = 0;
   while (true) {
     auto [sz, err] = co_await impl_splice::splice_once(*from, *to, buffer);

@@ -84,12 +84,6 @@ public:
   void return_void() { _result = Result<void>(); }
 };
 
-class HandleControl {
-protected:
-  auto &&get_handle(this auto &&self) { return self._handle; }
-  auto move_handle(this auto &&self) { return std::exchange(self._handle, {}); }
-};
-
 template <class ResultType>
 class Coro : public HandleControl {
 protected:

@@ -49,12 +49,14 @@ bool Poller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
   epoll_event event;
   event.events = static_cast<uint32_t>(events);
   event.data.fd = fd;
+  auto guard = this->handlers.lock();
+  // must be here, otherwise the handler may be not registered
+  // in time when the event comes
   if (epoll_ctl(this->fd, EPOLL_CTL_ADD, fd, &event) == -1) {
     return false;
   }
   LOG5("Register {} for fd: {}", static_cast<uint32_t>(events), fd);
-  // there should be a lock here?
-  this->handlers.lock()->insert_or_assign(fd, make_shared<PollHandler>(handler));
+  guard->insert_or_assign(fd, make_shared<PollHandler>(handler));
   return true;
 }
 bool Poller::modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) {

@@ -32,6 +32,8 @@ using IpV6Addr = impl::Ip<6>;
 
 class SockAddr {
 public:
+  static constexpr std::tuple<sockaddr *, socklen_t *> null() { return {nullptr, nullptr}; }
+
   constexpr SockAddr() noexcept : _addr(), _len(sizeof(_addr)) {}
   constexpr std::tuple<sockaddr *, socklen_t *> raw() { return {&_addr, &_len}; }
 

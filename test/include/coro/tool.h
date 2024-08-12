@@ -12,6 +12,11 @@ inline Task<void> no_return_task(int &value) {
   co_return;
 }
 
+inline Lazy<void> no_return_lazy(int &value) {
+  ++value;
+  co_return;
+}
+
 inline Task<int> return_task() { co_return 1; }
 
 inline Task<void> no_return_exception_task() {
@@ -25,6 +30,12 @@ inline Task<int> return_exception_task() {
 }
 
 inline Task<void> sync_no_return_task(int &value, std::binary_semaphore &sem) {
+  ++value;
+  sem.release();
+  co_return;
+}
+
+inline Lazy<void> sync_no_return_lazy(int &value, std::binary_semaphore &sem) {
   ++value;
   sem.release();
   co_return;

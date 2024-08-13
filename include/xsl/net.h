@@ -1,7 +1,6 @@
 #pragma once
 #ifndef XSL_NET_H
 #  define XSL_NET_H
-#  include "xsl/net/http/component.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/parse.h"
 #  include "xsl/net/http/proto.h"

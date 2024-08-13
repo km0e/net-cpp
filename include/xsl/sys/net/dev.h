@@ -110,9 +110,9 @@ namespace impl_dev {
 
     std::tuple<DeviceCompose<feature::In<Traits>>, DeviceCompose<feature::Out<Traits>>> split()
         && noexcept {
-      auto r = DeviceCompose<feature::In<Traits>>{this->_dev};
-      auto w = DeviceCompose<feature::Out<Traits>>{std::move(this->_dev)};
-      // TODO: need suitable error handling
+      auto [r_dev, w_dev] = std::move(*this).Base::split();
+      auto r = DeviceCompose<feature::In<Traits>>(std::move(r_dev));
+      auto w = DeviceCompose<feature::Out<Traits>>(std::move(w_dev));
       return {std::move(r), std::move(w)};
     }
     /**

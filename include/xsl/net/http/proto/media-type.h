@@ -4,6 +4,7 @@
 #  include "xsl/net/http/proto/base.h"
 #  include "xsl/net/http/proto/def.h"
 
+#  include <array>
 #  include <cstdint>
 XSL_NET_HTTP_PROTO_NB
 enum class MediaMainType : uint8_t {

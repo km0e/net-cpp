@@ -5,7 +5,6 @@
 
 #  include <array>
 #  include <chrono>
-#  include <regex>
 #  include <string_view>
 
 XSL_HTTP_NB
@@ -25,8 +24,6 @@ const std::array<std::string_view, HTTP_VERSION_COUNT> HTTP_VERSION_STRINGS = {
     "HTTP/1.1",
     "HTTP/2.0",
 };
-
-const std::regex HTTP_VERSION_REGEX = std::regex(R"(HTTP/(\d)\.(\d))");
 
 std::string_view to_string_view(const Version& method);
 
@@ -68,68 +65,6 @@ const std::array<std::string_view, CHARSET_COUNT> CHARSET_STRINGS = {
 };
 
 std::string_view to_string_view(const Charset& charset);
-
-namespace content_type {
-  enum class Type : uint8_t {
-    TEXT,
-    APPLICATION,
-    MULTIPART,
-    UNKNOWN = 0xff,
-  };
-  const int TYPE_COUNT = 3;
-  const std::array<std::string_view, TYPE_COUNT> TYPE_STRINGS = {
-      "text",
-      "application",
-      "multipart",
-  };
-  std::string_view to_string_view(Type type);
-  std::string& operator+=(std::string& lhs, Type rhs);
-  enum class SubType : uint8_t {
-    PLAIN,
-    HTML,
-    XML,
-    CSS,
-    JAVASCRIPT,
-    JSON,
-    XHTML,
-    OCTET_STREAM,
-    FORM_URLENCODED,
-    FORM_DATA,
-    UNKNOWN = 0xff,
-  };
-  const int SUB_TYPE_COUNT = 10;
-  const std::array<std::string_view, SUB_TYPE_COUNT> SUB_TYPE_STRINGS = {
-      "plain",     "html",         "xml",
-      "css",       "javascript",   "json",
-      "xhtml",     "octet-stream", "x-www-form-urlencoded",
-      "form-data",
-  };
-  std::string_view to_string_view(const SubType& type);
-  std::string& operator+=(std::string& lhs, SubType rhs);
-  class MediaType {
-  public:
-    static MediaType from_extension(std::string_view extension);
-    MediaType();
-    MediaType(Type type, SubType sub_type);
-    ~MediaType();
-    Type type;
-    SubType sub_type;
-    std::string to_string();
-  };
-  std::string& operator+=(std::string& lhs, const MediaType& rhs);
-}  // namespace content_type
-
-class ContentType {
-public:
-  ContentType();
-  ContentType(content_type::MediaType media_type, Charset charset);
-  ~ContentType();
-  content_type::MediaType media_type;
-  Charset charset;
-  std::string to_string();
-};
-
-std::string& operator+=(std::string& lhs, const ContentType& rhs);
 
 enum class Status : uint16_t {
   CONTINUE = 100,
@@ -254,14 +189,5 @@ _net::http::Version from_string_view(std::string_view type);
 
 template <>
 _net::http::Method from_string_view(std::string_view type);
-
-template <>
-_net::http::content_type::Type from_string_view(std::string_view type);
-
-template <>
-_net::http::content_type::SubType from_string_view(std::string_view type);
-
-template <>
-_net::http::content_type::MediaType from_string_view(std::string_view type);
 XSL_NE
 #endif

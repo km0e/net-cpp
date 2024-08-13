@@ -2,7 +2,6 @@
 #ifndef XSL_SYS_NET_IO
 #  define XSL_SYS_NET_IO
 #  include "xsl/ai/dev.h"
-#  include "xsl/coro/task.h"
 #  include "xsl/feature.h"
 #  include "xsl/sys/io/dev.h"
 #  include "xsl/sys/net/def.h"
@@ -106,7 +105,6 @@ coro::Task<ai::Result, Executor> immediate_sendfile(S &skt, SendfileHint hint) {
   off_t offset = hint.offset;
   while (true) {
     ssize_t n = ::sendfile(skt.raw(), file.raw(), &offset, hint.size);
-    // TODO: handle sendfile error
     if (n == static_cast<ssize_t>(hint.size)) {
       LOG6("{} send {} bytes file", skt.raw(), n);
       co_return Result{static_cast<std::size_t>(offset), std::nullopt};
@@ -117,6 +115,7 @@ coro::Task<ai::Result, Executor> immediate_sendfile(S &skt, SendfileHint hint) {
       continue;
     }
     if ((n == -1) && !(errno == EAGAIN || errno == EWOULDBLOCK)) {
+      // TODO: handle sendfile error
       co_return Result{static_cast<std::size_t>(offset), {std::errc(errno)}};
     }
 

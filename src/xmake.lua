@@ -8,7 +8,7 @@ do
     on_package(function(package) end)
 end
 
-includes("net", "utils", "wheel", "coro", "sys")
+includes("net", "wheel", "coro", "sys")
 
 
 target("xsl_convert")

@@ -1,5 +1,4 @@
 #include "xsl/net/http/parse.h"
-#include "xsl/net/http/proto.h"
 #include "xsl/regex.h"
 
 #include <regex>
@@ -8,7 +7,7 @@
 XSL_HTTP_NB
 ParseUnit::ParseUnit() : view() {}
 
-ParseResult ParseUnit::parse(const char* data, size_t len) {  // TODO: request target
+ParseResult ParseUnit::parse(const char* data, size_t len) {
   std::expected<RequestView, std::errc> res = std::unexpected{std::errc()};
   std::string_view view(data, len);
   size_t pos = 0, parse_end = 0;
@@ -39,7 +38,7 @@ ParseResult ParseUnit::parse(const char* data, size_t len) {  // TODO: request t
       }
       this->parse_request_target(line.substr(_1sp + 1, _2sp - _1sp - 1));
       auto tmp_version = line.substr(_2sp + 1);
-      if (std::regex_match(tmp_version.begin(), tmp_version.end(), HTTP_VERSION_REGEX)) {
+      if (std::regex_match(tmp_version.begin(), tmp_version.end(), regex::http_version_re)) {
         this->view.version = tmp_version;
       } else {
         res = std::unexpected{std::errc::illegal_byte_sequence};

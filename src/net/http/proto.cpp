@@ -19,66 +19,6 @@ std::string_view to_string_view(const Charset& charset) {
   return CHARSET_STRINGS[static_cast<uint8_t>(charset)];
 }
 
-namespace content_type {
-  std::string_view to_string_view(Type type) {
-    if (type == Type::UNKNOWN) return "Unknown";
-    return TYPE_STRINGS[static_cast<uint8_t>(type)];
-  }
-  std::string& operator+=(std::string& lhs, Type rhs) {
-    return lhs.append(TYPE_STRINGS[static_cast<uint8_t>(rhs)]);
-  }
-  std::string_view to_string_view(const SubType& subtype) {
-    if (subtype == SubType::UNKNOWN) return "Unknown";
-    return SUB_TYPE_STRINGS[static_cast<uint8_t>(subtype)];
-  }
-  std::string& operator+=(std::string& lhs, SubType rhs) {
-    return lhs.append(SUB_TYPE_STRINGS[static_cast<uint8_t>(rhs)]);
-  }
-  MediaType MediaType::from_extension(std::string_view extension) {
-    if (extension == ".html" || extension == ".htm") {
-      return {Type::TEXT, SubType::HTML};
-    } else if (extension == ".css") {
-      return {Type::TEXT, SubType::CSS};
-    } else if (extension == ".js") {
-      return {Type::APPLICATION, SubType::JAVASCRIPT};
-    } else if (extension == ".json") {
-      return {Type::APPLICATION, SubType::JSON};
-    } else if (extension == ".xml") {
-      return {Type::APPLICATION, SubType::XML};
-    } else {
-      // TODO: add more content type
-      return {Type::APPLICATION, SubType::OCTET_STREAM};
-    }
-  }
-
-  MediaType::MediaType() : type(Type::UNKNOWN), sub_type(SubType::UNKNOWN) {}
-  MediaType::MediaType(Type type, SubType sub_type) : type(type), sub_type(sub_type) {}
-  std::string MediaType::to_string() {
-    return std::string{content_type::to_string_view(this->type)}.append("/").append(
-        to_string_view(this->sub_type));
-  }
-  MediaType::~MediaType() {}
-
-  std::string& operator+=(std::string& lhs, MediaType rhs) {
-    lhs += to_string_view(rhs.type);
-    lhs += '/';
-    lhs += to_string_view(rhs.sub_type);
-    return lhs;
-  }
-}  // namespace content_type
-ContentType::ContentType() : media_type(content_type::MediaType{}), charset(Charset::UNKNOWN) {}
-ContentType::ContentType(content_type::MediaType media_type, Charset charset)
-    : media_type(media_type), charset(charset) {}
-ContentType::~ContentType() {}
-std::string ContentType::to_string() {
-  auto result{this->media_type.to_string()};
-  if (this->charset != Charset::UNKNOWN) {
-    result += "; charset=";
-    result += to_string_view(this->charset);
-  }
-  return result;
-}
-
 static uint16_t to_index(Status status) {
   switch (status) {
     case Status::CONTINUE:
@@ -196,33 +136,5 @@ _net::http::Method from_string_view<_net::http::Method>(std::string_view method)
   return static_cast<_net::http::Method>(iter - _net::http::HTTP_METHOD_STRINGS.begin());
 }
 
-template <>
-_net::http::content_type::Type from_string_view<_net::http::content_type::Type>(
-    std::string_view type) {
-  auto iter = std::ranges::find(_net::http::content_type::TYPE_STRINGS, type);
-  if (iter == _net::http::content_type::TYPE_STRINGS.end())
-    return _net::http::content_type::Type::UNKNOWN;
-  return static_cast<_net::http::content_type::Type>(
-      iter - _net::http::content_type::TYPE_STRINGS.begin());
-}
-template <>
-_net::http::content_type::SubType from_string_view<_net::http::content_type::SubType>(
-    std::string_view subtype) {
-  auto iter = std::ranges::find(_net::http::content_type::SUB_TYPE_STRINGS, subtype);
-  if (iter == _net::http::content_type::SUB_TYPE_STRINGS.end())
-    return _net::http::content_type::SubType::UNKNOWN;
-  return static_cast<_net::http::content_type::SubType>(
-      iter - _net::http::content_type::SUB_TYPE_STRINGS.begin());
-}
-template <>
-_net::http::content_type::MediaType from_string_view(std::string_view type) {
-  auto pos = type.find('/');
-  if (pos == std::string_view::npos) return _net::http::content_type::MediaType{};
-  auto type_str = type.substr(0, pos);
-  auto sub_type_str = type.substr(pos + 1);
-  auto type_enum = from_string_view<_net::http::content_type::Type>(type_str);
-  auto sub_type_enum = from_string_view<_net::http::content_type::SubType>(sub_type_str);
-  return _net::http::content_type::MediaType{type_enum, sub_type_enum};
-}
 
 XSL_HTTP_NE

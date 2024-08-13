@@ -1,7 +1,6 @@
 #pragma once
 #ifndef XSL_SYS_IO_DEV
 #  define XSL_SYS_IO_DEV
-#  include "xsl/coro/semaphore.h"
 #  include "xsl/feature.h"
 #  include "xsl/logctl.h"
 #  include "xsl/sync.h"
@@ -43,13 +42,6 @@ public:
   template <class... Args>
   NativeDeviceOwner(Args &&...args) noexcept : _dev(std::forward<Args>(args)...) {}
 
-  NativeDeviceOwner(const NativeDeviceOwner &rhs) noexcept : _dev(rhs._dev) {}
-
-  NativeDeviceOwner &operator=(const NativeDeviceOwner &rhs) noexcept {
-    _dev = rhs._dev;
-    return *this;
-  }
-
   NativeDeviceOwner(NativeDeviceOwner &&rhs) noexcept : _dev(std::move(rhs._dev)) {}
 
   NativeDeviceOwner &operator=(NativeDeviceOwner &&rhs) noexcept {
@@ -63,6 +55,11 @@ public:
 
 protected:
   std::shared_ptr<NativeDevice> _dev;
+
+  std::tuple<std::shared_ptr<NativeDevice>, std::shared_ptr<NativeDevice>> split() && noexcept {
+    auto dev = std::move(_dev);
+    return {dev, dev};
+  }
 };
 
 namespace impl_dev {

@@ -10,4 +10,4 @@ target_sources(
     ${CMAKE_CURRENT_SOURCE_DIR}/tcp.cpp
 )
 
-target_link_libraries(xsl_tcp PRIVATE xsl_sys)
+target_link_libraries(xsl_tcp PRIVATE xsl_coro xsl_sys)

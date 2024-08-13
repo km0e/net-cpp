@@ -69,7 +69,7 @@ public:
         for (const auto& [encoding, weight] : encodings) {
           float w;
           if (auto res = std::from_chars(weight.data(), weight.data() + weight.size(), w);
-              !res || (w == 0)) {
+              res.ec == std::errc{} || (w == 0)) {
             continue;
           }
           auto compress_encoding = std::ranges::find_if(

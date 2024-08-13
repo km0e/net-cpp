@@ -27,12 +27,12 @@ concept Executor = requires(T t, move_only_function<void()> func) {
 
 class NoopExecutor : public ExecutorBase {
 public:
-  void schedule(move_only_function<void()> &&func);
+  void schedule(move_only_function<void()> &&func) override;
 };
 
 class NewThreadExecutor : public ExecutorBase {
 public:
-  void schedule(move_only_function<void()> &&func);
+  void schedule(move_only_function<void()> &&func) override;
 };
 
 XSL_CORO_NE

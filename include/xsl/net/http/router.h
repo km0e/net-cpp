@@ -14,23 +14,6 @@
 
 XSL_HTTP_NB
 
-enum class RouteError : uint8_t {
-  Unknown,
-  NotFound,
-  Unimplemented,
-};
-
-const int ROUTE_ERROR_COUNT = 3;
-const std::array<std::string_view, ROUTE_ERROR_COUNT> ROUTE_ERROR_STRINGS = {
-    "Unknown",
-    "NotFound",
-    "Unimplemented",
-};
-
-inline std::string_view to_string_view(RouteError re) {
-  return ROUTE_ERROR_STRINGS[static_cast<uint8_t>(re)];
-}
-
 class RouteContext {
 public:
   RouteContext(Method method, std::string_view current_path)
@@ -42,7 +25,7 @@ public:
   std::string_view current_path;
 };
 
-using RouteResult = std::expected<const std::size_t*, RouteError>;
+using RouteResult = std::expected<const std::size_t*, Status>;
 
 template <class R, class Tag>
 concept RouterLike = requires(R r, Method hm, std::string_view path, Tag&& tag, RouteContext& ctx) {
@@ -114,7 +97,7 @@ namespace router_details {
     RouteResult route(RouteContext& ctx) {
       LOG6("Routing path: {}", ctx.current_path);
       if (ctx.current_path[0] != '/') {
-        return std::unexpected{RouteError::NotFound};
+        return std::unexpected{Status::NOT_FOUND};
       }
       auto pos = ctx.current_path.find('/', 1);
       do {
@@ -128,8 +111,7 @@ namespace router_details {
             if (res.has_value()) {  // if handled
               return res;
             }
-            if ((!res.has_value())
-                && res.error() != RouteError::NotFound) {  // if error but not found
+            if ((!res.has_value()) && res.error() != Status::NOT_FOUND) {  // if error but not found
               return res;
             }
             ctx.current_path = current_path;  // restore current path
@@ -142,7 +124,7 @@ namespace router_details {
           if (handler != tag_type{}) {
             return &handler;
           }
-          return std::unexpected{RouteError::Unimplemented};
+          return std::unexpected{Status::NOT_IMPLEMENTED};
         }
         auto child = children.lock_shared()->find(sub_path);
         if (child == children.lock_shared()->end()) {  // if the path is not found
@@ -153,7 +135,7 @@ namespace router_details {
         if (dr_res.has_value()) {
           return dr_res;
         }
-        if ((!dr_res.has_value()) && dr_res.error() != RouteError::NotFound) {
+        if ((!dr_res.has_value()) && dr_res.error() != Status::NOT_FOUND) {
           return dr_res;
         }
       } while (false);
@@ -162,7 +144,7 @@ namespace router_details {
       if (iter != this->children.lock_shared()->end()) {
         return iter->second.direct_route(ctx);
       }
-      return std::unexpected{RouteError::NotFound};
+      return std::unexpected{Status::NOT_FOUND};
     }
 
   private:
@@ -181,7 +163,7 @@ namespace router_details {
       LOG5("Direct routing path: {}", ctx.current_path);
       auto& handler = handlers[static_cast<uint8_t>(ctx.method)];
       if (handler == tag_type{}) {
-        return std::unexpected{RouteError::Unimplemented};
+        return std::unexpected{Status::NOT_IMPLEMENTED};
       }
       return &handler;
     }
@@ -207,7 +189,7 @@ public:
   RouteResult route(RouteContext& ctx) {
     LOG5("Starting routing path: {}", ctx.current_path);
     if (ctx.method == Method::UNKNOWN) {
-      return std::unexpected{RouteError::Unknown};
+      return std::unexpected{Status::UNKNOWN};
     }
     return root.route(ctx);
   }

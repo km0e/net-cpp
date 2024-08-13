@@ -2,16 +2,15 @@
 #include "xsl/logctl.h"
 
 #include <quill/Backend.h>
-#include <quill/Utility.h>
 #include <quill/Frontend.h>
 #include <quill/Logger.h>
+#include <quill/Utility.h>
 #include <quill/sinks/ConsoleSink.h>
 
 #include <cstdlib>
 XSL_NB
 #if QUILL_COMPILE_ACTIVE_LOG_LEVEL <= QUILL_COMPILE_ACTIVE_LOG_LEVEL_CRITICAL
 LogCtl LogCtl::instance{};
-#endif
 LogCtl::LogCtl() : logger(nullptr) {
   quill::Backend::start();
   auto console_sink = quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink_id_1");
@@ -31,5 +30,8 @@ LogCtl::~LogCtl() {
   quill::Frontend::remove_logger(logger);
   quill::Backend::stop();
 }
-
+#else
+LogCtl::LogCtl() : logger(nullptr) {}
+LogCtl::~LogCtl() {}
+#endif
 XSL_NE

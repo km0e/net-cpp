@@ -25,7 +25,7 @@ TEST(regex, authority) {
   ASSERT_EQ(m[2].str(), "www.abc.com");
   ASSERT_EQ(m[3].str(), "");
 }
-TEST(regex, absoulte_uri) {
+TEST(regex, absolute_uri) {
   std::string_view uri = "http://www.ics.uci.edu/pub/ietf/uri/?a=1";
   std::cmatch m;
   ASSERT_TRUE(std::regex_match(uri.begin(), uri.end(), absolute_uri_re));
@@ -48,6 +48,32 @@ TEST(regex, absoulte_uri) {
   ASSERT_EQ(m[2].str(), "www.ics.uci.edu");
   ASSERT_EQ(m[3].str(), "/pub/ietf/uri");
   ASSERT_EQ(m[4].str(), "");
+}
+
+TEST(regex, parameter) {
+  std::string_view param = ";a=1;b=2";
+  std::cmatch m;
+  ASSERT_TRUE(std::regex_search(param.begin(), param.end(), m, parameter_re));
+  ASSERT_EQ(m[1].str(), "a");
+  ASSERT_EQ(m[2].str(), "1");
+  ASSERT_TRUE(std::regex_search(m.suffix().first, m.suffix().second, m, parameter_re));
+  ASSERT_EQ(m[1].str(), "b");
+  ASSERT_EQ(m[2].str(), "2");
+  std::string_view param2 = ";a=1;b=2,";
+  ASSERT_TRUE(std::regex_search(param2.begin(), param2.end(), m, parameter_re));
+  ASSERT_EQ(m[1].str(), "a");
+  ASSERT_EQ(m[2].str(), "1");
+  ASSERT_TRUE(std::regex_search(m.suffix().first, m.suffix().second, m, parameter_re));
+  ASSERT_EQ(m[1].str(), "b");
+  ASSERT_EQ(m[2].str(), "2");
+  std::string_view param3 = ";a=1";
+  ASSERT_TRUE(std::regex_search(param3.begin(), param3.end(), m, parameter_re));
+  ASSERT_EQ(m[1].str(), "a");
+  ASSERT_EQ(m[2].str(), "1");
+  std::string_view param4 = ";a=1,";
+  ASSERT_TRUE(std::regex_search(param4.begin(), param4.end(), m, parameter_re));
+  ASSERT_EQ(m[1].str(), "a");
+  ASSERT_EQ(m[2].str(), "1");
 }
 
 int main() {

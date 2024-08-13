@@ -107,6 +107,16 @@ public:
   Request(Request&&) = default;
   Request& operator=(Request&&) = default;
   ~Request() {}
+
+  [[nodiscard]]
+  inline std::optional<std::string_view> get_header(std::string_view key) {
+    auto iter = this->view.headers.find(key);
+    if (iter == this->view.headers.end()) {
+      return std::nullopt;
+    }
+    return iter->second;
+  }
+
   Method method;
   RequestView view;
   io::Buffer<> raw;

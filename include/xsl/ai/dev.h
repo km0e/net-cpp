@@ -48,6 +48,16 @@ namespace impl_dev {
 }  // namespace impl_dev
 
 template <class Device, class T>
+concept ReadDeviceLike = requires(Device t, std::span<T> buf) {
+  { t.read(buf) } -> std::same_as<Result>;
+};
+
+template <class Device, class T>
+concept WriteDeviceLike = requires(Device t, std::span<const T> buf) {
+  { t.write(buf) } -> std::same_as<Result>;
+};
+
+template <class Device, class T>
 concept AsyncReadDeviceLike = requires(Device t, std::span<T> buf) {
   { t.read(buf) } -> std::same_as<coro::Task<Result>>;
 };

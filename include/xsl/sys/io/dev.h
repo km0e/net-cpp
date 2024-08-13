@@ -28,7 +28,7 @@ public:
     if (_fd == -1) {
       return;
     }
-    DEBUG("close fd: {}", _fd);
+    LOG6("close fd: {}", _fd);
     close(_fd);
   }
 

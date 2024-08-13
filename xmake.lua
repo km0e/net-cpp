@@ -18,6 +18,8 @@ set_languages("cxxlatest")
 -- dependency
 add_requires("toml++", {configs = {header_only = true}})
 
+-- add_requires("thread-pool", "cli11", "gtest", "quill")
+
 add_requires("thread-pool", "cli11", "gtest", "quill")
 
 -- log level
@@ -45,7 +47,6 @@ function set_log_level(target)
 end
 
 add_packages("quill")
-
 
 -- flags
 set_policy("build.optimization.lto", true)

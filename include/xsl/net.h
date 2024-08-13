@@ -1,6 +1,7 @@
 #pragma once
 #ifndef XSL_NET_H
 #  define XSL_NET_H
+#  include "xsl/net/http/component.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/parse.h"
 #  include "xsl/net/http/proto.h"
@@ -48,13 +49,12 @@ namespace http {
   using xsl::_net::http::RouteContext;
   using xsl::_net::http::Router;
   using xsl::_net::http::RouteResult;
+  using xsl::_net::http::ServerBuilder;
+  using xsl::_net::http::StaticFileConfig;
   using xsl::_net::http::Status;
-  using xsl::_net::io::splice;
-  // using net::HttpServer;
-  using xsl::_net::http::RouteError;
-  using xsl::_net::http::Server;
   using xsl::_net::http::to_string_view;
   using xsl::_net::http::Version;
+  using xsl::_net::io::splice;
 }  // namespace http
 
 XSL_NE

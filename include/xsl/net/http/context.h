@@ -79,37 +79,11 @@ private:
   }
 };
 
-using HandleResult = coro::Task<void>;
+using HandleResult = coro::Task<std::optional<Status>>;
 
 template <class ByteReader, class ByteWriter>
-using RouteHandler = std::function<HandleResult(HandleContext<ByteReader, ByteWriter>& ctx)>;
+using Handler = std::function<HandleResult(HandleContext<ByteReader, ByteWriter>& ctx)>;
 
-template <class ByteReader, class ByteWriter>
-const RouteHandler<ByteReader, ByteWriter> UNKNOWN_HANDLER
-    = []([[maybe_unused]] HandleContext<ByteReader, ByteWriter>& ctx) -> HandleResult {
-  ctx.easy_resp(Status::UNKNOWN);
-  co_return;
-};
 
-template <class ByteReader, class ByteWriter>
-const RouteHandler<ByteReader, ByteWriter> INTERNAL_SERVER_ERROR_HANDLER
-    = []([[maybe_unused]] HandleContext<ByteReader, ByteWriter>& ctx) -> HandleResult {
-  ctx.easy_resp(Status::INTERNAL_SERVER_ERROR);
-  co_return;
-};
-
-template <class ByteReader, class ByteWriter>
-const RouteHandler<ByteReader, ByteWriter> NOT_FOUND_HANDLER
-    = []([[maybe_unused]] HandleContext<ByteReader, ByteWriter>& ctx) -> HandleResult {
-  ctx.easy_resp(Status::NOT_FOUND);
-  co_return;
-};
-
-template <class ByteReader, class ByteWriter>
-const RouteHandler<ByteReader, ByteWriter> NOT_IMPLEMENTED_HANDLER
-    = []([[maybe_unused]] HandleContext<ByteReader, ByteWriter>& ctx) -> HandleResult {
-  ctx.easy_resp(Status::NOT_IMPLEMENTED);
-  co_return;
-};
 XSL_HTTP_NE
 #endif

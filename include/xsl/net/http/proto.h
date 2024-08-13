@@ -1,10 +1,10 @@
 #pragma once
-#include <chrono>
-#ifndef XSL_NET_HTTP_PROTO
-#  define XSL_NET_HTTP_PROTO
+#ifndef XSL_NET_HTTP_PROTO_
+#  define XSL_NET_HTTP_PROTO_
 #  include "xsl/net/http/def.h"
 
 #  include <array>
+#  include <chrono>
 #  include <regex>
 #  include <string_view>
 

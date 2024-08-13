@@ -15,9 +15,10 @@ using namespace xsl;
 template <class Executor = ExecutorBase>
 Lazy<void, Executor> run(std::string_view ip, std::string_view port,
                          std::shared_ptr<xsl::Poller> poller) {
-  auto server = http::Server<Tcp<Ip<4>>>::create(ip, port, poller).value();
-  server.redirect(http::Method::GET, "/", "/index.html");
-  server.add_static("/", "./build/html/");
+  auto server_builder = http::ServerBuilder<Tcp<Ip<4>>>{};
+  server_builder.redirect(http::Method::GET, "/", "/index.html");
+  server_builder.add_static("/", {"./build/html/", {"br"}});
+  auto server = std::move(server_builder).build(ip, port, poller).value();
   co_await server.template run<Executor>();
   poller->shutdown();
   co_return;

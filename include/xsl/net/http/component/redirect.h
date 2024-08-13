@@ -6,16 +6,18 @@
 #  include "xsl/net/http/context.h"
 #  include "xsl/net/http/msg.h"
 
-HTTP_HELPER_NB
+#  include <optional>
+
+XSL_NET_HTTP_COMPONENT_NB
 template <ai::AsyncReadDeviceLike<std::byte> ByteReader,
           ai::AsyncWriteDeviceLike<std::byte> ByteWriter>
-RouteHandler<ByteReader, ByteWriter> create_redirect_handler(std::string_view path) {
+Handler<ByteReader, ByteWriter> create_redirect_handler(std::string_view path) {
   return [path](HandleContext<ByteReader, ByteWriter>& ctx) -> HandleResult {
     ResponsePart part{Status::MOVED_PERMANENTLY};
     part.headers.emplace("Location", std::string(path));
     ctx.resp(std::move(part));
-    return []() -> HandleResult { co_return; }();
+    co_return std::nullopt;
   };
 }
-HTTP_HELPER_NE
+XSL_NET_HTTP_COMPONENT_NE
 #endif

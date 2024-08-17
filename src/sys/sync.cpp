@@ -1,11 +1,8 @@
-#include "xsl/logctl.h"
-#include "xsl/sync/def.h"
-#include "xsl/sync/poller.h"
+#include "xsl/sys/def.h"
+#include "xsl/sys/sync.h"
 
-#include <sys/signal.h>
-
-#include <cstdint>
-XSL_SYNC_NB
+#include <csignal>
+XSL_SYS_NB
 IOM_EVENTS operator|(IOM_EVENTS a, IOM_EVENTS b) {
   return static_cast<IOM_EVENTS>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
 }
@@ -126,4 +123,5 @@ void Poller::shutdown() {
   this->fd = -1;
 }
 Poller::~Poller() { this->shutdown(); }
-XSL_SYNC_NE
+
+XSL_SYS_NE

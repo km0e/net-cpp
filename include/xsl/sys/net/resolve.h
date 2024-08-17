@@ -50,13 +50,14 @@ ResolveFlag operator|(ResolveFlag lhs, ResolveFlag rhs);
 const ResolveFlag SERVER_FLAGS = ResolveFlag::ADDRCONFIG | ResolveFlag::PASSIVE;
 const ResolveFlag CLIENT_FLAGS = ResolveFlag::ADDRCONFIG;
 
-template <class Traits>
-using ResolveResult = std::expected<EndpointSet<Traits>, std::error_condition>;
+template <class Tag>
+using ResolveResult = std::expected<EndpointSet<Tag>, std::error_condition>;
 
 namespace impl {
 
   template <class Traits>
-  ResolveResult<Traits> resolve(const char *name, const char *serv, ResolveFlag flags) {
+  ResolveResult<typename Traits::tag_type> resolve(const char *name, const char *serv,
+                                                   ResolveFlag flags) {
     addrinfo hints;
     addrinfo *res;
     std::memset(&hints, 0, sizeof(hints));
@@ -68,7 +69,7 @@ namespace impl {
     if (ret != 0) {
       return std::unexpected{std::error_condition{ret, ResolveCategory()}};
     }
-    return {EndpointSet<Traits>(res)};
+    return {EndpointSet<typename Traits::tag_type>(res)};
   }
 
   struct Resolver {
@@ -84,7 +85,7 @@ namespace impl {
     template <class... Flags>
     decltype(auto) resolve(const char *name, const char *serv,
                            ResolveFlag flags = ResolveFlag::ADDRCONFIG) {
-      return impl::resolve<SocketTraits<Flags...>>(name, serv, flags);
+      return impl::resolve<SocketTraits<SocketTraitsTag<Flags...>>>(name, serv, flags);
     }
     /**
      @brief Resolve the name and service to an address, typically used for connect
@@ -100,7 +101,7 @@ namespace impl {
                            ResolveFlag flags = ResolveFlag::ADDRCONFIG) {
       char serv_str[6];
       std::snprintf(serv_str, sizeof(serv_str), "%d", serv);
-      return impl::resolve<SocketTraits<Flags...>>(name, serv_str, flags);
+      return impl::resolve<SocketTraits<SocketTraitsTag<Flags...>>>(name, serv_str, flags);
     }
     /**
      @brief Resolve the service to an address, typically used for bind
@@ -112,7 +113,7 @@ namespace impl {
     template <class... Flags>
     decltype(auto) resolve(const char *serv,
                            ResolveFlag flags = ResolveFlag::ADDRCONFIG | ResolveFlag::PASSIVE) {
-      return impl::resolve<SocketTraits<Flags...>>(nullptr, serv, flags);
+      return impl::resolve<SocketTraits<SocketTraitsTag<Flags...>>>(nullptr, serv, flags);
     }
     /**
      @brief Resolve the service to an address, typically used for bind
@@ -127,7 +128,7 @@ namespace impl {
                            ResolveFlag flags = ResolveFlag::ADDRCONFIG | ResolveFlag::PASSIVE) {
       char port_str[6];
       std::snprintf(port_str, sizeof(port_str), "%u", port);
-      return impl::resolve<SocketTraits<Flags...>>(nullptr, port_str, flags);
+      return impl::resolve<SocketTraits<SocketTraitsTag<Flags...>>>(nullptr, port_str, flags);
     }
   };
 }  // namespace impl

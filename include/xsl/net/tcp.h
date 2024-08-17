@@ -4,20 +4,16 @@
 #  include "xsl/coro.h"
 #  include "xsl/feature.h"
 #  include "xsl/net/def.h"
-#  include "xsl/net/transport/accept.h"
-#  include "xsl/sync/poller.h"
 #  include "xsl/sys.h"
-#  include "xsl/sys/net/def.h"
-#  include "xsl/sys/net/socket.h"
 
 #  include <expected>
 #  include <memory>
+#  include <span>
 XSL_NET_NB
 template <class... Flags>
-coro::Task<
-    std::expected<sys::net::AsyncSocket<sys::net::SocketTraits<Flags...>>, std::error_condition>>
-tcp_dial(const char *host, const char *port, sync::Poller &poller) {
-  auto res = xsl::net::Resolver{}.resolve<Flags...>(host, port, xsl::net::CLIENT_FLAGS);
+Task<std::expected<sys::net::AsyncSocket<Flags...>, std::error_condition>> tcp_dial(
+    const char *host, const char *port, Poller &poller) {
+  auto res = sys::net::Resolver{}.resolve<Flags...>(host, port, sys::net::CLIENT_FLAGS);
   if (!res) {
     co_return std::unexpected{res.error()};
   }
@@ -29,10 +25,10 @@ tcp_dial(const char *host, const char *port, sync::Poller &poller) {
 }
 
 template <class LowerLayer>
-std::expected<sys::net::TcpSocket<LowerLayer>, std::error_condition> tcp_serv(const char *host,
-                                                                              const char *port) {
+std::expected<sys::tcp::Socket<LowerLayer>, std::error_condition> tcp_serv(const char *host,
+                                                                           const char *port) {
   auto addr
-      = xsl::net::Resolver{}.resolve<feature::Tcp<LowerLayer>>(host, port, xsl::net::SERVER_FLAGS);
+      = sys::net::Resolver{}.resolve<feature::Tcp<LowerLayer>>(host, port, sys::net::SERVER_FLAGS);
   if (!addr) {
     return std::unexpected(addr.error());
   }
@@ -44,7 +40,7 @@ std::expected<sys::net::TcpSocket<LowerLayer>, std::error_condition> tcp_serv(co
   if (!lres) {
     return std::unexpected(lres.error());
   }
-  return sys::net::TcpSocket<LowerLayer>{std::move(*bind_res)};
+  return sys::tcp::Socket<LowerLayer>{std::move(*bind_res)};
 }
 
 /**
@@ -59,9 +55,10 @@ template <uint8_t Version>
 class TcpServer<feature::Ip<Version>> {
 public:
   using lower_layer_type = feature::Ip<Version>;
-  using io_dev_type = sys::net::AsyncTcpSocket<lower_layer_type>;
-  using in_dev_type = io_dev_type::template rebind_type<feature::In>;
-  using out_dev_type = io_dev_type::template rebind_type<feature::Out>;
+  using io_dev_type = sys::tcp::AsyncSocket<lower_layer_type>;
+  using in_dev_type = io_dev_type::template rebind<feature::In>;
+  using out_dev_type = io_dev_type::template rebind<feature::Out>;
+  using value_type = std::unique_ptr<io_dev_type>;
   /**
    * @brief Construct a new Tcp Server object
    *
@@ -78,31 +75,56 @@ public:
     if (!skt) {
       return std::unexpected(skt.error());
     }
-    auto ac = transport::Acceptor<lower_layer_type>::create(*copy_poller, std::move(*skt));
-    if (!ac) {
-      return std::unexpected(ac.error());
-    }
-    return TcpServer{host, port, std::move(copy_poller), std::move(*ac)};
+    return TcpServer{host, port, std::move(copy_poller), std::move(*skt).async(*copy_poller)};
   }
 
   template <class P, class... Args>
   TcpServer(std::string_view host, std::string_view port, P &&poller, Args &&...args)
-      : host(host), port(port), poller(std::forward<P>(poller)), _ac(std::forward<Args>(args)...) {}
+      : host(host),
+        port(port),
+        poller(std::forward<P>(poller)),
+        _dev(std::forward<Args>(args)...) {}
   TcpServer(TcpServer &&) = default;
   TcpServer &operator=(TcpServer &&) = default;
+
   /**
-   * @brief accept a connection
+   * @brief read connections from the server
    *
-   * @tparam Executor the executor type, default is coro::ExecutorBase
-   * @param addr the address of the local socket
-   * @return decltype(auto) the io_dev_type
+   * @tparam Executor the executor to use
+   * @param conns the connections to read
+   * @return Task<Result> the result of the operation
    */
   template <class Executor = coro::ExecutorBase>
-  decltype(auto) accept(sys::net::SockAddr *addr) noexcept {
-    return this->_ac.template accept<Executor>(addr).transform([this](auto &&res) {
-      return res.transform(
-          [this](auto &&skt) { return io_dev_type{std::move(skt).async(*this->poller)}; });
-    });
+  Task<Result, Executor> read(std::span<value_type> conns) noexcept {
+    std::size_t i = 0;
+    for (auto &conn : conns) {
+      auto res = co_await this->accept();
+      if (!res) {
+        co_return Result{i, res.error()};
+      }
+      conn = std::make_unique<io_dev_type>(std::move(*res));
+      ++i;
+    }
+    co_return {i, std::nullopt};
+  }
+  Task<Result> read(std::span<value_type> conns) noexcept {
+    return read<coro::ExecutorBase>(conns);
+  }
+  template <class Executor = coro::ExecutorBase>
+  Task<std::expected<io_dev_type, std::errc>, Executor> accept() noexcept {
+    while (true) {
+      auto res = sys::tcp::accept(this->_dev.inner(), nullptr);
+      if (res) {
+        co_return std::move(*res).async(*this->poller);
+      } else if (res.error() == std::errc::resource_unavailable_try_again
+                 || res.error() == std::errc::operation_would_block) {
+        if (!co_await this->_dev.read_sem()) {
+          co_return std::unexpected{std::errc::not_connected};
+        }
+      } else {
+        co_return std::unexpected{res.error()};
+      }
+    }
   }
 
   std::string host;
@@ -111,7 +133,7 @@ public:
   std::shared_ptr<Poller> poller;
 
 private:
-  transport::Acceptor<lower_layer_type> _ac;
+  io_dev_type _dev;
 };
 XSL_NET_NE
 #endif

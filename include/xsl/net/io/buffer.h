@@ -11,7 +11,7 @@
 #pragma once
 #ifndef XSL_NET_IO_BUFFER
 #  define XSL_NET_IO_BUFFER
-#  include "xsl/ai/dev.h"
+#  include "xsl/ai.h"
 #  include "xsl/feature.h"
 #  include "xsl/net/io/def.h"
 
@@ -19,6 +19,7 @@
 #  include <forward_list>
 #  include <memory>
 #  include <span>
+#  include <type_traits>
 XSL_NET_IO_NB
 class Block {
 public:
@@ -27,26 +28,23 @@ public:
 
   @param size the size of the block
    */
-  Block(std::size_t size) : data(std::make_unique<std::byte[]>(size)), valid_size(size) {}
+  Block(std::size_t size) : data(std::make_unique<byte[]>(size)), valid_size(size) {}
   /**
   @brief Construct a new Block object
 
   @param data the data
   @param size the valid size of the data
    */
-  Block(std::unique_ptr<std::byte[]> data, std::size_t size)
-      : data(std::move(data)), valid_size(size) {}
+  Block(std::unique_ptr<byte[]> data, std::size_t size) : data(std::move(data)), valid_size(size) {}
   Block(Block&&) = default;
   Block& operator=(Block&&) = default;
   ~Block() = default;
 
-  std::span<std::byte> span() { return {data.get(), valid_size}; }
-  std::span<std::byte> span(std::size_t offset) {
-    return {data.get() + offset, valid_size - offset};
-  }
+  std::span<byte> span() { return {data.get(), valid_size}; }
+  std::span<byte> span(std::size_t offset) { return {data.get() + offset, valid_size - offset}; }
 
-  std::unique_ptr<std::byte[]> data;  ///< the data
-  std::size_t valid_size;             ///< the valid size of the data
+  std::unique_ptr<byte[]> data;  ///< the data
+  std::size_t valid_size;        ///< the valid size of the data
 };
 
 namespace impl_buffer {
@@ -54,14 +52,13 @@ namespace impl_buffer {
   class Buffer;
 
   template <class... Flags>
-  using BufferCompose
-      = feature::organize_feature_flags_t<impl_buffer::Buffer<feature::Dyn>, Flags...>;
+  using BufferCompose = feature::organize_feature_flags_t<Buffer<feature::Dyn>, Flags...>;
 
   template <class T>
   class Buffer<T> : public std::conditional_t<std::is_same_v<T, feature::Dyn>,
-                                              ai::AsyncWritable<std::byte>, feature::placeholder> {
+                                              ai::AsyncWritable<byte>, feature::placeholder> {
   public:
-    using value_type = std::byte;
+    using value_type = byte;
 
     Buffer() : _blocks() {}
     Buffer(Buffer&&) = default;
@@ -74,7 +71,7 @@ namespace impl_buffer {
     void clear() { _blocks.clear(); }
     Block& front() { return _blocks.front(); }
 
-    coro::Task<ai::Result> write(ai::AsyncDevice<feature::Out<value_type>>& awd) {
+    Task<Result> write(ABW& awd) {
       std::size_t total_size = 0;
       for (auto& block : _blocks) {
         auto [size, err] = co_await awd.write(block.span());

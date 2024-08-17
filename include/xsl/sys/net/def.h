@@ -1,20 +1,32 @@
 #pragma once
 #ifndef XSL_SYS_NET_DEF
 #  define XSL_SYS_NET_DEF
-#  define XSL_SYS_NET_NB namespace xsl::sys::net {
+#  define XSL_SYS_NET_NB namespace xsl::_sys::net {
 #  define XSL_SYS_NET_NE }
-#  include "xsl/coro/semaphore.h"
 #  include "xsl/feature.h"
-#  include "xsl/sync.h"
+#  include "xsl/sys/sync.h"
 
 #  include <netinet/in.h>
 #  include <sys/socket.h>
 
 #  include <concepts>
+#  include <type_traits>
 XSL_SYS_NET_NB
+namespace tag {
+  struct TcpIpv4 {};
+  struct TcpIpv6 {};
+  struct TcpIp {};
+}  // namespace tag
 namespace impl_socket {
+  using namespace xsl::feature;
   template <class... Flags>
   struct SocketTraits;
+
+  template <class... Flags>
+  using SocketTraitsTagCompose
+      = organize_feature_flags_t<SocketTraits<set<Tcp<Ip<4>>, Tcp<Ip<6>>, Tcp<placeholder>,
+                                                  tag::TcpIpv4, tag::TcpIpv6, tag::TcpIp>>,
+                                 Flags...>::type;
 
   template <int Family>
   struct FamilyTraits {
@@ -32,40 +44,77 @@ namespace impl_socket {
   };
 
   template <>
-  struct SocketTraits<feature::Tcp<feature::Ip<4>>>
-      : FamilyTraits<AF_INET>, TypeTraits<SOCK_STREAM>, ProtocolTraits<IPPROTO_TCP> {
-    using poll_traits = sync::PollTraits;
-  };
+  struct SocketTraits<feature::Tcp<feature::Ip<4>>> : std::type_identity<tag::TcpIpv4> {};
 
   template <>
-  struct SocketTraits<feature::Tcp<feature::Ip<6>>>
-      : FamilyTraits<AF_INET6>, TypeTraits<SOCK_STREAM>, ProtocolTraits<IPPROTO_TCP> {
-    using poll_traits = sync::PollTraits;
-  };
+  struct SocketTraits<tag::TcpIpv4> : std::type_identity<tag::TcpIpv4> {};
 
   template <>
-  struct SocketTraits<feature::Tcp<feature::placeholder>>
-      : FamilyTraits<AF_UNSPEC>, TypeTraits<SOCK_STREAM>, ProtocolTraits<IPPROTO_TCP> {
-    using poll_traits = sync::PollTraits;
-  };
+  struct SocketTraits<feature::Tcp<feature::Ip<6>>> : std::type_identity<tag::TcpIpv6> {};
 
-  template <class... Flags>
-  using SocketTraitsCompose = feature::organize_feature_flags_t<
-      SocketTraits<feature::Item<wheel::type_traits::is_same_pack, feature::Tcp<void>>>, Flags...>;
+  template <>
+  struct SocketTraits<tag::TcpIpv6> : std::type_identity<tag::TcpIpv6> {};
 
+  template <>
+  struct SocketTraits<feature::Tcp<feature::placeholder>> : std::type_identity<tag::TcpIp> {};
+
+  template <>
+  struct SocketTraits<tag::TcpIp> : std::type_identity<tag::TcpIp> {};
 }  // namespace impl_socket
 
+template <class Tag>
+struct SocketTraits;
+
+template <>
+struct SocketTraits<tag::TcpIpv4> : impl_socket::FamilyTraits<AF_INET>,
+                                    impl_socket::TypeTraits<SOCK_STREAM>,
+                                    impl_socket::ProtocolTraits<IPPROTO_TCP> {
+  using tag_type = tag::TcpIpv4;
+  using poll_traits = PollTraits;
+};
+
+template <>
+struct SocketTraits<tag::TcpIpv6> : impl_socket::FamilyTraits<AF_INET6>,
+                                    impl_socket::TypeTraits<SOCK_STREAM>,
+                                    impl_socket::ProtocolTraits<IPPROTO_TCP> {
+  using tag_type = tag::TcpIpv6;
+  using poll_traits = PollTraits;
+};
+
+template <>
+struct SocketTraits<tag::TcpIp> : impl_socket::FamilyTraits<AF_UNSPEC>,
+                                  impl_socket::TypeTraits<SOCK_STREAM>,
+                                  impl_socket::ProtocolTraits<IPPROTO_TCP> {
+  using tag_type = tag::TcpIp;
+  using poll_traits = PollTraits;
+};
+
 template <class... Flags>
-using SocketTraits = impl_socket::SocketTraitsCompose<Flags...>;
+using SocketTraitsTag = impl_socket::SocketTraitsTagCompose<Flags...>;
 
 template <class S, template <class> class IO = feature::InOut>
-concept SocketLike
-    = wheel::type_traits::is_same_pack_v<typename S::socket_traits_type, SocketTraits<void>>
-      && wheel::type_traits::is_same_pack_v<typename S::device_traits_type, IO<void>>;
+concept SocketLike = type_traits::is_same_pack_v<typename S::socket_traits_type, SocketTraits<void>>
+                     && type_traits::is_same_pack_v<typename S::device_features_type, IO<void>>;
 
 template <class S, template <class> class IO = feature::InOut>
 concept AsyncSocketLike = SocketLike<S, IO> && requires(S &s) {
   { s.sem() } -> std::convertible_to<coro::CountingSemaphore<1> &>;
 };
 XSL_SYS_NET_NE
+
+#  include "xsl/ai/def.h"
+XSL_AI_NB
+template <>
+struct DeviceTraits<_sys::net::tag::TcpIpv4> {
+  using value_type = byte;
+};
+template <>
+struct DeviceTraits<_sys::net::tag::TcpIpv6> {
+  using value_type = byte;
+};
+template <>
+struct DeviceTraits<_sys::net::tag::TcpIp> {
+  using value_type = byte;
+};
+XSL_AI_NE
 #endif

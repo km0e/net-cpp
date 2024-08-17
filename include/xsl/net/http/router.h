@@ -38,15 +38,15 @@ namespace router_details {
   class HttpRouteNode {
   public:
     using tag_type = std::size_t;
-    HttpRouteNode() : handlers(), fallbacks(), children() {}
-    HttpRouteNode(Method method, tag_type&& tag) : handlers(), fallbacks(), children() {
+    HttpRouteNode() : handlers{}, fallbacks{}, children{} {}
+    HttpRouteNode(Method method, tag_type&& tag) : handlers{}, fallbacks{}, children{} {
       handlers[static_cast<uint8_t>(method)] = std::move(tag);
     }
     ~HttpRouteNode() {}
 
     void add_route(Method method, std::string_view path, tag_type&& tag) {
       LOG5("Adding route: {}", path);
-      wheel::dynamic_assert(path[0] == '/', "Invalid path");
+      dynamic_assert(path[0] == '/', "Invalid path");
       auto pos = path.find('/', 1);
 
       if (pos != std::string_view::npos) {
@@ -69,12 +69,12 @@ namespace router_details {
       if (child->second.add(method, std::move(tag))) {
         return;
       }
-      wheel::dynamic_assert(false, "Route already exists");
+      dynamic_assert(false, "Route already exists");
     }
 
     void add_fallback(Method method, std::string_view path, tag_type&& tag) {
       LOG5("Adding fallback route: {}", path);
-      wheel::dynamic_assert(path[0] == '/', "Invalid path");
+      dynamic_assert(path[0] == '/', "Invalid path");
       auto pos = path.find('/', 1);
 
       if (pos != std::string_view::npos) {
@@ -88,9 +88,9 @@ namespace router_details {
             .first->second.add_fallback(method, path.substr(sub.length() + 1), std::move(tag));
       }
       auto sub_path = path.substr(1);
-      wheel::dynamic_assert(sub_path.empty(), "Fallback path must be empty");
-      wheel::dynamic_assert(fallbacks[static_cast<uint8_t>(method)] == tag_type{},
-                            "Fallback already exists");
+      dynamic_assert(sub_path.empty(), "Fallback path must be empty");
+      dynamic_assert(fallbacks[static_cast<uint8_t>(method)] == tag_type{},
+                     "Fallback already exists");
       fallbacks[static_cast<uint8_t>(method)] = std::move(tag);
     }
 
@@ -173,7 +173,7 @@ namespace router_details {
 class Router {
 public:
   using tag_type = std::size_t;
-  Router() : root() {}
+  Router() : root{} {}
 
   ~Router() {}
   void add_route(Method method, std::string_view path, tag_type&& tag) {

@@ -24,7 +24,7 @@ public:
   Acceptor &operator=(Acceptor &&) = default;
   ~Acceptor() {}
   template <class Executor = coro::ExecutorBase>
-  coro::Task<std::expected<layer_type, std::errc>, Executor> accept(
+  Task<std::expected<layer_type, std::errc>, Executor> accept(
       sys::net::SockAddr *addr) noexcept {
     while (true) {
       auto res = sys::net::accept(this->_dev.inner(), addr);

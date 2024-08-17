@@ -1,7 +1,7 @@
 #pragma once
 #ifndef XSL_NET_HTTP_CONTEXT
 #  define XSL_NET_HTTP_CONTEXT
-#  include "xsl/ai/dev.h"
+#  include "xsl/ai.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/proto.h"
@@ -9,11 +9,10 @@
 #  include <chrono>
 #  include <optional>
 XSL_HTTP_NB
-template <ai::AsyncReadDeviceLike<std::byte> ByteReader,
-          ai::AsyncWriteDeviceLike<std::byte> ByteWriter>
+template <ai::ABRL ByteReader, ai::ABWL ByteWriter>
 class HandleContext {
 public:
-  using response_body_type = coro::Task<ai::Result>(ByteWriter&);
+  using response_body_type = Task<Result>(ByteWriter&);
   HandleContext(std::string_view current_path, Request<ByteReader>&& request)
       : current_path(current_path), request(std::move(request)), _response(std::nullopt) {}
   HandleContext(HandleContext&&) = default;
@@ -37,7 +36,7 @@ public:
     this->_response = Response<ByteWriter>{
         {Version::HTTP_1_1, status_code, to_reason_phrase(status_code)},
         [body = std::string(std::forward<Args>(args)...)](ByteWriter& awd)
-            -> coro::Task<ai::Result> { return awd.write(std::as_bytes(std::span(body))); }};
+            -> Task<Result> { return awd.write(xsl::as_bytes(std::span(body))); }};
   }
 
   void resp(ResponsePart&& part) { this->_response = Response<ByteWriter>{std::move(part)}; }
@@ -52,17 +51,25 @@ public:
   void resp(ResponsePart&& part, Args&&... args) {
     this->_response = Response<ByteWriter>{{std::move(part)},
                                            [body = std::string(std::forward<Args>(args)...)](
-                                               ByteWriter& awd) -> coro::Task<ai::Result> {
-                                             return awd.write(std::as_bytes(std::span(body)));
+                                               ByteWriter& awd) -> Task<Result> {
+                                             return awd.write(xsl::as_bytes(std::span(body)));
                                            }};
   }
 
-  coro::Task<ai::Result> sendto(ByteWriter& awd) {
+  Task<Result> sendto(ByteWriter& awd) {
     if (!this->_response) {
       this->easy_resp(Status::INTERNAL_SERVER_ERROR);
     }
     this->check_and_add_date();
     return this->_response->sendto(awd);
+  }
+
+  Response<ByteWriter> checkout(this HandleContext self) {
+    if (!self._response) {
+      self.easy_resp(Status::INTERNAL_SERVER_ERROR);
+    }
+    self.check_and_add_date();
+    return std::move(*self._response);
   }
 
   std::string_view current_path;
@@ -79,11 +86,10 @@ private:
   }
 };
 
-using HandleResult = coro::Task<std::optional<Status>>;
+using HandleResult = Task<std::optional<Status>>;
 
-template <class ByteReader, class ByteWriter>
+template <ai::ABRL ByteReader, ai::ABWL ByteWriter>
 using Handler = std::function<HandleResult(HandleContext<ByteReader, ByteWriter>& ctx)>;
-
 
 XSL_HTTP_NE
 #endif

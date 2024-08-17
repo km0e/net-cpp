@@ -49,7 +49,7 @@ end
 add_packages("quill")
 
 -- flags
-set_policy("build.optimization.lto", true)
+-- set_policy("build.optimization.lto", true)
 
 -- set_policy("build.sanitizer.thread", true)
 -- set_policy("build.sanitizer.address", true)

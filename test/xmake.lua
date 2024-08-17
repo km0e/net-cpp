@@ -8,4 +8,4 @@ end
 
 add_packages("quill")
 
-includes("http", "transport", "feature", "coro", "convert", "regex", "wheel")
+includes("http", "transport", "feature", "coro", "convert", "regex", "wheel", "ai")

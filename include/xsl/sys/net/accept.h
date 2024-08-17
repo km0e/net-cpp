@@ -7,9 +7,6 @@
 #  include <expected>
 XSL_SYS_NET_NB
 
-template <class Traits>
-using AcceptResult = std::expected<Socket<Traits>, std::errc>;
-
 template <SocketLike S>
 std::expected<S, std::errc> accept(S &socket, SockAddr *addr) {
   auto [sockaddr, addrlen] = addr == nullptr ? SockAddr::null() : addr->raw();

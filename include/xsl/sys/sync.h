@@ -1,21 +1,24 @@
 #pragma once
-#ifndef XSL_NET_POLLER_
-#  define XSL_NET_POLLER_
-#  include "xsl/sync/def.h"
-#  include "xsl/sync/mutex.h"
+#ifndef XSL_SYS_SYNC
+#  define XSL_SYS_SYNC
+#  include "xsl/coro.h"
+#  include "xsl/sync.h"
+#  include "xsl/sys/def.h"
 
 #  include <sys/epoll.h>
-#  include <sys/socket.h>
-#  include <sys/types.h>
 
 #  include <atomic>
+#  include <concepts>
+#  include <cstdint>
 #  include <functional>
 #  include <memory>
-XSL_SYNC_NB
+#  include <string_view>
+#  include <utility>
+XSL_SYS_NB
 const int TIMEOUT = 100;
 #  define USE_EPOLL
 #  ifdef USE_EPOLL
-enum class IOM_EVENTS : uint32_t {
+enum class IOM_EVENTS : std::uint32_t {
   NONE = 0,
   IN = EPOLL_EVENTS::EPOLLIN,
   PRI = EPOLL_EVENTS::EPOLLPRI,
@@ -89,23 +92,52 @@ private:
   std::shared_ptr<HandleProxy> proxy;
 };
 
-template <Handler T, class... Args>
-std::unique_ptr<T> poll_add_unique(std::shared_ptr<Poller> poller, int fd, IOM_EVENTS events,
-                                   Args&&... args) {
-  auto handler = std::make_unique<T>(std::forward<Args>(args)...);
-  poller->add(fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) {
-    return (*handler)(fd, events);
-  });
-  return handler;
-}
-template <Handler T, class... Args>
-std::shared_ptr<T> poll_add_shared(std::shared_ptr<Poller> poller, int fd, IOM_EVENTS events,
-                                   Args&&... args) {
-  auto handler = std::make_shared<T>(std::forward<Args>(args)...);
-  poller->add(fd, events, [handler = handler.get()](int fd, IOM_EVENTS events) {
-    return (*handler)(fd, events);
-  });
-  return handler;
-}
-XSL_SYNC_NE
+struct PollTraits {
+  static PollHandleHintTag poll_check(IOM_EVENTS events) {
+    return ((!events) || !!(events & IOM_EVENTS::HUP)) ? PollHandleHintTag::DELETE
+                                                       : PollHandleHintTag::NONE;
+  }
+};
+
+template <class Traits, IOM_EVENTS... Events>
+class PollCallback {
+public:
+  PollCallback(std::array<std::shared_ptr<coro::CountingSemaphore<1>>, sizeof...(Events)> sems)
+      : sems(std::move(sems)) {}
+
+  template <class... Sems>
+  PollCallback(Sems&&... sems) : sems{std::forward<Sems>(sems)...} {}
+  PollHandleHint operator()(int, IOM_EVENTS events) {
+    if (Traits::poll_check(events) == PollHandleHintTag::DELETE) {
+      for (auto& sem : sems) {
+        sem->release(false);
+      }
+      return PollHandleHintTag::DELETE;
+    } else {
+      return handle_event(std::make_index_sequence<sizeof...(Events)>{}, events)
+                 ? PollHandleHintTag::DELETE
+                 : PollHandleHintTag::NONE;
+    }
+  }
+
+private:
+  std::array<std::shared_ptr<coro::CountingSemaphore<1>>, sizeof...(Events)> sems;
+
+  template <std::size_t... I>
+  bool handle_event(std::index_sequence<I...>, IOM_EVENTS events) {
+    return (handle_event<Events, I>(events) && ...);
+  }
+
+  template <IOM_EVENTS E, std::size_t I>
+  bool handle_event(IOM_EVENTS events) {
+    if (sems[I].use_count() > 1) {
+      if (!!(events & E)) {
+        sems[I]->release();
+      }
+      return false;
+    }
+    return true;
+  }
+};
+XSL_SYS_NE
 #endif

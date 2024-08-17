@@ -6,7 +6,6 @@
 #include <fstream>
 #include <stdexcept>
 #include <system_error>
-using namespace std;
 using namespace xsl;
 static string tmp_dir = "";
 static void init() {

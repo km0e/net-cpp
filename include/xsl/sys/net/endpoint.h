@@ -10,7 +10,7 @@
 #  include <utility>
 
 XSL_SYS_NET_NB
-template <class Traits>
+template <class Tag>
 class Endpoint {
 public:
   Endpoint(addrinfo *info) : info(info) {}
@@ -19,11 +19,11 @@ public:
 private:
   addrinfo *info;
 };
-template <class Traits>
+template <class Tag>
 class EndpointSet {
   class Iterator {
   public:
-    using value_type = Endpoint<Traits>;
+    using value_type = Endpoint<Tag>;
     using difference_type = std::ptrdiff_t;
     using pointer = value_type *;
     using reference = value_type &;

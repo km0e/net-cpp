@@ -6,7 +6,6 @@
 
 #include <memory>
 
-using namespace std;
 using namespace xsl;
 TEST(http_router, add_route) {
   using namespace xsl::http;

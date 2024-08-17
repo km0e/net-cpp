@@ -9,5 +9,3 @@ target_sources(
     PRIVATE
     ${XSL_SYS_SOURCE_FILES}
 )
-
-target_link_libraries(xsl_sys PRIVATE xsl_sync)

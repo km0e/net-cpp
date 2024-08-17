@@ -42,5 +42,37 @@ void dynamic_assert(bool cond, T msg, std::source_location loc = std::source_loc
     std::terminate();
   }
 }
+template <typename _Type, size_t _Extent>
+  requires(!std::is_const_v<_Type>)
+inline std::span<byte,
+                 _Extent == std::dynamic_extent ? std::dynamic_extent : _Extent * sizeof(_Type)>
+as_writable_bytes [[nodiscard]] (std::span<_Type, _Extent> __sp) noexcept {
+  auto data = reinterpret_cast<byte*>(__sp.data());
+  auto size = __sp.size_bytes();
+  constexpr auto extent
+      = _Extent == std::dynamic_extent ? std::dynamic_extent : _Extent * sizeof(_Type);
+  return std::span<byte, extent>{data, size};
+}
+
+template <typename _Type, size_t _Extent>
+[[nodiscard]]
+inline std::span<const byte,
+                 _Extent == std::dynamic_extent ? std::dynamic_extent : _Extent * sizeof(_Type)>
+as_bytes(std::span<_Type, _Extent> __sp) noexcept {
+  auto data = reinterpret_cast<const byte*>(__sp.data());
+  auto size = __sp.size_bytes();
+  constexpr auto extent
+      = _Extent == std::dynamic_extent ? std::dynamic_extent : _Extent * sizeof(_Type);
+  return std::span<const byte, extent>{data, size};
+}
+template <class T>
+class Defer {
+public:
+  Defer(T&& t) : _t(std::forward<T>(t)) {}
+  ~Defer() { _t(); }
+
+private:
+  T _t;
+};
 XSL_WHEEL_NE
 #endif

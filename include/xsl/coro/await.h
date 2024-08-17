@@ -3,7 +3,7 @@
 #  define XSL_CORO_AWAIT
 #  include "xsl/coro/def.h"
 #  include "xsl/coro/executor.h"
-#  include "xsl/wheel/utils.h"
+#  include "xsl/wheel.h"
 
 #  include <coroutine>
 #  include <memory>
@@ -20,7 +20,7 @@ public:
 
   template <class _Promise>
   bool await_suspend(std::coroutine_handle<_Promise>) noexcept {
-    wheel::dynamic_assert(false, "GetExecutor::await_suspend should not be called");
+    dynamic_assert(false, "GetExecutor::await_suspend should not be called");
     return false;
   }
 

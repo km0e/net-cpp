@@ -13,7 +13,7 @@ XSL_CORO_NB
 void test1() {
   auto executor = std::make_shared<xsl::coro::NoopExecutor>();
   int value = 0;
-  auto task = [&]() -> xsl::coro::Task<void> {
+  auto task = [&]() -> xsl::Task<void> {
     value = 1;
     co_return;
   }();
@@ -24,7 +24,7 @@ void test1() {
 void test2() {
   auto executor = std::make_shared<xsl::coro::NoopExecutor>();
   int value = 0;
-  auto task = [](int& value) -> xsl::coro::Task<void> {
+  auto task = [](int& value) -> xsl::Task<void> {
     value = 1;
     co_return;
   }(value);

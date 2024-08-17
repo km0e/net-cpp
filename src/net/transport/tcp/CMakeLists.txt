@@ -10,4 +10,4 @@
 #     ${XSL_TCP_SOURCE_FILES}
 # )
 
-# target_link_libraries(xsl_tcp xsl_sync xsl_utils)
+# target_link_libraries(xsl_tcp xsl_utils)

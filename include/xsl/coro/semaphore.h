@@ -114,7 +114,6 @@ private:
 
 public:
   using executor_type = void;
-
   CountingSemaphore(std::optional<bool> ready = std::nullopt) : _mtx(), _ready(ready), _cb() {}
   CountingSemaphore(const CountingSemaphore &) = delete;
   CountingSemaphore(CountingSemaphore &&) = delete;

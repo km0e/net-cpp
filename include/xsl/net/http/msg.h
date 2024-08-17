@@ -2,14 +2,13 @@
 
 #ifndef XSL_NET_HTTP_MSG
 #  define XSL_NET_HTTP_MSG
-#  include "xsl/ai/dev.h"
+#  include "xsl/ai.h"
 #  include "xsl/coro.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/proto.h"
 #  include "xsl/net/io/buffer.h"
 #  include "xsl/wheel.h"
 
-#  include <cstddef>
 #  include <functional>
 #  include <optional>
 #  include <string_view>
@@ -45,7 +44,7 @@ public:
   std::string to_string();
 };
 
-template <ai::AsyncWriteDeviceLike<std::byte> ByteWriter>
+template <ai::ABWL ByteWriter>
 class Response {
 public:
   template <class... Args>
@@ -55,9 +54,24 @@ public:
   Response& operator=(Response&&) = default;
   ~Response() {}
   template <class Executor = coro::ExecutorBase>
-  coro::Task<ai::Result, Executor> sendto(ByteWriter& awd) {
+  Task<Result, Executor> sendto(ByteWriter& awd) {
     auto str = this->_part.to_string();
-    auto [sz, err] = co_await awd.template write<Executor>(std::as_bytes(std::span(str)));
+    auto [sz, err] = co_await awd.template write<Executor>(xsl::as_bytes(std::span(str)));
+    if (err) {
+      co_return std::make_tuple(sz, err);
+    };
+    if (!_body) {
+      co_return std::make_tuple(sz, std::nullopt);
+    }
+    auto [bodySize, bodyError] = co_await this->_body(awd);
+    if (bodyError) {
+      co_return std::make_tuple(sz + bodySize, bodyError);
+    }
+    co_return std::make_tuple(sz + bodySize, std::nullopt);
+  }
+  Task<Result> sendto(ABW& awd) {
+    auto str = this->_part.to_string();
+    auto [sz, err] = co_await awd.write(xsl::as_bytes(std::span(str)));
     if (err) {
       co_return std::make_tuple(sz, err);
     };
@@ -71,7 +85,7 @@ public:
     co_return std::make_tuple(sz + bodySize, std::nullopt);
   }
   ResponsePart _part;
-  std::function<coro::Task<ai::Result>(ByteWriter&)> _body;
+  std::function<Task<Result>(ByteWriter&)> _body;
 };
 
 class RequestView {
@@ -94,7 +108,7 @@ public:
   void clear();
 };
 
-template <ai::AsyncReadDeviceLike<std::byte> ByteReader>
+template <ai::ABRL ByteReader>
 class Request {
 public:
   Request(io::Buffer<>&& raw, RequestView&& view, std::string_view content_part, ByteReader& ard)
@@ -115,6 +129,10 @@ public:
       return std::nullopt;
     }
     return iter->second;
+  }
+
+  Request<ABR> down_cast(this Request self) noexcept {
+    return {std::move(self.raw), std::move(self.view), self.content_part, self._ard};
   }
 
   Method method;

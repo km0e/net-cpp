@@ -3,6 +3,8 @@
 #include <xsl/logctl.h>
 #include <xsl/net.h>
 
+#include <span>
+
 std::string ip = "127.0.0.1";
 std::string port = "8080";
 
@@ -13,13 +15,16 @@ using namespace xsl;
 template <class Executor = ExecutorBase>
 Lazy<void, Executor> echo(std::string_view ip, std::string_view port,
                           std::shared_ptr<xsl::Poller> poller) {
-  auto server = tcp::Server<Ip<4>>::create(ip, port, poller).value();
+  using Server = tcp::Server<Ip<4>>;
+  auto server = Server::create(ip, port, poller).value();
+  Server::value_type skt;
   while (true) {
-    auto ac_res = co_await server.accept<Executor>(nullptr);
-    if (!ac_res) {
-      continue;
+    auto [sz, err] = co_await server.read<Executor>(std::span<Server::value_type>(&skt, 1));
+    if (err) {
+      LOG3("accept error: {}", std::make_error_code(*err).message());
+      break;
     }
-    auto [r, w] = std::move(*ac_res).split();
+    auto [r, w] = std::move(*skt).split();
     [](auto r, auto w) mutable -> Lazy<void, Executor> {
       std::string buffer(4096, '\0');
       co_await net::splice<Executor>(r, w, buffer);

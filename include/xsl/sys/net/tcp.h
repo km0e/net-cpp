@@ -1,8 +1,6 @@
 #pragma once
 #ifndef XSL_SYS_NET_TCP
 #  define XSL_SYS_NET_TCP
-#  include "xsl/coro/task.h"
-#  include "xsl/sync/poller.h"
 #  include "xsl/sys/net/def.h"
 #  include "xsl/sys/net/endpoint.h"
 #  include "xsl/sys/net/socket.h"
@@ -13,9 +11,8 @@
 XSL_SYS_NET_NB
 
 namespace impl_connect {
-  template <class Traits, class Executor = coro::ExecutorBase>
-  coro::Task<std::expected<AsyncSocket<Traits>, std::errc>, Executor> connect(addrinfo *ai,
-                                                                              Poller &poller) {
+  template <class Tag, class Executor = coro::ExecutorBase>
+  Task<std::expected<AsyncSocket<Tag>, std::errc>, Executor> connect(addrinfo *ai, Poller &poller) {
     int tmp_fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
     if (tmp_fd == -1) [[unlikely]] {
       co_return std::unexpected{std::errc{errno}};
@@ -30,8 +27,8 @@ namespace impl_connect {
     auto write_sem = std::make_shared<coro::CountingSemaphore<1>>();
     if (ec != 0) {
       LOG3("Failed to connect to fd: {}", tmp_fd);
-      poller.add(tmp_fd, sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-                 sync::PollCallback<sync::PollTraits, sync::IOM_EVENTS::OUT>{write_sem});
+      poller.add(tmp_fd, IOM_EVENTS::OUT | IOM_EVENTS::ET,
+                 PollCallback<PollTraits, IOM_EVENTS::OUT>{write_sem});
       co_await *write_sem;
       auto check = [](int fd) {
         int opt;
@@ -55,26 +52,24 @@ namespace impl_connect {
     }
     LOG5("Connected to fd: {}", tmp_fd);
     auto read_sem = std::make_shared<coro::CountingSemaphore<1>>();
-    poller.modify(tmp_fd, sync::IOM_EVENTS::IN | sync::IOM_EVENTS::OUT | sync::IOM_EVENTS::ET,
-                  sync::PollCallback<sync::PollTraits, sync::IOM_EVENTS::IN, sync::IOM_EVENTS::OUT>{
-                      read_sem, write_sem});
-    co_return AsyncSocket<Traits>{read_sem, write_sem, tmp_fd};
+    poller.modify(tmp_fd, IOM_EVENTS::IN | IOM_EVENTS::OUT | IOM_EVENTS::ET,
+                  PollCallback<PollTraits, IOM_EVENTS::IN, IOM_EVENTS::OUT>{read_sem, write_sem});
+    co_return AsyncSocket<Tag>{read_sem, write_sem, tmp_fd};
   }
 }  // namespace impl_connect
 
 template <class Traits>
 using ConnectResult = std::expected<AsyncSocket<Traits>, std::errc>;
 
-template <class Executor = coro::ExecutorBase, class Traits>
-inline decltype(auto) connect(const Endpoint<Traits> &ep, Poller &poller) {
-  return impl_connect::connect<Traits, Executor>(ep.raw(), poller);
+template <class Executor = coro::ExecutorBase, class Tag>
+inline decltype(auto) connect(const Endpoint<Tag> &ep, Poller &poller) {
+  return impl_connect::connect<Tag, Executor>(ep.raw(), poller);
 }
 
-template <class Executor = coro::ExecutorBase, class Traits>
-coro::Task<ConnectResult<Traits>, Executor> connect(const EndpointSet<Traits> &eps,
-                                                    Poller &poller) {
+template <class Executor = coro::ExecutorBase, class Tag>
+Task<ConnectResult<Tag>, Executor> connect(const EndpointSet<Tag> &eps, Poller &poller) {
   for (auto &ep : eps) {
-    auto res = co_await impl_connect::connect<Traits, Executor>(ep.raw(), poller);
+    auto res = co_await impl_connect::connect<Tag, Executor>(ep.raw(), poller);
     if (res) {
       co_return std::move(*res);
     }
@@ -82,8 +77,8 @@ coro::Task<ConnectResult<Traits>, Executor> connect(const EndpointSet<Traits> &e
   co_return std::unexpected{std::errc{errno}};
 }
 
-template <class Traits>
-using BindResult = std::expected<Socket<Traits>, std::errc>;
+template <class Tag>
+using BindResult = std::expected<Socket<Tag>, std::errc>;
 
 namespace impl_bind {
   static inline std::expected<int, std::errc> bind(addrinfo *ai) {
@@ -111,16 +106,16 @@ namespace impl_bind {
   }
 }  // namespace impl_bind
 
-template <class Traits>
-BindResult<Traits> bind(const Endpoint<Traits> &ep) {
-  return impl_bind::bind(ep.raw()).transform([](int fd) { return Socket<Traits>(fd); });
+template <class Tag>
+BindResult<Tag> bind(const Endpoint<Tag> &ep) {
+  return impl_bind::bind(ep.raw()).transform([](int fd) { return Socket<Tag>(fd); });
 }
-template <class Traits>
-BindResult<Traits> bind(const EndpointSet<Traits> &eps) {
+template <class Tag>
+BindResult<Tag> bind(const EndpointSet<Tag> &eps) {
   for (auto &ep : eps) {
     auto bind_res = impl_bind::bind(ep.raw());
     if (bind_res) {
-      return Socket<Traits>{*bind_res};
+      return Socket<Tag>{*bind_res};
     }
   }
   return std::unexpected{std::errc{errno}};

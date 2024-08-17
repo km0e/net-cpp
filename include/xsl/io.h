@@ -14,6 +14,7 @@
 #  include "xsl/def.h"
 #  include "xsl/io/splice.h"
 XSL_NB
-using namespace xsl::io;
+using io::splice;
+using io::splice_once;
 XSL_NE
 #endif

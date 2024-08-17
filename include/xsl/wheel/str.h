@@ -1,6 +1,7 @@
 #pragma once
 #ifndef XSL_WHEEL_STR
 #  define XSL_WHEEL_STR
+#  include "xsl/def.h"
 #  include "xsl/wheel/def.h"
 
 #  include <compare>
@@ -13,13 +14,13 @@
 
 XSL_WHEEL_NB
 
-void i32_to_bytes(int32_t value, std::span<std::byte> bytes);
+void i32_to_bytes(int32_t value, std::span<byte> bytes);
 
-int32_t i32_from_bytes(std::span<const std::byte> bytes);
+int32_t i32_from_bytes(std::span<const byte> bytes);
 
-void bool_to_bytes(bool value, std::byte* bytes);
+void bool_to_bytes(bool value, byte* bytes);
 
-bool bool_from_bytes(const std::byte* bytes);
+bool bool_from_bytes(const byte* bytes);
 
 class FixedString {
 public:

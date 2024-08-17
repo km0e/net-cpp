@@ -6,13 +6,16 @@
 #  include "xsl/coro/lazy.h"
 #  include "xsl/coro/semaphore.h"
 #  include "xsl/coro/task.h"
-namespace xsl::coro {
+#  include "xsl/def.h"
+XSL_NB
+namespace coro {
   using _coro::CountingSemaphore;
   using _coro::ExecutorBase;
   using _coro::GetExecutor;
-  using _coro::Lazy;
   using _coro::NewThreadExecutor;
   using _coro::NoopExecutor;
-  using _coro::Task;
-}  // namespace xsl::coro
+}  // namespace coro
+using _coro::Lazy;
+using _coro::Task;
+XSL_NE
 #endif

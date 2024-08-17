@@ -2,7 +2,7 @@
 #ifndef XSL_FEATURE
 #  define XSL_FEATURE
 #  include "xsl/def.h"
-#  include "xsl/wheel/type_traits.h"
+#  include "xsl/wheel.h"
 
 #  include <cstdint>
 #  include <type_traits>
@@ -12,7 +12,7 @@ namespace feature {
   struct placeholder {};
 
   template <class... Opts>
-  using set = wheel::type_traits::_n<Opts...>;
+  using set = type_traits::_n<Opts...>;
 
   struct node {};
   // using for tcp component
@@ -38,7 +38,7 @@ namespace feature {
 
   namespace impl {
     template <class... Tps>
-    using type_list = wheel::type_traits::_n<Tps...>;
+    using type_list = type_traits::_n<Tps...>;
 
     template <template <class T, class U> class Pred, class... Flags>
       requires requires {
@@ -51,14 +51,14 @@ namespace feature {
     @tparam Flag
      */
     template <class Flag>
-    struct off_fmt_single : wheel::type_traits::_1<Item<std::is_same, Flag>> {};
+    struct off_fmt_single : type_traits::_1<Item<std::is_same, Flag>> {};
     /**
     @brief format a set of flags
 
     @tparam Flags
      */
     template <class... Flags>
-    struct off_fmt_single<set<Flags...>> : wheel::type_traits::_1<Item<std::is_same, Flags...>> {};
+    struct off_fmt_single<set<Flags...>> : type_traits::_1<Item<std::is_same, Flags...>> {};
     /**
     @brief forward the flag if it is already formatted
 
@@ -66,14 +66,14 @@ namespace feature {
     @tparam Flags
      */
     template <template <class L, class R> class Pred, class... Flags>
-    struct off_fmt_single<Item<Pred, Flags...>> : wheel::type_traits::_1<Item<Pred, Flags...>> {};
+    struct off_fmt_single<Item<Pred, Flags...>> : type_traits::_1<Item<Pred, Flags...>> {};
 
     template <class FullFlag>
     struct off_fmt;
 
     template <template <class...> class FlagPack, class... FlagItems>
     struct off_fmt<FlagPack<FlagItems...>>
-        : wheel::type_traits::_1<type_list<typename off_fmt_single<FlagItems>::type...>> {};
+        : type_traits::_1<type_list<typename off_fmt_single<FlagItems>::type...>> {};
 
     static_assert(
         std::is_same_v<off_fmt<type_list<int>>::type, type_list<Item<std::is_same, int>>>);
@@ -90,22 +90,21 @@ namespace feature {
 
     template <class Pair, class... FlagItems, class... CompleteFlags>
     struct off_fill_helper<Pair, type_list<FlagItems...>, CompleteFlags...>
-        : wheel::type_traits::_1<
-              off_fill<typename Pair::type1, type_list<FlagItems...>, CompleteFlags...,
-                       std::conditional_t<std::is_same_v<typename Pair::type2, void>, placeholder,
-                                          typename Pair::type2>>> {};
+        : type_traits::_1<off_fill<typename Pair::type1, type_list<FlagItems...>, CompleteFlags...,
+                                   std::conditional_t<std::is_same_v<typename Pair::type2, void>,
+                                                      placeholder, typename Pair::type2>>> {};
 
     template <class... Flags, template <class T, class U> class Pred, class... FlagOpts,
               class... FlagItems, class... CompleteFlags>
     struct off_fill<type_list<Flags...>, type_list<Item<Pred, FlagOpts...>, FlagItems...>,
                     CompleteFlags...>
-        : off_fill_helper<typename wheel::type_traits::remove_first_of_if<
-                              Pred, type_list<FlagOpts...>, type_list<Flags...>>::self,
+        : off_fill_helper<typename type_traits::remove_first_of_if<Pred, type_list<FlagOpts...>,
+                                                                   type_list<Flags...>>::self,
                           type_list<FlagItems...>, CompleteFlags...>::type {};
 
     template <class... Flags, class... CompleteFlags>
     struct off_fill<type_list<Flags...>, type_list<>, CompleteFlags...>
-        : wheel::type_traits::_1<type_list<CompleteFlags...>> {};
+        : type_traits::_1<type_list<CompleteFlags...>> {};
 
     static_assert(std::is_same_v<off_fill<type_list<>, type_list<>>::type, type_list<>>);
 
@@ -118,7 +117,7 @@ namespace feature {
                        type_list<placeholder>>);
 
     template <class FullFlag, class... Flags>
-    using off_compose_t = wheel::type_traits::copy_t<
+    using off_compose_t = type_traits::copy_t<
         typename off_fill<type_list<Flags...>, typename off_fmt<FullFlag>::type>::type, FullFlag>;
   }  // namespace impl
   using impl::Item;

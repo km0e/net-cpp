@@ -4,3 +4,4 @@ build/*
 .xmake/*
 .vscode/*
 .ccls-cache/*
+log/

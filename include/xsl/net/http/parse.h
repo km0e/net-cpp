@@ -2,7 +2,8 @@
 
 #ifndef XSL_NET_HTTP_PARSE
 #  define XSL_NET_HTTP_PARSE
-#  include "xsl/ai/dev.h"
+#  include "xsl/ai.h"
+#  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/io/buffer.h"
@@ -20,6 +21,7 @@ class ParseUnit {
 public:
   ParseUnit();
   ParseUnit(ParseUnit&&) = default;
+  ParseUnit& operator=(ParseUnit&&) = default;
   ~ParseUnit() = default;
   /**
    @brief parse the http request
@@ -55,33 +57,54 @@ private:
 
 const std::size_t HTTP_BUFFER_BLOCK_SIZE = 1024;
 
-struct HttpParseTrait {
+struct HttpParseTraits {
   using parser_type = ParseUnit;
 };
 
 struct ParseData {
+  ParseData() noexcept : buffer{}, request{}, content_part{} {}
+  ParseData(io::Buffer<>&& buffer, RequestView&& request, std::string_view content_part)
+      : buffer(std::move(buffer)), request(std::move(request)), content_part(content_part) {}
+  ParseData(ParseData&&) = default;
+  ParseData& operator=(ParseData&&) = default;
   io::Buffer<> buffer;
   RequestView request;
   std::string_view content_part;
 };
 
-template <class Trait = HttpParseTrait>
+template <class Traits = HttpParseTraits>
 class Parser {
 public:
-  using parser_type = typename Trait::parser_type;
+  using parser_type = typename Traits::parser_type;
   using request_type = RequestView;
 
-  Parser() : buffer(), used_size(0), parsed_size(0), parser() {
+  Parser() : buffer{}, used_size(0), parsed_size(0), parser{} {
     buffer.append(HTTP_BUFFER_BLOCK_SIZE);
   }
 
   Parser(Parser&&) = default;
+  Parser& operator=(Parser&&) = default;
   ~Parser() {}
-  template <class Executor = coro::ExecutorBase, ai::AsyncReadDeviceLike<std::byte> Reader>
-  coro::Task<std::expected<void, std::errc>, Executor> read(Reader& reader, ParseData& buf) {
+  template <class Executor = coro::ExecutorBase, ai::ABRL Reader>
+  Task<std::expected<void, std::errc>, Executor> read(Reader& reader, ParseData& buf) {
     while (true) {
       auto [sz, err]
           = co_await reader.template read<Executor>(this->buffer.front().span(this->used_size));
+      if (err) {
+        co_return std::unexpected{*err};
+      }
+      this->used_size += sz;
+      auto req = this->parse_request(sz, buf);
+      if (req || req.error() != std::errc::resource_unavailable_try_again) {
+        this->used_size = 0;
+        this->parsed_size = 0;
+        co_return std::move(req);
+      }
+    }
+  }
+  Task<std::expected<void, std::errc>> read(ABR& reader, ParseData& buf) {
+    while (true) {
+      auto [sz, err] = co_await reader.read(this->buffer.front().span(this->used_size));
       if (err) {
         co_return std::unexpected{*err};
       }
@@ -118,6 +141,7 @@ private:
           reinterpret_cast<const char*>(front.data.get() + this->parsed_size + len), sz - len);
       buf = ParseData{std::exchange(this->buffer, {}), std::move(*req), std::move(content_part)};
       this->reset();
+      LOG6("parsed request: {} {}", buf.request.method, buf.request.path);
       return {};
     }
     if (req.error() == std::errc::resource_unavailable_try_again) {

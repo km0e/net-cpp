@@ -42,21 +42,27 @@ private:
   socklen_t _len;
 };
 
-template <class Traits>
-using Socket = sys::net::Device<feature::InOut<Traits>>;
+/**
+ * @brief determine the socket type
+ *
+ * @tparam Flags, can be feature::Tcp<feature::Ip<4>>, feature::Tcp<feature::Ip<6>>, tag::TcpIpv4
+ * ...
+ */
+template <class... Flags>
+using Socket = Device<feature::InOut<SocketTraitsTag<Flags...>>>;
 
-template <class LowerLayer>
-using TcpSocket = Socket<SocketTraits<feature::Tcp<LowerLayer>>>;
-
-template <class Traits>
-using AsyncSocket = sys::net::AsyncDevice<feature::InOut<Traits>>;
-
-template <class LowerLayer>
-using AsyncTcpSocket = AsyncSocket<SocketTraits<feature::Tcp<LowerLayer>>>;
+/**
+ * @brief determine the socket type asynchronously
+ *
+ * @tparam Flags, can be feature::Tcp<feature::Ip<4>>, feature::Tcp<feature::Ip<6>>, tag::TcpIpv4
+ * ...
+ */
+template <class... Flags>
+using AsyncSocket = AsyncDevice<feature::InOut<SocketTraitsTag<Flags...>>>;
 
 template <class LowerLayer>
 using DynAsyncTcpSocket
-    = sys::net::AsyncDevice<feature::InOut<SocketTraits<feature::Tcp<LowerLayer>>>, feature::Dyn>;
+    = AsyncDevice<feature::InOut<SocketTraits<feature::Tcp<LowerLayer>>>, feature::Dyn>;
 
 XSL_SYS_NET_NE
 #endif

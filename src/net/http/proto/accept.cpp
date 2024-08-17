@@ -1,11 +1,10 @@
 #include "xsl/net/http/proto/accept.h"
 #include "xsl/net/http/proto/base.h"
-#include "xsl/net/http/proto/def.h"
 #include "xsl/regex.h"
 
 #include <ranges>
 #include <regex>
-XSL_NET_HTTP_PROTO_NB
+XSL_HTTP_NB
 AcceptView parse_accept(std::string_view accept) {
   AcceptView result;
   while (true) {
@@ -83,4 +82,4 @@ AcceptEncodingView parse_accept_encoding(std::string_view accept_encoding) {
   return result;
 }
 
-XSL_NET_HTTP_PROTO_NE
+XSL_HTTP_NE

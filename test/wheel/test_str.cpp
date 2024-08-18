@@ -1,3 +1,4 @@
+#include "xsl/def.h"
 #include "xsl/logctl.h"
 #include "xsl/wheel/str.h"
 
@@ -7,7 +8,7 @@ using namespace xsl::wheel;
 
 TEST(str, i32_to_bytes) {
   int32_t value = 0x12345678;
-  byte bytes[4];
+  xsl::byte bytes[4];
   i32_to_bytes(value, bytes);
   ASSERT_EQ(value, i32_from_bytes(bytes));
 }

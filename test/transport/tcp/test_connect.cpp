@@ -1,8 +1,6 @@
 #include "xsl/feature.h"
 #include "xsl/logctl.h"
-#include "xsl/sync.h"
 #include "xsl/sys.h"
-#include "xsl/sys/net/tcp.h"
 
 #include <CLI/CLI.hpp>
 #include <gtest/gtest.h>
@@ -17,7 +15,7 @@ std::string host = "127.0.0.1";
 std::string port = "12347";
 
 TEST(connect, connect) {
-  using namespace xsl::net;
+  using namespace xsl::sys::net;
   using namespace xsl::feature;
   auto res = Resolver{}.resolve<Tcp<Ip<4>>>(host.c_str(), port.c_str());
   ASSERT_TRUE(res.has_value());
@@ -29,7 +27,7 @@ TEST(connect, connect) {
     }
     LOG5("Poller shutdown");
   });
-  auto sock = sys::net::connect(ai, *poller);
+  auto sock = sys::tcp::connect(ai, *poller);
   auto skt = sock.block();
   LOG5("Socket connected");
   xsl::flush_log();

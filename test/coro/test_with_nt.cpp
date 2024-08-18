@@ -5,11 +5,11 @@
 #include <gtest/gtest.h>
 
 #include <semaphore>
-using namespace xsl::coro;
+using namespace xsl;
 
 TEST(Task, just_return) {
   int value = 0;
-  auto executor = std::make_shared<NewThreadExecutor>();
+  auto executor = std::make_shared<coro::NewThreadExecutor>();
 
   no_return_task(value).by(executor).block();
   ASSERT_EQ(value, 1);
@@ -23,9 +23,8 @@ TEST(Task, just_return) {
 }
 
 TEST(Task, just_throw) {
-  auto executor = std::make_shared<NewThreadExecutor>();
-  EXPECT_THROW(no_return_exception_task().by(executor).block(),
-               std::runtime_error);
+  auto executor = std::make_shared<coro::NewThreadExecutor>();
+  EXPECT_THROW(no_return_exception_task().by(executor).block(), std::runtime_error);
 
   EXPECT_THROW(return_exception_task().by(executor).block(), std::runtime_error);
 }
@@ -33,7 +32,7 @@ TEST(Task, just_throw) {
 TEST(Task, async_task) {
   std::binary_semaphore sem(0);
 
-  auto executor = std::make_shared<NewThreadExecutor>();
+  auto executor = std::make_shared<coro::NewThreadExecutor>();
   int value = 0;
 
   auto task1 = [&sem](int &value) -> Task<void> {
@@ -88,7 +87,7 @@ TEST(Task, async_task) {
 TEST(Task, async_lazy) {
   std::binary_semaphore sem(0);
 
-  auto executor = std::make_shared<NewThreadExecutor>();
+  auto executor = std::make_shared<coro::NewThreadExecutor>();
   int value = 0;
   auto task1 = [&sem](int &value) -> Task<void> {
     co_await no_return_task(value);
@@ -140,7 +139,7 @@ TEST(Task, async_lazy) {
 }
 
 TEST(Task, async_exception_task) {
-  auto executor = std::make_shared<NoopExecutor>();
+  auto executor = std::make_shared<coro::NoopExecutor>();
   auto task1 = []() -> Task<void> {
     co_await no_return_exception_task();
     co_return;

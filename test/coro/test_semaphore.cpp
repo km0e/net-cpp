@@ -4,7 +4,7 @@
 
 #include <cassert>
 #include <thread>
-using namespace xsl::coro;
+using namespace xsl;
 
 TEST(SemaphoreTest, Basic) {
   CountingSemaphore<1> sem{};

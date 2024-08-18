@@ -11,12 +11,12 @@ using namespace xsl::coro;
 uint16_t port = 12349;
 
 TEST(bind, create) {
-  using namespace xsl::net;
+  using namespace xsl::sys::net;
   using namespace xsl::feature;
   auto res = Resolver{}.resolve<Tcp<Ip<4>>>(port);
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());
-  auto skt = xsl::sys::net::bind(ai);
+  auto skt = xsl::sys::tcp::bind(ai);
   ASSERT_TRUE(skt.has_value());
   ASSERT_NE(skt->raw(), 0);
   ASSERT_TRUE(xsl::sys::tcp::listen(*skt).has_value());

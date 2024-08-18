@@ -9,12 +9,12 @@
 #  include "xsl/def.h"
 XSL_NB
 namespace coro {
-  using _coro::CountingSemaphore;
   using _coro::ExecutorBase;
   using _coro::GetExecutor;
   using _coro::NewThreadExecutor;
   using _coro::NoopExecutor;
 }  // namespace coro
+using _coro::CountingSemaphore;
 using _coro::Lazy;
 using _coro::Task;
 XSL_NE

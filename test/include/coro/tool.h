@@ -5,7 +5,7 @@
 
 #  include <semaphore>
 #  include <stdexcept>
-using namespace xsl::coro;
+using namespace xsl;
 
 inline Task<void> no_return_task(int &value) {
   ++value;

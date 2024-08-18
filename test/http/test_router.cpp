@@ -9,7 +9,7 @@
 using namespace xsl;
 TEST(http_router, add_route) {
   using namespace xsl::http;
-  auto router = make_unique<Router>();
+  auto router = std::make_unique<Router>();
   router->add_route(Method::GET, "/hello", 11);
   router->add_route(Method::POST, "/hello", 12);
   router->add_route(Method::POST, "/hello/world", 13);
@@ -18,7 +18,7 @@ TEST(http_router, add_route) {
 
 TEST(http_router, route) {
   using namespace xsl::http;
-  auto router = make_unique<Router>();
+  auto router = std::make_unique<Router>();
   router->add_route(Method::GET, "/hello", 11);
   router->add_route(Method::GET, "/world/", 12);
   router->add_route(Method::GET, "/world/name", 13);
@@ -41,7 +41,7 @@ TEST(http_router, route) {
 
 TEST(http_router, route_fallback) {
   using namespace xsl::http;
-  auto router = make_unique<Router>();
+  auto router = std::make_unique<Router>();
   router->add_route(Method::GET, "/hello", 11);
   router->add_route(Method::GET, "/world/", 12);
   router->add_route(Method::GET, "/world/name", 13);

@@ -14,7 +14,6 @@ namespace ai {
   using _ai::AsyncReadWriteDeviceLike;
   using _ai::AsyncWritable;
   using _ai::AsyncWriteDeviceLike;
-  using _ai::DeviceTraits;
 }  // namespace ai
 using _ai::ABR;
 using _ai::ABW;

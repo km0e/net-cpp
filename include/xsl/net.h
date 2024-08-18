@@ -10,7 +10,8 @@
 #  include "xsl/net/http/service.h"
 #  include "xsl/net/io/buffer.h"
 #  include "xsl/net/io/splice.h"
-#  include "xsl/net/tcp.h"
+#  include "xsl/net/tcp/server.h"
+#  include "xsl/net/tcp/utils.h"
 XSL_NB
 namespace net {
   using xsl::_net::io::Block;
@@ -19,18 +20,10 @@ namespace net {
 }  // namespace net
 namespace tcp {
 
-  template <class LowerLayer>
-  using Server = xsl::_net::TcpServer<LowerLayer>;
-
-  template <class... Flags>
-  decltype(auto) dial(const char *host, const char *port, Poller &poller) {
-    return xsl::_net::tcp_dial<Flags...>(host, port, poller);
-  }
-
-  template <class... Flags>
-  decltype(auto) serv(const char *host, const char *port) {
-    return xsl::_net::tcp_serv<Flags...>(host, port);
-  };
+  using xsl::_net::tcp::dial;
+  using xsl::_net::tcp::make_server;
+  using xsl::_net::tcp::serv;
+  using xsl::_net::tcp::Server;
 }  // namespace tcp
 
 namespace http {

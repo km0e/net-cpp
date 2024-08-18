@@ -12,7 +12,7 @@
 #  include <system_error>
 #  include <tuple>
 XSL_SYS_NET_NB
-template <class Executor = coro::ExecutorBase, AsyncSocketLike<feature::In> S>
+template <class Executor = coro::ExecutorBase, AsyncRawDeviceLike S>
 Task<Result, Executor> immediate_recv(S &skt, std::span<byte> buf) {
   using Result = Result;
   ssize_t n;
@@ -50,7 +50,7 @@ Task<Result, Executor> immediate_recv(S &skt, std::span<byte> buf) {
   co_return std::make_tuple(offset, std::nullopt);
 }
 
-template <class Executor = coro::ExecutorBase, AsyncSocketLike<feature::Out> S>
+template <class Executor = coro::ExecutorBase, AsyncRawDeviceLike S>
 Task<Result, Executor> immediate_send(S &skt, std::span<const byte> data) {
   using Result = Result;
   while (true) {

@@ -7,8 +7,8 @@
 #  include <expected>
 XSL_SYS_NET_NB
 
-template <SocketLike S>
-std::expected<S, std::errc> accept(S &socket, SockAddr *addr) {
+template <CSocket S>
+std::expected<Socket<typename S::socket_traits_type>, std::errc> accept(S &socket, SockAddr *addr) {
   auto [sockaddr, addrlen] = addr == nullptr ? SockAddr::null() : addr->raw();
   int tmp_fd = ::accept4(socket.raw(), sockaddr, addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
   if (tmp_fd < 0) {
@@ -21,7 +21,7 @@ std::expected<S, std::errc> accept(S &socket, SockAddr *addr) {
   //     != 0) {
   //   return std::unexpected{std::errc(errno)};
   // }
-  return S(tmp_fd);
+  return Socket<typename S::socket_traits_type>(tmp_fd);
 }
 XSL_SYS_NET_NE
 #endif

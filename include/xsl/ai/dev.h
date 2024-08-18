@@ -9,7 +9,6 @@
 #  include <optional>
 #  include <span>
 #  include <tuple>
-#  include <type_traits>
 #  include <utility>
 
 XSL_AI_NB
@@ -53,6 +52,13 @@ namespace impl_dev {
   template <class... Flags>
   class AsyncDevice;
 
+  template <class... Flags>
+  using AsyncDeviceCompose = feature::organize_feature_flags_t<
+      AsyncDevice<feature::Item<type_traits::is_same_pack, feature::In<void>, feature::Out<void>,
+                                feature::InOut<void>>,
+                  feature::Own>,
+      Flags...>;
+
   template <class T>
   class AsyncDevice<feature::In<T>, feature::Own>;
 
@@ -60,6 +66,7 @@ namespace impl_dev {
   class AsyncDevice<feature::In<T>, feature::placeholder> {
   public:
     using value_type = T;
+    using dynamic_type = AsyncDevice;
     virtual ~AsyncDevice() = default;
     /**
     @brief read data from the device
@@ -76,6 +83,7 @@ namespace impl_dev {
   class AsyncDevice<feature::Out<T>, feature::placeholder> {
   public:
     using value_type = T;
+    using dynamic_type = AsyncDevice;
     virtual ~AsyncDevice() = default;
     virtual Task<Result> write(std::span<const value_type> buf [[maybe_unused]]) {
       std::unreachable();
@@ -86,56 +94,31 @@ namespace impl_dev {
       : public AsyncDevice<feature::In<Traits>, feature::placeholder>,
         public AsyncDevice<feature::Out<Traits>, feature::placeholder> {};
 }  // namespace impl_dev
-namespace tag {
-  template <class... Flags>
-  struct AsyncDevice;
-
-  template <class... Flags>
-  using AsyncDeviceCompose = feature::organize_feature_flags_t<
-      tag::AsyncDevice<feature::Item<type_traits::is_same_pack, feature::In<void>,
-                                     feature::Out<void>, feature::InOut<void>>,
-                       feature::Own>,
-      Flags...>::type;
-
-  template <class Tag>
-  struct AsyncDevice<feature::In<Tag>, feature::Own>;
-
-  template <class Tag>
-  struct AsyncDevice<feature::In<Tag>, feature::placeholder>
-      : std::type_identity<impl_dev::AsyncDevice<
-            feature::In<typename DeviceTraits<Tag>::value_type>, feature::placeholder>> {};
-
-  template <class Tag>
-  struct AsyncDevice<feature::Out<Tag>, feature::placeholder>
-      : std::type_identity<impl_dev::AsyncDevice<
-            feature::Out<typename DeviceTraits<Tag>::value_type>, feature::placeholder>> {};
-
-  template <class Tag>
-  struct AsyncDevice<feature::InOut<Tag>, feature::placeholder>
-      : std::type_identity<impl_dev::AsyncDevice<
-            feature::InOut<typename DeviceTraits<Tag>::value_type>, feature::placeholder>> {};
-}  // namespace tag
-
+/**
+ * @brief AsyncDevice
+ *
+ * @tparam Flags the flags of the device, currently only support DeviceTraits
+ */
 template <class... Flags>
-using AsyncDevice = tag::AsyncDeviceCompose<Flags...>;
+using AsyncDevice = impl_dev::AsyncDeviceCompose<Flags...>;
 
-using ABR = AsyncDevice<feature::In<std::type_identity<byte>>>;
+using ABR = AsyncDevice<feature::In<byte>>;
 
-using ABW = AsyncDevice<feature::Out<std::type_identity<byte>>>;
+using ABW = AsyncDevice<feature::Out<byte>>;
 
 template <class T>
 class AsyncWritable {
 public:
   using value_type = T;
   virtual ~AsyncWritable() {}
-  virtual Task<Result> write(AsyncDevice<feature::Out<std::type_identity<value_type>>>& awd) = 0;
+  virtual Task<Result> write(AsyncDevice<feature::Out<value_type>>& awd) = 0;
 };
 template <class T>
 class AsyncReadable {
 public:
   using value_type = T;
   virtual ~AsyncReadable() {}
-  virtual Task<Result> read(AsyncDevice<feature::In<std::type_identity<value_type>>>& ard) = 0;
+  virtual Task<Result> read(AsyncDevice<feature::In<value_type>>& ard) = 0;
 };
 XSL_AI_NE
 #endif

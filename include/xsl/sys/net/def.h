@@ -9,24 +9,40 @@
 #  include <netinet/in.h>
 #  include <sys/socket.h>
 
-#  include <concepts>
 #  include <type_traits>
 XSL_SYS_NET_NB
-namespace tag {
-  struct TcpIpv4 {};
-  struct TcpIpv6 {};
-  struct TcpIp {};
-}  // namespace tag
-namespace impl_socket {
-  using namespace xsl::feature;
-  template <class... Flags>
-  struct SocketTraits;
 
-  template <class... Flags>
-  using SocketTraitsTagCompose
-      = organize_feature_flags_t<SocketTraits<set<Tcp<Ip<4>>, Tcp<Ip<6>>, Tcp<placeholder>,
-                                                  tag::TcpIpv4, tag::TcpIpv6, tag::TcpIp>>,
-                                 Flags...>::type;
+/**
+ * @brief connection-based socket concept
+ *
+ * @tparam Sock
+ */
+template <class Sock>
+concept CSocket = Sock::socket_traits_type::type == SOCK_STREAM
+                  || Sock::socket_traits_type::type == SOCK_SEQPACKET;
+
+template <class Sock>
+concept BindableSocket
+    = Sock::socket_traits_type::family == AF_INET
+      || Sock::socket_traits_type::family == AF_INET6;  // TODO: more family support
+
+class SockAddr {
+public:
+  static constexpr std::tuple<sockaddr *, socklen_t *> null() { return {nullptr, nullptr}; }
+
+  constexpr SockAddr() noexcept : _addr(), _len(sizeof(_addr)) {}
+  constexpr std::tuple<sockaddr *, socklen_t *> raw() { return {&_addr, &_len}; }
+
+private:
+  sockaddr _addr;
+  socklen_t _len;
+};
+
+namespace impl_sock {
+  struct DeviceTraits {
+    using value_type = byte;
+    using poll_traits_type = DefaultPollTraits;
+  };
 
   template <int Family>
   struct FamilyTraits {
@@ -43,78 +59,67 @@ namespace impl_socket {
     static constexpr int protocol = Protocol;
   };
 
-  template <>
-  struct SocketTraits<feature::Tcp<feature::Ip<4>>> : std::type_identity<tag::TcpIpv4> {};
+  struct TcpIpv4SocketTraits : FamilyTraits<AF_INET>,
+                               TypeTraits<SOCK_STREAM>,
+                               ProtocolTraits<IPPROTO_TCP> {
+    using poll_traits_type = DefaultPollTraits;
+    using device_traits_type = DeviceTraits;
+  };
+  struct TcpIpv6SocketTraits : FamilyTraits<AF_INET6>,
+                               TypeTraits<SOCK_STREAM>,
+                               ProtocolTraits<IPPROTO_TCP> {
+    using poll_traits_type = DefaultPollTraits;
+    using device_traits_type = DeviceTraits;
+  };
+  struct TcpIpSocketTraits : FamilyTraits<AF_UNSPEC>,
+                             TypeTraits<SOCK_STREAM>,
+                             ProtocolTraits<IPPROTO_TCP> {
+    using poll_traits_type = DefaultPollTraits;
+    using device_traits_type = DeviceTraits;
+  };
+}  // namespace impl_sock
+
+namespace impl_sock {
+  using namespace xsl::feature;
+  template <class... Flags>
+  struct SocketTraitsTag;
+
+  template <class... Flags>
+  using SocketTraitsTagCompose = organize_feature_flags_t<
+      SocketTraitsTag<set<Tcp<Ip<4>>, Tcp<Ip<6>>, Tcp<placeholder>, TcpIpv4, TcpIpv6, TcpIp,
+                          TcpIpv4SocketTraits, TcpIpv6SocketTraits, TcpIpSocketTraits>>,
+      Flags...>::type;
 
   template <>
-  struct SocketTraits<tag::TcpIpv4> : std::type_identity<tag::TcpIpv4> {};
+  struct SocketTraitsTag<feature::Tcp<feature::Ip<4>>> : std::type_identity<TcpIpv4SocketTraits> {};
 
   template <>
-  struct SocketTraits<feature::Tcp<feature::Ip<6>>> : std::type_identity<tag::TcpIpv6> {};
+  struct SocketTraitsTag<TcpIpv4> : std::type_identity<TcpIpv4SocketTraits> {};
 
   template <>
-  struct SocketTraits<tag::TcpIpv6> : std::type_identity<tag::TcpIpv6> {};
+  struct SocketTraitsTag<TcpIpv4SocketTraits> : std::type_identity<TcpIpv4SocketTraits> {};
 
   template <>
-  struct SocketTraits<feature::Tcp<feature::placeholder>> : std::type_identity<tag::TcpIp> {};
+  struct SocketTraitsTag<feature::Tcp<feature::Ip<6>>> : std::type_identity<TcpIpv6SocketTraits> {};
 
   template <>
-  struct SocketTraits<tag::TcpIp> : std::type_identity<tag::TcpIp> {};
-}  // namespace impl_socket
+  struct SocketTraitsTag<TcpIpv6> : std::type_identity<TcpIpv6SocketTraits> {};
 
-template <class Tag>
-struct SocketTraits;
+  template <>
+  struct SocketTraitsTag<TcpIpv6SocketTraits> : std::type_identity<TcpIpv6SocketTraits> {};
 
-template <>
-struct SocketTraits<tag::TcpIpv4> : impl_socket::FamilyTraits<AF_INET>,
-                                    impl_socket::TypeTraits<SOCK_STREAM>,
-                                    impl_socket::ProtocolTraits<IPPROTO_TCP> {
-  using tag_type = tag::TcpIpv4;
-  using poll_traits = PollTraits;
-};
+  template <>
+  struct SocketTraitsTag<feature::Tcp<feature::placeholder>>
+      : std::type_identity<TcpIpSocketTraits> {};
 
-template <>
-struct SocketTraits<tag::TcpIpv6> : impl_socket::FamilyTraits<AF_INET6>,
-                                    impl_socket::TypeTraits<SOCK_STREAM>,
-                                    impl_socket::ProtocolTraits<IPPROTO_TCP> {
-  using tag_type = tag::TcpIpv6;
-  using poll_traits = PollTraits;
-};
+  template <>
+  struct SocketTraitsTag<TcpIp> : std::type_identity<TcpIpSocketTraits> {};
 
-template <>
-struct SocketTraits<tag::TcpIp> : impl_socket::FamilyTraits<AF_UNSPEC>,
-                                  impl_socket::TypeTraits<SOCK_STREAM>,
-                                  impl_socket::ProtocolTraits<IPPROTO_TCP> {
-  using tag_type = tag::TcpIp;
-  using poll_traits = PollTraits;
-};
+  template <>
+  struct SocketTraitsTag<TcpIpSocketTraits> : std::type_identity<TcpIpSocketTraits> {};
+}  // namespace impl_sock
 
 template <class... Flags>
-using SocketTraitsTag = impl_socket::SocketTraitsTagCompose<Flags...>;
-
-template <class S, template <class> class IO = feature::InOut>
-concept SocketLike = type_traits::is_same_pack_v<typename S::socket_traits_type, SocketTraits<void>>
-                     && type_traits::is_same_pack_v<typename S::device_features_type, IO<void>>;
-
-template <class S, template <class> class IO = feature::InOut>
-concept AsyncSocketLike = SocketLike<S, IO> && requires(S &s) {
-  { s.sem() } -> std::convertible_to<coro::CountingSemaphore<1> &>;
-};
+using SocketTraits = impl_sock::SocketTraitsTagCompose<Flags...>;
 XSL_SYS_NET_NE
-
-#  include "xsl/ai/def.h"
-XSL_AI_NB
-template <>
-struct DeviceTraits<_sys::net::tag::TcpIpv4> {
-  using value_type = byte;
-};
-template <>
-struct DeviceTraits<_sys::net::tag::TcpIpv6> {
-  using value_type = byte;
-};
-template <>
-struct DeviceTraits<_sys::net::tag::TcpIp> {
-  using value_type = byte;
-};
-XSL_AI_NE
 #endif

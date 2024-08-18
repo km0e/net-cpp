@@ -7,6 +7,7 @@
 #  include "xsl/sys/net/resolve.h"
 #  include "xsl/sys/net/socket.h"
 #  include "xsl/sys/net/tcp.h"
+#  include "xsl/sys/raw.h"
 #  include "xsl/sys/sync.h"
 XSL_NB
 namespace sys::net {
@@ -18,6 +19,8 @@ namespace sys::net {
   using _sys::net::Socket;
 }  // namespace sys::net
 namespace sys {
+  using _sys::AsyncRawDevice;
+  using _sys::DefaultDeviceTraits;
   using _sys::imm_sendfile;
   using _sys::SendfileHint;
 }  // namespace sys

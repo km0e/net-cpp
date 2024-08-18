@@ -1,5 +1,5 @@
-includes("http_server","component","proto")
-
+includes("http_server","proto")
+-- includes("component")
 add_deps("xsl_http")
 add_packages("gtest")
 

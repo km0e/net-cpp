@@ -24,6 +24,9 @@ namespace feature {
   // using for resolver
   template <uint8_t version = 4>
   struct Ip {};
+  struct TcpIpv4 {};
+  struct TcpIpv6 {};
+  struct TcpIp {};
   struct Exact {};
   struct Raw {};
   template <class T>

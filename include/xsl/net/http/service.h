@@ -13,6 +13,7 @@
 #  define XSL_NET_HTTP_SERVICE
 #  include "xsl/ai.h"
 #  include "xsl/coro.h"
+#  include "xsl/feature.h"
 #  include "xsl/net/http/component/redirect.h"
 #  include "xsl/net/http/component/static.h"
 #  include "xsl/net/http/context.h"
@@ -168,7 +169,9 @@ private:
   std::unique_ptr<details_type> details;
 };
 template <ai::ABRWL ABrw, RouterLike<std::size_t> R = Router>
-Service<typename ABrw::in_dev_type, typename ABrw::out_dev_type, R> make_service() {
+Service<typename ABrw::template rebind<feature::In>, typename ABrw::template rebind<feature::Out>,
+        R>
+make_service() {
   return {};
 }
 template <RouterLike<std::size_t> R = Router>

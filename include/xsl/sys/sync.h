@@ -69,6 +69,98 @@ concept Handler = requires(T t) {
 
 using PollHandler = std::function<PollHandleHint(int fd, IOM_EVENTS events)>;
 
+namespace impl_poll {
+  template <IOM_EVENTS... Events>
+  class PollBase {
+  public:
+    IOM_EVENTS get_events() { return (Events | ...); }
+  };
+
+  template <class Traits, IOM_EVENTS... Events>
+  class PollForCoro : public PollBase<Events...> {
+  public:
+    PollForCoro(std::array<std::shared_ptr<CountingSemaphore<1>>, sizeof...(Events)> sems)
+        : sems(std::move(sems)) {}
+
+    template <class... Sems>
+    PollForCoro(Sems&&... sems) : sems{std::forward<Sems>(sems)...} {}
+    PollHandleHint operator()(int, IOM_EVENTS events) {
+      if (Traits::poll_check(events) == PollHandleHintTag::DELETE) {
+        for (auto& sem : sems) {
+          sem->release(false);
+        }
+        return PollHandleHintTag::DELETE;
+      } else {
+        return handle_event(std::make_index_sequence<sizeof...(Events)>{}, events)
+                   ? PollHandleHintTag::DELETE
+                   : PollHandleHintTag::NONE;
+      }
+    }
+
+  private:
+    std::array<std::shared_ptr<CountingSemaphore<1>>, sizeof...(Events)> sems;
+
+    template <std::size_t... I>
+    bool handle_event(std::index_sequence<I...>, IOM_EVENTS events) {
+      return (handle_event<Events, I>(events) && ...);
+    }
+
+    template <IOM_EVENTS E, std::size_t I>
+    bool handle_event(IOM_EVENTS events) {
+      if (sems[I].use_count() > 1) {
+        if (!!(events & E)) {
+          sems[I]->release();
+        }
+        return false;
+      }
+      return true;
+    }
+  };
+  template <IOM_EVENTS... Events>
+  class PollCallback : public PollBase<Events...> {
+  public:
+    template <std::invocable<int, IOM_EVENTS>... Callbacks>
+    PollCallback(Callbacks&&... callbacks) : _callbacks{std::forward<Callbacks>(callbacks)...} {}
+
+    PollHandleHint operator()(int fd, IOM_EVENTS events) {
+      return handle_event(fd, std::make_index_sequence<sizeof...(Events)>{}, events)
+                 ? PollHandleHintTag::DELETE
+                 : PollHandleHintTag::NONE;
+    }
+
+  private:
+    std::array<std::function<PollHandleHint(int, IOM_EVENTS)>, sizeof...(Events)> _callbacks;
+
+    template <std::size_t... I>
+    bool handle_event(int fd, std::index_sequence<I...>, IOM_EVENTS events) {
+      return (handle_event<Events, I>(fd, events) && ...);
+    }
+
+    template <IOM_EVENTS E, std::size_t I>
+    bool handle_event(int fd, IOM_EVENTS events) {
+      if (!!(events & E)) {
+        auto hint = _callbacks[I](fd, E);
+        if (hint.tag == PollHandleHintTag::DELETE) {
+          return true;
+        }
+      }
+      return false;
+    }
+  };
+}  // namespace impl_poll
+struct DefaultPollTraits {
+  static PollHandleHintTag poll_check(IOM_EVENTS events) {
+    return ((!events) || !!(events & IOM_EVENTS::HUP)) ? PollHandleHintTag::DELETE
+                                                       : PollHandleHintTag::NONE;
+  }
+};
+
+template <class Traits, IOM_EVENTS... Events>
+using PollForCoro = impl_poll::PollForCoro<Traits, Events...>;
+
+template <IOM_EVENTS... Events>
+using PollCallback = impl_poll::PollCallback<Events...>;
+
 using HandleProxy = std::function<PollHandleHint(std::function<PollHandleHint()>&&)>;
 class Poller {
 public:
@@ -77,7 +169,15 @@ public:
   ~Poller();
   bool valid();
   bool add(int fd, IOM_EVENTS events, PollHandler&& handler);
+  template <class Poll>
+  bool add(int fd, Poll&& poll) {
+    return add(fd, poll.get_events() | IOM_EVENTS::ET, std::forward<Poll>(poll));
+  }
   bool modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler);
+  template <class Poll>
+  bool modify(int fd, Poll&& poll) {
+    return modify(fd, poll.get_events() | IOM_EVENTS::ET, std::forward<Poll>(poll));
+  }
   void poll();
   void remove(int fd);
   /**
@@ -92,52 +192,5 @@ private:
   std::shared_ptr<HandleProxy> proxy;
 };
 
-struct PollTraits {
-  static PollHandleHintTag poll_check(IOM_EVENTS events) {
-    return ((!events) || !!(events & IOM_EVENTS::HUP)) ? PollHandleHintTag::DELETE
-                                                       : PollHandleHintTag::NONE;
-  }
-};
-
-template <class Traits, IOM_EVENTS... Events>
-class PollCallback {
-public:
-  PollCallback(std::array<std::shared_ptr<coro::CountingSemaphore<1>>, sizeof...(Events)> sems)
-      : sems(std::move(sems)) {}
-
-  template <class... Sems>
-  PollCallback(Sems&&... sems) : sems{std::forward<Sems>(sems)...} {}
-  PollHandleHint operator()(int, IOM_EVENTS events) {
-    if (Traits::poll_check(events) == PollHandleHintTag::DELETE) {
-      for (auto& sem : sems) {
-        sem->release(false);
-      }
-      return PollHandleHintTag::DELETE;
-    } else {
-      return handle_event(std::make_index_sequence<sizeof...(Events)>{}, events)
-                 ? PollHandleHintTag::DELETE
-                 : PollHandleHintTag::NONE;
-    }
-  }
-
-private:
-  std::array<std::shared_ptr<coro::CountingSemaphore<1>>, sizeof...(Events)> sems;
-
-  template <std::size_t... I>
-  bool handle_event(std::index_sequence<I...>, IOM_EVENTS events) {
-    return (handle_event<Events, I>(events) && ...);
-  }
-
-  template <IOM_EVENTS E, std::size_t I>
-  bool handle_event(IOM_EVENTS events) {
-    if (sems[I].use_count() > 1) {
-      if (!!(events & E)) {
-        sems[I]->release();
-      }
-      return false;
-    }
-    return true;
-  }
-};
 XSL_SYS_NE
 #endif

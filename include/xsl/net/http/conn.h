@@ -18,88 +18,85 @@
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/parse.h"
 
-#  include <cstdint>
 #  include <memory>
 #  include <span>
 #  include <type_traits>
 #  include <utility>
 XSL_HTTP_NB
 namespace impl_conn {
-  template <class ABD, class ServiceABD>
-  using DeviceCastParams
-      = std::integral_constant<std::uint8_t, std::is_same_v<ABD, ServiceABD>
-                                                 ? 0
-                                                 : (std::is_base_of_v<ABD, ServiceABD> ? 1 : 2)>;
-  template <std::uint8_t ABr, std::uint8_t ABw>
-  struct DeviceCast;
+
+  template <bool RR2L, bool RL2R, bool WR2L, bool WL2R>
+  struct BaseCast {
+    static_assert(false, "unimplemented");
+  };
+
   template <>
-  struct DeviceCast<0, 0> {
-    template <class ABr, class ABw, class Service>
-    static auto cast(ABr&& ard, ABw&& awd, Service&& service) {
+  struct BaseCast<false, true, false, true> {
+    template <class LABr, class RABr, class LABw, class RABw, class T, class U, class V>
+    static auto cast(T&& ard, U&& awd, V&& service) {
+      return std::make_tuple(std::move(ard).template to_unique_dyn<RABr>(),
+                             std::move(awd).template to_unique_dyn<RABw>(),
+                             std::addressof(service));
+    }
+  };
+  template <>
+  struct BaseCast<false, true, true, true> {
+    template <class LABr, class RABr, class LABw, class RABw, class T, class U, class V>
+    static auto cast(T&& ard, U&& awd, V&& service) {
+      return std::make_tuple(std::move(ard).template to_unique_dyn<RABr>(), std::addressof(awd),
+                             std::addressof(service));
+    }
+  };
+  template <>
+  struct BaseCast<true, true, false, true> {
+    template <class LABr, class RABr, class LABw, class RABw, class T, class U, class V>
+    static auto cast(T&& ard, U&& awd, V&& service) {
+      return std::make_tuple(std::addressof(ard), std::move(awd).template to_unique_dyn<RABw>(),
+                             std::addressof(service));
+    }
+  };
+  template <>
+  struct BaseCast<true, true, true, true> {
+    template <class LABr, class RABr, class LABw, class RABw, class T, class U, class V>
+    static auto cast(T&& ard, U&& awd, V&& service) {
       return std::make_tuple(std::addressof(ard), std::addressof(awd), std::addressof(service));
     }
   };
-  // template <>
-  // struct DeviceCast<0, 1> {
-  //   template <class ABr, class ABw, class Service>
-  //   static auto cast(ABr&& ard, ABw&& awd, Service&& service) {
-  //   }
-  // };
-  template <>
-  struct DeviceCast<0, 2> {
-    template <class ABr, class ABw, class Service>
-    static auto cast(ABr&& ard, ABw&& awd, Service&& service) {
-      return std::make_tuple(std::addressof(ard), std::move(awd).to_unique_dyn(),
-                             std::addressof(service));
+  template <class...>
+  struct BaseCastCompose;
+
+  template <class Abr, class Abw, class Service>
+  struct BaseCastCompose<Abr, Abw, Service> {
+    template <class T, class U, class V>
+    static auto cast(T&& ard, U&& awd, V&& service) {
+      using labr_type = typename Abr::dynamic_type;
+      using labw_type = typename Abw::dynamic_type;
+      using rabr_type = typename Service::abr_type::dynamic_type;
+      using rabw_type = typename Service::abw_type::dynamic_type;
+      return BaseCast<std::is_base_of_v<labr_type, rabr_type>,
+                      std::is_base_of_v<rabr_type, labr_type>,
+                      std::is_base_of_v<labw_type, rabw_type>,
+                      std::is_base_of_v<rabw_type, labw_type>>::template cast<labr_type, rabr_type,
+                                                                              labw_type, rabw_type>(
+          std::forward<T>(ard), std::forward<U>(awd), std::forward<V>(service));
     }
   };
-  // template <>
-  // struct DeviceCast<1, 0> {
-  //   template <class ABr, class ABw, class Service>
-  //   static auto cast(ABr&& ard, ABw&& awd, Service&& service) {
-  //     static_assert(false, "unimplemented");
-  //   }
-  // };
-  // template <>
-  // struct DeviceCast<1, 1> {
-  //   template <class ABr, class ABw, class Service>
-  //   static auto cast(ABr&& ard, ABw&& awd, Service&& service) {
-  //     static_assert(false, "unimplemented");
-  //   }
-  // };
-  // template <>
-  // struct DeviceCast<1, 2> {
-  //   template <class ABr, class ABw, class Service>
-  //   static auto cast(ABr&& ard, ABw&& awd, Service&& service) {
-  //     static_assert(false, "unimplemented");
-  //   }
-  // };
-  template <>
-  struct DeviceCast<2, 0> {
-    template <class ABr, class ABw, class Service>
-    static auto cast(ABr&& ard, ABw&& awd, Service&& service) {
-      return std::make_tuple(std::move(ard).to_unique_dyn(), std::addressof(awd),
-                             std::addressof(service));
+  template <class ABrw, class Service>
+  struct BaseCastCompose<ABrw, Service> {
+    template <class T, class U, class V>
+    static auto cast(T&& ard, U&& awd, V&& service) {
+      using labr_type = typename ABrw::template rebind<feature::In>::dynamic_type;
+      using labw_type = typename ABrw::template rebind<feature::Out>::dynamic_type;
+      using rabr_type = typename Service::abr_type::dynamic_type;
+      using rabw_type = typename Service::abw_type::dynamic_type;
+      return BaseCast<std::is_base_of_v<labr_type, rabr_type>,
+                      std::is_base_of_v<rabr_type, labr_type>,
+                      std::is_base_of_v<labw_type, rabw_type>,
+                      std::is_base_of_v<rabw_type, labw_type>>::template cast<labr_type, rabr_type,
+                                                                              labw_type, rabw_type>(
+          std::forward<T>(ard), std::forward<U>(awd), std::forward<V>(service));
     }
   };
-  // template <>
-  // struct DeviceCast<2, 1> {
-  //   template <class ABr, class ABw, class Service>
-  //   static auto cast(ABr&& ard, ABw&& awd, Service&& service) {
-  //     static_assert(false, "unimplemented");
-  //   }
-  // };
-  template <>
-  struct DeviceCast<2, 2> {
-    template <class ABr, class ABw, class Service>
-    static auto cast(ABr&& ard, ABw&& awd, Service&& service) {
-      return std::make_tuple(std::move(ard).to_unique_dyn(), std::move(awd).to_unique_dyn(),
-                             std::addressof(service));
-    }
-  };
-  template <class ABr, class ABw, class Service>
-  using DeviceCastCompose = DeviceCast<DeviceCastParams<ABr, typename Service::abr_type>::value,
-                                       DeviceCastParams<ABw, typename Service::abw_type>::value>;
 }  // namespace impl_conn
 
 template <class Executor, ai::ABRL ABr, ai::ABWL ABw, class Service,
@@ -139,8 +136,7 @@ Lazy<void, Executor> serve_connection(std::unique_ptr<ABrw> ard, std::shared_ptr
                                       Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
   auto [r, w] = std::move(*ard).split();
   auto [pard, pawd, pservice]
-      = impl_conn::DeviceCastCompose<typename ABrw::in_dev_type, typename ABrw::out_dev_type,
-                                     Service>::cast(std::move(r), std::move(w), *service);
+      = impl_conn::BaseCastCompose<ABrw, Service>::cast(std::move(r), std::move(w), *service);
   co_return co_await imm_serve_connection<Executor>(*pard, *pawd, *pservice, std::move(parser));
 }
 
@@ -196,7 +192,7 @@ public:
   }
   template <class Executor = coro::ExecutorBase, class Service>
   Lazy<void, Executor> serve_connection(this Connection self, std::shared_ptr<Service> service) {
-    auto [pard, pawd, pservice] = impl_conn::DeviceCastCompose<abr_type, abw_type, Service>::cast(
+    auto [pard, pawd, pservice] = impl_conn::BaseCastCompose<abr_type, abw_type, Service>::cast(
         std::move(self._ard), std::move(self._awd), *service);
     co_return co_await http::imm_serve_connection<Executor>(*pard, *pawd, *pservice,
                                                             std::move(self._parser));
@@ -209,7 +205,9 @@ private:
   Parser<HttpParseTraits> _parser;
 };
 template <ai::ABRWL ABrw>
-Connection<typename ABrw::in_dev_type, typename ABrw::out_dev_type> make_connection(ABrw&& dev) {
+Connection<typename ABrw::template rebind<feature::In>,
+           typename ABrw::template rebind<feature::Out>>
+make_connection(ABrw&& dev) {
   auto [r, w] = std::move(dev).split();
   return {std::move(r), std::move(w)};
 }

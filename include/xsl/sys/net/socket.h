@@ -8,28 +8,8 @@
 
 #  include <sys/socket.h>
 
-#  include <cstdint>
 #  include <expected>
-#  include <string>
 XSL_SYS_NET_NB
-
-namespace impl {
-  class IpBase {
-  public:
-    IpBase() = default;
-    IpBase(const char *ip) : _ip(ip) {}
-    IpBase(std::string_view ip) : _ip(ip) {}
-    bool operator==(const IpBase &rhs) const { return _ip == rhs._ip; }
-    std::string _ip;
-  };
-  template <uint8_t version>
-  class Ip : public IpBase {};
-}  // namespace impl
-using IpAddr = impl::IpBase;
-// ipv4
-using IpV4Addr = impl::Ip<4>;
-// ipv6
-using IpV6Addr = impl::Ip<6>;
 
 namespace impl_sock {
   template <class... Flags>
@@ -114,7 +94,7 @@ namespace impl_sock {
 
     template <class Executor = coro::ExecutorBase>
     Task<Result, Executor> read(std::span<value_type> buf) {
-      return immediate_recv<Executor>(*this, buf);
+      return imm_recv<Executor>(*this, buf);
     }
 
     Task<Result> read(std::span<value_type> buf) { return this->read<>(buf); }
@@ -134,11 +114,11 @@ namespace impl_sock {
     using Base::operator=;
 
     template <class Executor = coro::ExecutorBase>
-    Task<Result, Executor> read(std::span<value_type> buf) {
-      return immediate_recv<Executor>(*this, buf);
+    Task<Result, Executor> write(std::span<const value_type> buf) {
+      return imm_send<Executor>(*this, buf);
     }
 
-    Task<Result> read(std::span<value_type> buf) { return this->read<>(buf); }
+    Task<Result> write(std::span<const value_type> buf) { return this->write<>(buf); }
   };
 
   template <class Traits, class T, class U>
@@ -162,14 +142,14 @@ namespace impl_sock {
 
     template <class Executor = coro::ExecutorBase>
     Task<Result, Executor> read(std::span<value_type> buf) {
-      return immediate_recv<Executor>(*this, buf);
+      return imm_recv<Executor>(*this, buf);
     }
 
     Task<Result> read(std::span<value_type> buf) { return this->read<>(buf); }
 
     template <class Executor = coro::ExecutorBase>
     Task<Result, Executor> write(std::span<const value_type> buf) {
-      return immediate_send<Executor>(*this, buf);
+      return imm_send<Executor>(*this, buf);
     }
 
     Task<Result> write(std::span<const value_type> buf) { return this->write<>(buf); }
@@ -185,6 +165,15 @@ namespace impl_sock {
 template <class... Flags>
 using Socket = impl_sock::SocketCompose<feature::InOut<SocketTraits<Flags...>>>;
 
+template <class Socket>
+std::expected<Socket, std::errc> make_socket() {
+  int fd = ::socket(Socket::socket_traits_type::family, Socket::socket_traits_type::type,
+                    Socket::socket_traits_type::protocol);
+  if (fd < 0) {
+    return std::unexpected{std::errc(errno)};
+  }
+  return Socket{fd};
+}
 /**
  * @brief determine the socket type asynchronously
  *

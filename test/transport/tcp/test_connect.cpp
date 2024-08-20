@@ -27,7 +27,7 @@ TEST(connect, connect) {
     }
     LOG5("Poller shutdown");
   });
-  auto sock = sys::tcp::connect(ai, *poller);
+  auto sock = sys::net::connect(ai, *poller);
   auto skt = sock.block();
   LOG5("Socket connected");
   xsl::flush_log();

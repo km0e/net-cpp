@@ -9,3 +9,5 @@ end
 add_packages("quill")
 
 includes("http", "transport", "feature", "coro", "convert", "regex", "wheel", "compile")
+includes("dns")
+includes("sys")

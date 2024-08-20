@@ -1,3 +1,13 @@
+/**
+ * @file tcp_echo.cpp
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief A simple echo server
+ * @version 0.1
+ * @date 2024-08-20
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #include <CLI/CLI.hpp>
 #include <xsl/coro.h>
 #include <xsl/logctl.h>
@@ -13,10 +23,10 @@ using namespace xsl::coro;
 using namespace xsl;
 
 template <class Executor = ExecutorBase>
-Lazy<void, Executor> echo(std::string_view ip, std::string_view port,
+Lazy<void, Executor> talk(std::string_view ip, std::string_view port,
                           std::shared_ptr<xsl::Poller> poller) {
   using Server = tcp::Server<Ip<4>>;
-  auto server = Server::create(ip, port, poller).value();
+  auto server = tcp::make_server<Ip<4>>(ip, port, poller).value();
   Server::value_type skt;
   while (true) {
     auto [sz, err] = co_await server.read<Executor>(std::span<Server::value_type>(&skt, 1));
@@ -43,7 +53,7 @@ int main(int argc, char *argv[]) {
 
   auto poller = std::make_shared<xsl::Poller>();
   auto executor = std::make_shared<NewThreadExecutor>();
-  echo<NewThreadExecutor>(ip, port, poller).detach(std::move(executor));
+  talk<NewThreadExecutor>(ip, port, poller).detach(std::move(executor));
   // echo(ip, port, poller).detach();
   while (true) {
     poller->poll();

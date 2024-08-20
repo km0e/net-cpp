@@ -17,7 +17,7 @@ TEST(bind, create) {
   auto res = xsl::sys::net::Resolver{}.resolve<Tcp<Ip<4>>>(port);
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());
-  auto skt = xsl::sys::tcp::bind(ai);
+  auto skt = xsl::sys::net::bind(ai);
   ASSERT_TRUE(skt.has_value());
   ASSERT_NE(skt.value().raw(), 0);
 }

@@ -8,15 +8,18 @@
 #  include <cstddef>
 #  include <cstring>
 #  include <memory>
-#  include <span>
 #  include <string>
 #  include <string_view>
 
 XSL_WHEEL_NB
 
-void i32_to_bytes(int32_t value, std::span<byte> bytes);
+void i32_to_bytes(int32_t value, byte* bytes);
 
-int32_t i32_from_bytes(std::span<const byte> bytes);
+int32_t i32_from_bytes(const byte* bytes);
+
+void u16_to_bytes(uint16_t value, byte* bytes);
+
+uint16_t u16_from_bytes(const byte* bytes);
 
 void bool_to_bytes(bool value, byte* bytes);
 

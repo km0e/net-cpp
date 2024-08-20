@@ -27,6 +27,9 @@ namespace feature {
   struct TcpIpv4 {};
   struct TcpIpv6 {};
   struct TcpIp {};
+  struct UdpIpv4 {};
+  struct UdpIpv6 {};
+  struct UdpIp {};
   struct Exact {};
   struct Raw {};
   template <class T>

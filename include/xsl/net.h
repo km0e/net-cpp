@@ -1,6 +1,8 @@
 #pragma once
+#include "xsl/net/dns/utils.h"
 #ifndef XSL_NET_H
 #  define XSL_NET_H
+#  include "xsl/net/dns/server.h"
 #  include "xsl/net/http/conn.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/parse.h"
@@ -12,6 +14,7 @@
 #  include "xsl/net/io/splice.h"
 #  include "xsl/net/tcp/server.h"
 #  include "xsl/net/tcp/utils.h"
+#  include "xsl/net/udp/utils.h"
 XSL_NB
 namespace net {
   using xsl::_net::io::Block;
@@ -25,6 +28,16 @@ namespace tcp {
   using xsl::_net::tcp::serv;
   using xsl::_net::tcp::Server;
 }  // namespace tcp
+
+namespace udp {
+  using xsl::_net::udp::dial;
+  using xsl::_net::udp::serv;
+}  // namespace udp
+namespace dns {
+  using xsl::_net::dns::DnCompressor;
+  using xsl::_net::dns::serv;
+  using xsl::_net::dns::Server;
+}  // namespace dns
 
 namespace http {
   using xsl::_net::http::HandleContext;

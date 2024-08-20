@@ -412,5 +412,14 @@ std::expected<void, std::errc> set_blocking(int fd) {
 }
 std::expected<void, std::errc> set_blocking(int fd, bool blocking);
 
+template <class F, class... Args>
+int filter_interrupt(F &&f, Args &&...args) {
+  int ret;
+  do {
+    ret = f(std::forward<Args>(args)...);
+  } while (ret == -1 && errno == EINTR);
+  return ret;
+}
+
 XSL_SYS_NE
 #endif

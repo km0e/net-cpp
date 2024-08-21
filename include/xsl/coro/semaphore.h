@@ -130,7 +130,7 @@ public:
     this->_mtx.lock();
     this->_ready = ready;
     if (this->_cb) {
-      auto cb = std::exchange(this->_cb, std::nullopt);
+      auto cb = std::exchange(this->_cb, std::nullopt);// must exchange before call, because the cb may call co_await again
       (*cb)();
     } else {
       this->_mtx.unlock();

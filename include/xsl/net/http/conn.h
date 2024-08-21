@@ -99,7 +99,7 @@ namespace impl_conn {
   };
 }  // namespace impl_conn
 
-template <class Executor, ai::ABRL ABr, ai::ABWL ABw, class Service,
+template <class Executor = coro::ExecutorBase, ai::ABRL ABr, ai::ABWL ABw, class Service,
           class ParserTraits = HttpParseTraits>
 Lazy<void, Executor> imm_serve_connection(ABr& ard, ABw& awd, Service& service,
                                           Parser<ParserTraits> parser) {
@@ -107,13 +107,7 @@ Lazy<void, Executor> imm_serve_connection(ABr& ard, ABw& awd, Service& service,
   while (true) {
     {
       LOG5("Start to read request");
-      auto res = co_await [&]() {
-        if constexpr (std::is_same_v<ABr, ABR>) {
-          return parser.read(ard, parse_data);
-        } else {
-          return parser.template read<Executor>(ard, parse_data);
-        }
-      }();
+      auto res = co_await ai::read_poly_resolve<Executor>(parser, ard, parse_data);
       if (!res) {
         LOG3("recv error: {}", std::make_error_code(res.error()).message());
         break;
@@ -123,7 +117,7 @@ Lazy<void, Executor> imm_serve_connection(ABr& ard, ABw& awd, Service& service,
 
     Request request{std::move(parse_data.buffer), std::move(parse_data.request),
                     parse_data.content_part, ard};
-    auto resp = co_await (service)(std::move(request));
+    auto resp = co_await (service)(std::move(request));//TODO: may be will also need to be a coroutine in the future
     auto [sz, err] = co_await resp.sendto(awd);
     if (err) {
       LOG3("send error: {}", std::make_error_code(*err).message());

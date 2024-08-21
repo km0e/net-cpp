@@ -227,7 +227,7 @@ namespace impl_dev {
 
     decltype(auto) raw() { return _dev.raw(); }
 
-    sem_type &sem() { return *_sem; }
+    sem_type &poll_for_read() { return *_sem; }
 
     template <class Executor = coro::ExecutorBase>
     Task<Result, Executor> read(std::span<value_type> buf) {
@@ -279,7 +279,7 @@ namespace impl_dev {
 
     decltype(auto) raw() { return _dev.raw(); }
 
-    sem_type &sem() { return *_sem; }
+    sem_type &poll_for_write() { return *_sem; }
 
     template <class Executor = coro::ExecutorBase>
     Task<Result, Executor> write(std::span<const value_type> buf) {
@@ -340,9 +340,9 @@ namespace impl_dev {
 
     inner_type &inner() { return _dev; }
 
-    sem_type &read_sem() { return *_read_sem; }
+    sem_type &poll_for_read() { return *_read_sem; }
 
-    sem_type &write_sem() { return *_write_sem; }
+    sem_type &poll_for_write() { return *_write_sem; }
 
     Task<Result> read(std::span<byte> buf) { return imm_read<coro::ExecutorBase>(*this, buf); }
 

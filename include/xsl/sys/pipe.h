@@ -48,26 +48,29 @@ std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice> async_pipe(std::shared_ptr<
  */
 template <class Executor = coro::ExecutorBase, AsyncRawDeviceLike From, AsyncRawDeviceLike To>
 Task<std::optional<std::errc>, Executor> splice_single(From from, To to) {
-  while (true) {
+  std::size_t offset = 0;
+  do {
     ssize_t n = ::splice(from.raw(), nullptr, to.raw(), nullptr, MAX_SINGLE_FWD_SIZE,
                          SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
     LOG5("recv n: {}", n);
-    if (n == 0) {
-      co_return std::nullopt;
-    } else if (n == -1) {
-      if (errno == EAGAIN) {
-        LOG5("no data");
-        if (!co_await from.sem()) {
-          LOG5("from {} is invalid", from.raw());
-          co_return std::nullopt;
-        }
-      } else {
-        LOG2("Failed to recv data, err : {}", strerror(errno));
-        co_return std::errc(errno);
+    if (n > 0) {
+      offset += n;
+    } else if (n == 0) {
+      if (offset != 0) {
+        break;
       }
+      co_return std::errc::no_message;
+    } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      if (offset != 0) {
+        break;
+      }
+      if (!co_await from.poll_for_read()) {
+        co_return std::errc::not_connected;
+      }
+    } else {
+      co_return std::errc(errno);
     }
-    LOG5("fwd: recv {} bytes", n);
-  }
+  } while (false);
   co_return std::nullopt;
 }
 /**

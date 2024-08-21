@@ -150,13 +150,13 @@ inline decltype(auto) connect(const Endpoint<Traits> &ep, Poller &poller) {
   return impl_connect::connect<Traits, Executor>(ep.raw(), poller);
 }
 
-template <class Executor = coro::ExecutorBase, class Traits>
+template <class Traits>
   requires(!CSocketTraits<Traits>)
 inline decltype(auto) connect(const Endpoint<Traits> &ep) {
   return impl_connect::connect<Traits>(ep.raw());
 }
 
-template <class Executor = coro::ExecutorBase, class Traits>
+template <class Traits>
   requires(!CSocketTraits<Traits>)
 inline decltype(auto) connect(const EndpointSet<Traits> &eps) {
   std::expected<Socket<Traits>, std::errc> res{std::unexpect, std::errc{0}};

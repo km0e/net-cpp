@@ -20,25 +20,28 @@ XSL_SYS_NB
  */
 template <class Executor = coro::ExecutorBase, RawDeviceLike S>
 Task<Result, Executor> imm_write(S &skt, std::span<const byte> data) {
-  std::size_t total = 0;
-  while (true) {
-    ssize_t n = ::write(skt.raw(), data.data(), data.size());
-    if ((n == -1) && !(errno == EAGAIN || errno == EWOULDBLOCK)) {
-      co_return {total, {std::errc(errno)}};
-    }
-    total += n;
-    if (static_cast<size_t>(n) == data.size()) {
-      co_return {total, std::nullopt};
-    }
+  std::size_t offset = 0;
+  do {
+    ssize_t n = ::write(skt.raw(), data.data() + offset, data.size() - offset);
     if (n > 0) {
-      LOG5("[write] write {} bytes", n);
-      data = data.subspan(n);
-      continue;
+      offset += n;
+    } else if (n == 0) {
+      if (offset != 0) {
+        break;
+      }
+      co_return {offset, {std::errc::no_message}};
+    } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      if (offset != 0) {
+        break;
+      }
+      if (!co_await skt.poll_for_write()) {
+        co_return {offset, {std::errc::not_connected}};
+      }
+    } else {
+      co_return {offset, {std::errc(errno)}};
     }
-    if (!co_await skt.sem()) {
-      co_return {total, {std::errc::not_connected}};//TODO: not not_connected
-    }
-  }
+  } while (false);
+  co_return {offset, std::nullopt};
 }
 /**
  * @brief read from socket
@@ -51,22 +54,29 @@ Task<Result, Executor> imm_write(S &skt, std::span<const byte> data) {
  */
 template <class Executor = coro::ExecutorBase, RawDeviceLike S>
 Task<Result, Executor> imm_read(S &skt, std::span<byte> buf) {
-  while (true) {
-    ssize_t n = ::read(skt.raw(), buf.data(), buf.size());
-    if (n == -1) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        if (!co_await skt.sem()) {
-          co_return {0, {std::errc::not_connected}};
-        }
-        continue;
-      } else {
-        co_return {0, {std::errc(errno)}};
-      }
+  std::size_t offset = 0;
+  do {
+    ssize_t n = ::read(skt.raw(), buf.data() + offset, buf.size() - offset);
+    if (n > 0) {
+      LOG6("{} recv {} bytes", skt.raw(), n);
+      offset += n;
     } else if (n == 0) {
-      co_return {0, {std::errc::no_message}};
+      if (offset != 0) {
+        break;
+      }
+      co_return {offset, {std::errc::no_message}};
+    } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      if (offset != 0) {
+        break;
+      }
+      if (!co_await skt.poll_for_read()) {
+        co_return {offset, {std::errc::not_connected}};
+      }
+    } else {
+      co_return {offset, {std::errc(errno)}};
     }
-    co_return {n, std::nullopt};
-  }
+  } while (false);
+  co_return {offset, std::nullopt};
 }
 
 struct SendfileHint {
@@ -97,27 +107,31 @@ Task<Result, Executor> imm_sendfile(S &skt, SendfileHint hint) {
   }
   Defer defer{[ffd] { close(ffd); }};
   off_t offset = hint.offset;
-  while (true) {
-    ssize_t n = ::sendfile(skt.raw(), ffd, &offset, hint.size);
-    if (n == static_cast<ssize_t>(hint.size)) {
-      LOG6("{} send {} bytes file", skt.raw(), n);
-      co_return Result{static_cast<std::size_t>(offset), std::nullopt};
-    }
+  do {
+    ssize_t n = ::sendfile(skt.raw(), ffd, &offset, hint.size - offset);
     if (n > 0) {
       LOG5("[sendfile] send {} bytes", n);
-      hint.size -= n;
-      continue;
-    }
-    if ((n == -1) && !(errno == EAGAIN || errno == EWOULDBLOCK)) {
-      // TODO: handle sendfile error
+      offset += n;
+    } else if (n == 0) {
+      LOG6("{} send {} bytes file", skt.raw(), n);
+      if (static_cast<std::size_t>(offset) != hint.size) {
+        break;
+      }
+      co_return Result{static_cast<std::size_t>(offset), {std::errc::no_message}};
+    } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      if (static_cast<std::size_t>(offset) != hint.size) {
+        break;
+      }
+      if (!co_await skt.poll_for_write()) {
+        co_return Result{static_cast<std::size_t>(offset), {std::errc::not_connected}};
+      }
+    } else {
       co_return Result{static_cast<std::size_t>(offset), {std::errc(errno)}};
     }
-
-    if (!co_await skt.sem()) {
-      co_return Result{static_cast<std::size_t>(offset), {std::errc::not_connected}};
-    }
-  }
+  } while (hint.size != static_cast<std::size_t>(offset));
+  co_return Result{static_cast<std::size_t>(offset), std::nullopt};
 }
+
 template <class Executor = coro::ExecutorBase>
 Task<Result, Executor> imm_sendfile(ABW &abw, SendfileHint hint) {
   using Result = Result;

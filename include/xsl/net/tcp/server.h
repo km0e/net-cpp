@@ -9,6 +9,7 @@
  *
  */
 #pragma once
+#include "xsl/ai.h"
 #ifndef XSL_NET_TCP_SERVER
 #  define XSL_NET_TCP_SERVER
 #  include "xsl/feature.h"
@@ -57,7 +58,7 @@ public:
   Task<Result, Executor> read(std::span<value_type> conns) noexcept {
     std::size_t i = 0;
     for (auto &conn : conns) {
-      auto res = co_await this->accept();
+      auto res = co_await ai::read_poly_resolve<Executor>(*this);
       if (!res) {
         co_return Result{i, res.error()};
       }
@@ -71,13 +72,17 @@ public:
   }
   template <class Executor = coro::ExecutorBase>
   Task<std::expected<io_dev_type, std::errc>, Executor> accept() noexcept {
+    return this->read<Executor>();
+  }
+  template <class Executor = coro::ExecutorBase>
+  Task<std::expected<io_dev_type, std::errc>, Executor> read() noexcept {
     while (true) {
       auto res = sys::tcp::accept(this->_dev, nullptr);
       if (res) {
         co_return std::move(*res).async(*this->poller);
       } else if (res.error() == std::errc::resource_unavailable_try_again
                  || res.error() == std::errc::operation_would_block) {
-        if (!co_await this->_dev.read_sem()) {
+        if (!co_await this->_dev.poll_for_read()) {
           co_return std::unexpected{std::errc::not_connected};
         }
       } else {
@@ -85,7 +90,6 @@ public:
       }
     }
   }
-
   std::string host;
   std::string port;
 

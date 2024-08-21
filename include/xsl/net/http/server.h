@@ -10,7 +10,6 @@
 
 #  include <expected>
 #  include <memory>
-#  include <type_traits>
 #  include <utility>
 
 XSL_HTTP_NB
@@ -35,13 +34,7 @@ public:
     auto service_ptr = std::make_shared<Service>(std::forward<Service>(service));
     typename lower_type::value_type conn;
     while (true) {
-      auto [sz, err] = co_await [&]() {
-        if constexpr (std::is_same_v<ABR, typename lower_type::in_dev_type>) {
-          return this->server.read(std::span{&conn, 1});
-        } else {
-          return this->server.template read<Executor>(std::span{&conn, 1});
-        }
-      }();
+      auto [sz, err] = co_await ai::read_poly_resolve<Executor>(this->server, std::span{&conn, 1});
       if (sz != 1 || err) {
         LOG2("accept error: {}", std::make_error_code(err.value()).message());
         continue;

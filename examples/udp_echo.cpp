@@ -35,8 +35,8 @@ Lazy<void, Executor> talk(std::string_view ip, std::string_view port,
   std::string dst(128, '\0');
   std::uint16_t port_num;
   while (true) {
-    auto [rc_n, rc_err]
-        = co_await sys::net::imm_recvfrom(r, xsl::as_writable_bytes(std::span(buffer)), addr);
+    auto [rc_n, rc_err] = co_await sys::net::imm_recvfrom<Executor>(
+        r, xsl::as_writable_bytes(std::span(buffer)), addr);
     if (rc_err) {
       LOG5("Error: {}", std::make_error_code(rc_err.value()).message());
       break;
@@ -46,8 +46,8 @@ Lazy<void, Executor> talk(std::string_view ip, std::string_view port,
       continue;
     }
     LOG4("Received: {} from {}:{}", std::string_view{buffer.data(), rc_n}, dst, port_num);
-    auto [sd_n, sd_err]
-        = co_await sys::net::imm_sendto(w, xsl::as_bytes(std::span(buffer).subspan(0, rc_n)), addr);
+    auto [sd_n, sd_err] = co_await sys::net::imm_sendto<Executor>(
+        w, xsl::as_bytes(std::span(buffer).subspan(0, rc_n)), addr);
     if (sd_err) {
       LOG5("Error: {}", std::make_error_code(sd_err.value()).message());
       break;

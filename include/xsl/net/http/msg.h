@@ -56,7 +56,7 @@ public:
   template <class Executor = coro::ExecutorBase>
   Task<Result, Executor> sendto(ByteWriter& awd) {
     auto str = this->_part.to_string();
-    auto [sz, err] = co_await awd.template write<Executor>(xsl::as_bytes(std::span(str)));
+    auto [sz, err] = co_await ai::write_poly_resolve<Executor>(awd, xsl::as_bytes(std::span(str)));
     if (err) {
       co_return std::make_tuple(sz, err);
     };
@@ -69,21 +69,7 @@ public:
     }
     co_return std::make_tuple(sz + bodySize, std::nullopt);
   }
-  Task<Result> sendto(ABW& awd) {
-    auto str = this->_part.to_string();
-    auto [sz, err] = co_await awd.write(xsl::as_bytes(std::span(str)));
-    if (err) {
-      co_return std::make_tuple(sz, err);
-    };
-    if (!_body) {
-      co_return std::make_tuple(sz, std::nullopt);
-    }
-    auto [bodySize, bodyError] = co_await this->_body(awd);
-    if (bodyError) {
-      co_return std::make_tuple(sz + bodySize, bodyError);
-    }
-    co_return std::make_tuple(sz + bodySize, std::nullopt);
-  }
+  Task<Result> sendto(ABW& awd) { return this->sendto<coro::ExecutorBase>(awd); }
   ResponsePart _part;
   std::function<Task<Result>(ByteWriter&)> _body;
 };
@@ -129,10 +115,6 @@ public:
       return std::nullopt;
     }
     return iter->second;
-  }
-
-  Request<ABR> down_cast(this Request self) noexcept {
-    return {std::move(self.raw), std::move(self.view), self.content_part, self._ard};
   }
 
   Method method;

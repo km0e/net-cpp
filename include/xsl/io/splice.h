@@ -13,7 +13,7 @@ XSL_IO_NB
 
 namespace impl_splice {
   template <class Executor = coro::ExecutorBase>
-  Lazy<Result> splice_once(ABR& from, ABW& to, std::string& buffer) {
+  Lazy<Result, Executor> splice_once(ABR& from, ABW& to, std::string& buffer) {
     auto [sz, err] = co_await from.read(xsl::as_writable_bytes(std::span(buffer)));
     if (err) {
       WARN("Failed to read data from the device, err: {}", std::make_error_code(*err).message());

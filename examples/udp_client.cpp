@@ -26,8 +26,6 @@ using namespace xsl::feature;
 using namespace xsl::coro;
 using namespace xsl;
 
-
-
 template <class Executor = ExecutorBase>
 Lazy<void, Executor> talk(std::string_view ip, std::string_view port,
                           std::shared_ptr<xsl::Poller> poller) {
@@ -36,7 +34,7 @@ Lazy<void, Executor> talk(std::string_view ip, std::string_view port,
   while (true) {
     sys::net::SockAddr<> dst;
     auto [n_recv, err_recv]
-        = co_await sys::net::imm_recv(r, xsl::as_writable_bytes(std::span(buffer)));
+        = co_await sys::net::imm_recv<Executor>(r, xsl::as_writable_bytes(std::span(buffer)));
     if (err_recv.has_value()) {
       LOG2("Failed to recv data, err : {}", std::make_error_code(err_recv.value()).message());
       break;
@@ -44,7 +42,7 @@ Lazy<void, Executor> talk(std::string_view ip, std::string_view port,
     LOG4("Recv: {}", std::string_view{buffer.data(), n_recv});
     // std::cin >> buffer;
     LOG5("Input: {} bytes", buffer.size());
-    auto [n, err] = co_await sys::net::imm_send(w, xsl::as_bytes(std::span(buffer)));
+    auto [n, err] = co_await sys::net::imm_send<Executor>(w, xsl::as_bytes(std::span(buffer)));
     if (err.has_value()) {
       LOG2("Failed to send data, err : {}", std::make_error_code(err.value()).message());
       break;

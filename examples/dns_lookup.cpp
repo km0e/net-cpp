@@ -32,7 +32,7 @@ Lazy<void, Executor> talk(std::string_view ip, std::string_view port,
   std::string buffer(4096, '\0');
   while (true) {
     std::cin >> buffer;
-    auto res = co_await server.query(buffer);
+    auto res = co_await server.query<Executor>(buffer);
     if (res.empty()) {
       LOG5("Error: invalid domain name");
       continue;

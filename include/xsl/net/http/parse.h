@@ -88,8 +88,8 @@ public:
   template <class Executor = coro::ExecutorBase, ai::ABRL Reader>
   Task<std::expected<void, std::errc>, Executor> read(Reader& reader, ParseData& buf) {
     while (true) {
-      auto [sz, err]
-          = co_await reader.template read<Executor>(this->buffer.front().span(this->used_size));
+      auto [sz, err] = co_await ai::read_poly_resolve<Executor>(
+          reader, this->buffer.front().span(this->used_size));
       if (err) {
         co_return std::unexpected{*err};
       }
@@ -103,20 +103,7 @@ public:
     }
   }
   Task<std::expected<void, std::errc>> read(ABR& reader, ParseData& buf) {
-    while (true) {
-      auto [sz, err] = co_await reader.read(this->buffer.front().span(this->used_size));
-      if (err) {
-        co_return std::unexpected{*err};
-      }
-      this->used_size += sz;
-      auto req = this->parse_request(sz, buf);
-      if (req || req.error() != std::errc::resource_unavailable_try_again) {
-        this->used_size = 0;
-        this->parsed_size = 0;
-
-        co_return std::move(req);
-      }
-    }
+    return this->read<coro::ExecutorBase>(reader, buf);
   }
   void reset() {
     this->used_size = 0;
@@ -158,7 +145,7 @@ private:
     } else {
       this->reset();
     }
-    LOG3("parse error: {}", std::make_error_code(req.error()).message());
+    LOG5("parse error: {}", std::make_error_code(req.error()).message());
     return std::unexpected{req.error()};
   }
 };

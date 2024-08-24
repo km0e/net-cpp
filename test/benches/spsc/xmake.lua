@@ -1,0 +1,23 @@
+add_packages("benchmark")
+
+target("bench_spsc")
+    set_kind("binary")
+    set_default(false)
+    add_files("bench_spsc.cpp")
+    set_group("benchmarks/spsc")
+    on_package(function(package) end)
+
+target("bench_moodycamel_spsc")
+    set_kind("binary")
+    set_default(false)
+    add_files("moodycamel/spsc.cpp")
+    set_group("benchmarks/spsc")
+    on_package(function(package) end)
+
+target("bench_boost_spsc")
+    set_kind("binary")
+    set_default(false)
+    add_files("boost/spsc.cpp")
+    add_packages("boost")
+    set_group("benchmarks/spsc")
+    on_package(function(package) end)

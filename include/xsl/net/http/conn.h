@@ -9,6 +9,7 @@
  *
  */
 #pragma once
+#include <cstdint>
 #ifndef XSL_NET_HTTP_CONN
 #  define XSL_NET_HTTP_CONN
 #  include "xsl/ai.h"
@@ -108,8 +109,8 @@ Lazy<void, Executor> imm_serve_connection(ABr& ard, ABw& awd, Service& service,
     {
       LOG5("Start to read request");
       auto res = co_await ai::read_poly_resolve<Executor>(parser, ard, parse_data);
-      if (!res) {
-        LOG3("recv error: {}", std::make_error_code(res.error()).message());
+      if (res != std::errc{}) {
+        LOG3("recv error: {}", std::make_error_code(res).message());
         break;
       }
       LOG5("New request: {} {}", parse_data.request.method, parse_data.request.path);
@@ -117,7 +118,10 @@ Lazy<void, Executor> imm_serve_connection(ABr& ard, ABw& awd, Service& service,
 
     Request request{std::move(parse_data.buffer), std::move(parse_data.request),
                     parse_data.content_part, ard};
-    auto resp = co_await (service)(std::move(request));//TODO: may be will also need to be a coroutine in the future
+    DEBUG("ready to serve request: {}", request.view.path);
+    Response<ABw> resp = co_await (service)(
+        std::move(request));  // TODO: may be will also need to be a coroutine in the future
+    DEBUG("ready to send response: {}", static_cast<uint16_t>(resp._part.status_code));
     auto [sz, err] = co_await resp.sendto(awd);
     if (err) {
       LOG3("send error: {}", std::make_error_code(*err).message());

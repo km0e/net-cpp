@@ -3,6 +3,7 @@
 #  define XSL_SYS_NET_DEF
 #  define XSL_SYS_NET_NB namespace xsl::_sys::net {
 #  define XSL_SYS_NET_NE }
+#  include "xsl/ai.h"
 #  include "xsl/feature.h"
 #  include "xsl/sys/sync.h"
 
@@ -23,7 +24,8 @@ concept CSocketTraits = SockTraits::type == SOCK_STREAM || SockTraits::type == S
  * @tparam Sock
  */
 template <class Sock>
-concept CSocket = CSocketTraits<typename Sock::socket_traits_type>;
+concept CSocket = CSocketTraits<typename Sock::socket_traits_type>
+                  && (ai::BRL<Sock> || ai::BWL<Sock> || ai::ABRL<Sock> || ai::ABWL<Sock>);
 
 template <class Sock>
 concept BindableSocket

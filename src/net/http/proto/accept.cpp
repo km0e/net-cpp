@@ -29,7 +29,7 @@ AcceptView parse_accept(std::string_view accept) {
       auto begin = std::cregex_iterator(media_str.data() + semicolon, media_str.data() + comma,
                                         regex::parameter_re);
       auto end = std::cregex_iterator();
-      for (auto match : std::ranges::subrange{begin, end}) {
+      for (auto& match : std::ranges::subrange{begin, end}) {
         auto name = std::string_view{match[1].first, match[1].second};
         if (name == "q") {
           weight = std::string_view{match[2].first, match[2].second};

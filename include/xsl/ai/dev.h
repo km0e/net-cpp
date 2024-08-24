@@ -20,6 +20,9 @@ concept ReadDeviceLike = requires(Device t, std::span<T> buf) {
   { t.read(buf) } -> std::same_as<Result>;
 };
 
+template <class Device>
+concept BRL = ReadDeviceLike<Device, byte>;
+
 template <class Executor, class Device, class... Args>
   requires(!requires(Device t, Args... args) {
     { t.template read<Executor>(args...) } -> std::same_as<Task<Result>>;
@@ -41,6 +44,9 @@ concept WriteDeviceLike = requires(Device t, std::span<const T> buf) {
   { t.write(buf) } -> std::same_as<Result>;
 };
 
+template <class Device>
+concept BWL = WriteDeviceLike<Device, byte>;
+
 template <class Executor, class Device, class... Args>
 constexpr decltype(auto) write_poly_resolve(Device&& dev, Args&&... args) {
   if constexpr (std::is_same_v<Executor, coro::ExecutorBase>) {
@@ -49,6 +55,12 @@ constexpr decltype(auto) write_poly_resolve(Device&& dev, Args&&... args) {
     return dev.template write<Executor>(std::forward<Args>(args)...);
   }
 }
+
+template <class Device, class T>
+concept ReadWriteDeviceLike = ReadDeviceLike<Device, T> && WriteDeviceLike<Device, T>;
+
+template <class Device>
+concept BRWL = ReadWriteDeviceLike<Device, byte>;
 
 template <class Device, class T>
 concept AsyncReadDeviceLike = requires(Device t, std::span<T> buf) {

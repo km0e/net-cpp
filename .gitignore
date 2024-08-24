@@ -5,3 +5,5 @@ build/*
 .vscode/*
 .ccls-cache/*
 log/
+
+__pycache__

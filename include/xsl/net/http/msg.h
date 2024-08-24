@@ -56,6 +56,7 @@ public:
   template <class Executor = coro::ExecutorBase>
   Task<Result, Executor> sendto(ByteWriter& awd) {
     auto str = this->_part.to_string();
+    DEBUG("response: {}", str);
     auto [sz, err] = co_await ai::write_poly_resolve<Executor>(awd, xsl::as_bytes(std::span(str)));
     if (err) {
       co_return std::make_tuple(sz, err);

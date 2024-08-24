@@ -20,28 +20,18 @@ XSL_SYS_NB
  */
 template <class Executor = coro::ExecutorBase, RawDeviceLike S>
 Task<Result, Executor> imm_write(S &skt, std::span<const byte> data) {
-  std::size_t offset = 0;
   do {
-    ssize_t n = ::write(skt.raw(), data.data() + offset, data.size() - offset);
-    if (n > 0) {
-      offset += n;
-    } else if (n == 0) {
-      if (offset != 0) {
-        break;
-      }
-      co_return {offset, {std::errc::no_message}};
+    ssize_t n = ::write(skt.raw(), data.data(), data.size());
+    if (n >= 0) {
+      co_return {n, std::nullopt};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      if (offset != 0) {
-        break;
-      }
       if (!co_await skt.poll_for_write()) {
-        co_return {offset, {std::errc::not_connected}};
+        co_return {0, {std::errc::not_connected}};
       }
     } else {
-      co_return {offset, {std::errc(errno)}};
+      co_return {0, {std::errc(errno)}};
     }
-  } while (false);
-  co_return {offset, std::nullopt};
+  } while (true);
 }
 /**
  * @brief read from socket
@@ -54,29 +44,19 @@ Task<Result, Executor> imm_write(S &skt, std::span<const byte> data) {
  */
 template <class Executor = coro::ExecutorBase, RawDeviceLike S>
 Task<Result, Executor> imm_read(S &skt, std::span<byte> buf) {
-  std::size_t offset = 0;
   do {
-    ssize_t n = ::read(skt.raw(), buf.data() + offset, buf.size() - offset);
-    if (n > 0) {
+    ssize_t n = ::read(skt.raw(), buf.data(), buf.size());
+    if (n >= 0) {
       LOG6("{} recv {} bytes", skt.raw(), n);
-      offset += n;
-    } else if (n == 0) {
-      if (offset != 0) {
-        break;
-      }
-      co_return {offset, {std::errc::no_message}};
+      co_return {n, std::nullopt};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      if (offset != 0) {
-        break;
-      }
       if (!co_await skt.poll_for_read()) {
-        co_return {offset, {std::errc::not_connected}};
+        co_return {0, {std::errc::not_connected}};
       }
     } else {
-      co_return {offset, {std::errc(errno)}};
+      co_return {0, {std::errc(errno)}};
     }
-  } while (false);
-  co_return {offset, std::nullopt};
+  } while (true);
 }
 
 struct SendfileHint {

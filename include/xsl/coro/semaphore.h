@@ -3,73 +3,73 @@
 #  define XSL_CORO_SEMAPHORE
 #  include "xsl/coro/def.h"
 #  include "xsl/logctl.h"
-#  include "xsl/sync/spsc.h"
+// #  include "xsl/sync/spsc.h"
 
 #  include <functional>
 #  include <mutex>
 #  include <optional>
-#  include <semaphore>
+// #  include <semaphore>
 #  include <utility>
 XSL_CORO_NB
 
 template <std::ptrdiff_t LeastMaxValue = std::numeric_limits<std::ptrdiff_t>::max()>
 class CountingSemaphoreAwaiter {
 public:
-  CountingSemaphoreAwaiter(std::counting_semaphore<LeastMaxValue> &sem,
-                           sync::SPSC<std::function<void()>> &queue)
-      : _sem(sem), _queue(queue) {}
+//   CountingSemaphoreAwaiter(std::counting_semaphore<LeastMaxValue> &sem,
+//                            sync::SPSC<std::function<void()>> &queue)
+//       : _sem(sem), _queue(queue) {}
 
-  bool await_ready() noexcept(noexcept(_sem.try_acquire())) { return _sem.try_acquire(); }
+//   bool await_ready() noexcept(noexcept(_sem.try_acquire())) { return _sem.try_acquire(); }
 
-  template <class Promise>
-  void await_suspend(std::coroutine_handle<Promise> handle) {
-    LOG6("semaphore await_suspend for {}", (uint64_t)handle.address());
-    _queue.push([handle]() mutable {
-      LOG6("semaphore resume for {}", (uint64_t)handle.address());
-      handle.promise().resume(handle);
-    });
-  }
+//   template <class Promise>
+//   void await_suspend(std::coroutine_handle<Promise> handle) {
+//     LOG6("semaphore await_suspend for {}", (uint64_t)handle.address());
+//     _queue.push([handle]() mutable {
+//       LOG6("semaphore resume for {}", (uint64_t)handle.address());
+//       handle.promise().resume(handle);
+//     });
+//   }
 
-  void await_resume() {}
+//   void await_resume() {}
 
-private:
-  std::counting_semaphore<LeastMaxValue> &_sem;
-  sync::SPSC<std::function<void()>> &_queue;
+// private:
+//   std::counting_semaphore<LeastMaxValue> &_sem;
+//   sync::SPSC<std::function<void()>> &_queue;
 };
 
 template <std::ptrdiff_t LeastMaxValue = std::numeric_limits<std::ptrdiff_t>::max()>
 class CountingSemaphore {
-private:
-  std::counting_semaphore<LeastMaxValue> _sem;
-  sync::SPSC<std::function<void()>> _queue;
+// private:
+//   std::counting_semaphore<LeastMaxValue> _sem;
+//   sync::SPSC<std::function<void()>> _queue;
 
-public:
-  CountingSemaphore(std::ptrdiff_t initial) : _sem(initial), _queue() {}
-  CountingSemaphore() : CountingSemaphore(0) {}
-  CountingSemaphore(const CountingSemaphore &) = delete;
-  CountingSemaphore(CountingSemaphore &&) = delete;
-  CountingSemaphore &operator=(const CountingSemaphore &) = delete;
-  CountingSemaphore &operator=(CountingSemaphore &&) = delete;
-  ~CountingSemaphore() {}
+// public:
+//   CountingSemaphore(std::ptrdiff_t initial) : _sem(initial), _queue() {}
+//   CountingSemaphore() : CountingSemaphore(0) {}
+//   CountingSemaphore(const CountingSemaphore &) = delete;
+//   CountingSemaphore(CountingSemaphore &&) = delete;
+//   CountingSemaphore &operator=(const CountingSemaphore &) = delete;
+//   CountingSemaphore &operator=(CountingSemaphore &&) = delete;
+//   ~CountingSemaphore() {}
 
-  CountingSemaphoreAwaiter<LeastMaxValue> operator co_await() {
-    return CountingSemaphoreAwaiter<LeastMaxValue>(_sem, _queue);
-  }
+//   CountingSemaphoreAwaiter<LeastMaxValue> operator co_await() {
+//     return CountingSemaphoreAwaiter<LeastMaxValue>(_sem, _queue);
+//   }
 
-  void release(std::ptrdiff_t update = 1) {
-    auto wait_size = this->_queue.size();
-    if (update > wait_size) {
-      update -= wait_size;
-      this->_sem.release(update);
-      for (std::ptrdiff_t i = 0; i < wait_size; i++) {
-        (*this->_queue.pop())();
-      }
-    } else {
-      for (std::ptrdiff_t i = 0; i < update; i++) {
-        (*this->_queue.pop())();
-      }
-    }
-  }
+//   void release(std::ptrdiff_t update = 1) {
+//     auto wait_size = this->_queue.size();
+//     if (update > wait_size) {
+//       update -= wait_size;
+//       this->_sem.release(update);
+//       for (std::ptrdiff_t i = 0; i < wait_size; i++) {
+//         (*this->_queue.pop())();
+//       }
+//     } else {
+//       for (std::ptrdiff_t i = 0; i < update; i++) {
+//         (*this->_queue.pop())();
+//       }
+//     }
+//   }
 };
 
 template <>

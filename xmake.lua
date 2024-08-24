@@ -36,7 +36,7 @@ function set_log_level(target)
     local log_levels = {"none", "trace", "debug", "info", "warning", "error", "critical"}
     local log_level_map = {}
     log_level_map[log_levels[1]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=8"
-    log_level_map[log_levels[2]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_TRACE_L3"
+    log_level_map[log_levels[2]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_TRACE_L1"
     log_level_map[log_levels[3]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_DEBUG"
     log_level_map[log_levels[4]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_INFO"
     log_level_map[log_levels[5]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_WARNING"

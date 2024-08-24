@@ -32,7 +32,7 @@ public:
   NextAwaiter(const NextAwaiter &) = delete;
   NextAwaiter &operator=(const NextAwaiter &) = delete;
   ~NextAwaiter() {
-    LOG6("TaskAwaiter destructor for {}", (uint64_t)_handle.address());
+    LOG7("TaskAwaiter destructor for {}", (uint64_t)_handle.address());
     if (_handle) {
       assert(_handle.done());
       _handle.destroy();
@@ -41,12 +41,12 @@ public:
 
   template <class _Promise>
   void await_suspend(std::coroutine_handle<_Promise> handle) {
-    LOG6("await_suspend: {} -> {}", (uint64_t)_handle.address(), (uint64_t)handle.address());
+    LOG7("await_suspend: {} -> {}", (uint64_t)_handle.address(), (uint64_t)handle.address());
     this->_handle.promise().next(handle);
   }
 
   result_type await_resume() {
-    LOG6("task await_resume for {}", (uint64_t)_handle.address());
+    LOG7("task await_resume for {}", (uint64_t)_handle.address());
     return *_handle.promise();
   }
 
@@ -66,7 +66,7 @@ public:
   NextPromiseBase() : Base(), _next_resume(std::nullopt), _executor(nullptr) {}
 
   auto &&await_transform(this auto &&self, auto &&awaitable) {
-    LOG6("await_transform");
+    LOG7("await_transform");
     if constexpr (std::is_same_v<
                       typename std::remove_reference_t<decltype(awaitable)>::executor_type, void>) {
       return std::forward<decltype(awaitable)>(awaitable);
@@ -79,13 +79,13 @@ public:
   template <class Promise>
   void resume(std::coroutine_handle<Promise> handle) {
     this->dispatch([handle, this]() mutable {
-      LOG6("task resume {}", (uint64_t)handle.address());
+      LOG7("task resume {}", (uint64_t)handle.address());
       handle();
-      LOG6("task resume {} done", (uint64_t)handle.address());
+      LOG7("task resume {} done", (uint64_t)handle.address());
       if (handle.done()) {
-        LOG6("task resume handle done");
+        LOG7("task resume handle done");
         if (this->_next_resume) {
-          LOG6("task resume next_resume");
+          LOG7("task resume next_resume");
           (*this->_next_resume)();
         }
       }

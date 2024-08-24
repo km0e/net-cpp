@@ -32,6 +32,7 @@ namespace sys {
   using _sys::AsyncRawDevice;
   using _sys::DefaultDeviceTraits;
   using _sys::imm_sendfile;
+  using _sys::RawDevice;
   using _sys::SendfileHint;
 }  // namespace sys
 namespace sys::tcp {

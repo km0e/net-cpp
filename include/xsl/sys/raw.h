@@ -96,7 +96,11 @@ namespace impl_dev {
   public:
     using Base::Owner;
     using device_traits_type = Trait;
+    using value_type = typename device_traits_type::value_type;
     using device_features_type = feature::In<device_traits_type>;
+
+    Result read(std::span<value_type>) { std::unreachable(); }
+
     /**
      * @brief corresponding async device type
      * @warning derived class should implement this type
@@ -126,7 +130,10 @@ namespace impl_dev {
   public:
     using Base::Owner;
     using device_traits_type = Traits;
+    using value_type = typename device_traits_type::value_type;
     using device_features_type = feature::Out<device_traits_type>;
+
+    Result write(std::span<const value_type>) { std::unreachable(); }
     /**
      * @brief corresponding async device type
      * @warning derived class should implement this type
@@ -156,7 +163,11 @@ namespace impl_dev {
   public:
     using Base::Owner;
     using device_traits_type = Traits;
+    using value_type = typename device_traits_type::value_type;
     using device_features_type = feature::InOut<device_traits_type>;
+
+    Result read(std::span<value_type>) { std::unreachable(); }
+    Result write(std::span<const value_type>) { std::unreachable(); }
     /**
      * @brief corresponding async device type
      * @warning derived class should implement this type

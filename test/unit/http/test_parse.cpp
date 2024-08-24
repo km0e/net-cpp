@@ -18,6 +18,15 @@ TEST(http_parse, complete) {
   ASSERT_EQ(view.headers.size(), 1);
   ASSERT_EQ(view.headers["Host"], "localhost:8080");
 }
+TEST(http_parse, empty) {
+  ParseUnit parser;
+  const char* data = "";
+  size_t len = strlen(data);
+  auto [sz, res] = parser.parse(data, len);
+  ASSERT_FALSE(res.has_value());
+  auto err = std::move(res.error());
+  ASSERT_EQ(err, std::errc::resource_unavailable_try_again);
+}
 TEST(http_parse, partial) {
   ParseUnit parser;
   const char* data = "GET / HTTP/1.1\r\nHost: localhost:8080";
@@ -90,14 +99,16 @@ TEST(request_target, origin_form) {
 
 TEST(request_target, absolute_form) {
   ParseUnit parser;
-  const std::string_view example1 = "GET http://localhost/ HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
+  const std::string_view example1
+      = "GET http://localhost/ HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
   auto [sz, res] = parser.parse(example1);
   ASSERT_TRUE(res.has_value());
   auto view = std::move(*res);
   ASSERT_EQ(view.authority, "localhost");
   ASSERT_EQ(view.path, "/");
   ASSERT_EQ(view.query.size(), 0);
-  const std::string_view example2 = "GET http://localhost/?a=1&b=2 HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
+  const std::string_view example2
+      = "GET http://localhost/?a=1&b=2 HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
   auto [sz2, res2] = parser.parse(example2);
   ASSERT_TRUE(res2.has_value());
   auto view2 = std::move(*res2);

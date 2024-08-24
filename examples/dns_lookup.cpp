@@ -17,6 +17,7 @@
 #include <xsl/wheel.h>
 
 #include <iostream>
+#include <string>
 
 std::string ip = "58.20.127.238";
 std::string port = "53";

@@ -8,7 +8,8 @@ XSL_HTTP_NB
 ParseUnit::ParseUnit() : view() {}
 
 ParseResult ParseUnit::parse(const char* data, size_t len) {
-  std::expected<RequestView, std::errc> res = std::unexpected{std::errc()};
+  std::expected<RequestView, std::errc> res
+      = std::unexpected{std::errc::resource_unavailable_try_again};
   std::string_view view(data, len);
   size_t pos = 0, parse_end = 0;
   while (pos < len) {

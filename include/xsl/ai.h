@@ -14,8 +14,13 @@ namespace ai {
   using _ai::AsyncReadWriteDeviceLike;
   using _ai::AsyncWritable;
   using _ai::AsyncWriteDeviceLike;
+  using _ai::BRL;
+  using _ai::BRWL;
+  using _ai::BWL;
   using _ai::read_poly_resolve;
+  using _ai::ReadDeviceLike;
   using _ai::write_poly_resolve;
+  using _ai::WriteDeviceLike;
 }  // namespace ai
 using _ai::ABR;
 using _ai::ABW;

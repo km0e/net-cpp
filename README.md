@@ -8,15 +8,20 @@ A network library for C++.
 
 - [x] Asynchronous I/O
 - [x] TCP
+- [x] spsc
 - [ ] UDP
 - [ ] HTTP1
 
 ## Documentation
 
 ```bash
-$ doxygen
+$ doxygen Doxyfile
 ```
+
+## Benchmark
+
+Please see the [benchmarks](./docs/benchmarks.md).
 
 ## Usage
 
-Please see the [examples](./doc/example.md).
+Please see the [examples](./docs/example.md).

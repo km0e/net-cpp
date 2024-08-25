@@ -1,3 +1,13 @@
+/**
+ * @file msg.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2024-08-25
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 
 #ifndef XSL_NET_HTTP_MSG
@@ -108,6 +118,11 @@ public:
   Request(Request&&) = default;
   Request& operator=(Request&&) = default;
   ~Request() {}
+
+  [[nodiscard]]
+  inline bool has_header(std::string_view key) {
+    return this->view.headers.find(key) != this->view.headers.end();
+  }
 
   [[nodiscard]]
   inline std::optional<std::string_view> get_header(std::string_view key) {

@@ -1,27 +1,34 @@
+/**
+ * @file def.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2024-08-25
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
-#include "xsl/wheel/str.h"
-
-#include <netinet/in.h>
 #ifndef XSL_NET_DNS_DEF
 #  define XSL_NET_DNS_DEF
 #  define XSL_NET_DNS_NB namespace xsl::_net::dns {
 #  define XSL_NET_DNS_NE }
+#  include "xsl/wheel/str.h"
+
+#  include <netinet/in.h>
+
 #  include <cstddef>
 #  include <cstdint>
 XSL_NET_DNS_NB
 /**
  * @brief size limits of DNS
- * @ref https://datatracker.ietf.org/doc/html/rfc1035#section-2.3.4
+ * @see https://datatracker.ietf.org/doc/html/rfc1035#section-2.3.4
  */
 namespace size_limits {
-  // labels          63 octets or less
-  const std::size_t label = 63;
-  // names           255 octets or less
-  const std::size_t name = 255;
-  // TTL             32 bit unsigned integer
-  const std::size_t ttl = 4;
-  // UDP messages    512 octets or less
-  const std::size_t udp_message = 512;
+  const std::size_t label = 63;         ///< labels, 63 octets or less
+  const std::size_t name = 255;         ///< names, 255 octets or less
+  const std::size_t ttl = 4;            ///< TTL, 32 bit unsigned integer
+  const std::size_t udp_message = 512;  ///< UDP messages, 512 octets or less
 }  // namespace size_limits
 enum class Type : std::uint16_t {
   A = 1,                  // a host address

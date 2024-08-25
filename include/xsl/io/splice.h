@@ -64,13 +64,22 @@ namespace impl_splice {
       : public std::conditional_t<std::is_same_v<T, feature::Dyn>, ai::AsyncWritable<byte>,
                                   feature::placeholder> {
   public:
-    using value_type = byte;
-
+    using value_type = byte;  ///< the value type
+    /**
+     * @brief Construct a new Splice object
+     *
+     * @param from the input device pointer
+     */
     Splice(FromPtr from) : _from(std::move(from)) {}
-    Splice(Splice&&) = default;
-    Splice& operator=(Splice&&) = default;
+    Splice(Splice&&) = default;             ///< move constructor
+    Splice& operator=(Splice&&) = default;  ///< move assignment
     ~Splice() = default;
-
+    /**
+     * @brief write the data from the input device to the output device
+     *
+     * @param awd the byte writer device
+     * @return Task<Result>
+     */
     Task<Result> write(ABW& awd) {
       co_return co_await splice(std::move(_from), &awd, std::string(4096, '\0'));
     }
@@ -84,6 +93,13 @@ namespace impl_splice {
       : public std::conditional_t<std::is_same_v<T, feature::Dyn>, ai::AsyncWritable<byte>,
                                   feature::placeholder> {
   public:
+    /**
+     * @brief Unique Splice object construct helper
+     *
+     * @tparam FromPtr
+     * @param from
+     * @return decltype(auto)
+     */
     template <PtrLike<ABR> FromPtr>
     static decltype(auto) make_unique(FromPtr from) {
       return std::make_unique<Splice<feature::In<byte>, T, FromPtr>>(std::move(from));

@@ -1,7 +1,18 @@
+/**
+ * @file static.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2024-08-25
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 
 #ifndef XSL_NET_HTTP_COMPONENT_STATIC
 #  define XSL_NET_HTTP_COMPONENT_STATIC
+#  include "xsl/logctl.h"
 #  include "xsl/net/http/component/compress.h"
 #  include "xsl/net/http/context.h"
 #  include "xsl/net/http/def.h"
@@ -14,6 +25,7 @@
 
 #  include <algorithm>
 #  include <charconv>
+#  include <chrono>
 #  include <cstdlib>
 #  include <filesystem>
 #  include <optional>
@@ -55,6 +67,19 @@ public:
       }
     }
 
+    if (ctx.request.has_header("If-None-Match")) {
+      // TODO: implement If-None-Match
+    } else if (auto if_modified_since = ctx.request.get_header("If-Modified-Since");
+               if_modified_since) {
+      auto last_modified = std::filesystem::last_write_time(path);
+      auto if_modified_since_time = from_date_string<std::chrono::file_clock>(*if_modified_since);
+      if (if_modified_since_time && *if_modified_since_time >= last_modified) {
+        DEBUG("not modified: {}", path.native());
+        return Status::NOT_MODIFIED;
+      }
+    }
+
+    DEBUG("check compress: {}", path.native());
     if (!this->cfg.compress_encodings.empty()) {
       if (auto accept_encoding = ctx.request.get_header("Accept-Encoding"); accept_encoding) {
         auto encodings = parse_accept_encoding(*accept_encoding);

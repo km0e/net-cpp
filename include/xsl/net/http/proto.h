@@ -1,3 +1,13 @@
+/**
+ * @file proto.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2024-08-25
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_NET_HTTP_PROTO_
 #  define XSL_NET_HTTP_PROTO_
@@ -5,6 +15,7 @@
 
 #  include <array>
 #  include <chrono>
+#  include <optional>
 #  include <string_view>
 
 XSL_HTTP_NB
@@ -178,6 +189,18 @@ template <class Clock, class Duration>
 std::string to_date_string(const std::chrono::time_point<Clock, Duration>& time) {
   return std::format("{:%a, %d %b %Y %T %Z}",
                      std::chrono::time_point_cast<std::chrono::seconds>(time));
+}
+
+template <class Clock, class Duration = typename Clock::duration>
+[[nodiscard("The return time point should be used")]]
+std::optional<std::chrono::time_point<Clock, Duration>> from_date_string(std::string_view date) {
+  std::chrono::time_point<Clock, Duration> ft;
+  std::istringstream ss{std::string(date)};
+  std::chrono::from_stream(ss, "%a, %d %b %Y %T %Z", ft);
+  if (ss.fail()) {
+    return std::nullopt;
+  }
+  return ft;
 }
 
 XSL_HTTP_NE

@@ -10,30 +10,24 @@
 XSL_WHEEL_NB
 namespace type_traits {
   // Template unit
-  template <class T>
-  struct _1 {
-    typedef T type;
-    typedef _1 self;
-  };
-  // Template unit
   template <class T1, class T2>
   struct _2 {
-    typedef T1 type1;
-    typedef T2 type2;
-    typedef _2 self;
+    typedef T1 type1;  ///< type1
+    typedef T2 type2;  ///< type2
+    typedef _2 self;   ///< self type
   };
   // Template unit
   template <class T1, class T2, class T3>
   struct _3 {
-    typedef T1 type1;
-    typedef T2 type2;
-    typedef T3 type3;
-    typedef _3 self;
+    typedef T1 type1;  ///< type1
+    typedef T2 type2;  ///< type2
+    typedef T3 type3;  ///< type3
+    typedef _3 self;   ///< self type
   };
   // Template unit
   template <class... Ts>
   struct _n {
-    typedef _n self;
+    typedef _n self;///< self type
   };
   namespace impl_size {
     template <class Pack>
@@ -83,12 +77,12 @@ namespace type_traits {
     template <template <class L, class R> class Pred, class T, template <class...> class Pack,
               class This, class... Rest, class... Checked>
     struct remove_first_if<Pred, T, Pack<This, Rest...>, Checked...>
-        : std::conditional_t<Pred<T, This>::value, _1<Pack<Checked..., Rest...>>,
+        : std::conditional_t<Pred<T, This>::value, std::type_identity<Pack<Checked..., Rest...>>,
                              remove_first_if<Pred, T, Pack<Rest...>, Checked..., This>> {};
 
     template <template <class L, class R> class Pred, class T, template <class...> class Pack,
               class... Checked>
-    struct remove_first_if<Pred, T, Pack<>, Checked...> : _1<Pack<Checked...>> {};
+    struct remove_first_if<Pred, T, Pack<>, Checked...> : std::type_identity<Pack<Checked...>> {};
 
     template <template <class L, class R> class Pred, class Opts, class Pack, class... Checked>
     struct remove_first_of_if;
@@ -129,7 +123,7 @@ namespace type_traits {
 
     template <template <class...> class From, template <class...> class To, class... Ts,
               class... Us>
-    struct copy<From<Ts...>, To<Us...>> : public _1<To<Ts...>> {};
+    struct copy<From<Ts...>, To<Us...>> : public std::type_identity<To<Ts...>> {};
 
   }  // namespace impl_copy
   template <class From, class To>
@@ -178,7 +172,7 @@ namespace type_traits {
     struct inner;
 
     template <template <class...> class Pack, class T, class... Ts>
-    struct inner<Pack<T, Ts...>> : _1<T> {};
+    struct inner<Pack<T, Ts...>> : std::type_identity<T> {};
   }  // namespace impl_inner
 
   template <class T>

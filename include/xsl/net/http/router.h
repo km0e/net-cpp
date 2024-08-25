@@ -37,13 +37,25 @@ concept RouterLike = requires(R r, Method hm, std::string_view path, Tag&& tag, 
 namespace router_details {
   class HttpRouteNode {
   public:
-    using tag_type = std::size_t;
+    using tag_type = std::size_t;///< tag type
     HttpRouteNode() : handlers{}, fallbacks{}, children{} {}
+    /**
+     * @brief Construct a new Http Route Node object
+     *
+     * @param method the method of the route
+     * @param tag the tag of the route handler
+     */
     HttpRouteNode(Method method, tag_type&& tag) : handlers{}, fallbacks{}, children{} {
       handlers[static_cast<uint8_t>(method)] = std::move(tag);
     }
     ~HttpRouteNode() {}
-
+    /**
+     * @brief Add a route
+     *
+     * @param method the method of the route
+     * @param path the path of the route
+     * @param tag the tag of the route handler
+     */
     void add_route(Method method, std::string_view path, tag_type&& tag) {
       LOG5("Adding route: {}", path);
       dynamic_assert(path[0] == '/', "Invalid path");
@@ -71,7 +83,13 @@ namespace router_details {
       }
       dynamic_assert(false, "Route already exists");
     }
-
+    /**
+     * @brief Add a fallback route
+     *
+     * @param method the method of the route
+     * @param path the path of the route
+     * @param tag the tag of the route handler
+     */
     void add_fallback(Method method, std::string_view path, tag_type&& tag) {
       LOG5("Adding fallback route: {}", path);
       dynamic_assert(path[0] == '/', "Invalid path");
@@ -93,7 +111,12 @@ namespace router_details {
                      "Fallback already exists");
       fallbacks[static_cast<uint8_t>(method)] = std::move(tag);
     }
-
+    /**
+     * @brief Route the request
+     *
+     * @param ctx the route context
+     * @return RouteResult the result of the routing
+     */
     RouteResult route(RouteContext& ctx) {
       LOG6("Routing path: {}", ctx.current_path);
       if (ctx.current_path[0] != '/') {

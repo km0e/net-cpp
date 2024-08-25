@@ -9,7 +9,6 @@
  *
  */
 #pragma once
-#include <cstdint>
 #ifndef XSL_NET_HTTP_CONN
 #  define XSL_NET_HTTP_CONN
 #  include "xsl/ai.h"

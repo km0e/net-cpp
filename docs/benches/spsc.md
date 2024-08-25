@@ -1,4 +1,4 @@
-# spsc benchmarks
+# spsc benchmarks {#bench_spsc}
 
 ## comprarison target
 - [x] **moodycamel::readerwriterqueue** [blog](https://moodycamel.com/blog/2013/a-fast-lock-free-queue-for-c++) and [github](https://github.com/cameron314/readerwriterqueue)

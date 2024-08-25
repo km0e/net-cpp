@@ -19,7 +19,7 @@
 XSL_NET_DNS_NB
 /**
  * @brief DNS header
- * @ref https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
+ * @see https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
  */
 struct Header {
   std::uint16_t id;       // transaction ID

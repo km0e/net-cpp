@@ -38,8 +38,8 @@ namespace impl_sock {
     using Base = RawDevice<feature::In<typename Traits::device_traits_type>>;
 
   public:
-    using socket_traits_type = Traits;
-    using async_type = AsyncSocketCompose<feature::In<Traits>>;
+    using socket_traits_type = Traits;                           ///< indicate the socket traits
+    using async_type = AsyncSocketCompose<feature::In<Traits>>;  ///< indicate the async socket type
 
     using Base::Base;
     using Base::operator=;
@@ -52,8 +52,9 @@ namespace impl_sock {
     using Base = RawDevice<feature::Out<typename Traits::device_traits_type>>;
 
   public:
-    using socket_traits_type = Traits;
-    using async_type = AsyncSocketCompose<feature::Out<Traits>>;
+    using socket_traits_type = Traits;  ///< indicate the socket traits
+    using async_type
+        = AsyncSocketCompose<feature::Out<Traits>>;  ///< indicate the async socket type
 
     using Base::Base;
     using Base::operator=;
@@ -66,17 +67,20 @@ namespace impl_sock {
     using Base = RawDevice<feature::InOut<typename Trait::device_traits_type>>;
 
   public:
-    using socket_traits_type = Trait;
-    using async_type = AsyncSocketCompose<feature::InOut<socket_traits_type>>;
+    using socket_traits_type = Trait;  ///< indicate the socket traits
+    using async_type
+        = AsyncSocketCompose<feature::InOut<socket_traits_type>>;  ///< indicate the async socket
+                                                                   ///< type
 
     template <template <class> class InOut = feature::InOut>
-    using rebind = Socket<InOut<Trait>>;
+    using rebind = Socket<InOut<Trait>>;  ///< rebind the socket type, for example, change the
+                                          ///< socket type from feature::InOut to feature::In
 
     using Base::Base;
     using Base::operator=;
 
-    Socket(Socket &&) = default;
-    Socket &operator=(Socket &&) = default;
+    Socket(Socket &&) = default;             ///< move constructor
+    Socket &operator=(Socket &&) = default;  ///< move assignment
   };
 
   template <class Traits, class T, class U>
@@ -113,11 +117,24 @@ namespace impl_sock {
     using Base::Base;
     using Base::operator=;
 
+    /**
+     * @brief write the data to the socket
+     *
+     * @tparam Executor the executor type
+     * @param buf the data buffer
+     * @return Task<Result, Executor>
+     */
     template <class Executor = coro::ExecutorBase>
     Task<Result, Executor> write(std::span<const value_type> buf) {
       return imm_send<Executor>(*this, buf);
     }
 
+    /**
+     * @brief write the data to the socket
+     *
+     * @param buf the data buffer
+     * @return Task<Result>
+     */
     Task<Result> write(std::span<const value_type> buf) { return this->write<>(buf); }
   };
 

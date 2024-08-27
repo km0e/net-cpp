@@ -1,3 +1,13 @@
+/**
+ * @file sys.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief System utilities
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_SYS
 #  define XSL_SYS
@@ -38,10 +48,10 @@ namespace sys {
 namespace sys::tcp {
 
   template <class LowerLayer>
-  using Socket = net::Socket<feature::Tcp<LowerLayer>>;
+  using Socket = net::Socket<Tcp<LowerLayer>>;
 
   template <class LowerLayer>
-  using AsyncSocket = net::AsyncSocket<feature::Tcp<LowerLayer>>;
+  using AsyncSocket = net::AsyncSocket<Tcp<LowerLayer>>;
 
   using _sys::net::accept;
   using _sys::net::listen;
@@ -49,10 +59,10 @@ namespace sys::tcp {
 namespace sys::udp {
 
   template <class LowerLayer>
-  using Socket = net::Socket<feature::Udp<LowerLayer>>;
+  using Socket = net::Socket<Udp<LowerLayer>>;
 
   template <class LowerLayer>
-  using AsyncSocket = net::AsyncSocket<feature::Udp<LowerLayer>>;
+  using AsyncSocket = net::AsyncSocket<Udp<LowerLayer>>;
 
 }  // namespace sys::udp
 using _sys::IOM_EVENTS;

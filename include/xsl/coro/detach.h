@@ -1,3 +1,13 @@
+/**
+ * @file detach.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Detach a coroutine
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_CORO_DETACH
 #  define XSL_CORO_DETACH
@@ -16,7 +26,9 @@ class Detach;
 template <class ResultType>
 class DetachPromiseBase : public PromiseBase<ResultType> {
 public:
+  using executor_type = void;
   using coro_type = Detach<ResultType>;
+  std::suspend_never initial_suspend() noexcept { return {}; }
   std::suspend_never final_suspend() noexcept { return {}; }
 };
 template <class ResultType>
@@ -34,16 +46,12 @@ private:
 
 template <class Awaiter>
   requires Awaitable<Awaiter, Detach<typename awaiter_traits<Awaiter>::result_type>>
-void detach(Awaiter &&awaiter) {//TODO: use co_await to get executor
+           && (!std::is_reference_v<Awaiter>)
+void detach(Awaiter &&awaiter) {  // TODO: use co_await to get executor
   [[maybe_unused]] auto final
       = [](Awaiter &&awaiter) -> Detach<typename awaiter_traits<Awaiter>::result_type> {
     LOG6("detach");
-    if constexpr (std::is_reference_v<Awaiter>) {
-      co_await awaiter;
-    } else {
-      Awaiter awaiter_copy = std::forward<Awaiter>(awaiter);
-      co_await awaiter_copy;
-    }
+    co_await std::move(awaiter);
   }(std::forward<Awaiter>(awaiter));
 }
 

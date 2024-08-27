@@ -1,8 +1,8 @@
 /**
  * @file conn.h
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
- * @version 0.1
+ * @brief Connection class for HTTP server
+ * @version 0.11s
  * @date 2024-08-16
  *
  * @copyright Copyright (c) 2024
@@ -85,8 +85,8 @@ namespace impl_conn {
   struct BaseCastCompose<ABrw, Service> {
     template <class T, class U, class V>
     static auto cast(T&& ard, U&& awd, V&& service) {
-      using labr_type = typename ABrw::template rebind<feature::In>::dynamic_type;
-      using labw_type = typename ABrw::template rebind<feature::Out>::dynamic_type;
+      using labr_type = typename ABrw::template rebind<In>::dynamic_type;
+      using labw_type = typename ABrw::template rebind<Out>::dynamic_type;
       using rabr_type = typename Service::abr_type::dynamic_type;
       using rabw_type = typename Service::abw_type::dynamic_type;
       return BaseCast<std::is_base_of_v<labr_type, rabr_type>,
@@ -101,7 +101,7 @@ namespace impl_conn {
 
 template <class Executor = coro::ExecutorBase, ai::ABRL ABr, ai::ABWL ABw, class Service,
           class ParserTraits = HttpParseTraits>
-Lazy<void, Executor> imm_serve_connection(ABr& ard, ABw& awd, Service& service,
+Task<void, Executor> imm_serve_connection(ABr& ard, ABw& awd, Service& service,
                                           Parser<ParserTraits> parser) {
   ParseData parse_data;
   while (true) {
@@ -129,7 +129,7 @@ Lazy<void, Executor> imm_serve_connection(ABr& ard, ABw& awd, Service& service,
 }
 
 template <class Executor, ai::ABRWL ABrw, class Service, class ParserTraits = HttpParseTraits>
-Lazy<void, Executor> serve_connection(std::unique_ptr<ABrw> ard, std::shared_ptr<Service> service,
+Task<void, Executor> serve_connection(std::unique_ptr<ABrw> ard, std::shared_ptr<Service> service,
                                       Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
   auto [r, w] = std::move(*ard).split();
   auto [pard, pawd, pservice]
@@ -188,7 +188,7 @@ public:
     co_return Result{0, std::nullopt};
   }
   template <class Executor = coro::ExecutorBase, class Service>
-  Lazy<void, Executor> serve_connection(this Connection self, std::shared_ptr<Service> service) {
+  Task<void, Executor> serve_connection(this Connection self, std::shared_ptr<Service> service) {
     auto [pard, pawd, pservice] = impl_conn::BaseCastCompose<abr_type, abw_type, Service>::cast(
         std::move(self._ard), std::move(self._awd), *service);
     co_return co_await http::imm_serve_connection<Executor>(*pard, *pawd, *pservice,
@@ -202,9 +202,8 @@ private:
   Parser<HttpParseTraits> _parser;
 };
 template <ai::ABRWL ABrw>
-Connection<typename ABrw::template rebind<feature::In>,
-           typename ABrw::template rebind<feature::Out>>
-make_connection(ABrw&& dev) {
+Connection<typename ABrw::template rebind<In>, typename ABrw::template rebind<Out>> make_connection(
+    ABrw&& dev) {
   auto [r, w] = std::move(dev).split();
   return {std::move(r), std::move(w)};
 }

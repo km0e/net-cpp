@@ -1,8 +1,7 @@
-#include "xsl/coro/lazy.h"
 #include "xsl/io/def.h"
 #include "xsl/io/splice.h"
 XSL_IO_NB
-// Lazy<void> splice(sys::io::AsyncDevice<feature::In> from, sys::io::AsyncDevice<feature::Out> to,
+// Lazy<void> splice(sys::io::AsyncDevice<In> from, sys::io::AsyncDevice<Out> to,
 //                         std::string buffer) {
 //   while (true) {
 //     auto [sz, err]

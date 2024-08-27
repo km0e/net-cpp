@@ -1,3 +1,13 @@
+/**
+ * @file server.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief HTTP server
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_NET_HTTP_SERVER
 #  define XSL_NET_HTTP_SERVER
@@ -30,7 +40,7 @@ public:
   ~Server() {}
 
   template <class Executor = coro::ExecutorBase, class Service>
-  Lazy<void, Executor> serve_connection(Service&& service) {
+  Task<void, Executor> serve_connection(Service&& service) {
     auto service_ptr = std::make_shared<Service>(std::forward<Service>(service));
     typename lower_type::value_type conn;
     while (true) {

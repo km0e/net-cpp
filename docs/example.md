@@ -10,7 +10,6 @@ This is an example of an echo server.
 std::string ip = "127.0.0.1";
 std::string port = "8080";
 
-using namespace xsl::feature;
 using namespace xsl::coro;
 using namespace xsl;
 
@@ -58,7 +57,6 @@ std::string ip = "127.0.0.1";
 std::string port = "8080";
 
 using namespace xsl::net;
-using namespace xsl::feature;
 using namespace xsl::coro;
 using namespace xsl;
 

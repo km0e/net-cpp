@@ -1,3 +1,13 @@
+/**
+ * @file test_bind.cpp
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #include "xsl/feature.h"
 #include "xsl/logctl.h"
 #include "xsl/sys.h"
@@ -13,7 +23,7 @@ using namespace xsl;
 uint16_t port = 12348;
 
 TEST(bind, create) {
-  using namespace xsl::feature;
+  using namespace xsl;
   auto res = xsl::sys::net::Resolver{}.resolve<Tcp<Ip<4>>>(port);
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());

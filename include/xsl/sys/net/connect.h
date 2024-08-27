@@ -1,8 +1,8 @@
 /**
  * @file connect.h
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
- * @version 0.1
+ * @brief Connect to a remote endpoint
+ * @version 0.11
  * @date 2024-08-20
  *
  * @copyright Copyright (c) 2024
@@ -27,12 +27,11 @@ XSL_SYS_NET_NB
 namespace impl_connect {
 
   template <class PollTraits, class Executor = coro::ExecutorBase>
-  Task<std::expected<
-           std::tuple<std::shared_ptr<CountingSemaphore<1>>, std::shared_ptr<CountingSemaphore<1>>>,
-           std::errc>,
+  Task<std::expected<std::tuple<std::shared_ptr<BinarySignal>, std::shared_ptr<BinarySignal>>,
+                     std::errc>,
        Executor>
   blocking_connect(int fd, Poller &poller) {
-    auto write_sem = std::make_shared<CountingSemaphore<1>>();
+    auto write_sem = std::make_shared<BinarySignal>();
     LOG3("Failed to connect to fd: {}", fd);
     poller.add(fd, PollForCoro<PollTraits, IOM_EVENTS::OUT>{write_sem});
     if (!co_await *write_sem) {
@@ -58,7 +57,7 @@ namespace impl_connect {
       co_return std::unexpected{std::errc{res}};
     }
     LOG5("Connected to fd: {}", fd);
-    auto read_sem = std::make_shared<CountingSemaphore<1>>();
+    auto read_sem = std::make_shared<BinarySignal>();
     poller.modify(fd,
                   PollForCoro<PollTraits, IOM_EVENTS::IN, IOM_EVENTS::OUT>{read_sem, write_sem});
     co_return std::make_tuple(read_sem, write_sem);

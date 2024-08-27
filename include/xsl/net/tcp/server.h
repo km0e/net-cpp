@@ -2,16 +2,16 @@
  * @file server.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief TcpServer
- * @version 0.1
+ * @version 0.11
  * @date 2024-08-18
  *
  * @copyright Copyright (c) 2024
  *
  */
 #pragma once
-#include "xsl/ai.h"
 #ifndef XSL_NET_TCP_SERVER
 #  define XSL_NET_TCP_SERVER
+#  include "xsl/ai.h"
 #  include "xsl/feature.h"
 #  include "xsl/net/tcp/def.h"
 #  include "xsl/net/tcp/utils.h"
@@ -25,17 +25,17 @@ XSL_TCP_NB
 /**
  * @brief TcpServer
  *
- * @tparam LowerLayer, such as feature::Ip<Version>(Version = 4 or 6)
+ * @tparam LowerLayer, such as Ip<Version>(Version = 4 or 6)
  */
 template <class LowerLayer>
 class Server;
 template <std::uint8_t Version>
-class Server<feature::Ip<Version>> {
+class Server<Ip<Version>> {
 public:
-  using lower_layer_type = feature::Ip<Version>;
+  using lower_layer_type = Ip<Version>;
   using io_dev_type = sys::tcp::AsyncSocket<lower_layer_type>;
-  using in_dev_type = io_dev_type::template rebind<feature::In>;
-  using out_dev_type = io_dev_type::template rebind<feature::Out>;
+  using in_dev_type = io_dev_type::template rebind<In>;
+  using out_dev_type = io_dev_type::template rebind<Out>;
   using value_type = std::unique_ptr<io_dev_type>;
 
   template <class P, class... Args>

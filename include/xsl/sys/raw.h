@@ -1,3 +1,13 @@
+/**
+ * @file raw.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Raw device
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_SYS_RAW
 #  define XSL_SYS_RAW
@@ -73,23 +83,19 @@ namespace impl_dev {
   class RawDevice;
 
   template <class... Flags>
-  using RawDeviceCompose = feature::organize_feature_flags_t<
-      RawDevice<feature::Item<type_traits::is_same_pack, feature::In<void>, feature::Out<void>,
-                              feature::InOut<void>>>,
-      Flags...>;
+  using RawDeviceCompose
+      = organize_feature_flags_t<RawDevice<Item<is_same_pack, In<void>, Out<void>, InOut<void>>>,
+                                 Flags...>;
 
   template <class... Flags>
   class AsyncRawDevice;
 
   template <class... Flags>
-  using AsyncRawDeviceCompose = feature::organize_feature_flags_t<
-      AsyncRawDevice<feature::Item<type_traits::is_same_pack, feature::In<void>, feature::Out<void>,
-                                   feature::InOut<void>>,
-                     feature::Dyn, feature::Own>,
-      Flags...>;
+  using AsyncRawDeviceCompose = organize_feature_flags_t<
+      AsyncRawDevice<Item<is_same_pack, In<void>, Out<void>, InOut<void>>, Dyn, Own>, Flags...>;
 
   template <class Trait>
-  class RawDevice<feature::In<Trait>> : public Owner {
+  class RawDevice<In<Trait>> : public Owner {
   private:
     using Base = Owner;
 
@@ -97,7 +103,7 @@ namespace impl_dev {
     using Base::Owner;
     using device_traits_type = Trait;
     using value_type = typename device_traits_type::value_type;
-    using device_features_type = feature::In<device_traits_type>;
+    using device_features_type = In<device_traits_type>;
 
     Result read(std::span<value_type>) { std::unreachable(); }
 
@@ -106,16 +112,16 @@ namespace impl_dev {
      * @warning derived class should implement this type
      *
      */
-    using async_type = AsyncRawDeviceCompose<feature::In<device_traits_type>>;
+    using async_type = AsyncRawDeviceCompose<In<device_traits_type>>;
     /**
     @brief convert to AsyncDevice
 
     @param poller
-    @return AsyncDeviceCompose<feature::In<T>>, aka AsyncDevice<feature::In<T>>
+    @return AsyncDeviceCompose<In<T>>, aka AsyncDevice<In<T>>
      */
     inline decltype(auto) async(this auto self, Poller &poller) noexcept {
       using device_type = decltype(self)::async_type;
-      auto sem = std::make_shared<CountingSemaphore<1>>();
+      auto sem = std::make_shared<BinarySignal>();
       poller.add(self.raw(),
                  PollForCoro<typename device_traits_type::poll_traits_type, IOM_EVENTS::IN>{sem});
       return device_type{std::move(sem), std::move(self)};
@@ -123,7 +129,7 @@ namespace impl_dev {
   };
 
   template <class Traits>
-  class RawDevice<feature::Out<Traits>> : public Owner {
+  class RawDevice<Out<Traits>> : public Owner {
   private:
     using Base = Owner;
 
@@ -131,7 +137,7 @@ namespace impl_dev {
     using Base::Owner;
     using device_traits_type = Traits;
     using value_type = typename device_traits_type::value_type;
-    using device_features_type = feature::Out<device_traits_type>;
+    using device_features_type = Out<device_traits_type>;
 
     Result write(std::span<const value_type>) { std::unreachable(); }
     /**
@@ -139,16 +145,16 @@ namespace impl_dev {
      * @warning derived class should implement this type
      *
      */
-    using async_type = AsyncRawDeviceCompose<feature::Out<device_traits_type>>;
+    using async_type = AsyncRawDeviceCompose<Out<device_traits_type>>;
     /**
     @brief convert to AsyncDevice
 
     @param poller
-    @return AsyncDeviceCompose<feature::Out<T>>, aka AsyncDevice<feature::Out<T>>
+    @return AsyncDeviceCompose<Out<T>>, aka AsyncDevice<Out<T>>
      */
     inline decltype(auto) async(this auto self, Poller &poller) noexcept {
       using device_type = decltype(self)::async_type;
-      auto sem = std::make_shared<CountingSemaphore<1>>();
+      auto sem = std::make_shared<BinarySignal>();
       poller.add(self.raw(),
                  PollForCoro<typename device_traits_type::poll_traits_type, IOM_EVENTS::OUT>{sem});
       return device_type{std::move(sem), std::move(self)};
@@ -156,7 +162,7 @@ namespace impl_dev {
   };
 
   template <class Traits>
-  class RawDevice<feature::InOut<Traits>> : public Owner {
+  class RawDevice<InOut<Traits>> : public Owner {
   private:
     using Base = Owner;
 
@@ -164,7 +170,7 @@ namespace impl_dev {
     using Base::Owner;
     using device_traits_type = Traits;
     using value_type = typename device_traits_type::value_type;
-    using device_features_type = feature::InOut<device_traits_type>;
+    using device_features_type = InOut<device_traits_type>;
 
     Result read(std::span<value_type>) { std::unreachable(); }
     Result write(std::span<const value_type>) { std::unreachable(); }
@@ -173,7 +179,7 @@ namespace impl_dev {
      * @warning derived class should implement this type
      *
      */
-    using async_type = AsyncRawDeviceCompose<feature::InOut<device_traits_type>>;
+    using async_type = AsyncRawDeviceCompose<InOut<device_traits_type>>;
     /**
      * @brief rebind the device with new features
      *
@@ -184,8 +190,8 @@ namespace impl_dev {
 
     decltype(auto) split(this auto self) noexcept {
       auto [r_dev, w_dev] = std::move(self).Base::split();
-      using in_type = decltype(self)::template rebind<feature::In>;
-      using out_type = decltype(self)::template rebind<feature::Out>;
+      using in_type = decltype(self)::template rebind<In>;
+      using out_type = decltype(self)::template rebind<Out>;
       auto r = in_type(std::move(r_dev));
       auto w = out_type(std::move(w_dev));
       return std::make_tuple(std::move(r), std::move(w));
@@ -194,12 +200,12 @@ namespace impl_dev {
     @brief convert to AsyncDevice
 
     @param poller
-    @return AsyncDeviceCompose<feature::InOut<T>>, aka AsyncDevice<feature::InOut<T>>
+    @return AsyncDeviceCompose<InOut<T>>, aka AsyncDevice<InOut<T>>
      */
     inline decltype(auto) async(this auto self, Poller &poller) noexcept {
       using device_type = decltype(self)::async_type;
-      auto read_sem = std::make_shared<CountingSemaphore<1>>();
-      auto write_sem = std::make_shared<CountingSemaphore<1>>();
+      auto read_sem = std::make_shared<BinarySignal>();
+      auto write_sem = std::make_shared<BinarySignal>();
       poller.add(self.raw(), PollForCoro<typename device_traits_type::poll_traits_type,
                                          IOM_EVENTS::IN, IOM_EVENTS::OUT>{read_sem, write_sem});
       return device_type{std::move(read_sem), std::move(write_sem), std::move(self).to_ownered()};
@@ -207,18 +213,18 @@ namespace impl_dev {
   };
 
   template <class Traits, class T, class U>
-  class AsyncRawDevice<feature::In<Traits>, T, U>
-      : public std::conditional_t<std::is_same_v<T, feature::Dyn>,
-                                  ai::AsyncDevice<feature::In<byte>, U>, feature::placeholder> {
+  class AsyncRawDevice<In<Traits>, T, U>
+      : public std::conditional_t<std::is_same_v<T, Dyn>, ai::AsyncDevice<In<byte>, U>,
+                                  Placeholder> {
     template <class...>
     friend class AsyncRawDevice;
 
   public:
     using device_traits_type = Traits;
-    using device_features_type = feature::In<device_traits_type>;
-    using dynamic_type = AsyncRawDevice<device_features_type, feature::Dyn, U>;
+    using device_features_type = In<device_traits_type>;
+    using dynamic_type = AsyncRawDevice<device_features_type, Dyn, U>;
     using value_type = typename device_traits_type::value_type;
-    using sem_type = CountingSemaphore<1>;
+    using sem_type = BinarySignal;
 
     template <class Sem, class... Args>
       requires std::constructible_from<std::shared_ptr<sem_type>, Sem>
@@ -227,7 +233,7 @@ namespace impl_dev {
         : _sem(std::forward<Sem>(sem)), _dev(std::forward<Args>(args)...) {}
 
     template <class... Flags>
-    AsyncRawDevice(AsyncRawDevice<feature::In<Traits>, Flags...> &&rhs) noexcept
+    AsyncRawDevice(AsyncRawDevice<In<Traits>, Flags...> &&rhs) noexcept
         : _sem(std::move(rhs._sem)), _dev(std::move(rhs._dev)) {}
 
     AsyncRawDevice(AsyncRawDevice &&rhs) noexcept = default;
@@ -259,18 +265,18 @@ namespace impl_dev {
   };
 
   template <class Traits, class T, class U>
-  class AsyncRawDevice<feature::Out<Traits>, T, U>
-      : public std::conditional_t<std::is_same_v<T, feature::Dyn>,
-                                  ai::AsyncDevice<feature::Out<byte>, U>, feature::placeholder> {
+  class AsyncRawDevice<Out<Traits>, T, U>
+      : public std::conditional_t<std::is_same_v<T, Dyn>, ai::AsyncDevice<Out<byte>, U>,
+                                  Placeholder> {
     template <class...>
     friend class AsyncRawDevice;
 
   public:
     using device_traits_type = Traits;
-    using device_features_type = feature::Out<device_traits_type>;
-    using dynamic_type = AsyncRawDevice<device_features_type, feature::Dyn, U>;
+    using device_features_type = Out<device_traits_type>;
+    using dynamic_type = AsyncRawDevice<device_features_type, Dyn, U>;
     using value_type = typename device_traits_type::value_type;
-    using sem_type = CountingSemaphore<1>;
+    using sem_type = BinarySignal;
 
     template <class Sem, class... Args>
       requires std::constructible_from<std::shared_ptr<sem_type>, Sem>
@@ -279,7 +285,7 @@ namespace impl_dev {
         : _sem(std::forward<Sem>(sem)), _dev(std::forward<Args>(args)...) {}
 
     template <class... Flags>
-    AsyncRawDevice(AsyncRawDevice<feature::Out<Traits>, Flags...> &&rhs) noexcept
+    AsyncRawDevice(AsyncRawDevice<Out<Traits>, Flags...> &&rhs) noexcept
         : _sem(std::move(rhs._sem)), _dev(std::move(rhs._dev)) {}
 
     AsyncRawDevice(AsyncRawDevice &&rhs) noexcept = default;
@@ -311,18 +317,18 @@ namespace impl_dev {
   };
 
   template <class Traits, class T, class U>
-  class AsyncRawDevice<feature::InOut<Traits>, T, U>
-      : public std::conditional_t<std::is_same_v<T, feature::Dyn>,
-                                  ai::AsyncDevice<feature::InOut<byte>, U>, feature::placeholder> {
+  class AsyncRawDevice<InOut<Traits>, T, U>
+      : public std::conditional_t<std::is_same_v<T, Dyn>, ai::AsyncDevice<InOut<byte>, U>,
+                                  Placeholder> {
     template <class...>
     friend class AsyncRawDevice;
 
   public:
     using device_traits_type = Traits;
-    using device_features_type = feature::InOut<device_traits_type>;
-    using dynamic_type = AsyncRawDevice<device_features_type, feature::Dyn, U>;
+    using device_features_type = InOut<device_traits_type>;
+    using dynamic_type = AsyncRawDevice<device_features_type, Dyn, U>;
     using value_type = typename device_traits_type::value_type;
-    using sem_type = CountingSemaphore<1>;
+    using sem_type = BinarySignal;
     using inner_type = RawDeviceCompose<device_features_type>;
 
     template <template <class> class InOut>
@@ -336,7 +342,7 @@ namespace impl_dev {
           _dev(std::forward<Args>(args)...) {}
 
     template <class... Flags>
-    AsyncRawDevice(AsyncRawDevice<feature::InOut<Traits>, Flags...> &&rhs) noexcept
+    AsyncRawDevice(AsyncRawDevice<InOut<Traits>, Flags...> &&rhs) noexcept
         : _read_sem(std::move(rhs._read_sem)),
           _write_sem(std::move(rhs._write_sem)),
           _dev(std::move(rhs._dev)) {}
@@ -370,13 +376,13 @@ namespace impl_dev {
     /**
      * @brief split the device into two devices
      *
-     * @return std::tuple<AsyncDevice<feature::In<socket_traits_type>, T, U>,
-     * AsyncDevice<feature::Out<socket_traits_type>, T, U>>
+     * @return std::tuple<AsyncDevice<In<socket_traits_type>, T, U>,
+     * AsyncDevice<Out<socket_traits_type>, T, U>>
      */
     decltype(auto) split(this auto self) noexcept {
       auto [r, w] = std::move(self._dev).split();
-      using in_type = decltype(self)::template rebind<feature::In>;
-      using out_type = decltype(self)::template rebind<feature::Out>;
+      using in_type = decltype(self)::template rebind<In>;
+      using out_type = decltype(self)::template rebind<Out>;
       auto _in = in_type{std::move(self._read_sem), std::move(r)};
       auto _out = out_type{std::move(self._write_sem), std::move(w)};
       return std::make_tuple(std::move(_in), std::move(_out));

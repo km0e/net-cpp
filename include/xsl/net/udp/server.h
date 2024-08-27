@@ -2,7 +2,7 @@
  * @file server.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.11
  * @date 2024-08-19
  *
  * @copyright Copyright (c) 2024
@@ -24,17 +24,17 @@ XSL_UDP_NB
 /**
  * @brief TcpServer
  *
- * @tparam LowerLayer, such as feature::Ip<Version>(Version = 4 or 6)
+ * @tparam LowerLayer, such as Ip<Version>(Version = 4 or 6)
  */
 template <class LowerLayer>
-class Server;//TODO: Implement Server
+class Server;  // TODO: Implement Server
 template <std::uint8_t Version>
-class Server<feature::Ip<Version>> {
+class Server<Ip<Version>> {
 public:
-  using lower_layer_type = feature::Ip<Version>;
+  using lower_layer_type = Ip<Version>;
   using io_dev_type = sys::tcp::AsyncSocket<lower_layer_type>;
-  using in_dev_type = io_dev_type::template rebind<feature::In>;
-  using out_dev_type = io_dev_type::template rebind<feature::Out>;
+  using in_dev_type = io_dev_type::template rebind<In>;
+  using out_dev_type = io_dev_type::template rebind<Out>;
   using value_type = std::unique_ptr<io_dev_type>;
 
   template <class P, class... Args>

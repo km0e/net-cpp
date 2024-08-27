@@ -1,3 +1,13 @@
+/**
+ * @file pipe.cpp
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Pipe utilities
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #include "xsl/logctl.h"
 #include "xsl/sys/def.h"
 #include "xsl/sys/pipe.h"
@@ -24,8 +34,8 @@ std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice> async_pipe(std::shared_ptr<
     LOG2("Failed to create pipe, err: {}", strerror(errno));
     return {{nullptr, -1}, {nullptr, -1}};
   }
-  auto read_sem = std::make_shared<CountingSemaphore<1>>();
-  auto write_sem = std::make_shared<CountingSemaphore<1>>();
+  auto read_sem = std::make_shared<BinarySignal>();
+  auto write_sem = std::make_shared<BinarySignal>();
   poller->add(fds[0], PollForCoro<DefaultPollTraits, IOM_EVENTS::IN>{read_sem});
   poller->add(fds[1], PollForCoro<DefaultPollTraits, IOM_EVENTS::OUT>{write_sem});
   return {{read_sem, fds[0]}, {write_sem, fds[1]}};

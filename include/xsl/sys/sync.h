@@ -1,7 +1,18 @@
+/**
+ * @file sync.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Synchronization primitives
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_SYS_SYNC
 #  define XSL_SYS_SYNC
 #  include "xsl/coro.h"
+#  include "xsl/feature.h"
 #  include "xsl/sync.h"
 #  include "xsl/sys/def.h"
 
@@ -79,7 +90,7 @@ namespace impl_poll {
   template <class Traits, IOM_EVENTS... Events>
   class PollForCoro : public PollBase<Events...> {
   public:
-    PollForCoro(std::array<std::shared_ptr<CountingSemaphore<1>>, sizeof...(Events)> sems)
+    PollForCoro(std::array<std::shared_ptr<BinarySignal>, sizeof...(Events)> sems)
         : sems(std::move(sems)) {}
 
     template <class... Sems>
@@ -98,7 +109,7 @@ namespace impl_poll {
     }
 
   private:
-    std::array<std::shared_ptr<CountingSemaphore<1>>, sizeof...(Events)> sems;
+    std::array<std::shared_ptr<BinarySignal>, sizeof...(Events)> sems;
 
     template <std::size_t... I>
     bool handle_event(std::index_sequence<I...>, IOM_EVENTS events) {
@@ -109,7 +120,7 @@ namespace impl_poll {
     bool handle_event(IOM_EVENTS events) {
       if (sems[I].use_count() > 1) {
         if (!!(events & E)) {
-          sems[I]->release();
+          sems[I]->release(true);
         }
         return false;
       }

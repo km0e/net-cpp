@@ -1,8 +1,18 @@
+/**
+ * @file net.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Network utilities
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
-#include "xsl/net/dns/utils.h"
 #ifndef XSL_NET_H
 #  define XSL_NET_H
 #  include "xsl/net/dns/server.h"
+#  include "xsl/net/dns/utils.h"
 #  include "xsl/net/http/conn.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/parse.h"

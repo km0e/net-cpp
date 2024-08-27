@@ -2,28 +2,27 @@
  * @file test_http.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief test for compile http server
- * @version 0.1
+ * @version 0.11
  * @date 2024-08-18
  *
  * @copyright Copyright (c) 2024
  *
  */
-#include <xsl/coro.h>
-#include <xsl/logctl.h>
-#include <xsl/net.h>
+#include "xsl/coro.h"
+#include "xsl/logctl.h"
+#include "xsl/net.h"
 
 using namespace xsl::net;
-using namespace xsl::feature;
 using namespace xsl::coro;
 using namespace xsl;
 
 template <class Executor = ExecutorBase, bool DynamicService = false,
           bool DynamicConnection = false>
-Lazy<void, Executor> run(std::string_view ip, std::string_view port,
+Task<void, Executor> run(std::string_view ip, std::string_view port,
                          std::shared_ptr<xsl::Poller> poller) {
   using Server = tcp::Server<Ip<4>>;
   auto server = tcp::make_server<Ip<4>>(ip, port, poller).value();
-  auto service = [&]() {
+  auto service = [&] {
     if constexpr (DynamicService) {
       return http1::make_service();
     } else {
@@ -34,7 +33,7 @@ Lazy<void, Executor> run(std::string_view ip, std::string_view port,
   service.add_static("/", {"./build/html/", {"br"}});
   auto http_service = std::move(service).build_shared();
   while (true) {
-    auto skt = co_await [&]() {
+    auto skt = co_await [&] {
       if constexpr (DynamicConnection) {
         return server.accept();
       } else {
@@ -57,12 +56,12 @@ Lazy<void, Executor> run(std::string_view ip, std::string_view port,
 
 template <class Executor = ExecutorBase, bool DynamicService = false,
           bool DynamicConnection = false>
-Lazy<void, Executor> run_step(std::string_view ip, std::string_view port,
+Task<void, Executor> run_step(std::string_view ip, std::string_view port,
                               std::shared_ptr<xsl::Poller> poller) {
   using Server = tcp::Server<Ip<4>>;
   auto server = tcp::make_server<Ip<4>>(ip, port, poller).value();
   auto http_server = http1::Server{std::move(server)};
-  auto service = [&]() {
+  auto service = [&] {
     if constexpr (DynamicService) {
       return http1::make_service();
     } else {
@@ -72,7 +71,7 @@ Lazy<void, Executor> run_step(std::string_view ip, std::string_view port,
   service.redirect(http::Method::GET, "/", "/index.html");
   service.add_static("/", {"./build/html/", {"br"}});
   auto http_service = std::move(service).build();
-  co_await [&]() {
+  co_await [&] {
     if constexpr (DynamicConnection) {
       return http_server.serve_connection(std::move(http_service));
     } else {

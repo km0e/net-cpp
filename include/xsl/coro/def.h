@@ -1,3 +1,13 @@
+/**
+ * @file def.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Definition of coroutines
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_CORO_DEF
 #  define XSL_CORO_DEF
@@ -55,7 +65,7 @@ struct noop_coroutine {
 };
 
 template <class Awaiter, class Coroutine = noop_coroutine>
-concept Awaitable = requires() { [](Awaiter &a) -> Coroutine { co_await a; }; };
+concept Awaitable = requires() { [](Awaiter a) -> Coroutine { co_await std::move(a); }; };
 
 template <class Awaiter>
 class awaiter_traits {

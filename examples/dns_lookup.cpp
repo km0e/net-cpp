@@ -22,14 +22,13 @@
 std::string ip = "58.20.127.238";
 std::string port = "53";
 
-using namespace xsl::feature;
 using namespace xsl::coro;
 using namespace xsl;
 
 template <class Executor = ExecutorBase>
-Lazy<void, Executor> talk(std::string_view ip, std::string_view port,
+Task<void, Executor> talk(std::string_view ip, std::string_view port,
                           std::shared_ptr<xsl::Poller> poller) {
-  auto server = dns::serv<feature::Ip<4>>(ip.data(), port.data(), *poller).value();
+  auto server = dns::serv<Ip<4>>(ip.data(), port.data(), *poller).value();
   std::string buffer(4096, '\0');
   while (true) {
     std::cin >> buffer;

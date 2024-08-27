@@ -1,3 +1,13 @@
+/**
+ * @file splice.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Splice the data from the input device to the output device
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_IO_SPLICE
 #  define XSL_IO_SPLICE
@@ -13,7 +23,7 @@ XSL_IO_NB
 
 namespace impl_splice {
   template <class Executor = coro::ExecutorBase>
-  Lazy<Result, Executor> splice_once(ABR& from, ABW& to, std::string& buffer) {
+  Task<Result, Executor> splice_once(ABR& from, ABW& to, std::string& buffer) {
     auto [sz, err] = co_await from.read(xsl::as_writable_bytes(std::span(buffer)));
     if (err) {
       WARN("Failed to read data from the device, err: {}", std::make_error_code(*err).message());
@@ -31,12 +41,12 @@ namespace impl_splice {
 }  // namespace impl_splice
 
 template <class Executor = coro::ExecutorBase, PtrLike<ABR> FromPtr, PtrLike<ABW> ToPtr>
-Lazy<Result, Executor> splice_once(FromPtr from, ToPtr to, std::string buffer) {
+Task<Result, Executor> splice_once(FromPtr from, ToPtr to, std::string buffer) {
   return impl_splice::splice_once(*from, *to, buffer);
 }
 
 template <class Executor = coro::ExecutorBase, PtrLike<ABR> FromPtr, PtrLike<ABW> ToPtr>
-Lazy<Result, Executor> splice(FromPtr from, ToPtr to, std::string buffer) {
+Task<Result, Executor> splice(FromPtr from, ToPtr to, std::string buffer) {
   std::size_t total = 0;
   while (true) {
     auto [sz, err] = co_await impl_splice::splice_once(*from, *to, buffer);
@@ -53,16 +63,13 @@ namespace impl_splice {
   class Splice;
 
   template <class... Flags>
-  using SpliceCompose = feature::organize_feature_flags_t<
-      Splice<feature::Item<type_traits::is_same_pack, feature::In<void>, feature::Out<void>,
-                           feature::InOut<void>>,
-             feature::Dyn>,
-      Flags...>;
+  using SpliceCompose
+      = organize_feature_flags_t<Splice<Item<is_same_pack, In<void>, Out<void>, InOut<void>>, Dyn>,
+                                 Flags...>;
 
   template <class T, PtrLike<ABR> FromPtr>
-  class Splice<feature::In<byte>, T, FromPtr>
-      : public std::conditional_t<std::is_same_v<T, feature::Dyn>, ai::AsyncWritable<byte>,
-                                  feature::placeholder> {
+  class Splice<In<byte>, T, FromPtr>
+      : public std::conditional_t<std::is_same_v<T, Dyn>, ai::AsyncWritable<byte>, Placeholder> {
   public:
     using value_type = byte;  ///< the value type
     /**
@@ -89,9 +96,8 @@ namespace impl_splice {
   };
 
   template <class T>
-  class Splice<feature::In<byte>, T>
-      : public std::conditional_t<std::is_same_v<T, feature::Dyn>, ai::AsyncWritable<byte>,
-                                  feature::placeholder> {
+  class Splice<In<byte>, T>
+      : public std::conditional_t<std::is_same_v<T, Dyn>, ai::AsyncWritable<byte>, Placeholder> {
   public:
     /**
      * @brief Unique Splice object construct helper
@@ -102,7 +108,7 @@ namespace impl_splice {
      */
     template <PtrLike<ABR> FromPtr>
     static decltype(auto) make_unique(FromPtr from) {
-      return std::make_unique<Splice<feature::In<byte>, T, FromPtr>>(std::move(from));
+      return std::make_unique<Splice<In<byte>, T, FromPtr>>(std::move(from));
     }
   };
 
@@ -110,8 +116,8 @@ namespace impl_splice {
 /**
 @brief Splice the data from the input device to the output device
 
-@tparam Flags, <<feature::In<byte>, feature::Out<byte>, feature::InOut<byte>>,
-feature::Dyn>
+@tparam Flags, <<In<byte>, Out<byte>, InOut<byte>>,
+Dyn>
  */
 template <class... Flags>
 using Splice = impl_splice::SpliceCompose<Flags...>;

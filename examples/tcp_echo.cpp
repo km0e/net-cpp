@@ -2,7 +2,7 @@
  * @file tcp_echo.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief A simple echo server
- * @version 0.1
+ * @version 0.11
  * @date 2024-08-20
  *
  * @copyright Copyright (c) 2024
@@ -18,12 +18,11 @@
 std::string ip = "127.0.0.1";
 std::string port = "8080";
 
-using namespace xsl::feature;
 using namespace xsl::coro;
 using namespace xsl;
 
 template <class Executor = ExecutorBase>
-Lazy<void, Executor> talk(std::string_view ip, std::string_view port,
+Task<void, Executor> talk(std::string_view ip, std::string_view port,
                           std::shared_ptr<xsl::Poller> poller) {
   using Server = tcp::Server<Ip<4>>;
   auto server = tcp::make_server<Ip<4>>(ip, port, poller).value();
@@ -35,7 +34,7 @@ Lazy<void, Executor> talk(std::string_view ip, std::string_view port,
       break;
     }
     auto [r, w] = std::move(*skt).split();
-    [](auto r, auto w) mutable -> Lazy<void, Executor> {
+    [](auto r, auto w) mutable -> Task<void, Executor> {
       std::string buffer(4096, '\0');
       co_await net::splice<Executor>(r, w, buffer);
     }(std::move(r), std::move(w))

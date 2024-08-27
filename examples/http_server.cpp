@@ -1,4 +1,13 @@
-
+/**
+ * @file http_server.cpp
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #include <CLI/CLI.hpp>
 #include <xsl/coro.h>
 #include <xsl/logctl.h>
@@ -7,7 +16,6 @@
 std::string ip = "127.0.0.1";
 std::string port = "8080";
 
-using namespace xsl::feature;
 using namespace xsl::coro;
 using namespace xsl;
 /**
@@ -19,7 +27,7 @@ using namespace xsl;
  * @return Lazy<void>
  * @note this example all use dynamic call, you can also find some
  */
-Lazy<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
+Task<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
   auto http_server = http1::Server{tcp::make_server<Ip<4>>(ip, port, poller).value()};
   auto service = http1::make_service();
   service.redirect(http::Method::GET, "/", "/index.html");

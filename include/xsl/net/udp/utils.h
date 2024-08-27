@@ -2,7 +2,7 @@
  * @file utils.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.11
  * @date 2024-08-19
  *
  * @copyright Copyright (c) 2024
@@ -20,7 +20,7 @@ XSL_UDP_NB
 /**
  * @brief Dial a tcp connection to a host and port
  *
- * @tparam LowerLayer the lower layer to use, such as feature::Ip<Version>(Version = 4 or 6)
+ * @tparam LowerLayer the lower layer to use, such as Ip<Version>(Version = 4 or 6)
  * @param host the host to dial
  * @param port the port to dial
  * @param poller the poller to use
@@ -29,8 +29,7 @@ XSL_UDP_NB
 template <class LowerLayer>
 std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> dial(const char *host,
                                                                        const char *port) {
-  auto res
-      = sys::net::Resolver{}.resolve<feature::Udp<LowerLayer>>(host, port, sys::net::CLIENT_FLAGS);
+  auto res = sys::net::Resolver{}.resolve<Udp<LowerLayer>>(host, port, sys::net::CLIENT_FLAGS);
   if (!res) {
     return std::unexpected{res.error()};
   }
@@ -43,7 +42,7 @@ std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> dial(const cha
 /**
  * @brief Create a tcp accept socket
  *
- * @tparam LowerLayer the lower layer to use, such as feature::Ip<Version>(Version = 4 or 6)
+ * @tparam LowerLayer the lower layer to use, such as Ip<Version>(Version = 4 or 6)
  * @param host the host to listen on
  * @param port the port to listen on
  * @return std::expected<sys::tcp::Socket<LowerLayer>, std::error_condition>
@@ -51,8 +50,7 @@ std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> dial(const cha
 template <class LowerLayer>
 std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> serv(const char *host,
                                                                        const char *port) {
-  auto addr
-      = sys::net::Resolver{}.resolve<feature::Udp<LowerLayer>>(host, port, sys::net::SERVER_FLAGS);
+  auto addr = sys::net::Resolver{}.resolve<Udp<LowerLayer>>(host, port, sys::net::SERVER_FLAGS);
   if (!addr) {
     return std::unexpected(addr.error());
   }

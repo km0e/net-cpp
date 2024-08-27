@@ -1,8 +1,8 @@
 /**
  * @file service.h
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
- * @version 0.1
+ * @brief Service class for HTTP server
+ * @version 0.11
  * @date 2024-08-16
  *
  * @copyright Copyright (c) 2024
@@ -87,7 +87,7 @@ namespace impl_service {
 /**
  * @brief ServiceBuilder
  *
- * @tparam LowerLayer the lower layer type, such as feature::Tcp<feature::Ip<4>>
+ * @tparam LowerLayer the lower layer type, such as Tcp<Ip<4>>
  * @tparam R the router type, such as Router
  */
 template <ai::ABRL ABr, ai::ABWL ABw, RouterLike<std::size_t> R = Router>
@@ -169,9 +169,7 @@ private:
   std::unique_ptr<details_type> details;
 };
 template <ai::ABRWL ABrw, RouterLike<std::size_t> R = Router>
-Service<typename ABrw::template rebind<feature::In>, typename ABrw::template rebind<feature::Out>,
-        R>
-make_service() {
+Service<typename ABrw::template rebind<In>, typename ABrw::template rebind<Out>, R> make_service() {
   return {};
 }
 template <RouterLike<std::size_t> R = Router>

@@ -1,3 +1,13 @@
+/**
+ * @file test_listen.cpp
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #include "xsl/logctl.h"
 #include "xsl/sys.h"
 
@@ -7,12 +17,12 @@
 #include <cstdint>
 #include <string>
 using namespace xsl::coro;
+using namespace xsl;
 // there should have a echo server
 uint16_t port = 12349;
 
 TEST(bind, create) {
   using namespace xsl::sys::net;
-  using namespace xsl::feature;
   auto res = Resolver{}.resolve<Tcp<Ip<4>>>(port);
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());

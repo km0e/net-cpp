@@ -1,3 +1,13 @@
+/**
+ * @file splice.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Splice the data from one device to another
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_NET_IO_SPLICE
 #  define XSL_NET_IO_SPLICE
@@ -17,7 +27,7 @@ XSL_NET_IO_NB
  * @return Lazy<void>
  */
 template <class Executor = coro::ExecutorBase, ai::ABRL From, ai::ABWL To>
-Lazy<void, Executor> splice(From& from, To& to, std::string& buffer) {
+Task<void, Executor> splice(From& from, To& to, std::string& buffer) {
   while (true) {
     auto [sz, err]
         = co_await from.template read<Executor>(xsl::as_writable_bytes(std::span(buffer)));

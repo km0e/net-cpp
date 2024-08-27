@@ -1,3 +1,13 @@
+/**
+ * @file test_connect.cpp
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #include "xsl/feature.h"
 #include "xsl/logctl.h"
 #include "xsl/sys.h"
@@ -16,19 +26,18 @@ std::string port = "12347";
 
 TEST(connect, connect) {
   using namespace xsl::sys::net;
-  using namespace xsl::feature;
+  using namespace xsl;
   auto res = Resolver{}.resolve<Tcp<Ip<4>>>(host.c_str(), port.c_str());
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());
   auto poller = std::make_shared<Poller>();
-  std::thread t([&poller]() {
+  std::thread t([&poller] {
     while (poller->valid()) {
       poller->poll();
     }
     LOG5("Poller shutdown");
   });
-  auto sock = sys::net::connect(ai, *poller);
-  auto skt = sock.block();
+  auto skt = sys::net::connect(ai, *poller).block();
   LOG5("Socket connected");
   xsl::flush_log();
   ASSERT_TRUE(skt.has_value());

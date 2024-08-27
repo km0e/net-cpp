@@ -1,17 +1,31 @@
+/**
+ * @file test_task.cpp
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #include "coro/tool.h"
-#include "xsl/coro.h"
-#include "xsl/logctl.h"
+#include "xsl/coro/executor.h"
 
 #include <gtest/gtest.h>
-using namespace xsl::coro;
+using namespace xsl::_coro;
 
 TEST(Task, just_return) {
   int value = 0;
-
   no_return_task(value).block();
   ASSERT_EQ(value, 1);
+  EXPECT_EQ(return_task().block(), 1);
 
-  ASSERT_EQ(return_task().block(), 1);
+  auto executor = std::make_shared<NewThreadExecutor>();
+
+  std::binary_semaphore sem{0};
+  sync_no_return_task(value, sem).detach(executor);
+  sem.acquire();
+  EXPECT_EQ(value, 2);
 }
 
 TEST(Task, just_throw) {
@@ -20,61 +34,24 @@ TEST(Task, just_throw) {
   ASSERT_THROW(return_exception_task().block(), std::runtime_error);
 }
 
-TEST(Task, async_task) {
+TEST(Task, multi_task) {
   int value = 0;
-  auto task1 = [](int &value) -> Task<void> {
-    co_await no_return_task(value);
-    value += 1;
-    co_return;
-  }(value);
+  multi_task(value).block();
   ASSERT_EQ(value, 2);
-  task1.block();
 
-  auto task2 = [](int &value) -> Task<void> {
-    value = co_await return_task() + 1;
-    co_return;
-  }(value);
-  ASSERT_EQ(value, 2);
-  task2.block();
+  auto executor = std::make_shared<NewThreadExecutor>();
 
-  auto task3 = []() -> Task<int> {
-    int value = 0;
-    co_await no_return_task(value);
-    co_return value + 1;
-  }();
-  ASSERT_EQ(task3.block(), 2);
-
-  auto task4 = []() -> Task<int> { co_return co_await return_task() + 1; }();
-  ASSERT_EQ(task4.block(), 2);
+  std::binary_semaphore sem{0};
+  sync_multi_task(value, sem).detach(executor);
+  sem.acquire();
+  EXPECT_EQ(value, 4);
 }
 
-TEST(Task, async_exception_task) {
-  auto task1 = []() -> Task<void> {
-    co_await no_return_exception_task();
-    co_return;
-  }();
-  ASSERT_THROW(task1.block(), std::runtime_error);
-
-  auto task2 = []() -> Task<void> {
-    co_await return_exception_task();
-    co_return;
-  }();
-  ASSERT_THROW(task2.block(), std::runtime_error);
-
-  auto task3 = []() -> Task<int> {
-    co_await no_return_exception_task();
-    co_return 1;
-  }();
-  ASSERT_THROW(task3.block(), std::runtime_error);
-
-  auto task4 = []() -> Task<int> { co_return co_await return_exception_task() + 1; }();
-
-  ASSERT_THROW(task4.block(), std::runtime_error);
+TEST(Task, penetrate_exception) {
+  ASSERT_THROW(exception_penetrate_task().block(), std::runtime_error);
 }
 
 int main(int argc, char **argv) {
-  xsl::no_log();
-  // xsl::set_log_level(xsl::LogLevel::TRACE);
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

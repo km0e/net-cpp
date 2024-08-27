@@ -1,3 +1,13 @@
+/**
+ * @file socket.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Socket type
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_SYS_NET_SOCKET
 #  define XSL_SYS_NET_SOCKET
@@ -16,65 +26,56 @@ namespace impl_sock {
   class Socket;
 
   template <class... Flags>
-  using SocketCompose = feature::organize_feature_flags_t<
-      Socket<feature::Item<type_traits::is_same_pack, feature::In<void>, feature::Out<void>,
-                           feature::InOut<void>>>,
-      Flags...>;
+  using SocketCompose
+      = organize_feature_flags_t<Socket<Item<is_same_pack, In<void>, Out<void>, InOut<void>>>,
+                                 Flags...>;
 
   template <class... Flags>
   class AsyncSocket;
 
   template <class... Flags>
-  using AsyncSocketCompose = feature::organize_feature_flags_t<
-      AsyncSocket<feature::Item<type_traits::is_same_pack, feature::In<void>, feature::Out<void>,
-                                feature::InOut<void>>,
-                  feature::Dyn, feature::Own>,
-      Flags...>;
+  using AsyncSocketCompose = organize_feature_flags_t<
+      AsyncSocket<Item<is_same_pack, In<void>, Out<void>, InOut<void>>, Dyn, Own>, Flags...>;
 
   template <class Traits>
-  class Socket<feature::In<Traits>>
-      : public RawDevice<feature::In<typename Traits::device_traits_type>> {
+  class Socket<In<Traits>> : public RawDevice<In<typename Traits::device_traits_type>> {
   private:
-    using Base = RawDevice<feature::In<typename Traits::device_traits_type>>;
+    using Base = RawDevice<In<typename Traits::device_traits_type>>;
 
   public:
-    using socket_traits_type = Traits;                           ///< indicate the socket traits
-    using async_type = AsyncSocketCompose<feature::In<Traits>>;  ///< indicate the async socket type
+    using socket_traits_type = Traits;                  ///< indicate the socket traits
+    using async_type = AsyncSocketCompose<In<Traits>>;  ///< indicate the async socket type
 
     using Base::Base;
     using Base::operator=;
   };
 
   template <class Traits>
-  class Socket<feature::Out<Traits>>
-      : public RawDevice<feature::Out<typename Traits::device_traits_type>> {
+  class Socket<Out<Traits>> : public RawDevice<Out<typename Traits::device_traits_type>> {
   private:
-    using Base = RawDevice<feature::Out<typename Traits::device_traits_type>>;
+    using Base = RawDevice<Out<typename Traits::device_traits_type>>;
 
   public:
-    using socket_traits_type = Traits;  ///< indicate the socket traits
-    using async_type
-        = AsyncSocketCompose<feature::Out<Traits>>;  ///< indicate the async socket type
+    using socket_traits_type = Traits;                   ///< indicate the socket traits
+    using async_type = AsyncSocketCompose<Out<Traits>>;  ///< indicate the async socket type
 
     using Base::Base;
     using Base::operator=;
   };
 
   template <class Trait>
-  class Socket<feature::InOut<Trait>>
-      : public RawDevice<feature::InOut<typename Trait::device_traits_type>> {
+  class Socket<InOut<Trait>> : public RawDevice<InOut<typename Trait::device_traits_type>> {
   private:
-    using Base = RawDevice<feature::InOut<typename Trait::device_traits_type>>;
+    using Base = RawDevice<InOut<typename Trait::device_traits_type>>;
 
   public:
     using socket_traits_type = Trait;  ///< indicate the socket traits
-    using async_type
-        = AsyncSocketCompose<feature::InOut<socket_traits_type>>;  ///< indicate the async socket
-                                                                   ///< type
+    using async_type = AsyncSocketCompose<InOut<socket_traits_type>>;  ///< indicate the async
+                                                                       ///< socket type
 
-    template <template <class> class InOut = feature::InOut>
+    template <template <class> class InOut = InOut>
     using rebind = Socket<InOut<Trait>>;  ///< rebind the socket type, for example, change the
-                                          ///< socket type from feature::InOut to feature::In
+                                          ///< socket type from InOut to In
 
     using Base::Base;
     using Base::operator=;
@@ -84,14 +85,14 @@ namespace impl_sock {
   };
 
   template <class Traits, class T, class U>
-  class AsyncSocket<feature::In<Traits>, T, U>
-      : public AsyncRawDevice<feature::In<typename Traits::device_traits_type>, T, U> {
-    using Base = AsyncRawDevice<feature::In<typename Traits::device_traits_type>, T, U>;
+  class AsyncSocket<In<Traits>, T, U>
+      : public AsyncRawDevice<In<typename Traits::device_traits_type>, T, U> {
+    using Base = AsyncRawDevice<In<typename Traits::device_traits_type>, T, U>;
 
   public:
     using typename Base::value_type;
     using socket_traits_type = Traits;
-    using dynamic_type = AsyncSocket<feature::In<Traits>, feature::Dyn, U>;
+    using dynamic_type = AsyncSocket<In<Traits>, Dyn, U>;
 
     using Base::Base;
     using Base::operator=;
@@ -105,14 +106,14 @@ namespace impl_sock {
   };
 
   template <class Traits, class T, class U>
-  class AsyncSocket<feature::Out<Traits>, T, U>
-      : public AsyncRawDevice<feature::Out<typename Traits::device_traits_type>, T, U> {
-    using Base = AsyncRawDevice<feature::Out<typename Traits::device_traits_type>, T, U>;
+  class AsyncSocket<Out<Traits>, T, U>
+      : public AsyncRawDevice<Out<typename Traits::device_traits_type>, T, U> {
+    using Base = AsyncRawDevice<Out<typename Traits::device_traits_type>, T, U>;
 
   public:
     using typename Base::value_type;
     using socket_traits_type = Traits;
-    using dynamic_type = AsyncSocket<feature::Out<Traits>, feature::Dyn, U>;
+    using dynamic_type = AsyncSocket<Out<Traits>, Dyn, U>;
 
     using Base::Base;
     using Base::operator=;
@@ -139,16 +140,16 @@ namespace impl_sock {
   };
 
   template <class Traits, class T, class U>
-  class AsyncSocket<feature::InOut<Traits>, T, U>
-      : public AsyncRawDevice<feature::InOut<typename Traits::device_traits_type>, T, U> {
-    using Base = AsyncRawDevice<feature::InOut<typename Traits::device_traits_type>, T, U>;
+  class AsyncSocket<InOut<Traits>, T, U>
+      : public AsyncRawDevice<InOut<typename Traits::device_traits_type>, T, U> {
+    using Base = AsyncRawDevice<InOut<typename Traits::device_traits_type>, T, U>;
 
   public:
     using typename Base::value_type;
     using socket_traits_type = Traits;
-    using dynamic_type = AsyncSocket<feature::InOut<Traits>, feature::Dyn, U>;
+    using dynamic_type = AsyncSocket<InOut<Traits>, Dyn, U>;
 
-    template <template <class> class InOut = feature::InOut>
+    template <template <class> class InOut = InOut>
     using rebind = AsyncSocket<InOut<Traits>, T, U>;
 
     using Base::Base;
@@ -176,11 +177,11 @@ namespace impl_sock {
 /**
  * @brief determine the socket type
  *
- * @tparam Flags, can be feature::Tcp<feature::Ip<4>>, feature::Tcp<feature::Ip<6>>, tag::TcpIpv4
+ * @tparam Flags, can be Tcp<Ip<4>>, Tcp<Ip<6>>, tag::TcpIpv4
  * ...
  */
 template <class... Flags>
-using Socket = impl_sock::SocketCompose<feature::InOut<SocketTraits<Flags...>>>;
+using Socket = impl_sock::SocketCompose<InOut<SocketTraits<Flags...>>>;
 
 template <class Socket>
 std::expected<Socket, std::errc> make_socket() {
@@ -194,10 +195,10 @@ std::expected<Socket, std::errc> make_socket() {
 /**
  * @brief determine the socket type asynchronously
  *
- * @tparam Flags, can be feature::Tcp<feature::Ip<4>>, feature::Tcp<feature::Ip<6>>, tag::TcpIpv4
+ * @tparam Flags, can be Tcp<Ip<4>>, Tcp<Ip<6>>, tag::TcpIpv4
  * ...
  */
 template <class... Flags>
-using AsyncSocket = impl_sock::AsyncSocketCompose<feature::InOut<SocketTraits<Flags...>>>;
+using AsyncSocket = impl_sock::AsyncSocketCompose<InOut<SocketTraits<Flags...>>>;
 XSL_SYS_NET_NE
 #endif

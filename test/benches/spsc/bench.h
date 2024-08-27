@@ -2,7 +2,7 @@
  * @file bench.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Benchmark fixture for spsc queue.
- * @version 0.1
+ * @version 0.11
  * @date 2024-08-23
  *
  * @copyright Copyright (c) 2024
@@ -66,12 +66,12 @@ public:
         = std::make_unique<Spsc>(size);  // eliminate interference caused by the memory address
     int count = 0;
     for (auto _ : state) {
-      std::jthread producer([&]() {
+      std::jthread producer([&] {
         for (auto i : data) {
           p_spsc->enqueue(i);
         }
       });
-      std::jthread consumer([&]() {
+      std::jthread consumer([&] {
         for (auto r : seq) {
           if (r == 0) {
             int t = 0;
@@ -98,7 +98,7 @@ public:
         = std::make_unique<Spsc>(size);  // eliminate interference caused by the memory address
     int count = 0;
     for (auto _ : state) {
-      std::jthread producer([&]() {
+      std::jthread producer([&] {
         for (auto [r, v] : std::views::zip(seq, data)) {
           if (r == 0) {
             p_spsc->enqueue(v);
@@ -106,7 +106,7 @@ public:
           }
         }
       });
-      std::jthread consumer([&]() {
+      std::jthread consumer([&] {
         for (auto _ : data) {
           int t = 0;
           p_spsc->try_dequeue(t);
@@ -129,12 +129,12 @@ public:
     auto p_spsc
         = std::make_unique<Spsc>(size);  // eliminate interference caused by the memory address
     for (auto _ : state) {
-      std::jthread producer([&]() {
+      std::jthread producer([&] {
         for (auto i : data) {
           p_spsc->enqueue(i);
         }
       });
-      std::jthread consumer([&]() {
+      std::jthread consumer([&] {
         for (auto _ : data) {
           int t = 0;
           p_spsc->try_dequeue(t);
@@ -158,7 +158,7 @@ public:
         = std::make_unique<Spsc>(size);  // eliminate interference caused by the memory address
     std::size_t read_count = 0, write_count = 0;
     for (auto _ : state) {
-      std::jthread producer1([&]() {
+      std::jthread producer1([&] {
         for (auto i : seq1) {
           if (i == 0) {
             p_spsc->enqueue(i);
@@ -166,7 +166,7 @@ public:
           }
         }
       });
-      std::jthread consumer1([&]() {
+      std::jthread consumer1([&] {
         for (auto i : seq2) {
           if (i == 0) {
             int t = 0;

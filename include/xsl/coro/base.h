@@ -1,7 +1,16 @@
+/**
+ * @file base.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Base classes for coroutines
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_CORO_BASE
 #  define XSL_CORO_BASE
-#  include "xsl/coro/chain.h"
 #  include "xsl/coro/def.h"
 #  include "xsl/logctl.h"
 
@@ -10,11 +19,15 @@
 #  include <type_traits>
 #  include <utility>
 XSL_CORO_NB
+/**
+ * @brief Base class for coroutine promise
+ *
+ * @tparam ResultType
+ */
 template <class ResultType>
 class PromiseBase {
 public:
   using result_type = ResultType;
-  using executor_type = void;
 
   PromiseBase() : _result(std::nullopt) {}
 
@@ -25,15 +38,13 @@ public:
     return coro_type{std::coroutine_handle<promise_type>::from_promise(self)};
   }
 
-  std::suspend_never initial_suspend() const noexcept { return {}; }
-
-  std::suspend_always final_suspend() const noexcept {
-    LOG7("final_suspend");
-    return {};
-  }
-
   void unhandled_exception() { this->_result = std::unexpected{std::current_exception()}; }
 
+  /**
+   * @brief Return a value
+   *
+   * @return result_type
+   */
   result_type operator*() {
     LOG7("PromiseBase operator*");
     if (*_result) {
@@ -44,16 +55,6 @@ public:
       }
     }
     std::rethrow_exception(_result->error());
-  }
-
-  template <class Promise>
-  void resume(std::coroutine_handle<Promise> handle) noexcept(noexcept(handle.resume())) {
-    handle();
-  }
-
-  template <std::invocable F>
-  void dispatch(F &&f) noexcept(noexcept(std::forward<F>(f)())) {
-    f();
   }
 
 protected:
@@ -82,28 +83,6 @@ protected:
 public:
   using typename Base::result_type;
   void return_void() { _result = Result<void>(); }
-};
-
-template <class ResultType>
-class Coro : public HandleControl {
-protected:
-  using Friend = HandleControl;
-
-public:
-  using result_type = PromiseBase<ResultType>::result_type;
-  using executor_type = PromiseBase<ResultType>::executor_type;
-
-  auto operator co_await(this auto &&self) -> typename std::decay_t<decltype(self)>::awaiter_type {
-    LOG7("move handle to Awaiter");
-    return self.move_handle();
-  }
-
-  template <class Self>
-    requires(!std::is_reference_v<Self>)
-  auto transform(this Self &&self, std::invocable<result_type> auto &&f) {
-    using awaiter_type = typename std::decay_t<decltype(self)>::awaiter_type;
-    return ChainAwaiter<awaiter_type>(self.move_handle()).transform(std::forward<decltype(f)>(f));
-  }
 };
 XSL_CORO_NE
 #endif

@@ -1,3 +1,13 @@
+/**
+ * @file pipe.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Pipe device
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_SYS_PIPE
 #  define XSL_SYS_PIPE
@@ -16,10 +26,10 @@ namespace impl_dev {
     using value_type = byte;
   };
 }  // namespace impl_dev
-using PipeReadDevice = RawDevice<feature::In<impl_dev::PipeDeviceTraits>>;
-using PipeWriteDevice = RawDevice<feature::Out<impl_dev::PipeDeviceTraits>>;
-using AsyncPipeReadDevice = AsyncRawDevice<feature::In<impl_dev::PipeDeviceTraits>>;
-using AsyncPipeWriteDevice = AsyncRawDevice<feature::Out<impl_dev::PipeDeviceTraits>>;
+using PipeReadDevice = RawDevice<In<impl_dev::PipeDeviceTraits>>;
+using PipeWriteDevice = RawDevice<Out<impl_dev::PipeDeviceTraits>>;
+using AsyncPipeReadDevice = AsyncRawDevice<In<impl_dev::PipeDeviceTraits>>;
+using AsyncPipeWriteDevice = AsyncRawDevice<Out<impl_dev::PipeDeviceTraits>>;
 
 const size_t MAX_SINGLE_FWD_SIZE = 4096;
 /**
@@ -86,7 +96,7 @@ Task<std::optional<std::errc>, Executor> splice_single(From from, To to) {
  * @return Lazy<void, Executor>
  */
 template <class Executor = coro::ExecutorBase, AsyncRawDeviceLike From, AsyncRawDeviceLike To>
-Lazy<void, Executor> splice(From from, To to, AsyncPipeReadDevice pipe_in,
+Task<void, Executor> splice(From from, To to, AsyncPipeReadDevice pipe_in,
                             AsyncPipeWriteDevice pipe_out) {
   splice_single<Executor>(std::move(from), std::move(pipe_out))
       .detach(co_await coro::GetExecutor<Executor>());
@@ -106,7 +116,7 @@ Lazy<void, Executor> splice(From from, To to, AsyncPipeReadDevice pipe_in,
  * @return Lazy<void, Executor>
  */
 template <class Executor = coro::ExecutorBase, AsyncRawDeviceLike From, AsyncRawDeviceLike To>
-Lazy<void, Executor> splice(From from, To to, std::shared_ptr<Poller>& poller) {
+Task<void, Executor> splice(From from, To to, std::shared_ptr<Poller>& poller) {
   auto [pipe_in, pipe_out] = async_pipe(poller);
   return splice<Executor>(std::move(from), std::move(to), std::move(pipe_in), std::move(pipe_out));
 }

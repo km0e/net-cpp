@@ -1,3 +1,13 @@
+/**
+ * @file def.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Network definitions
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_SYS_NET_DEF
 #  define XSL_SYS_NET_DEF
@@ -97,21 +107,20 @@ namespace impl_sock {
 }  // namespace impl_sock
 
 namespace impl_sock {
-  using namespace xsl::feature;
   template <class... Flags>
   struct SocketTraitsTag;
 
   template <class... Flags>
   using SocketTraitsTagCompose = organize_feature_flags_t<
       SocketTraitsTag<
-          set<Tcp<Ip<4>>, Tcp<Ip<6>>, Tcp<placeholder>, TcpIpv4, TcpIpv6, TcpIp,
+          set<Tcp<Ip<4>>, Tcp<Ip<6>>, Tcp<Placeholder>, TcpIpv4, TcpIpv6, TcpIp,
               TcpIpv4SocketTraits, TcpIpv6SocketTraits, TcpIpSocketTraits, Udp<Ip<4>>, Udp<Ip<6>>,
-              Udp<placeholder>, UdpIpv4, UdpIpv6, UdpIp, UdpIpv4SocketTraits, UdpIpv6SocketTraits,
+              Udp<Placeholder>, UdpIpv4, UdpIpv6, UdpIp, UdpIpv4SocketTraits, UdpIpv6SocketTraits,
               UdpIpSocketTraits, AnySocketTraits>>,
       Flags...>::type;
 
   template <>
-  struct SocketTraitsTag<feature::Tcp<feature::Ip<4>>> : std::type_identity<TcpIpv4SocketTraits> {};
+  struct SocketTraitsTag<Tcp<Ip<4>>> : std::type_identity<TcpIpv4SocketTraits> {};
 
   template <>
   struct SocketTraitsTag<TcpIpv4> : std::type_identity<TcpIpv4SocketTraits> {};
@@ -120,7 +129,7 @@ namespace impl_sock {
   struct SocketTraitsTag<TcpIpv4SocketTraits> : std::type_identity<TcpIpv4SocketTraits> {};
 
   template <>
-  struct SocketTraitsTag<feature::Tcp<feature::Ip<6>>> : std::type_identity<TcpIpv6SocketTraits> {};
+  struct SocketTraitsTag<Tcp<Ip<6>>> : std::type_identity<TcpIpv6SocketTraits> {};
 
   template <>
   struct SocketTraitsTag<TcpIpv6> : std::type_identity<TcpIpv6SocketTraits> {};
@@ -129,8 +138,7 @@ namespace impl_sock {
   struct SocketTraitsTag<TcpIpv6SocketTraits> : std::type_identity<TcpIpv6SocketTraits> {};
 
   template <>
-  struct SocketTraitsTag<feature::Tcp<feature::placeholder>>
-      : std::type_identity<TcpIpSocketTraits> {};
+  struct SocketTraitsTag<Tcp<Placeholder>> : std::type_identity<TcpIpSocketTraits> {};
 
   template <>
   struct SocketTraitsTag<TcpIp> : std::type_identity<TcpIpSocketTraits> {};
@@ -139,7 +147,7 @@ namespace impl_sock {
   struct SocketTraitsTag<TcpIpSocketTraits> : std::type_identity<TcpIpSocketTraits> {};
 
   template <>
-  struct SocketTraitsTag<feature::Udp<feature::Ip<4>>> : std::type_identity<UdpIpv4SocketTraits> {};
+  struct SocketTraitsTag<Udp<Ip<4>>> : std::type_identity<UdpIpv4SocketTraits> {};
 
   template <>
   struct SocketTraitsTag<UdpIpv4> : std::type_identity<UdpIpv4SocketTraits> {};
@@ -148,7 +156,7 @@ namespace impl_sock {
   struct SocketTraitsTag<UdpIpv4SocketTraits> : std::type_identity<UdpIpv4SocketTraits> {};
 
   template <>
-  struct SocketTraitsTag<feature::Udp<feature::Ip<6>>> : std::type_identity<UdpIpv6SocketTraits> {};
+  struct SocketTraitsTag<Udp<Ip<6>>> : std::type_identity<UdpIpv6SocketTraits> {};
 
   template <>
   struct SocketTraitsTag<UdpIpv6> : std::type_identity<UdpIpv6SocketTraits> {};
@@ -157,8 +165,7 @@ namespace impl_sock {
   struct SocketTraitsTag<UdpIpv6SocketTraits> : std::type_identity<UdpIpv6SocketTraits> {};
 
   template <>
-  struct SocketTraitsTag<feature::Udp<feature::placeholder>>
-      : std::type_identity<UdpIpSocketTraits> {};
+  struct SocketTraitsTag<Udp<Placeholder>> : std::type_identity<UdpIpSocketTraits> {};
 
   template <>
   struct SocketTraitsTag<UdpIp> : std::type_identity<UdpIpSocketTraits> {};
@@ -167,7 +174,7 @@ namespace impl_sock {
   struct SocketTraitsTag<UdpIpSocketTraits> : std::type_identity<UdpIpSocketTraits> {};
 
   template <>
-  struct SocketTraitsTag<placeholder> : std::type_identity<AnySocketTraits> {};
+  struct SocketTraitsTag<Placeholder> : std::type_identity<AnySocketTraits> {};
 }  // namespace impl_sock
 
 template <class... Flags>

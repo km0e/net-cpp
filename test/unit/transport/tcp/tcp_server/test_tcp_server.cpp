@@ -1,7 +1,15 @@
+/**
+ * @file test_tcp_server.cpp
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #include "xsl/feature.h"
 #include "xsl/logctl.h"
-#include "xsl/net/sync.h"
-#include "xsl/net/transport/tcp.h"
 
 #include <CLI/CLI.hpp>
 #include <pthread.h>
@@ -40,12 +48,12 @@ public:
     INFO("[T][Handler::recv] Received data: {}", this->recv_task.data_buffer);
     this->send_tasks.tasks.emplace_after(
         this->send_tasks.tasks.before_begin(),
-        make_unique<TcpSendString<feature::node>>(std::move(this->recv_task.data_buffer)));
+        make_unique<TcpSendString<node>>(std::move(this->recv_task.data_buffer)));
     this->send_tasks.exec(fd);
     return TcpHandleState::NONE;
   }
   TcpHandleState send([[maybe_unused]] int fd) { return TcpHandleState::NONE; }
-  void close([[maybe_unused]] int fd){};
+  void close([[maybe_unused]] int fd) {};
   TcpHandleState other(int fd, [[maybe_unused]] IOM_EVENTS events) {
     INFO("[T][Handler::other]");
     this->send_tasks.exec(fd);

@@ -1,12 +1,12 @@
 /**
-@file buffer.h
-@author Haixin Pang (kmdr.error@gmail.com)
-@brief
-@version 0.1
-@date 2024-08-04
-
-@copyright Copyright (c) 2024
-
+ * @file buffer.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Buffer for IO
+ * @version 0.11
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
  */
 #pragma once
 #ifndef XSL_NET_IO_BUFFER
@@ -52,11 +52,11 @@ namespace impl_buffer {
   class Buffer;
 
   template <class... Flags>
-  using BufferCompose = feature::organize_feature_flags_t<Buffer<feature::Dyn>, Flags...>;
+  using BufferCompose = organize_feature_flags_t<Buffer<Dyn>, Flags...>;
 
   template <class T>
-  class Buffer<T> : public std::conditional_t<std::is_same_v<T, feature::Dyn>,
-                                              ai::AsyncWritable<byte>, feature::placeholder> {
+  class Buffer<T>
+      : public std::conditional_t<std::is_same_v<T, Dyn>, ai::AsyncWritable<byte>, Placeholder> {
   public:
     using value_type = byte;
 
@@ -83,7 +83,7 @@ namespace impl_buffer {
       co_return std::make_tuple(total_size, std::nullopt);
     };
 
-    BufferCompose<feature::Dyn> to_dyn() { return BufferCompose<feature::Dyn>(std::move(_blocks)); }
+    BufferCompose<Dyn> to_dyn() { return BufferCompose<Dyn>(std::move(_blocks)); }
 
     std::forward_list<Block> _blocks;
 

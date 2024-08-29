@@ -2,7 +2,7 @@
  * @file coro.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Coroutine utilities
- * @version 0.11
+ * @version 0.12
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -13,6 +13,7 @@
 #  define XSL_CORO
 #  include "xsl/coro/await.h"
 #  include "xsl/coro/executor.h"
+#  include "xsl/coro/pub_sub.h"
 #  include "xsl/coro/signal.h"
 #  include "xsl/coro/task.h"
 #  include "xsl/def.h"
@@ -25,8 +26,12 @@ namespace coro {
 }  // namespace coro
 using _coro::BinarySignal;
 using _coro::Signal;
-using _coro::Task;
 using _coro::UnsafeBinarySignal;
 using _coro::UnsafeSignal;
+
+using _coro::PubSub;
+using _coro::Subscriber;
+
+using _coro::Task;
 XSL_NE
 #endif

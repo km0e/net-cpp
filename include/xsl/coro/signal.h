@@ -2,7 +2,7 @@
  * @file signal.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Signal for coroutines
- * @version 0.1
+ * @version 0.2
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -17,164 +17,208 @@
 
 #  include <cassert>
 #  include <coroutine>
+#  include <cstddef>
 #  include <functional>
+#  include <memory>
 #  include <mutex>
-#  include <optional>
 #  include <utility>
+#  include <variant>
+
 XSL_CORO_NB
-/**
- * @brief Awaiter for Signal
- *
- * @tparam T type of the signal
- */
-template <class T>
-class SignalAwaiter {
-public:
-  using value_type = T;
-  SignalAwaiter(std::mutex &mtx, std::optional<value_type> &ready,
-                std::optional<std::function<void()>> &cb)
-      : _mtx(mtx), _ready(ready), _cb(cb) {}
 
-  bool await_ready() noexcept(noexcept(_mtx.lock())) {
-    LOG6("semaphore await_ready");
-    this->_mtx.lock();
-    return this->_ready.has_value();
-  }
-
-  template <class Promise>
-  void await_suspend(std::coroutine_handle<Promise> handle) {
-    LOG6("semaphore await_suspend for {}", (uint64_t)handle.address());
-    this->_cb = [handle] mutable { handle.promise().resume(handle); };
-    this->_mtx.unlock();
-  }
-
-  [[nodiscard("must use the result of await_resume to confirm the semaphore is ready")]] value_type
-  await_resume() {
-    // LOG5("semaphore await_resume");
-    Defer defer([this] { this->_mtx.unlock(); });  ///< must unlock after return
-    return *std::exchange(this->_ready, std::nullopt);
-  }
-
-private:
-  std::mutex &_mtx;
-  std::optional<value_type> &_ready;
-  std::optional<std::function<void()>> &_cb;
+struct SignalStorage {
+  SignalStorage() : mtx(), state() {}
+  std::mutex mtx;
+  std::variant<std::size_t, std::function<void()>> state;
+  bool stop = false;
 };
 
-template <class T>
-class Signal {
-public:
-  using value_type = T;
-  using awaiter_type = SignalAwaiter<value_type>;
-
-private:
-  std::mutex _mtx;
-  std::optional<value_type> _ready;
-  std::optional<std::function<void()>> _cb;
-
-public:
-  using executor_type = void;
-  Signal(std::optional<value_type> ready = std::nullopt) : _mtx(), _ready(ready), _cb() {}
-  Signal(const Signal &) = delete;
-  Signal(Signal &&) = delete;
-  Signal &operator=(const Signal &) = delete;
-  Signal &operator=(Signal &&) = delete;
-  ~Signal() {}
-
-  awaiter_type operator co_await() { return {_mtx, _ready, _cb}; }
-
+template <class Storage>
+struct SignalRxTraits;
+template <>
+struct SignalRxTraits<SignalStorage> {
+  using storage_type = SignalStorage;
   /**
-   * @brief Release the signal
+   * @brief Check if the signal is ready
    *
-   * @tparam _Tp type of the signal
-   * @param ready the signal
+   * @param storage the signal storage
+   * @return true if the signal is ready
+   * @return false if the signal is not ready
    */
-  template <class _Tp>
-  void release(_Tp &&ready) {
-    LOG6("semaphore release {}", ready);
-    this->_mtx.lock();
-    this->_ready = std::forward<_Tp>(ready);
-    if (this->_cb) {
-      auto cb = std::exchange(
-          this->_cb,
-          std::nullopt);  // must exchange before call, because the cb may call co_await again
-      (*cb)();
-    } else {
-      this->_mtx.unlock();
-    }
+  static bool await_ready(storage_type &storage) {
+    storage.mtx.lock();
+    return storage.stop
+           || (std::holds_alternative<std::size_t>(storage.state)
+               && std::get<std::size_t>(storage.state) > 0);
   }
-};
-
-using BinarySignal = Signal<bool>;  ///< Signal for bool
-
-template <class T>
-class UnsafeSignalAwaiter {
-public:
-  using value_type = T;
-
-  UnsafeSignalAwaiter(std::optional<value_type> &ready, std::function<void()> &cb)
-      : _ready(ready), _cb(cb) {}
-
-  bool await_ready() noexcept {
-    LOG6("semaphore await_ready");
+  /**
+   * @brief Suspend the signal
+   *
+   * @tparam Promise the promise type
+   * @param storage the signal storage
+   * @param handle the coroutine handle
+   */
+  template <class Promise>
+  static void await_suspend(storage_type &storage, std::coroutine_handle<Promise> handle) {
+    storage.state = [handle] { handle.promise().resume(handle); };
+    storage.mtx.unlock();
+    DEBUG("Signal suspended");
+  }
+  /**
+   * @brief Resume the signal
+   *
+   * @param storage the signal storage
+   * @return true if the signal is still alive
+   * @return false if the signal is not alive
+   */
+  [[nodiscard("must use the result of await_resume to confirm the signal is still alive")]]
+  static bool await_resume(storage_type &storage) {
+    Defer defer{[&storage] { storage.mtx.unlock(); }};
+    auto &state = std::get<std::size_t>(storage.state);
+    if (state > 0) {
+      state--;
+      DEBUG("Signal resumed {}", state);
+      return true;
+    }
     return false;
   }
-
-  template <class Promise>
-  void await_suspend(std::coroutine_handle<Promise> handle) {
-    LOG6("semaphore await_suspend for {}", (uint64_t)handle.address());
-    this->_cb = [handle] mutable { handle.promise().resume(handle); };
-  }
-
-  [[nodiscard("must use the result of await_resume to confirm the semaphore is ready")]] value_type
-  await_resume() {
-    LOG6("semaphore await_resume");
-    return *std::exchange(this->_ready, std::nullopt);
-  }
-
-private:
-  std::optional<value_type> &_ready;
-  std::function<void()> &_cb;
 };
 
-template <class T>
-class UnsafeSignal {
+/// @brief Signal receiver
+template <class Pointer = std::shared_ptr<SignalStorage>>
+class SignalReceiver {
 public:
-  using value_type = T;
-  using awaiter_type = UnsafeSignalAwaiter<value_type>;
+  using storage_type = SignalStorage;
+  using traits_type = SignalRxTraits<storage_type>;
 
 private:
-  std::optional<value_type> _ready;
-  std::function<void()> _cb;
+  Pointer _storage;
 
 public:
-  using executor_type = void;
-  UnsafeSignal() : _ready(), _cb() {}
-  UnsafeSignal(const UnsafeSignal &) = delete;
-  UnsafeSignal(UnsafeSignal &&) = delete;
-  UnsafeSignal &operator=(const UnsafeSignal &) = delete;
-  UnsafeSignal &operator=(UnsafeSignal &&) = delete;
-  ~UnsafeSignal() {}
+  template <class _Pointer>
+  SignalReceiver(_Pointer &&storage) : _storage(std::forward<_Pointer>(storage)) {}
+  SignalReceiver(SignalReceiver &&) = default;
+  SignalReceiver &operator=(SignalReceiver &&) = default;
+  /// @brief Check if the signal is ready
+  bool await_ready() noexcept { return traits_type::await_ready(*this->_storage); }
+  /// @brief Suspend the signal
+  template <class Promise>
+  void await_suspend(std::coroutine_handle<Promise> handle) {
+    return traits_type::await_suspend(*this->_storage, handle);
+  }
+  /// @brief Resume the signal
+  [[nodiscard("must use the result of await_resume to confirm the signal is still alive")]]
+  bool await_resume() {
+    return traits_type::await_resume(*this->_storage);
+  }
+  /// @brief Pin the signal, return a raw SignalReceiver
+  SignalReceiver<SignalStorage *> pin() { return {std::to_address(this->_storage)}; }
+  /// @brief Check if the signal is valid
+  operator bool() const { return this->_storage != nullptr; }
+};
 
-  awaiter_type operator co_await() { return UnsafeSignalAwaiter(_ready, _cb); }
+template <class Storage, std::size_t MaxSignals>
+struct SignalTxTraits;
 
+template <std::size_t MaxSignals>
+struct SignalTxTraits<SignalStorage, MaxSignals> {
+  using storage_type = SignalStorage;
   /**
    * @brief Release the signal
    *
-   * @tparam _Tp type of the signal
-   * @param ready the signal
+   * @param storage the signal storage
    */
-  template <class _Tp>
-  void release(_Tp &&ready) {
-    LOG6("semaphore release {}", ready);
-    this->_ready = std::forward<_Tp>(ready);
-    auto cb = std::exchange(
-        this->_cb, {});  ///< must exchange before call, because the cb may call co_await again
-    cb();
+  static void release(storage_type &storage) {
+    storage.mtx.lock();
+    if (std::size_t *state = std::get_if<std::size_t>(&storage.state); state != nullptr) {
+      *state = [state] {
+        if constexpr (MaxSignals > 1) {
+          return std::min(*state + 1, MaxSignals);
+        } else {
+          return 1;
+        }
+      }();
+      storage.mtx.unlock();
+      DEBUG("Signal released {}", *state);
+    } else {
+      std::get<std::function<void()>>(std::exchange(storage.state, std::size_t{1}))();
+      DEBUG("Signal Callback");
+    }
+  }
+  /**
+   * @brief Stop the signal
+   *
+   * @tparam Force if true, reset the signal count to 0
+   * @param storage the signal storage
+   * @return std::size_t the count of signals released
+   */
+  template <bool Force = false>
+  static std::size_t stop(storage_type &storage) {
+    storage.mtx.lock();
+    storage.stop = true;
+    std::size_t count = 0;
+    if (std::size_t *state = std::get_if<std::size_t>(&storage.state); state != nullptr) {
+      count = *state;
+      if constexpr (Force) {
+        *state = 0;
+      }
+      storage.mtx.unlock();
+    } else {
+      std::get<std::function<void()>>(std::exchange(storage.state, std::size_t{0}))();
+    }
+    return count;
   }
 };
 
-using UnsafeBinarySignal = UnsafeSignal<bool>;  ///< Signal for bool
+/// @brief Signal sender
+template <std::size_t MaxSignals, class Pointer = std::shared_ptr<SignalStorage>>
+class SignalSender {
+public:
+  using storage_type = SignalStorage;
+  using traits_type = SignalTxTraits<storage_type, MaxSignals>;
 
+private:
+  Pointer _storage;
+
+public:
+  template <class _Pointer>
+  SignalSender(_Pointer &&storage) : _storage(std::forward<_Pointer>(storage)) {}
+  SignalSender(SignalSender &&) = default;
+  SignalSender(const SignalSender &) = delete;
+  SignalSender &operator=(SignalSender &&) = default;
+  SignalSender &operator=(const SignalSender &) = delete;
+  ~SignalSender() {
+    if constexpr (std::is_pointer_v<Pointer>) {
+      return;
+    }
+    if (this->_storage) {
+      this->stop();
+    }
+  }
+  /// @brief Release the signal
+  void release() { return traits_type::release(*this->_storage); }
+  /// @brief Stop the signal
+  template <bool Force = false>
+  std::size_t stop() {
+    return traits_type::template stop<Force>(*this->_storage);
+  }
+  /// @brief Pin the signal, return a raw SignalSender
+  SignalSender<MaxSignals, SignalStorage *> pin() { return {std::to_address(this->_storage)}; }
+  /// @brief Check if the signal is valid
+  operator bool() const { return this->_storage != nullptr; }
+};
+/**
+ * @brief Create a signal
+ *
+ * @tparam MaxSignals the maximum number of signals
+ * @return decltype(auto) a pair of SignalReceiver and SignalSender
+ */
+template <std::size_t MaxSignals = 1>
+decltype(auto) signal() {
+  auto storage = std::make_shared<SignalStorage>();
+  auto copy = storage;
+  return std::make_pair(SignalReceiver<decltype(storage)>(std::move(storage)),
+                        SignalSender<MaxSignals, decltype(copy)>(std::move(copy)));
+}
 XSL_CORO_NE
 #endif

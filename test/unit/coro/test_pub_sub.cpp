@@ -2,7 +2,7 @@
  * @file test_pub_sub.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Test for Publish-Subscribe pattern for coroutines
- * @version 0.1
+ * @version 0.2
  * @date 2024-08-28
  *
  * @copyright Copyright (c) 2024
@@ -18,12 +18,29 @@
 
 using namespace xsl;
 
-TEST(PubSub, Safe) {
+TEST(PubSub, SafeExit) {
+  SignalReceiver rx = [] -> auto {
+    PubSub<int, 100> pubsub{};
+    auto sub_res = pubsub.subscribe(1);
+    pubsub.publish(1);
+    return std::move(*sub_res);
+  }();
+  int count = 0;
+  [](SignalReceiver<> sub, int &count) -> Task<void> {
+    while (co_await sub) {
+      count++;
+    }
+  }(std::move(rx), count)
+                                              .detach();
+  ASSERT_EQ(count, 1);
+}
+
+TEST(PubSub, HeavyConcurrent) {
   UniformDistributionGenerator gen{};
   auto executor = std::make_shared<coro::NewThreadExecutor>();
   auto rand_pub = gen.generate(100000, 1, 100);
   auto rand_sub = gen.generate(10, 1, 100);
-  PubSub<int> pubsub{};
+  PubSub<int, 100> pubsub{};
 
   std::unordered_map<int, int> counter{};
   for (auto i : rand_sub) {
@@ -36,8 +53,8 @@ TEST(PubSub, Safe) {
       if (!sub_res) {
         co_return;
       }
-      Subscriber<int> sub = *sub_res;
-      while (co_await sub) {
+      SignalReceiver rx = std::move(*sub_res);
+      while (co_await rx) {
         counter[v]++;
       }
       sem.release();
@@ -50,7 +67,7 @@ TEST(PubSub, Safe) {
       total++;
     }
   }
-  pubsub.clear();
+  pubsub.stop();
   for (auto i{0u}; i < counter.size(); i++) {
     sem.acquire();
   }

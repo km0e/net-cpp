@@ -37,9 +37,9 @@ const std::size_t MEDIA_MAIN_TYPE_COUNT = 9;
 const std::array<std::string_view, MEDIA_MAIN_TYPE_COUNT> MEDIA_MAIN_TYPE_STRINGS = {
     "*", "text", "image", "audio", "video", "application", "multipart", "message", "model",
 };
-std::string_view to_string_view(const MediaMainType &type);
+constexpr std::string_view to_string_view(const MediaMainType &type);
 
-bool operator==(MediaMainType lhs, std::string_view rhs);
+constexpr bool operator==(MediaMainType lhs, std::string_view rhs);
 
 enum class MediaSubType : uint8_t {
   ANY,
@@ -88,9 +88,9 @@ const std::array<std::string_view, MEDIA_SUB_TYPE_COUNT> MEDIA_SUB_TYPE_STRINGS 
     "byteranges",
 };
 
-std::string_view to_string_view(const MediaSubType &subtype);
+constexpr std::string_view to_string_view(const MediaSubType &subtype);
 
-bool operator==(MediaSubType lhs, std::string_view rhs);
+constexpr bool operator==(MediaSubType lhs, std::string_view rhs);
 
 //<
 const std::size_t COMMON_MEDIA_TYPE_COUNT = 82;
@@ -439,22 +439,39 @@ struct MediaTypeBase {
   const char *start;
   const char *slash;
   const char *end;
-  std::string_view main_type() const;
-  std::string_view sub_type() const;
-  bool type_includes(const MediaTypeBase &other) const;
-  std::string_view to_string_view() const;
+  constexpr std::string_view main_type() const { return {start, slash}; }
+  constexpr std::string_view sub_type() const { return {slash + 1, end}; }
+  constexpr bool type_includes(const MediaTypeBase &other) const {
+    using namespace common_media_type;
+    if (this->main_type() == any) {
+      return true;
+    }
+    if (this->main_type() != other.main_type()) {
+      return false;
+    }
+    if (this->sub_type() == any) {
+      return true;
+    }
+    return this->sub_type() == other.sub_type();
+  }
+  constexpr std::string_view to_string_view() const;
 };
 
 struct MediaType : MediaTypeBase {
-  static MediaType from_extension(std::string_view extension);
+  static constexpr MediaType from_extension(std::string_view extension);
   Parameters parameters;
-  std::string to_string() const;
+  constexpr std::string to_string() const;
 };
 
 struct MediaTypeView : MediaTypeBase {
-  static MediaTypeView from_extension(std::string_view extension);
+  static constexpr MediaTypeView from_extension(std::string_view extension) {
+    auto base = MediaTypeBase::from_extension(extension);
+    return {base, {}};
+  }
   ParametersView parameters;
-  std::string_view to_string_view() const;
+  constexpr std::string_view to_string_view() const {
+    return {start, parameters.empty() ? end : parameters.back().value.data()};
+  }
 };
 
 XSL_HTTP_NE

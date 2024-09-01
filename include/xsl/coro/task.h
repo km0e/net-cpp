@@ -13,10 +13,10 @@
 #  define XSL_CORO_TASK
 #  include "xsl/coro/base.h"
 #  include "xsl/coro/block.h"
-#  include "xsl/coro/chain.h"
 #  include "xsl/coro/def.h"
 #  include "xsl/coro/detach.h"
 #  include "xsl/coro/executor.h"
+#  include "xsl/coro/then.h"
 #  include "xsl/logctl.h"
 
 #  include <cassert>
@@ -36,31 +36,33 @@ public:
   typedef typename promise_type::executor_type executor_type;
   typedef typename promise_type::result_type result_type;
 
-  TaskAwaiter(std::coroutine_handle<promise_type> handle) : _handle(handle) {}
-  TaskAwaiter(TaskAwaiter &&another) noexcept : _handle(std::exchange(another._handle, {})) {}
-  TaskAwaiter &operator=(TaskAwaiter &&another) noexcept {
+  constexpr TaskAwaiter(std::coroutine_handle<promise_type> handle) : _handle(handle) {}
+  constexpr TaskAwaiter(TaskAwaiter &&another) noexcept
+      : _handle(std::exchange(another._handle, {})) {}
+  constexpr TaskAwaiter &operator=(TaskAwaiter &&another) noexcept {
     _handle = std::exchange(another._handle, {});
     return *this;
   }
-  TaskAwaiter(const TaskAwaiter &) = delete;
-  TaskAwaiter &operator=(const TaskAwaiter &) = delete;
-  ~TaskAwaiter() {
+  constexpr TaskAwaiter(const TaskAwaiter &) = delete;
+  constexpr TaskAwaiter &operator=(const TaskAwaiter &) = delete;
+  constexpr ~TaskAwaiter() {
     LOG7("TaskAwaiter destructor for {}", (uint64_t)_handle.address());
     if (_handle) {
       assert(_handle.done());
       _handle.destroy();
     }
   }
-  bool await_ready() const { return false; }
+  constexpr bool await_ready() const { return false; }
 
   template <class _Promise>
-  std::coroutine_handle<promise_type> await_suspend(std::coroutine_handle<_Promise> handle) {
+  constexpr std::coroutine_handle<promise_type> await_suspend(
+      std::coroutine_handle<_Promise> handle) {
     LOG7("await_suspend: {} -> {}", (uint64_t)_handle.address(), (uint64_t)handle.address());
     this->_handle.promise().next(handle);
     return this->_handle;
   }
 
-  result_type await_resume() {
+  constexpr result_type await_resume() {
     LOG7("task await_resume for {}", (uint64_t)_handle.address());
     return *_handle.promise();
   }
@@ -71,34 +73,29 @@ protected:
 
 class NextBase {
 public:
-  NextBase() : _next(nullptr), _executor(nullptr) {}
+  constexpr NextBase() : _next(nullptr), _executor(nullptr) {}
 
-  std::suspend_always initial_suspend() const noexcept { return {}; }
+  constexpr std::suspend_always initial_suspend() const noexcept { return {}; }
 
   struct final_awaiter {
-    bool await_ready() const noexcept { return false; }
-    std::coroutine_handle<> await_suspend(std::coroutine_handle<>) const noexcept {
-      LOG7("final_awaiter await_suspend");
+    constexpr bool await_ready() const noexcept { return false; }
+    constexpr std::coroutine_handle<> await_suspend(std::coroutine_handle<>) const noexcept {
       return _next;
     }
-    void await_resume() const noexcept {}
+    constexpr void await_resume() const noexcept {}
     std::coroutine_handle<> _next;
   };
 
-  final_awaiter final_suspend() const noexcept {
-    LOG7("final_suspend");
-    return {this->_next};
-  }
+  constexpr final_awaiter final_suspend() const noexcept { return {this->_next}; }
 
-  const std::shared_ptr<ExecutorBase> &executor() const noexcept { return _executor; }
+  constexpr const std::shared_ptr<ExecutorBase> &executor() const noexcept { return _executor; }
 
-  template <class _Executor>
-  void by(this auto &&self, _Executor &&executor) {
-    self._executor = std::forward<_Executor>(executor);
+  constexpr void by(this auto &&self, auto &&executor) {
+    self._executor = std::forward<decltype(executor)>(executor);
   }
 
   template <class Promise>
-  void next(std::coroutine_handle<Promise> handle) {
+  constexpr void next(std::coroutine_handle<Promise> handle) {
     LOG7("Promise next");
     this->_next = handle;
     if constexpr (!std::is_same_v<typename Promise::executor_type, void>) {
@@ -109,7 +106,7 @@ public:
   }
 
   template <class Promise>
-  void resume(std::coroutine_handle<Promise> handle) {
+  constexpr void resume(std::coroutine_handle<Promise> handle) {
     if (this->executor()) {
       this->_executor->schedule([handle] mutable {
         LOG7("task resume {}", (uint64_t)handle.address());
@@ -144,12 +141,11 @@ public:
   using awaiter_type = TaskAwaiter<promise_type>;
 
 protected:
-  using Friend = HandleControl;
-  friend Friend;
-
   std::coroutine_handle<promise_type> _handle;
 
-  std::coroutine_handle<promise_type> move_handle() { return std::exchange(this->_handle, {}); }
+  constexpr std::coroutine_handle<promise_type> move_handle() {
+    return std::exchange(this->_handle, {});
+  }
 
 public:
   constexpr Task(std::coroutine_handle<promise_type> handle) noexcept : _handle(handle) {}
@@ -160,13 +156,13 @@ public:
   }
   constexpr ~Task() { assert(!_handle); }
 
-  awaiter_type operator co_await(this Task &&self) {
+  constexpr awaiter_type operator co_await(this Task &&self) {
     LOG7("move handle to Awaiter");
     return self.move_handle();
   }
 
-  auto transform(this Task &&self, std::invocable<result_type> auto &&f) {
-    return ChainAwaiter<awaiter_type>(self.move_handle()).transform(std::forward<decltype(f)>(f));
+  constexpr auto then(this Task &&self, std::invocable<result_type> auto &&f) {
+    return ThenAwaiter<awaiter_type>(self.move_handle()).then(std::forward<decltype(f)>(f));
   }
   /**
    * @brief Block the task
@@ -175,10 +171,9 @@ public:
    * @param self
    * @return result_type
    */
-  template <class Self>
-  result_type block(this Self &&self) {
+  constexpr result_type block(this auto &&self) {
     LOG7("Task block");
-    return _coro::block(std::forward<Self>(self));
+    return _coro::block(std::forward<decltype(self)>(self));
   }
   /**
    * @brief Set the executor
@@ -191,7 +186,7 @@ public:
    */
   template <class Self, class E>
     requires std::constructible_from<std::shared_ptr<ExecutorBase>, E>
-  auto &&by(this Self &&self, E &&executor) {
+  constexpr auto &&by(this Self &&self, E &&executor) {
     self._handle.promise().by(std::forward<E>(executor));
     return std::forward<Self>(self);
   }
@@ -200,7 +195,7 @@ public:
    *
    * @param self the task, must be rvalue reference
    */
-  void detach(this Task &&self) {
+  constexpr void detach(this Task &&self) {
     LOG6("task detach");
     _coro::detach(std::move(self));
   }
@@ -214,7 +209,7 @@ public:
    */
   template <class E>
     requires std::constructible_from<std::shared_ptr<ExecutorBase>, E>
-  void detach(this Task &&self, E &&executor) {
+  constexpr void detach(this Task &&self, E &&executor) {
     std::move(self).by(std::forward<E>(executor)).detach();
   }
 };

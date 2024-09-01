@@ -36,15 +36,15 @@ namespace {
 template <template <class> class Get, class From, class To>
 constexpr bool dyn_cast_v = existing_v<To, for_each_t<DynGet, typename Get<From>::type>>;
 
-template <template <class> class Get, class Dyn, class T>
-decltype(auto) to_dyn_unique(T&& t) {
-  using raw_type = std::decay_t<T>;
+template <template <class> class Get, class Dyn>
+constexpr decltype(auto) to_dyn_unique(auto&& t) {
+  using raw_type = std::decay_t<decltype(t)>;
   if constexpr (std::is_same_v<raw_type, Dyn>) {
     return std::addressof(t);
   } else {
     return std::unique_ptr<Dyn>{std::make_unique<
         typename remove_first_if<dyn_cast_pred, Dyn, typename Get<raw_type>::type>::type2>(
-        std::forward<T>(t))};
+        std::forward<decltype(t)>(t))};
   }
 }
 XSL_NE

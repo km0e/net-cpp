@@ -42,10 +42,12 @@ struct StaticFileConfig {
 template <ABRL ByteReader, ABWL ByteWriter>
 class StaticFileServer {
 public:
-  StaticFileServer(StaticFileConfig&& cfg) : cfg(std::move(cfg)) {}
-  std::optional<Status> sendfile(HandleContext<ByteReader, ByteWriter>& ctx,
-                                 std::filesystem::path& path, const MediaTypeView& content_type) {
-    if (auto ok_media_type = ctx.request.get_header("Accept"); ok_media_type) {//check if the media type is acceptable
+  constexpr StaticFileServer(StaticFileConfig&& cfg) : cfg(std::move(cfg)) {}
+  constexpr std::optional<Status> sendfile(HandleContext<ByteReader, ByteWriter>& ctx,
+                                           std::filesystem::path& path,
+                                           const MediaTypeView& content_type) {
+    if (auto ok_media_type = ctx.request.get_header("Accept");
+        ok_media_type) {  // check if the media type is acceptable
       auto media_types = parse_accept(*ok_media_type);
       if (!std::ranges::any_of(media_types, [content_type](const auto& media) {
             LOG6("accept media: {}", media.first.to_string_view());
@@ -82,9 +84,10 @@ public:
               res.ec == std::errc{} || (w == 0)) {
             continue;
           }
-          auto compress_encoding = std::ranges::find_if(
-              this->cfg.compress_encodings,
-              [encoding](const auto& compress_encoding) { return compress_encoding == encoding; });//
+          auto compress_encoding = std::ranges::find_if(this->cfg.compress_encodings,
+                                                        [encoding](const auto& compress_encoding) {
+                                                          return compress_encoding == encoding;
+                                                        });  //
           if (compress_encoding == this->cfg.compress_encodings.end()) {
             continue;
           }
@@ -111,11 +114,11 @@ public:
 protected:
   StaticFileConfig cfg;
 
-  std::optional<Status> try_sendfile(HandleContext<ByteReader, ByteWriter>& ctx,
-                                     const std::filesystem::path& path,
-                                     const MediaTypeView& content_type) {
+  constexpr std::optional<Status> try_sendfile(HandleContext<ByteReader, ByteWriter>& ctx,
+                                               const std::filesystem::path& path,
+                                               const MediaTypeView& content_type) {
     std::error_code ec;
-    auto status = std::filesystem::status(path, ec);//check the status of the file
+    auto status = std::filesystem::status(path, ec);  // check the status of the file
     if (ec || status.type() != std::filesystem::file_type::regular) {
       if (status.type() == std::filesystem::file_type::not_found) {
         return Status::NOT_FOUND;
@@ -123,7 +126,7 @@ protected:
       return Status::INTERNAL_SERVER_ERROR;
     }
 
-    auto file_size = std::filesystem::file_size(path, ec);///get the file size
+    auto file_size = std::filesystem::file_size(path, ec);  /// get the file size
     if (ec) {
       LOG2("file_size failed: path: {} error: {}", path.native(), ec.message());
       return Status::INTERNAL_SERVER_ERROR;
@@ -152,14 +155,14 @@ class FileRouteHandler : public StaticFileServer<ByteReader, ByteWriter> {
   using Base = StaticFileServer<ByteReader, ByteWriter>;
 
 public:
-  FileRouteHandler(StaticFileConfig&& cfg) : Base(std::move(cfg)), content_type{} {
+  constexpr FileRouteHandler(StaticFileConfig&& cfg) : Base(std::move(cfg)), content_type{} {
     this->content_type = MediaTypeView::from_extension(this->cfg.path.extension().native());
   }
-  FileRouteHandler(FileRouteHandler&&) = default;
-  FileRouteHandler& operator=(FileRouteHandler&&) = default;
-  FileRouteHandler(const FileRouteHandler&) = default;
-  FileRouteHandler& operator=(const FileRouteHandler&) = default;
-  ~FileRouteHandler() {}
+  constexpr FileRouteHandler(FileRouteHandler&&) = default;
+  constexpr FileRouteHandler& operator=(FileRouteHandler&&) = default;
+  constexpr FileRouteHandler(const FileRouteHandler&) = default;
+  constexpr FileRouteHandler& operator=(const FileRouteHandler&) = default;
+  constexpr ~FileRouteHandler() {}
   HandleResult operator()(HandleContext<ByteReader, ByteWriter>& ctx) {
     co_return this->sendfile(ctx, this->cfg.path, this->content_type);
   }
@@ -170,8 +173,8 @@ class FolderRouteHandler : public StaticFileServer<ByteReader, ByteWriter> {
   using Base = StaticFileServer<ByteReader, ByteWriter>;
 
 public:
-  FolderRouteHandler(StaticFileConfig&& cfg) : Base(std::move(cfg)) {}
-  ~FolderRouteHandler() {}
+  constexpr FolderRouteHandler(StaticFileConfig&& cfg) : Base(std::move(cfg)) {}
+  constexpr ~FolderRouteHandler() {}
   HandleResult operator()(HandleContext<ByteReader, ByteWriter>& ctx) {
     LOG5("FolderRouteHandler: {}", ctx.current_path);
     if (ctx.current_path.empty()) {
@@ -187,7 +190,7 @@ public:
 };
 /// @brief create a static handler from the config
 template <ABRL ByteReader, ABWL ByteWriter>
-Handler<ByteReader, ByteWriter> create_static_handler(StaticFileConfig&& cfg) {
+constexpr Handler<ByteReader, ByteWriter> create_static_handler(StaticFileConfig&& cfg) {
   rt_assert(!cfg.path.empty(), "path is empty");
   std::error_code ec;
   auto status = std::filesystem::status(cfg.path, ec);

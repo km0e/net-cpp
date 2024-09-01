@@ -63,7 +63,7 @@ TEST(Signal, SafeForceStop) {
     }
   });
   producer.join();
-  count += w.stop<true>();
+  count += w.stop<true>();//TODO: bug?
   consumer.join();
   ASSERT_EQ(count, N);
 };

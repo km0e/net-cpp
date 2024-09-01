@@ -29,17 +29,18 @@ namespace impl {
   public:
     ~ResolveCategory() = default;
 
-    const char *name() const noexcept override { return "resolve"; }
+    constexpr const char *name() const noexcept override { return "resolve"; }
     std::error_condition default_error_condition(int ev) const noexcept override {
       return ev == 0 ? std::error_condition{} : std::error_condition{ev, *this};
     }
-    bool equivalent(int code, const std::error_condition &condition) const noexcept override {
+    constexpr bool equivalent(int code,
+                              const std::error_condition &condition) const noexcept override {
       return condition.category() == *this && condition.value() == code;
     }
-    bool equivalent(const std::error_code &code, int condition) const noexcept override {
+    constexpr bool equivalent(const std::error_code &code, int condition) const noexcept override {
       return code.category() == *this && code.value() == condition;
     }
-    std::string message(int ev) const override { return gai_strerror(ev); }
+    constexpr std::string message(int ev) const override { return gai_strerror(ev); }
   };
 
 }  // namespace impl
@@ -55,7 +56,9 @@ enum class ResolveFlag : int {
   PASSIVE = AI_PASSIVE,
 };
 
-ResolveFlag operator|(ResolveFlag lhs, ResolveFlag rhs);
+constexpr ResolveFlag operator|(ResolveFlag lhs, ResolveFlag rhs) {
+  return static_cast<ResolveFlag>(static_cast<int>(lhs) | static_cast<int>(rhs));
+}
 
 const ResolveFlag SERVER_FLAGS = ResolveFlag::ADDRCONFIG | ResolveFlag::PASSIVE;
 const ResolveFlag CLIENT_FLAGS = ResolveFlag::ADDRCONFIG;
@@ -66,7 +69,7 @@ using ResolveResult = std::expected<EndpointSet<Tag>, std::error_condition>;
 namespace impl {
 
   template <class Traits>
-  ResolveResult<Traits> resolve(const char *name, const char *serv, ResolveFlag flags) {
+  constexpr ResolveResult<Traits> resolve(const char *name, const char *serv, ResolveFlag flags) {
     addrinfo hints;
     addrinfo *res;
     std::memset(&hints, 0, sizeof(hints));
@@ -92,8 +95,8 @@ namespace impl {
      @return ResolveResult
      */
     template <class... Flags>
-    decltype(auto) resolve(const char *name, const char *serv,
-                           ResolveFlag flags = ResolveFlag::ADDRCONFIG) {
+    constexpr decltype(auto) resolve(const char *name, const char *serv,
+                                     ResolveFlag flags = ResolveFlag::ADDRCONFIG) {
       return impl::resolve<SocketTraits<Flags...>>(name, serv, flags);
     }
     /**
@@ -106,8 +109,8 @@ namespace impl {
      @return ResolveResult
      */
     template <class... Flags>
-    decltype(auto) resolve(const char *name, int serv,
-                           ResolveFlag flags = ResolveFlag::ADDRCONFIG) {
+    constexpr decltype(auto) resolve(const char *name, int serv,
+                                     ResolveFlag flags = ResolveFlag::ADDRCONFIG) {
       char serv_str[6];
       std::snprintf(serv_str, sizeof(serv_str), "%d", serv);
       return impl::resolve<SocketTraits<Flags...>>(name, serv_str, flags);
@@ -120,8 +123,8 @@ namespace impl {
      @return ResolveResult
      */
     template <class... Flags>
-    decltype(auto) resolve(const char *serv,
-                           ResolveFlag flags = ResolveFlag::ADDRCONFIG | ResolveFlag::PASSIVE) {
+    constexpr decltype(auto) resolve(const char *serv, ResolveFlag flags = ResolveFlag::ADDRCONFIG
+                                                                           | ResolveFlag::PASSIVE) {
       return impl::resolve<SocketTraits<Flags...>>(nullptr, serv, flags);
     }
     /**
@@ -133,8 +136,8 @@ namespace impl {
      @return ResolveResult
      */
     template <class... Flags>
-    decltype(auto) resolve(uint16_t port,
-                           ResolveFlag flags = ResolveFlag::ADDRCONFIG | ResolveFlag::PASSIVE) {
+    constexpr decltype(auto) resolve(uint16_t port, ResolveFlag flags = ResolveFlag::ADDRCONFIG
+                                                                        | ResolveFlag::PASSIVE) {
       char port_str[6];
       std::snprintf(port_str, sizeof(port_str), "%u", port);
       return impl::resolve<SocketTraits<Flags...>>(nullptr, port_str, flags);

@@ -33,7 +33,7 @@ namespace {
   template <class Abr, class Abw, class Service>
   struct BaseCastCompose<Abr, Abw, Service> {
     template <class T, class U, class V>
-    static auto cast(T&& ard, U&& awd, V&& service) {
+    static constexpr auto cast(T&& ard, U&& awd, V&& service) {
       using rabr_type = typename Service::abr_type;
       using rabw_type = typename Service::abw_type;
       static_assert(dyn_cast_v<IODynGet, Abr, rabr_type>,
@@ -48,7 +48,7 @@ namespace {
   template <class ABrw, class Service>
   struct BaseCastCompose<ABrw, Service> {
     template <class T, class U, class V>
-    static decltype(auto) cast(T&& ard, U&& awd, V&& service) {
+    static constexpr decltype(auto) cast(T&& ard, U&& awd, V&& service) {
       using l_in_type = std::decay_t<T>;
       using l_out_type = std::decay_t<U>;
       using r_in_type = typename Service::abr_type;
@@ -129,12 +129,12 @@ class Connection {
   using abw_type = ABw;
 
 public:
-  Connection(abr_type&& in_dev, abw_type&& out_dev)
+  constexpr Connection(abr_type&& in_dev, abw_type&& out_dev)
       : _ard(std::move(in_dev)), _awd(std::move(out_dev)), _parser{} {}
 
-  Connection(Connection&&) = default;
-  Connection& operator=(Connection&&) = default;
-  ~Connection() {}
+  constexpr Connection(Connection&&) = default;
+  constexpr Connection& operator=(Connection&&) = default;
+  constexpr ~Connection() {}
 
   Task<Result> read(std::span<Request<abr_type>> reqs) {
     std::size_t i = 0;
@@ -182,7 +182,7 @@ private:
 };
 /// @brief make a connection
 template <ABRWL ABrw>
-Connection<typename ABrw::template rebind<In>, typename ABrw::template rebind<Out>> make_connection(
+constexpr Connection<typename ABrw::template rebind<In>, typename ABrw::template rebind<Out>> make_connection(
     ABrw&& dev) {
   auto [r, w] = std::move(dev).split();
   return {std::move(r), std::move(w)};

@@ -183,23 +183,24 @@ namespace impl_sock {
      *
      * @return std::pair<sockaddr *, socklen_t *>
      */
-    static std::pair<sockaddr *, socklen_t *> null() { return {nullptr, nullptr}; }
+    static constexpr std::pair<sockaddr *, socklen_t *> null() { return {nullptr, nullptr}; }
     /**
      * @brief Construct a new Sock Addr Storage object
      *
      */
-    SockAddrStorage() : _addr{}, _addrlen(sizeof(_addr)) {}
-    SockAddrStorage(const SockAddrStorage &other) = default;             ///< copy constructor
-    SockAddrStorage(SockAddrStorage &&other) = default;                  ///< move constructor
-    SockAddrStorage &operator=(const SockAddrStorage &other) = default;  ///< copy assignment
-    SockAddrStorage &operator=(SockAddrStorage &&other) = default;       ///< move assignment
+    constexpr SockAddrStorage() : _addr{}, _addrlen(sizeof(_addr)) {}
+    constexpr SockAddrStorage(const SockAddrStorage &other) = default;  ///< copy constructor
+    constexpr SockAddrStorage(SockAddrStorage &&other) = default;       ///< move constructor
+    constexpr SockAddrStorage &operator=(const SockAddrStorage &other)
+        = default;                                                            ///< copy assignment
+    constexpr SockAddrStorage &operator=(SockAddrStorage &&other) = default;  ///< move assignment
     /**
      * @brief Construct a new Sock Addr Storage object from raw address and length
      *
      * @param addr raw address
      * @param addrlen address length
      */
-    SockAddrStorage(sockaddr *addr, socklen_t addrlen)
+    inline SockAddrStorage(sockaddr *addr, socklen_t addrlen)
         : _addr(reinterpret_cast<sockaddr_storage &>(*addr)), _addrlen(addrlen) {}
 
     /**
@@ -209,14 +210,14 @@ namespace impl_sock {
      * @return true if equal
      * @return false if not equal
      */
-    bool operator==(const SockAddrStorage &other) const {
+    constexpr bool operator==(const SockAddrStorage &other) const {
       return this->_addrlen == other._addrlen && std::memcmp(&_addr, &other._addr, _addrlen) == 0;
     }
     /**
      * @brief reset address
      *
      */
-    void reset() {
+    constexpr void reset() {
       _addrlen = sizeof(_addr);
       std::memset(&_addr, 0, sizeof(_addr));
     }
@@ -225,7 +226,7 @@ namespace impl_sock {
      *
      * @return std::pair<sockaddr *, socklen_t *>
      */
-    std::pair<sockaddr *, socklen_t *> raw() {
+    inline std::pair<sockaddr *, socklen_t *> raw() {
       return {reinterpret_cast<sockaddr *>(&_addr), &_addrlen};
     }
     /**
@@ -236,7 +237,8 @@ namespace impl_sock {
      * @param port port number
      * @return std::expected<void, std::errc>
      */
-    std::expected<void, std::errc> parse(this auto &&self, std::string &ip, uint16_t &port) {
+    constexpr std::expected<void, std::errc> parse(this auto &&self, std::string &ip,
+                                                   uint16_t &port) {
       using traits_type = std::remove_cvref_t<decltype(self)>::traits_type;
       static_assert(traits_type::family == AF_INET || traits_type::family == AF_INET6);
       auto &storage = self.SockAddrStorage::_addr;
@@ -299,7 +301,7 @@ namespace impl_sock {
      * @param ip ip address
      * @param port port number
      */
-    SockAddr(std::string_view ip, uint16_t port) : Base() {
+    constexpr SockAddr(std::string_view ip, uint16_t port) : Base() {
       sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(&_addr);
       addr->sin_family = AF_INET;
       addr->sin_port = htons(port);
@@ -328,7 +330,7 @@ namespace impl_sock {
      * @param ip ip address
      * @param port port number
      */
-    SockAddr(std::string_view ip, uint16_t port) : Base() {
+    constexpr SockAddr(std::string_view ip, uint16_t port) : Base() {
       sockaddr_in6 *addr = reinterpret_cast<sockaddr_in6 *>(&_addr);
       addr->sin6_family = AF_INET6;
       addr->sin6_port = htons(port);

@@ -12,19 +12,20 @@
 #ifndef XSL_CONVERT
 #  define XSL_CONVERT
 #  include "xsl/def.h"
+
 #  include <string_view>
 #  include <system_error>
 #  include <utility>
 XSL_NB
 
 template <typename T>
-T from_string_view(std::string_view str);
+constexpr T from_string_view(std::string_view str);
 
 // for std::error_code
-std::string to_string(const std::error_code& ec);
+constexpr std::string to_string(const std::error_code& ec) { return ec.message(); }
 
 // for std::errc
-std::string to_string(const std::errc& ec);
+inline std::string to_string(const std::errc& ec) { return std::make_error_code(ec).message(); }
 
 template <typename T>
 concept ToString = std::convertible_to<T, std::string> || requires(T t) {

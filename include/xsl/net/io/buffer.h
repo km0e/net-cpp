@@ -28,20 +28,23 @@ public:
 
   @param size the size of the block
    */
-  Block(std::size_t size) : data(std::make_unique<byte[]>(size)), valid_size(size) {}
+  constexpr Block(std::size_t size) : data(std::make_unique<byte[]>(size)), valid_size(size) {}
   /**
   @brief Construct a new Block object
 
   @param data the data
   @param size the valid size of the data
    */
-  Block(std::unique_ptr<byte[]> data, std::size_t size) : data(std::move(data)), valid_size(size) {}
-  Block(Block&&) = default;
-  Block& operator=(Block&&) = default;
-  ~Block() = default;
+  constexpr Block(std::unique_ptr<byte[]> data, std::size_t size)
+      : data(std::move(data)), valid_size(size) {}
+  constexpr Block(Block&&) = default;
+  constexpr Block& operator=(Block&&) = default;
+  constexpr ~Block() = default;
 
-  std::span<byte> span() { return {data.get(), valid_size}; }
-  std::span<byte> span(std::size_t offset) { return {data.get() + offset, valid_size - offset}; }
+  constexpr std::span<byte> span() { return {data.get(), valid_size}; }
+  constexpr std::span<byte> span(std::size_t offset) {
+    return {data.get() + offset, valid_size - offset};
+  }
 
   std::unique_ptr<byte[]> data;  ///< the data
   std::size_t valid_size;        ///< the valid size of the data
@@ -60,16 +63,16 @@ namespace impl_buffer {
   public:
     using value_type = byte;
 
-    Buffer() : _blocks() {}
-    Buffer(Buffer&&) = default;
-    Buffer& operator=(Buffer&&) = default;
-    ~Buffer() = default;
-    void append(Block&& block) { _blocks.push_front(std::move(block)); }
-    void append(std::size_t size) {
+    constexpr Buffer() : _blocks() {}
+    constexpr Buffer(Buffer&&) = default;
+    constexpr Buffer& operator=(Buffer&&) = default;
+    constexpr ~Buffer() = default;
+    constexpr void append(Block&& block) { _blocks.push_front(std::move(block)); }
+    constexpr void append(std::size_t size) {
       _blocks.push_front(Block{std::make_unique<value_type[]>(size), size});
     }
-    void clear() { _blocks.clear(); }
-    Block& front() { return _blocks.front(); }
+    constexpr void clear() { _blocks.clear(); }
+    constexpr Block& front() { return _blocks.front(); }
 
     Task<xsl::io::Result> write(ABW& awd) {
       std::size_t total_size = 0;
@@ -83,12 +86,12 @@ namespace impl_buffer {
       co_return std::make_tuple(total_size, std::nullopt);
     };
 
-    BufferCompose<Dyn> to_dyn() { return BufferCompose<Dyn>(std::move(_blocks)); }
+    inline BufferCompose<Dyn> to_dyn() { return BufferCompose<Dyn>(std::move(_blocks)); }
 
     std::forward_list<Block> _blocks;
 
   protected:
-    Buffer(std::forward_list<Block>&& blocks) : _blocks(std::move(blocks)) {}
+    constexpr Buffer(std::forward_list<Block>&& blocks) : _blocks(std::move(blocks)) {}
   };
 }  // namespace impl_buffer
 

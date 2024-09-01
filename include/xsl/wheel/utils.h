@@ -27,8 +27,12 @@ namespace impl {
     using is_transparent = void;
     using std::hash<std::string>::operator();
     using std::hash<std::string_view>::operator();
-    auto operator()(const char* str) const { return this->operator()(std::string_view(str)); }
-    auto operator()(const FixedString& str) const { return this->operator()(str.to_string_view()); }
+    constexpr auto operator()(const char* str) const {
+      return this->operator()(std::string_view(str));
+    }
+    constexpr auto operator()(const FixedString& str) const {
+      return this->operator()(str.to_string_view());
+    }
   };
 }  // namespace impl
 /// @brief better string hash function
@@ -53,7 +57,8 @@ void rt_assert(bool cond, std::string_view msg,
  * @param loc location
  */
 template <class Cond, class T>
-void rt_assert(Cond&& cond, T msg, std::source_location loc = std::source_location::current()) {
+constexpr void rt_assert(Cond&& cond, T msg,
+                         std::source_location loc = std::source_location::current()) {
   if (!cond) {
     std::println(std::cerr, "file: {}", loc.file_name());
     std::println(std::cerr, "line: {}", loc.line());
@@ -63,35 +68,12 @@ void rt_assert(Cond&& cond, T msg, std::source_location loc = std::source_locati
   }
 }
 
-template <typename _Type, size_t _Extent>
-  requires(!std::is_const_v<_Type>)
-inline std::span<byte,
-                 _Extent == std::dynamic_extent ? std::dynamic_extent : _Extent * sizeof(_Type)>
-as_writable_bytes [[nodiscard]] (std::span<_Type, _Extent> __sp) noexcept {
-  auto data = reinterpret_cast<byte*>(__sp.data());
-  auto size = __sp.size_bytes();
-  constexpr auto extent
-      = _Extent == std::dynamic_extent ? std::dynamic_extent : _Extent * sizeof(_Type);
-  return std::span<byte, extent>{data, size};
-}
-
-template <typename _Type, size_t _Extent>
-[[nodiscard]]
-inline std::span<const byte,
-                 _Extent == std::dynamic_extent ? std::dynamic_extent : _Extent * sizeof(_Type)>
-as_bytes(std::span<_Type, _Extent> __sp) noexcept {
-  auto data = reinterpret_cast<const byte*>(__sp.data());
-  auto size = __sp.size_bytes();
-  constexpr auto extent
-      = _Extent == std::dynamic_extent ? std::dynamic_extent : _Extent * sizeof(_Type);
-  return std::span<const byte, extent>{data, size};
-}
 /// @brief Defer something to the end of the scope
 template <class T>
 class Defer {
 public:
-  Defer(T&& t) : _t(std::forward<T>(t)) {}
-  ~Defer() { _t(); }
+  constexpr Defer(T&& t) : _t(std::forward<T>(t)) {}
+  constexpr ~Defer() { _t(); }
 
 private:
   T _t;

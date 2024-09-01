@@ -2,7 +2,7 @@
  * @file coro.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Coroutine utilities
- * @version 0.12
+ * @version 0.13
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -35,6 +35,7 @@ using _coro::SignalSender;
 // using _coro::UnsafeBinarySignal;
 // using _coro::UnsafeSignal;
 
+using _coro::make_exact_pub_sub;
 using _coro::PubSub;
 // using _coro::Subscriber;
 

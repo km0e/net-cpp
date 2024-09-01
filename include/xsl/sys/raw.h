@@ -28,7 +28,7 @@ XSL_SYS_NB
  * @return std::expected<void, std::errc>
  */
 template <bool is_blocking>
-std::expected<void, std::errc> set_blocking(int fd) {
+constexpr std::expected<void, std::errc> set_blocking(int fd) {
   int flags = fcntl(fd, F_GETFL, 0);
   if (flags == -1) {
     return std::unexpected{std::errc(errno)};
@@ -61,30 +61,30 @@ std::expected<void, std::errc> set_blocking(int fd, bool blocking);
  * @param args the arguments
  * @return int the return value of the function
  */
-template <class F, class... Args>
-int filter_interrupt(F &&f, Args &&...args) {
+template <class F>
+constexpr int filter_interrupt(F &&f, auto &&...args) {
   int ret;
   do {
-    ret = f(std::forward<Args>(args)...);
+    ret = f(std::forward<decltype(args)>(args)...);
   } while (ret == -1 && errno == EINTR);
   return ret;
 }
 
-//TODO: Implement the timer
-// int timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
-// if (timer_fd == -1) {
-//   LOG2("Failed to create timerfd, error: {}", strerror(errno));
-//   return;
-// }
-// this->poller->add(timer_fd, IOM_EVENTS::IN,
-//                   [this](int fd, IOM_EVENTS events) { return (*this)(fd, events); });
-// struct itimerspec new_value;
-// new_value.it_value.tv_sec = limit.recv_timeout / 1000;
-// new_value.it_value.tv_nsec = (limit.recv_timeout % 1000) * 1000000;
-// new_value.it_interval.tv_sec = limit.recv_timeout / 1000;
-// new_value.it_interval.tv_nsec = (limit.recv_timeout % 1000) * 1000000;
-// if (timerfd_settime(timer_fd, 0, &new_value, nullptr) == -1) {
-//   LOG2("Failed to set timerfd, error: {}", strerror(errno));
-// }
+// TODO: Implement the timer
+//  int timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+//  if (timer_fd == -1) {
+//    LOG2("Failed to create timerfd, error: {}", strerror(errno));
+//    return;
+//  }
+//  this->poller->add(timer_fd, IOM_EVENTS::IN,
+//                    [this](int fd, IOM_EVENTS events) { return (*this)(fd, events); });
+//  struct itimerspec new_value;
+//  new_value.it_value.tv_sec = limit.recv_timeout / 1000;
+//  new_value.it_value.tv_nsec = (limit.recv_timeout % 1000) * 1000000;
+//  new_value.it_interval.tv_sec = limit.recv_timeout / 1000;
+//  new_value.it_interval.tv_nsec = (limit.recv_timeout % 1000) * 1000000;
+//  if (timerfd_settime(timer_fd, 0, &new_value, nullptr) == -1) {
+//    LOG2("Failed to set timerfd, error: {}", strerror(errno));
+//  }
 XSL_SYS_NE
 #endif

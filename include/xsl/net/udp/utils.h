@@ -27,8 +27,8 @@ XSL_UDP_NB
  * @return Task<std::expected<sys::tcp::Socket<LowerLayer>, std::error_condition>>
  */
 template <class LowerLayer>
-std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> dial(const char *host,
-                                                                       const char *port) {
+constexpr std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> dial(const char *host,
+                                                                                 const char *port) {
   auto res = sys::net::Resolver{}.resolve<Udp<LowerLayer>>(host, port, sys::net::CLIENT_FLAGS);
   if (!res) {
     return std::unexpected{res.error()};
@@ -48,8 +48,8 @@ std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> dial(const cha
  * @return std::expected<sys::tcp::Socket<LowerLayer>, std::error_condition>
  */
 template <class LowerLayer>
-std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> serv(const char *host,
-                                                                       const char *port) {
+constexpr std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> serv(const char *host,
+                                                                                 const char *port) {
   auto addr = sys::net::Resolver{}.resolve<Udp<LowerLayer>>(host, port, sys::net::SERVER_FLAGS);
   if (!addr) {
     return std::unexpected(addr.error());

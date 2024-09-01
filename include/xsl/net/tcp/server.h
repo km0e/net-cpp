@@ -40,14 +40,13 @@ public:
   using out_dev_type = io_dev_type::template rebind<Out>;
   using value_type = std::unique_ptr<io_dev_type>;
 
-  template <class P, class... Args>
-  Server(std::string_view host, std::string_view port, P &&poller, Args &&...args)
+  constexpr Server(std::string_view host, std::string_view port, auto &&poller, auto &&...args)
       : host(host),
         port(port),
-        poller(std::forward<P>(poller)),
-        _dev(std::forward<Args>(args)...) {}
-  Server(Server &&) = default;
-  Server &operator=(Server &&) = default;
+        poller(std::forward<decltype(poller)>(poller)),
+        _dev(std::forward<decltype(args)>(args)...) {}
+  constexpr Server(Server &&) = default;
+  constexpr Server &operator=(Server &&) = default;
 
   /**
    * @brief read data from the device
@@ -68,7 +67,7 @@ public:
     co_return {i, std::nullopt};
   }
   /// @brief accept a connection
-  Task<std::expected<io_dev_type, std::errc>> accept() noexcept { return this->read(); }
+  constexpr Task<std::expected<io_dev_type, std::errc>> accept() noexcept { return this->read(); }
   /// @brief accept a connection
   Task<std::expected<io_dev_type, std::errc>> read() noexcept {
     while (true) {
@@ -103,7 +102,7 @@ private:
  * @return std::expected<Server<LowerLayer>, std::error_condition>
  */
 template <class LowerLayer>
-std::expected<Server<LowerLayer>, std::error_condition> make_server(
+constexpr std::expected<Server<LowerLayer>, std::error_condition> make_server(
     std::string_view host, std::string_view port, const std::shared_ptr<Poller> &poller) {
   LOG5("Start listening on {}:{}", host, port);
   auto copy_poller = poller;

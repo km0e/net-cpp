@@ -22,15 +22,15 @@ XSL_NET_DNS_NB
 
 struct Status {
   int code;
-  bool invalid_domain_name() const { return code == -1; }
+  constexpr bool invalid_domain_name() const { return code == -1; }
   /**
    * @brief invalid pointer
    *
    * @return true if the pointer is invalid, that means you should drop the packet
    * @return false if the pointer is valid
    */
-  bool invalid_pointer() const { return code == -2; }
-  std::size_t size() const { return code; }
+  constexpr bool invalid_pointer() const { return code == -2; }
+  constexpr std::size_t size() const { return code; }
 };
 
 /**
@@ -39,7 +39,7 @@ struct Status {
  */
 class DnCompressor {
 public:
-  DnCompressor(const std::uint8_t *base)
+  constexpr DnCompressor(const std::uint8_t *base)
       : _src(), lens(), base(base), dnptrs(), dnptrs_cnt(0), suffix_len(0), suffix_off(0) {}
   /**
    * @brief prepare the domain name for compression
@@ -56,7 +56,7 @@ public:
    * @note the memory size must be greater than or equal to the size returned by the prepare method
    */
   void compress(std::span<byte> dst);
-  void reset();
+  constexpr void reset();
 
 private:
   std::string_view _src;
@@ -71,7 +71,5 @@ private:
   std::size_t suffix_off;
 };
 
-int dn_comp(const char *src, std::uint8_t *dst, std::size_t space, std::uint8_t **dnptrs,
-            std::uint8_t **lastdnptr);
 XSL_NET_DNS_NE
 #endif

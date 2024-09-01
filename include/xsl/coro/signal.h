@@ -46,7 +46,7 @@ struct SignalRxTraits<SignalStorage> {
    * @return true if the signal is ready
    * @return false if the signal is not ready
    */
-  static bool await_ready(storage_type &storage) {
+  static constexpr bool await_ready(storage_type &storage) {
     storage.mtx.lock();
     return storage.stop
            || (std::holds_alternative<std::size_t>(storage.state)
@@ -60,10 +60,11 @@ struct SignalRxTraits<SignalStorage> {
    * @param handle the coroutine handle
    */
   template <class Promise>
-  static void await_suspend(storage_type &storage, std::coroutine_handle<Promise> handle) {
+  static constexpr void await_suspend(storage_type &storage,
+                                      std::coroutine_handle<Promise> handle) {
     storage.state = [handle] { handle.promise().resume(handle); };
     storage.mtx.unlock();
-    DEBUG("Signal suspended");
+    LOG6("Signal suspended");
   }
   /**
    * @brief Resume the signal
@@ -73,12 +74,12 @@ struct SignalRxTraits<SignalStorage> {
    * @return false if the signal is not alive
    */
   [[nodiscard("must use the result of await_resume to confirm the signal is still alive")]]
-  static bool await_resume(storage_type &storage) {
+  static constexpr bool await_resume(storage_type &storage) {
     Defer defer{[&storage] { storage.mtx.unlock(); }};
     auto &state = std::get<std::size_t>(storage.state);
     if (state > 0) {
       state--;
-      DEBUG("Signal resumed {}", state);
+      LOG6("Signal resumed {}", state);
       return true;
     }
     return false;
@@ -96,28 +97,27 @@ private:
   Pointer _storage;
 
 public:
-  template <class _Pointer>
-  SignalReceiver(_Pointer &&storage) : _storage(std::forward<_Pointer>(storage)) {}
-  SignalReceiver(SignalReceiver &&) = default;
-  SignalReceiver &operator=(SignalReceiver &&) = default;
+  constexpr SignalReceiver(auto &&storage) : _storage(std::forward<decltype(storage)>(storage)) {}
+  constexpr SignalReceiver(SignalReceiver &&) = default;
+  constexpr SignalReceiver &operator=(SignalReceiver &&) = default;
   /// @brief Check if the signal is ready
-  bool await_ready() noexcept { return traits_type::await_ready(*this->_storage); }
+  constexpr bool await_ready() noexcept { return traits_type::await_ready(*this->_storage); }
   /// @brief Suspend the signal
   template <class Promise>
-  void await_suspend(std::coroutine_handle<Promise> handle) {
+  constexpr void await_suspend(std::coroutine_handle<Promise> handle) {
     return traits_type::await_suspend(*this->_storage, handle);
   }
   /// @brief Resume the signal
   [[nodiscard("must use the result of await_resume to confirm the signal is still alive")]]
-  bool await_resume() {
+  constexpr bool await_resume() {
     return traits_type::await_resume(*this->_storage);
   }
   /// @brief Pin the signal, return a raw SignalReceiver
-  SignalReceiver<SignalStorage *> pin() { return {std::to_address(this->_storage)}; }
+  constexpr SignalReceiver<SignalStorage *> pin() { return {std::to_address(this->_storage)}; }
   /// @brief Check if the signal is valid
-  operator bool() const { return this->_storage != nullptr; }
+  constexpr operator bool() const { return this->_storage != nullptr; }
   /// @brief Check if the signal is disconnected
-  bool is_disconnected() const {
+  constexpr bool is_disconnected() const {
     static_assert(std::is_same_v<Pointer, std::shared_ptr<SignalStorage>>);
     return this->_storage.use_count() == 1;
   }
@@ -134,21 +134,21 @@ struct SignalTxTraits<SignalStorage, MaxSignals> {
    *
    * @param storage the signal storage
    */
-  static void release(storage_type &storage) {
+  static constexpr void release(storage_type &storage) {
     storage.mtx.lock();
     if (std::size_t *state = std::get_if<std::size_t>(&storage.state); state != nullptr) {
-      *state = [state] {
+      *state = [](auto &cnt [[maybe_unused]]) {
         if constexpr (MaxSignals > 1) {
-          return std::min(*state + 1, MaxSignals);
+          return std::min(cnt + 1, MaxSignals);
         } else {
           return 1;
         }
-      }();
+      }(*state);
       storage.mtx.unlock();
-      DEBUG("Signal released {}", *state);
+      LOG6("Signal released {}", *state);
     } else {
       std::get<std::function<void()>>(std::exchange(storage.state, std::size_t{1}))();
-      DEBUG("Signal Callback");
+      LOG6("Signal Callback");
     }
   }
   /**
@@ -159,7 +159,7 @@ struct SignalTxTraits<SignalStorage, MaxSignals> {
    * @return std::size_t the count of signals released
    */
   template <bool Force = false>
-  static std::size_t stop(storage_type &storage) {
+  static constexpr std::size_t stop(storage_type &storage) {
     storage.mtx.lock();
     storage.stop = true;
     std::size_t count = 0;
@@ -188,13 +188,12 @@ private:
   Pointer _storage;
 
 public:
-  template <class _Pointer>
-  SignalSender(_Pointer &&storage) : _storage(std::forward<_Pointer>(storage)) {}
-  SignalSender(SignalSender &&) = default;
-  SignalSender(const SignalSender &) = delete;
-  SignalSender &operator=(SignalSender &&) = default;
-  SignalSender &operator=(const SignalSender &) = delete;
-  ~SignalSender() {
+  constexpr SignalSender(auto &&storage) : _storage(std::forward<decltype(storage)>(storage)) {}
+  constexpr SignalSender(SignalSender &&) = default;
+  constexpr SignalSender(const SignalSender &) = delete;
+  constexpr SignalSender &operator=(SignalSender &&) = default;
+  constexpr SignalSender &operator=(const SignalSender &) = delete;
+  constexpr ~SignalSender() {
     if constexpr (std::is_pointer_v<Pointer>) {
       return;
     }
@@ -203,18 +202,20 @@ public:
     }
   }
   /// @brief Release the signal
-  void release() { return traits_type::release(*this->_storage); }
+  constexpr void release() { return traits_type::release(*this->_storage); }
   /// @brief Stop the signal
   template <bool Force = false>
-  std::size_t stop() {
+  constexpr std::size_t stop() {
     return traits_type::template stop<Force>(*this->_storage);
   }
   /// @brief Pin the signal, return a raw SignalSender
-  SignalSender<MaxSignals, SignalStorage *> pin() { return {std::to_address(this->_storage)}; }
+  constexpr SignalSender<MaxSignals, SignalStorage *> pin() {
+    return {std::to_address(this->_storage)};
+  }
   /// @brief Check if the signal is valid
-  operator bool() const { return this->_storage != nullptr; }
+  constexpr operator bool() const { return this->_storage != nullptr; }
   /// @brief Check if the signal is disconnected
-  bool is_disconnected() const {
+  constexpr bool is_disconnected() const {
     static_assert(std::is_same_v<Pointer, std::shared_ptr<SignalStorage>>);
     return this->_storage.use_count() == 1;
   }
@@ -226,7 +227,7 @@ public:
  * @return decltype(auto) a pair of SignalReceiver and SignalSender
  */
 template <std::size_t MaxSignals = std::dynamic_extent>
-decltype(auto) signal() {
+constexpr decltype(auto) signal() {
   auto storage = std::make_shared<SignalStorage>();
   auto copy = storage;
   return std::make_pair(SignalReceiver<decltype(storage)>(std::move(storage)),

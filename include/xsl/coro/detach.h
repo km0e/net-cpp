@@ -28,17 +28,18 @@ class DetachPromiseBase : public PromiseBase<ResultType> {
 public:
   using executor_type = void;
   using coro_type = Detach<ResultType>;
-  std::suspend_never initial_suspend() noexcept { return {}; }
-  std::suspend_never final_suspend() noexcept { return {}; }
+  constexpr std::suspend_never initial_suspend() noexcept { return {}; }
+  constexpr std::suspend_never final_suspend() noexcept { return {}; }
 };
 template <class ResultType>
 class Detach {
 public:
   using promise_type = Promise<DetachPromiseBase<ResultType>>;
 
-  explicit Detach(std::coroutine_handle<promise_type> handle) noexcept : _handle(handle) {}
+  constexpr explicit Detach(std::coroutine_handle<promise_type> handle) noexcept
+      : _handle(handle) {}
 
-  Detach(Detach &&task) noexcept : _handle(std::exchange(task._handle, {})) {}
+  constexpr Detach(Detach &&task) noexcept : _handle(std::exchange(task._handle, {})) {}
 
 private:
   std::coroutine_handle<promise_type> _handle;
@@ -47,7 +48,7 @@ private:
 template <class Awaiter>
   requires Awaitable<Awaiter, Detach<typename awaiter_traits<Awaiter>::result_type>>
            && (!std::is_reference_v<Awaiter>)
-void detach(Awaiter &&awaiter) {  // TODO: use co_await to get executor
+constexpr void detach(Awaiter &&awaiter) {  // TODO: use co_await to get executor
   [[maybe_unused]] auto final
       = [](Awaiter &&awaiter) -> Detach<typename awaiter_traits<Awaiter>::result_type> {
     LOG6("detach");

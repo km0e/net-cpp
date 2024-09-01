@@ -199,7 +199,7 @@ template <class... Flags>
 using Socket = SocketCompose<InOut<SocketTraits<Flags...>>>::type;
 
 template <class Socket>
-std::expected<Socket, std::errc> make_socket() {
+constexpr std::expected<Socket, std::errc> make_socket() {
   int fd = ::socket(Socket::socket_traits_type::family, Socket::socket_traits_type::type,
                     Socket::socket_traits_type::protocol);
   if (fd < 0) {
@@ -248,7 +248,9 @@ struct AIOTraits<_sys::net::AsyncReadSocket<Traits>> {
   using value_type = byte;
   using device_type = _sys::net::AsyncReadSocket<Traits>;
 
-  static Task<Result> read(device_type &dev, std::span<byte> buf) { return dev.recv(buf); }
+  static constexpr Task<Result> read(device_type &dev, std::span<byte> buf) {
+    return dev.recv(buf);
+  }
 };
 
 template <class Traits>
@@ -258,7 +260,7 @@ struct AIOTraits<_sys::net::AsyncWriteSocket<Traits>> {
 
   static Task<Result> write(device_type &dev, std::span<const byte> buf) { return dev.send(buf); }
 
-  static Task<Result> write_file(device_type &dev, _sys::WriteFileHint &&hint) {
+  static constexpr Task<Result> write_file(device_type &dev, _sys::WriteFileHint &&hint) {
     return _sys::net::write_file(dev.fd, std::move(hint), dev.write_signal);
   }
 };
@@ -268,9 +270,13 @@ struct AIOTraits<_sys::net::AsyncReadWriteSocket<Traits>> {
   using value_type = byte;
   using device_type = _sys::net::AsyncReadWriteSocket<Traits>;
 
-  static Task<Result> read(device_type &dev, std::span<byte> buf) { return dev.recv(buf); }
+  static constexpr Task<Result> read(device_type &dev, std::span<byte> buf) {
+    return dev.recv(buf);
+  }
 
-  static Task<Result> write(device_type &dev, std::span<const byte> buf) { return dev.send(buf); }
+  static constexpr Task<Result> write(device_type &dev, std::span<const byte> buf) {
+    return dev.send(buf);
+  }
 };
 XSL_IO_NE
 #endif

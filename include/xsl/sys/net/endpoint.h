@@ -23,8 +23,8 @@ XSL_SYS_NET_NB
 template <class Traits>
 class Endpoint {
 public:
-  Endpoint(addrinfo *info) : info(info) {}
-  addrinfo *raw() const { return info; }
+  constexpr Endpoint(addrinfo *info) : info(info) {}
+  constexpr addrinfo *raw() const { return info; }
 
 private:
   addrinfo *info;
@@ -39,27 +39,27 @@ class EndpointSet {
     using reference = value_type &;
     using iterator_category = std::forward_iterator_tag;
 
-    Iterator() : _ep(nullptr) {}
-    Iterator(addrinfo *info) : _ep(info) {}
-    Iterator(const Iterator &) = default;
-    Iterator &operator=(const Iterator &) = default;
-    ~Iterator() = default;
+    constexpr Iterator() : _ep(nullptr) {}
+    constexpr Iterator(addrinfo *info) : _ep(info) {}
+    constexpr Iterator(const Iterator &) = default;
+    constexpr Iterator &operator=(const Iterator &) = default;
+    constexpr ~Iterator() = default;
 
-    auto &&operator*(this auto &&self) { return self._ep; }
-    auto operator->(this auto &&self) { return &self._ep; }
+    constexpr auto &&operator*(this auto &&self) { return self._ep; }
+    constexpr auto operator->(this auto &&self) { return &self._ep; }
 
-    Iterator &operator++() {
+    constexpr Iterator &operator++() {
       _ep = _ep.raw()->ai_next;
       return *this;
     }
 
-    Iterator operator++(int) {
+    constexpr Iterator operator++(int) {
       Iterator tmp = *this;
       ++*this;
       return tmp;
     }
-    bool operator!=(const Iterator &rhs) const { return _ep.raw() != rhs._ep.raw(); }
-    bool operator==(const Iterator &rhs) const { return _ep.raw() == rhs._ep.raw(); }
+    constexpr bool operator!=(const Iterator &rhs) const { return _ep.raw() != rhs._ep.raw(); }
+    constexpr bool operator==(const Iterator &rhs) const { return _ep.raw() == rhs._ep.raw(); }
 
   private:
     value_type _ep;
@@ -68,9 +68,9 @@ class EndpointSet {
   // static_assert(std::forward_iterator<Iterator>);
 
 public:
-  EndpointSet(addrinfo *info) : info(info) {}
-  EndpointSet(EndpointSet &&other) : info(std::exchange(other.info, nullptr)) {}
-  EndpointSet &operator=(EndpointSet &&other) {
+  constexpr EndpointSet(addrinfo *info) : info(info) {}
+  constexpr EndpointSet(EndpointSet &&other) : info(std::exchange(other.info, nullptr)) {}
+  constexpr EndpointSet &operator=(EndpointSet &&other) {
     if (this != &other) {
       freeaddrinfo(this->info);
       this->info = other.info;
@@ -78,14 +78,14 @@ public:
     }
     return *this;
   }
-  EndpointSet(const EndpointSet &) = delete;
-  EndpointSet &operator=(const EndpointSet &) = delete;
-  ~EndpointSet() {
+  constexpr EndpointSet(const EndpointSet &) = delete;
+  constexpr EndpointSet &operator=(const EndpointSet &) = delete;
+  constexpr ~EndpointSet() {
     if (info) freeaddrinfo(info);
   }
 
-  Iterator begin() const { return Iterator(info); }
-  Iterator end() const { return Iterator(nullptr); }
+  constexpr Iterator begin() const { return Iterator(info); }
+  constexpr Iterator end() const { return Iterator(nullptr); }
 
   addrinfo *info;
 };

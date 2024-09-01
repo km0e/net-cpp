@@ -32,15 +32,15 @@ public:
   using context_type = HandleContext<abr_type, abw_type>;
   using handler_type = Handler<abr_type, abw_type>;
 
-  Server(lower_type&& server) : server(std::move(server)) {}
+  constexpr Server(lower_type&& server) : server(std::move(server)) {}
 
-  Server(Server&&) = default;
-  Server& operator=(Server&&) = default;
-  ~Server() {}
+  constexpr Server(Server&&) = default;
+  constexpr Server& operator=(Server&&) = default;
+  constexpr ~Server() {}
 
-  template <class Service>
-  Task<void> serve_connection(Service&& service) {
-    auto service_ptr = std::make_shared<Service>(std::forward<Service>(service));
+  Task<void> serve_connection(auto&& service) {
+    auto service_ptr = std::make_shared<std::remove_reference_t<decltype(service)>>(
+        std::forward<decltype(service)>(service));
     typename lower_type::value_type conn;
     while (true) {
       auto [sz, err] = co_await this->server.read(std::span{&conn, 1});

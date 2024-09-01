@@ -34,38 +34,27 @@ struct SnapShot {
   // const char _padding[64 - sizeof(std::atomic_size_t) - sizeof(std::size_t) - sizeof(T *)
   //                     - sizeof(std::size_t)];
 };
-/**
- * @brief storage of the queue
- *
- * @tparam Alloc allocator
- */
+/// @brief Storage for the queue
 template <class Alloc>
 class Storage {
   using alloc_traits = std::allocator_traits<Alloc>;
   using value_type = typename alloc_traits::value_type;
 
-  template <class _Alloc>
-  constexpr Storage(_Alloc &&alloc, std::size_t size)
+  constexpr Storage(auto &&alloc, std::size_t size)
       : _head{0, 0, nullptr, size},
         _tail{0, 0, nullptr, size},
-        _alloc(std::forward<_Alloc>(alloc)) {
+        _alloc(std::forward<decltype(alloc)>(alloc)) {
     _head._buffer = alloc_traits::allocate(_alloc, size + 1);
     _tail._buffer = _head._buffer;
   }
 
 public:
-  /**
-   * @brief Construct a new Storage object
-   *
-   * @tparam _Alloc
-   * @param size size of the queue, actual size will be 2^ceil2pow2(size + 1)
-   */
-  template <class _Alloc>
-  constexpr Storage(std::size_t size, _Alloc &&alloc)
-      : Storage(std::forward<_Alloc>(alloc), xsl::wheel::ceil2pow2(size + 1) - 1) {}
+  /// @brief Construct a new Storage object, actual size will be 2^ceil2pow2(size + 1)
+  constexpr Storage(std::size_t size, auto &&alloc)
+      : Storage(std::forward<decltype(alloc)>(alloc), xsl::wheel::ceil2pow2(size + 1) - 1) {}
   constexpr Storage(std::size_t size) : Storage(Alloc(), xsl::wheel::ceil2pow2(size + 1) - 1) {}
 
-  ~Storage() {
+  constexpr ~Storage() {
     if (!std::is_trivially_destructible_v<value_type>) {  // if the type is not trivially
                                                           // destructible
       std::atomic_thread_fence(
@@ -93,20 +82,19 @@ struct RxTraits {
   /**
    * @brief push a value to the queue
    *
-   * @tparam Args
-   * @param storage
-   * @param args
+   * @param storage the storage of the queue
+   * @param args arguments to construct the value
    * @return true if the value is pushed successfully
    * @return false if the queue is full
    */
-  template <class... Args>
-  static bool push(storage_type &storage, Args &&...args) {
+  static constexpr bool push(storage_type &storage, auto &&...args) {
     SnapShot<value_type> &ep = storage._tail;
     const std::size_t tail = ep._ctl.load(std::memory_order_relaxed);
     const std::size_t n_tail = (tail + 1) & ep._size_mask;
     if (n_tail != ep._local
         || n_tail != (ep._local = storage._head._ctl.load(std::memory_order_acquire))) {
-      alloc_traits::construct(storage._alloc, ep._buffer + tail, std::forward<Args>(args)...);
+      alloc_traits::construct(storage._alloc, ep._buffer + tail,
+                              std::forward<decltype(args)>(args)...);
       ep._ctl.store(n_tail, std::memory_order_release);
       return true;
     }
@@ -130,7 +118,7 @@ struct TxTraits {
    * @return false if the queue is empty
    */
   template <class _Tp>
-  static bool pop(storage_type &storage, _Tp &v) {
+  static constexpr bool pop(storage_type &storage, _Tp &v) {
     SnapShot<value_type> &ep = storage._head;
     std::size_t const head = ep._ctl.load(std::memory_order_relaxed);
     if (head == ep._local
@@ -153,8 +141,7 @@ struct TxTraits {
 template <class Alloc>
 class Rx {
 public:
-  template <class _Storage>
-  Rx(_Storage &&storage) : _storage(std::forward<_Storage>(storage)) {}
+  constexpr Rx(auto &&storage) : _storage(std::forward<decltype(storage)>(storage)) {}
   /**
    * @brief push a value to the queue
    *
@@ -164,7 +151,7 @@ public:
    * @return false if the queue is full
    */
   template <class _Tp>
-  bool pop(_Tp &v) {
+  constexpr bool pop(_Tp &v) {
     return RxTraits<Alloc>::push(*_storage, v);
   }
 
@@ -179,19 +166,16 @@ private:
 template <class Alloc>
 class Tx {
 public:
-  template <class _Storage>
-  Tx(_Storage &&storage) : _storage(std::forward<_Storage>(storage)) {}
+  constexpr Tx(auto &&storage) : _storage(std::forward<decltype(storage)>(storage)) {}
   /**
-   * @brief pop a value from the queue
+   * @brief push a value to the queue
    *
-   * @tparam Args
-   * @param args
-   * @return true if the value is popped successfully
-   * @return false if the queue is empty
+   * @param args arguments to construct the value
+   * @return true if the value is pushed successfully
+   * @return false if the queue is full
    */
-  template <class... Args>
-  bool push(Args &&...args) {
-    return TxTraits<Alloc>::pop(*_storage, std::forward<Args>(args)...);
+  constexpr bool push(auto &&...args) {
+    return TxTraits<Alloc>::pop(*_storage, std::forward<decltype(args)>(args)...);
   }
 
 private:
@@ -213,30 +197,26 @@ struct spsc {
    *
    * @param size size of the queue, actual size will be 2^ceil2pow2(size + 1)
    */
-  spsc(std::size_t size) : _storage(std::make_shared<Storage<Alloc>>(size)) {}
+  constexpr spsc(std::size_t size) : _storage(std::make_shared<Storage<Alloc>>(size)) {}
   /**
    * @brief Construct a new spsc object
    *
-   * @tparam _Alloc allocator
    * @param size size of the queue, actual size will be 2^ceil2pow2(size + 1)
    * @param alloc allocator
    */
-  template <class _Alloc>
-  spsc(std::size_t size, _Alloc &&alloc)
-      : _storage(std::make_shared<Storage<Alloc>>(size, std::forward<_Alloc>(alloc))) {}
+  constexpr spsc(std::size_t size, auto &&alloc)
+      : _storage(std::make_shared<Storage<Alloc>>(size, std::forward<decltype(alloc)>(alloc))) {}
 
-  ~spsc() {}
+  constexpr ~spsc() {}
   /**
    * @brief push a value to the queue
    *
-   * @tparam Args
-   * @param args
+   * @param args arguments to construct the value
    * @return true if the value is pushed successfully
    * @return false if the queue is full
    */
-  template <class... Args>
-  bool push(Args &&...args) {
-    return rx_traits::push(*_storage, std::forward<Args>(args)...);
+  constexpr bool push(auto &&...args) {
+    return rx_traits::push(*_storage, std::forward<decltype(args)>(args)...);
   }
   /**
    * @brief pop a value from the queue
@@ -247,7 +227,7 @@ struct spsc {
    * @return false if the queue is empty
    */
   template <class _Tp>
-  bool pop(_Tp &v) {
+  constexpr bool pop(_Tp &v) {
     return tx_traits::pop(*_storage, v);
   }
   /**
@@ -255,7 +235,7 @@ struct spsc {
    *
    * @return std::pair<Rx<Alloc>, Tx<Alloc>>
    */
-  std::pair<Rx<Alloc>, Tx<Alloc>> split() && noexcept {
+  constexpr std::pair<Rx<Alloc>, Tx<Alloc>> split() && noexcept {
     auto copy = _storage;
     return {Rx<Alloc>(std::move(copy)), Tx<Alloc>(std::move(_storage))};
   }

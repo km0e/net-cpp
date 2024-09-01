@@ -54,10 +54,10 @@ enum class ExtQType : std::uint16_t {
   MAILA = 254,  // A request for mail agent RRs (Obsolete - see MX)
   ANY = 255,    // A request for all records
 };
-inline void serialize(Type value, byte *buf) {
+constexpr void serialize(Type value, byte *buf) {
   wheel::u16_to_bytes(htons(static_cast<std::uint16_t>(value)), buf);
 }
-inline void serialize(ExtQType value, byte *buf) {
+constexpr void serialize(ExtQType value, byte *buf) {
   wheel::u16_to_bytes(htons(static_cast<std::uint16_t>(value)), buf);
 }
 enum class Class : std::uint16_t {
@@ -69,10 +69,10 @@ enum class Class : std::uint16_t {
 enum class ExtQClass : std::uint16_t {
   ANY = 255,  // any class
 };
-inline void serialize(Class value, byte *buf) {
+constexpr void serialize(Class value, byte *buf) {
   wheel::u16_to_bytes(htons(static_cast<std::uint16_t>(value)), buf);
 }
-inline void serialize(ExtQClass value, byte *buf) {
+constexpr void serialize(ExtQClass value, byte *buf) {
   wheel::u16_to_bytes(htons(static_cast<std::uint16_t>(value)), buf);
 }
 XSL_NET_DNS_NE

@@ -25,10 +25,10 @@ concept BasicLockable = requires(T t) {
 template <BasicLockable T, class V>
 class LockGuard {
 public:
-  LockGuard(T& m, V& v) : lock(m), v(v) {}
-  ~LockGuard() {}
-  decltype(auto) operator->(this auto&& self) { return &self.v; }
-  decltype(auto) operator*(this auto&& self) { return self.v; }
+  constexpr LockGuard(T& m, V& v) : lock(m), v(v) {}
+  constexpr ~LockGuard() {}
+  constexpr decltype(auto) operator->(this auto&& self) { return &self.v; }
+  constexpr decltype(auto) operator*(this auto&& self) { return self.v; }
 
 private:
   std::lock_guard<T> lock;
@@ -38,10 +38,10 @@ private:
 template <class T>
 class UnqRes {
 public:
-  UnqRes() : src(), mutex() {}
-  UnqRes(T&& src) : src(std::move(src)), mutex() {}
-  ~UnqRes() {}
-  decltype(auto) lock(this auto&& self) { return LockGuard<std::mutex, T>(self.mutex, self.src); }
+  constexpr UnqRes() : src(), mutex() {}
+  constexpr UnqRes(T&& src) : src(std::move(src)), mutex() {}
+  constexpr ~UnqRes() {}
+  constexpr decltype(auto) lock(this auto&& self) { return LockGuard<std::mutex, T>(self.mutex, self.src); }
 
 private:
   T src;
@@ -56,10 +56,10 @@ concept Lockable = BasicLockable<T> && requires(T t) {
 template <class T>
 class ShardGuard {
 public:
-  ShardGuard(std::shared_mutex& m, T& t) : m(m), t(t) { m.lock_shared(); }
-  ~ShardGuard() { m.unlock_shared(); }
-  decltype(auto) operator->(this auto&& self) { return &self.t; }
-  decltype(auto) operator*(this auto&& self) { return self.t; }
+  constexpr ShardGuard(std::shared_mutex& m, T& t) : m(m), t(t) { m.lock_shared(); }
+  constexpr ~ShardGuard() { m.unlock_shared(); }
+  constexpr decltype(auto) operator->(this auto&& self) { return &self.t; }
+  constexpr decltype(auto) operator*(this auto&& self) { return self.t; }
 
 private:
   std::shared_mutex& m;
@@ -69,11 +69,14 @@ private:
 template <class R>
 class ShardRes {  // rename to SharedResource
 public:
-  ShardRes() : src(), mutex() {}
-  ShardRes(R&& src) : src(std::move(src)), mutex() {}
-  ~ShardRes() {}
-  decltype(auto) lock_shared(this auto&& self) { return ShardGuard<R>(self.mutex, self.src); }
-  decltype(auto) lock(this auto&& self) {
+  constexpr ShardRes() : src(), mutex() {}
+  constexpr ShardRes(R&& src) : src(std::move(src)), mutex() {}
+  constexpr ShardRes(auto&&... args) : src(std::forward<decltype(args)>(args)...), mutex() {}
+  constexpr ~ShardRes() {}
+  constexpr decltype(auto) lock_shared(this auto&& self) {
+    return ShardGuard<R>(self.mutex, self.src);
+  }
+  constexpr decltype(auto) lock(this auto&& self) {
     return LockGuard<std::shared_mutex, R>(self.mutex, self.src);
   }
 

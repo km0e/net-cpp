@@ -79,12 +79,6 @@ using to_awaiter_t = decltype(operator co_await(std::declval<ToAwaiter>()));
 template <class ResultType>
 using Result = std::expected<ResultType, std::exception_ptr>;
 
-class HandleControl {
-protected:
-  auto &&get_handle(this auto &&self) { return self._handle; }
-  auto move_handle(this auto &&self) { return std::exchange(self._handle, {}); }
-};
-
 XSL_CORO_NE
 
 #endif  // XSL_CORO_DEF

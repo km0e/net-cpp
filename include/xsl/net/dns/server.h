@@ -31,8 +31,8 @@ XSL_NET_DNS_NB
 
 class QueryFlags {
 public:
-  QueryFlags() : flags(0b0000000100000000) {}
-  std::uint16_t get() const { return flags.to_ulong(); }
+  constexpr QueryFlags() : flags(0b0000000100000000) {}
+  constexpr std::uint16_t get() const { return flags.to_ulong(); }
 
 private:
   std::bitset<16> flags;
@@ -41,11 +41,11 @@ private:
 template <class Ip>
 class Server {
 public:
-  Server(sys::udp::AsyncSocket<Ip> &&socket)
+  constexpr Server(sys::udp::AsyncSocket<Ip> &&socket)
       : socket(std::move(socket)), id(0), buffer(std::make_unique<byte[]>(512)) {}
-  Server(Server &&) = default;
-  Server &operator=(Server &&) = default;
-  ~Server() = default;
+  constexpr Server(Server &&) = default;
+  constexpr Server &operator=(Server &&) = default;
+  constexpr ~Server() = default;
 
   Task<std::string> query(const std::string_view &name, QueryFlags flags = QueryFlags()) {
     std::size_t offset = 0;
@@ -68,12 +68,12 @@ public:
     offset += 2;
     serialize(ExtQClass::ANY, this->buffer.get() + offset);
     offset += 2;
-    //TODO: send the query
-    // auto [w_sz, w_err]
-    //     = co_await this->socket.write(std::span{this->buffer.get(), offset});
-    // if (w_err) {
-    //   co_return std::string{};
-    // }
+    // TODO: send the query
+    //  auto [w_sz, w_err]
+    //      = co_await this->socket.write(std::span{this->buffer.get(), offset});
+    //  if (w_err) {
+    //    co_return std::string{};
+    //  }
 
     // auto [r_sz, r_err]
     //     = co_await this->socket.read(std::span{this->buffer.get(), 512});
@@ -91,8 +91,9 @@ private:
 };
 
 template <class Ip>
-std::expected<Server<Ip>, std::error_condition> serv(const std::string_view &ip,
-                                                     const std::string_view &port, Poller &poller) {
+constexpr std::expected<Server<Ip>, std::error_condition> serv(const std::string_view &ip,
+                                                               const std::string_view &port,
+                                                               Poller &poller) {
   auto socket = udp::dial<Ip>(ip.data(), port.data());
   if (!socket) {
     return std::unexpected{socket.error()};

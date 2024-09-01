@@ -19,7 +19,7 @@
 XSL_SYS_NET_NB
 
 template <CSocket S>
-std::expected<Socket<typename S::socket_traits_type>, std::errc> accept(
+constexpr std::expected<Socket<typename S::socket_traits_type>, std::errc> accept(
     S &socket, SockAddr<typename S::socket_traits_type> *addr) {
   auto [sockaddr, addrlen]
       = addr == nullptr ? SockAddr<typename S::socket_traits_type>::null() : addr->raw();
@@ -38,7 +38,7 @@ std::expected<Socket<typename S::socket_traits_type>, std::errc> accept(
 }
 
 template <CSocket S>
-std::expected<void, std::errc> listen(S &skt, int max_connections = 10) {
+constexpr std::expected<void, std::errc> listen(S &skt, int max_connections = 10) {
   if (::listen(skt.raw(), max_connections) == -1) {
     return std::unexpected{std::errc{errno}};
   }

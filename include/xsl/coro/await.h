@@ -20,7 +20,7 @@
 
 XSL_CORO_NB
 
-class GetExecutor {
+class GetExecutor {//TODO: remove this class
 public:
   using executor_type = ExecutorBase;
   GetExecutor() : _executor() {}

@@ -148,7 +148,7 @@ void DnCompressor::compress(std::span<byte> dst) {
   }
   this->reset();
 }
-void DnCompressor::reset() {
+constexpr void DnCompressor::reset() {
   _src = {};
   suffix_len = 0;
   suffix_off = 0;

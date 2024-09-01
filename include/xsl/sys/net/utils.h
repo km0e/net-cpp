@@ -28,7 +28,7 @@ template <class Traits>
 using BindResult = std::expected<Socket<Traits>, std::errc>;
 
 namespace {
-  static inline std::expected<int, std::errc> bind(addrinfo *ai) {
+  static constexpr std::expected<int, std::errc> bind(addrinfo *ai) {
     int tmp_fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
     if (tmp_fd == -1) [[unlikely]] {
       return std::unexpected{std::errc{errno}};
@@ -54,12 +54,12 @@ namespace {
 }  // namespace
 /// @brief Bind to an endpoint
 template <class Traits>
-BindResult<Traits> bind(const Endpoint<Traits> &ep) {
+constexpr BindResult<Traits> bind(const Endpoint<Traits> &ep) {
   return bind(ep.raw()).transform([](int fd) { return Socket<Traits>(fd); });
 }
 /// @brief Bind to an endpoint set
 template <class Traits>
-BindResult<Traits> bind(const EndpointSet<Traits> &eps) {
+constexpr BindResult<Traits> bind(const EndpointSet<Traits> &eps) {
   for (auto &ep : eps) {
     auto bind_res = bind(ep.raw());
     if (bind_res) {

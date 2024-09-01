@@ -23,27 +23,27 @@ template <ABRL ByteReader, ABWL ByteWriter>
 class HandleContext {
 public:
   using response_body_type = Task<Result>(ByteWriter&);
-  HandleContext(std::string_view current_path, Request<ByteReader>&& request)
+  constexpr HandleContext(std::string_view current_path, Request<ByteReader>&& request)
       : current_path(current_path), request(std::move(request)), _response(std::nullopt) {}
-  HandleContext(HandleContext&&) = default;
-  HandleContext& operator=(HandleContext&&) = default;
-  ~HandleContext() {}
+  constexpr HandleContext(HandleContext&&) = default;
+  constexpr HandleContext& operator=(HandleContext&&) = default;
+  constexpr ~HandleContext() {}
 
   /// @brief easy response with status code
-  void easy_resp(Status status_code) {
+  constexpr void easy_resp(Status status_code) {
     this->_response
         = Response<ByteWriter>{{Version::HTTP_1_1, status_code, to_reason_phrase(status_code)}};
   }
   /// @brief easy response with status code and body
-  template <std::invocable<ByteWriter&> F>
-  void easy_resp(Status status_code, F&& body) {
-    this->_response = Response<ByteWriter>{
-        {Version::HTTP_1_1, status_code, to_reason_phrase(status_code)}, std::forward<F>(body)};
+  constexpr void easy_resp(Status status_code, std::invocable<ByteWriter&> auto&& body) {
+    this->_response
+        = Response<ByteWriter>{{Version::HTTP_1_1, status_code, to_reason_phrase(status_code)},
+                               std::forward<decltype(body)>(body)};
   }
   /// @brief easy response with status code and some arguments to construct the body
   template <class... Args>
     requires std::constructible_from<std::string, Args...>
-  void easy_resp(Status status_code, Args&&... args) {
+  constexpr void easy_resp(Status status_code, Args&&... args) {
     this->_response = Response<ByteWriter>{
         {Version::HTTP_1_1, status_code, to_reason_phrase(status_code)},
         [body = std::string(std::forward<Args>(args)...)](ByteWriter& awd) -> Task<Result> {
@@ -51,16 +51,15 @@ public:
         }};
   }
   /// @brief response with ResponsePart
-  void resp(ResponsePart&& part) { this->_response = Response<ByteWriter>{std::move(part)}; }
+  constexpr void resp(ResponsePart&& part) { this->_response = Response<ByteWriter>{std::move(part)}; }
   /// @brief response with ResponsePart and body
-  template <std::invocable<ByteWriter&> F>
-  void resp(ResponsePart&& part, F&& body) {
-    this->_response = Response<ByteWriter>{{std::move(part)}, std::forward<F>(body)};
+  constexpr void resp(ResponsePart&& part, std::invocable<ByteWriter&> auto&& body) {
+    this->_response = Response<ByteWriter>{{std::move(part)}, std::forward<decltype(body)>(body)};
   }
   /// @brief response with ResponsePart and some arguments to construct the body
   template <class... Args>
     requires std::constructible_from<std::string, Args...>
-  void resp(ResponsePart&& part, Args&&... args) {
+  constexpr void resp(ResponsePart&& part, Args&&... args) {
     this->_response = Response<ByteWriter>{
         {std::move(part)},
         [body = std::string(std::forward<Args>(args)...)](ByteWriter& awd) -> Task<Result> {
@@ -68,7 +67,7 @@ public:
         }};
   }
   /// @brief checkout the response
-  Response<ByteWriter> checkout(this HandleContext self) {
+  constexpr Response<ByteWriter> checkout(this HandleContext self) {
     if (!self._response) {
       self.easy_resp(Status::INTERNAL_SERVER_ERROR);
     }
@@ -83,7 +82,7 @@ public:
   std::optional<Response<ByteWriter>> _response;
 
 private:
-  void check_and_add_date() {
+  constexpr void check_and_add_date() {
     if (!_response->_part.headers.contains("Date")) {
       _response->_part.headers.emplace("Date", to_date_string(std::chrono::system_clock::now()));
     }

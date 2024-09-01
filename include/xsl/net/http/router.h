@@ -26,11 +26,11 @@ XSL_HTTP_NB
 
 class RouteContext {
 public:
-  RouteContext(Method method, std::string_view current_path)
+  constexpr RouteContext(Method method, std::string_view current_path)
       : method(method), current_path(current_path) {}
-  RouteContext(RouteContext&&) = default;
-  RouteContext& operator=(RouteContext&&) = default;
-  ~RouteContext() {}
+  constexpr RouteContext(RouteContext&&) = default;
+  constexpr RouteContext& operator=(RouteContext&&) = default;
+  constexpr ~RouteContext() {}
   Method method;
   std::string_view current_path;
 };
@@ -48,17 +48,17 @@ namespace router_details {
   class HttpRouteNode {
   public:
     using tag_type = std::size_t;  ///< tag type
-    HttpRouteNode() : handlers{}, fallbacks{}, children{} {}
+    constexpr HttpRouteNode() : handlers{}, fallbacks{}, children{} {}
     /**
      * @brief Construct a new Http Route Node object
      *
      * @param method the method of the route
      * @param tag the tag of the route handler
      */
-    HttpRouteNode(Method method, tag_type&& tag) : handlers{}, fallbacks{}, children{} {
+    constexpr HttpRouteNode(Method method, tag_type&& tag) : handlers{}, fallbacks{}, children{} {
       handlers[static_cast<uint8_t>(method)] = std::move(tag);
     }
-    ~HttpRouteNode() {}
+    constexpr ~HttpRouteNode() {}
     /**
      * @brief Add a route
      *
@@ -67,7 +67,6 @@ namespace router_details {
      * @param tag the tag of the route handler
      */
     void add_route(Method method, std::string_view path, tag_type&& tag) {
-      LOG5("Adding route: {}", path);
       rt_assert(path[0] == '/', "Invalid path");
       auto pos = path.find('/', 1);
 
@@ -100,8 +99,7 @@ namespace router_details {
      * @param path the path of the route
      * @param tag the tag of the route handler
      */
-    void add_fallback(Method method, std::string_view path, tag_type&& tag) {
-      LOG5("Adding fallback route: {}", path);
+    constexpr void add_fallback(Method method, std::string_view path, tag_type&& tag) {
       rt_assert(path[0] == '/', "Invalid path");
       auto pos = path.find('/', 1);
 
@@ -126,8 +124,7 @@ namespace router_details {
      * @param ctx the route context
      * @return RouteResult the result of the routing
      */
-    RouteResult route(RouteContext& ctx) {
-      LOG6("Routing path: {}", ctx.current_path);
+    constexpr RouteResult route(RouteContext& ctx) {
       if (ctx.current_path[0] != '/') {
         return std::unexpected{Status::NOT_FOUND};
       }
@@ -184,15 +181,14 @@ namespace router_details {
     std::array<std::size_t, HTTP_METHOD_COUNT> fallbacks;
     ShardRes<us_map<HttpRouteNode>> children;
 
-    bool add(Method method, tag_type&& tag) {
+    constexpr bool add(Method method, tag_type&& tag) {
       if (handlers[static_cast<uint8_t>(method)] != tag_type{}) {
         return false;
       }
       handlers[static_cast<uint8_t>(method)] = std::move(tag);
       return true;
     }
-    RouteResult direct_route(RouteContext& ctx) {
-      LOG5("Direct routing path: {}", ctx.current_path);
+    constexpr RouteResult direct_route(RouteContext& ctx) {
       auto& handler = handlers[static_cast<uint8_t>(ctx.method)];
       if (handler == tag_type{}) {
         return std::unexpected{Status::NOT_IMPLEMENTED};
@@ -205,21 +201,18 @@ namespace router_details {
 class Router {
 public:
   using tag_type = std::size_t;
-  Router() : root{} {}
+  constexpr Router() : root{} {}
 
-  ~Router() {}
-  void add_route(Method method, std::string_view path, tag_type&& tag) {
-    LOG5("Adding route: {}", path);
+  constexpr ~Router() {}
+  constexpr void add_route(Method method, std::string_view path, tag_type&& tag) {
     return root.add_route(method, path, std::move(tag));
   }
 
-  void add_fallback(Method method, std::string_view path, tag_type&& tag) {
-    LOG5("Adding fallback route: {}", path);
+  constexpr void add_fallback(Method method, std::string_view path, tag_type&& tag) {
     return root.add_fallback(method, path, std::move(tag));
   }
 
-  RouteResult route(RouteContext& ctx) {
-    LOG5("Starting routing path: {}", ctx.current_path);
+  constexpr RouteResult route(RouteContext& ctx) {
     if (ctx.method == Method::UNKNOWN) {
       return std::unexpected{Status::UNKNOWN};
     }

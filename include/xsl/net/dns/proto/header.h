@@ -28,7 +28,7 @@ struct Header {
   std::uint16_t ancount;  // number of answer entries
   std::uint16_t nscount;  // number of authority entries
   std::uint16_t arcount;  // number of resource entries
-  void serialize(byte *buf) const {
+  constexpr void serialize(byte *buf) const {
     buf[0] = id >> 8;
     buf[1] = id & 0xff;
     buf[2] = flags >> 8;

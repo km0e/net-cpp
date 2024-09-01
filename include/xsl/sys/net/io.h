@@ -63,7 +63,7 @@ Task<io::Result> recv(RawHandle _raw, std::span<byte> buf, SignalReceiver<Pointe
  * @return Task<io::Result>
  */
 template <class Dev>
-Task<io::Result> recv(Dev &dev, std::span<byte> buf) {
+constexpr Task<io::Result> recv(Dev &dev, std::span<byte> buf) {
   return AIOTraits<Dev>::recv(dev, buf);
 }
 /**
@@ -125,7 +125,7 @@ Task<io::Result> send(RawHandle _raw, std::span<const byte> data, SignalReceiver
  * @return Task<io::Result>
  */
 template <class Dev>
-Task<io::Result> send(Dev &dev, std::span<const byte> data) {
+constexpr Task<io::Result> send(Dev &dev, std::span<const byte> data) {
   return AIOTraits<Dev>::send(dev, data);
 }
 /**
@@ -167,7 +167,7 @@ Task<io::Result> sendto(RawHandle _raw, std::span<const byte> data, SockAddr &ad
  * @return Task<io::Result>
  */
 template <class Dev, class SockAddr>
-Task<io::Result> sendto(Dev &dev, std::span<const byte> data, SockAddr &addr) {
+constexpr Task<io::Result> sendto(Dev &dev, std::span<const byte> data, SockAddr &addr) {
   return AIOTraits<Dev>::sendto(dev, data, addr);
 }
 /**
@@ -212,7 +212,7 @@ Task<io::Result> recvfrom(RawHandle _raw, std::span<byte> buf, SockAddr &addr,
  * @return Task<io::Result>
  */
 template <class Dev, class SockAddr>
-Task<io::Result> recvfrom(Dev &dev, std::span<byte> buf, SockAddr &addr) {
+constexpr Task<io::Result> recvfrom(Dev &dev, std::span<byte> buf, SockAddr &addr) {
   return AIOTraits<Dev>::recvfrom(dev, buf, addr);
 }
 /**

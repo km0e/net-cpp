@@ -22,8 +22,8 @@ enum class LogLevel { NONE, LOG1, LOG2, LOG3, LOG4, LOG5, LOG6, LOG7, LOG8 };
 class LogCtl {
 private:
   LogCtl();
-  LogCtl(const LogCtl&) = delete;
-  LogCtl& operator=(const LogCtl&) = delete;
+  constexpr LogCtl(const LogCtl&) = delete;
+  constexpr LogCtl& operator=(const LogCtl&) = delete;
 
 public:
   ~LogCtl();
@@ -33,7 +33,7 @@ public:
 
   static constexpr void no_log() { set_log_level(LogLevel::NONE); }
 
-  static inline void flush_log() { instance.logger->flush_log(); }
+  static void flush_log() { instance.logger->flush_log(); }
 
   static constexpr void set_log_level(LogLevel level) {
     switch (level) {

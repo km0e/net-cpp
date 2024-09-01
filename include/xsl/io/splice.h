@@ -12,18 +12,16 @@
 #ifndef XSL_IO_SPLICE
 #  define XSL_IO_SPLICE
 #  include "xsl/coro.h"
-#  include "xsl/feature.h"
 #  include "xsl/io/def.h"
 #  include "xsl/logctl.h"
-#  include "xsl/type_traits.h"
 #  include "xsl/wheel.h"
 
 #  include <expected>
 
 XSL_IO_NB
 
-namespace impl_splice {
-  template < ABRL ABR, ABWL ABW>
+namespace {
+  template <ABRL ABR, ABWL ABW>
   Task<Result> splice_once(ABR& from, ABW& to, std::string& buffer) {
     auto [sz, err] = co_await from.read(xsl::as_writable_bytes(std::span(buffer)));
     if (err) {
@@ -39,18 +37,18 @@ namespace impl_splice {
     DEBUG("Write {} bytes to the device", s_sz);
     co_return {s_sz, std::nullopt};
   }
-}  // namespace impl_splice
+}  // namespace
 
-template < ABRL ABR, ABWL ABW>
-Task<Result> splice_once(ABR* from, ABR* to, std::string buffer) {
-  return impl_splice::splice_once(*from, *to, buffer);
+template <ABRL ABR, ABWL ABW>
+constexpr Task<Result> splice_once(ABR* from, ABR* to, std::string buffer) {
+  return splice_once(*from, *to, buffer);
 }
 
-template < ABRL FromPtr, ABWL ToPtr>
+template <ABRL FromPtr, ABWL ToPtr>
 Task<Result> splice(FromPtr* from, ToPtr* to, std::string buffer) {
   std::size_t total = 0;
   while (true) {
-    auto [sz, err] = co_await impl_splice::splice_once(*from, *to, buffer);
+    auto [sz, err] = co_await splice_once(*from, *to, buffer);
     if (err) {
       co_return {total, err};
     }
@@ -65,7 +63,8 @@ Task<Result> splice(FromPtr* from, ToPtr* to, std::string buffer) {
 
 //   template <class... Flags>
 //   using SpliceCompose
-//       = organize_feature_flags_t<Splice<Item<is_same_pack, In<void>, Out<void>, InOut<void>>, Dyn>,
+//       = organize_feature_flags_t<Splice<Item<is_same_pack, In<void>, Out<void>, InOut<void>>,
+//       Dyn>,
 //                                  Flags...>;
 
 //   template <class T, PtrLike<ABR> FromPtr>

@@ -58,7 +58,7 @@ namespace {
     auto read_signal = *pubsub.subscribe(IOM_EVENTS::IN);
     write_signal = *pubsub.subscribe(IOM_EVENTS::OUT);
     poller.modify(fd, IOM_EVENTS::IN | IOM_EVENTS::OUT | IOM_EVENTS::ET,
-                  PollForCoro<PollTraits>{std::move(pubsub)});
+                  PollForCoro{PollTraits{}, std::move(pubsub)});
     co_return std::make_tuple(std::move(read_signal), std::move(write_signal));
   }
 
@@ -158,16 +158,16 @@ template <class Traits>
 inline decltype(auto) connect(const Endpoint<Traits> &ep, Poller &poller) {
   return connect<Traits>(ep.raw(), poller);
 }
-///TODO: for dns resolve
+/// TODO: for dns resolve
 template <class Traits>
   requires(!CSocketTraits<Traits>)
-inline decltype(auto) connect(const Endpoint<Traits> &ep) {
+constexpr decltype(auto) connect(const Endpoint<Traits> &ep) {
   return connect<Traits>(ep.raw());
 }
 
 template <class Traits>
   requires(!CSocketTraits<Traits>)
-inline decltype(auto) connect(const EndpointSet<Traits> &eps) {
+constexpr decltype(auto) connect(const EndpointSet<Traits> &eps) {
   std::expected<Socket<Traits>, std::errc> res{std::unexpect, std::errc{0}};
   for (auto &ep : eps) {
     res = connect<Traits>(ep.raw());

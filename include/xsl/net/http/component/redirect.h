@@ -22,7 +22,7 @@ XSL_HTTP_NB
 using namespace xsl::io;
 
 template <ABRL ByteReader, ABWL ByteWriter>
-Handler<ByteReader, ByteWriter> create_redirect_handler(std::string_view path) {
+constexpr Handler<ByteReader, ByteWriter> create_redirect_handler(std::string_view path) {
   return [path](HandleContext<ByteReader, ByteWriter>& ctx) -> HandleResult {
     DEBUG("redirect to {}", path);
     ResponsePart part{Status::MOVED_PERMANENTLY};

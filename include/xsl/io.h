@@ -64,8 +64,7 @@ public:
   using value_type = typename Dev::value_type;
   using dynamic_type = AsyncReadDevice<value_type>;
 
-  template <class... _Args>
-  DynAsyncReadDevice(_Args &&...args) : dev(std::forward<_Args>(args)...) {}
+  DynAsyncReadDevice(auto &&...args) : dev(std::forward<decltype(args)>(args)...) {}
 
   Task<io::Result> read(std::span<value_type> buf) override {
     return AIOTraits<Dev>::read(dev, buf);
@@ -81,8 +80,7 @@ public:
   using value_type = typename Dev::value_type;
   using dynamic_type = AsyncWriteDevice<value_type>;
 
-  template <class... _Args>
-  DynAsyncWriteDevice(_Args &&...args) : dev(std::forward<_Args>(args)...) {}
+  DynAsyncWriteDevice(auto &&...args) : dev(std::forward<decltype(args)>(args)...) {}
 
   Task<io::Result> write(std::span<const value_type> buf) override {
     return AIOTraits<Dev>::write(dev, buf);
@@ -93,8 +91,8 @@ template <class T>
 class AsyncWritable {
 public:
   using value_type = T;
-  virtual ~AsyncWritable() {}
-  virtual Task<io::Result> write(AsyncWriteDevice<value_type> &awd) = 0;
+  constexpr virtual ~AsyncWritable() {}
+  constexpr virtual Task<io::Result> write(AsyncWriteDevice<value_type> &awd) = 0;
 };
 template <class T>
 class AsyncReadable {
@@ -112,14 +110,14 @@ template <class T>
 struct AIOTraits<AsyncReadDevice<T>> {
   using value_type = T;
   using device_type = AsyncReadDevice<T>;
-  static Task<Result> read(device_type &dev, std::span<byte> buf) { return dev.read(buf); }
+  static constexpr Task<Result> read(device_type &dev, std::span<byte> buf) { return dev.read(buf); }
 };
 
 template <class T>
 struct AIOTraits<AsyncWriteDevice<T>> {
   using value_type = T;
   using device_type = AsyncWriteDevice<T>;
-  static Task<Result> write(device_type &dev, std::span<const byte> buf) { return dev.write(buf); }
+  static constexpr  Task<Result> write(device_type &dev, std::span<const byte> buf) { return dev.write(buf); }
 
   static Task<Result> write_file(device_type &dev, _sys::WriteFileHint hint) {
     int ffd = open(hint.path.c_str(), O_RDONLY | O_CLOEXEC);
@@ -148,9 +146,9 @@ struct AIOTraits<AsyncReadWriteDevice<T>> {
   using value_type = byte;
   using device_type = AsyncReadWriteDevice<T>;
 
-  static Task<Result> read(device_type &dev, std::span<byte> buf) { return dev.read(buf); }
+  static constexpr Task<Result> read(device_type &dev, std::span<byte> buf) { return dev.read(buf); }
 
-  static Task<Result> write(device_type &dev, std::span<const byte> buf) { return dev.write(buf); }
+  static constexpr Task<Result> write(device_type &dev, std::span<const byte> buf) { return dev.write(buf); }
 };
 
 template <class Dev>

@@ -85,13 +85,13 @@ public:
   using parser_type = typename Traits::parser_type;
   using request_type = RequestView;
 
-  Parser() : buffer{}, used_size(0), parsed_size(0), parser{} {
+  constexpr Parser() : buffer{}, used_size(0), parsed_size(0), parser{} {
     buffer.append(HTTP_BUFFER_BLOCK_SIZE);
   }
 
-  Parser(Parser&&) = default;
-  Parser& operator=(Parser&&) = default;
-  ~Parser() {}
+  constexpr Parser(Parser&&) = default;
+  constexpr Parser& operator=(Parser&&) = default;
+  constexpr ~Parser() {}
   /**
    * @brief read the request
    *
@@ -116,7 +116,7 @@ public:
       }
     }
   }
-  void reset() {
+  constexpr void reset() {
     this->used_size = 0;
     this->parsed_size = 0;
     this->buffer.clear();
@@ -129,7 +129,7 @@ private:
   std::size_t parsed_size;
   parser_type parser;
 
-  std::errc parse_request(std::size_t sz, ParseData& buf) {
+  constexpr std::errc parse_request(std::size_t sz, ParseData& buf) {
     auto& front = this->buffer.front();
     auto [len, req] = this->parser.parse(
         reinterpret_cast<const char*>(front.data.get() + this->parsed_size), sz);
@@ -168,7 +168,7 @@ struct AIOTraits<_net::http::Parser<Traits>> {
   using value_type = _net::http::ParseData;
   using device_type = _net::http::Parser<Traits>;
   template <ABRL Reader>
-  static Task<std::errc> read(device_type& dev, Reader& reader, value_type& buf) {
+  static constexpr Task<std::errc> read(device_type& dev, Reader& reader, value_type& buf) {
     return dev.read(reader, buf);
   }
 };

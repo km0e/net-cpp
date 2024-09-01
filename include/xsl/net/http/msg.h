@@ -49,16 +49,15 @@ public:
 template <ABWL ByteWriter>
 class Response {
 public:
-  template <class... Args>
-  Response(ResponsePart&& part, Args&&... args)
-      : _part(std::move(part)), _body(std::forward<Args>(args)...) {}
-  Response(Response&&) = default;
-  Response& operator=(Response&&) = default;
+  constexpr Response(ResponsePart&& part, auto&&... args)
+      : _part(std::move(part)), _body(std::forward<decltype(args)>(args)...) {}
+  constexpr Response(Response&&) = default;
+  constexpr Response& operator=(Response&&) = default;
   ~Response() {}
 
   Task<Result> sendto(ByteWriter& awd) {
     auto str = this->_part.to_string();
-    DEBUG("response: {}", str);
+    LOG6("response: {}", str);
     auto [sz, err] = co_await awd.write(xsl::as_bytes(std::span(str)));
     if (err) {
       co_return std::make_tuple(sz, err);
@@ -91,33 +90,39 @@ public:
 
   std::string_view version;
   std::unordered_map<std::string_view, std::string_view> headers;
-  std::string to_string();
+  constexpr std::string to_string();
 
-  void clear();
+  constexpr void clear() {
+    method = std::string_view{};
+    query.clear();
+    version = std::string_view{};
+    headers.clear();
+  }
 };
 /// @brief the request
 template <ABRL ByteReader>
 class Request {
 public:
-  Request(io::Buffer<>&& raw, RequestView&& view, std::string_view content_part, ByteReader& ard)
+  constexpr Request(io::Buffer<>&& raw, RequestView&& view, std::string_view content_part,
+                    ByteReader& ard)
       : method(xsl::from_string_view<Method>(view.method)),
         view(std::move(view)),
         raw(std::move(raw)),
         content_part(content_part),
         _ard(ard) {}
 
-  Request(Request&&) = default;
-  Request& operator=(Request&&) = default;
+  constexpr Request(Request&&) = default;
+  constexpr Request& operator=(Request&&) = default;
   ~Request() {}
 
   /// @brief check if the request has the header
   [[nodiscard]]
-  inline bool has_header(std::string_view key) {
+  constexpr bool has_header(std::string_view key) {
     return this->view.headers.find(key) != this->view.headers.end();
   }
   /// @brief get the header
   [[nodiscard]]
-  inline std::optional<std::string_view> get_header(std::string_view key) {
+  constexpr std::optional<std::string_view> get_header(std::string_view key) {
     auto iter = this->view.headers.find(key);
     if (iter == this->view.headers.end()) {
       return std::nullopt;

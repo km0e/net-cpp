@@ -28,32 +28,28 @@ class Block {
 protected:
   class BlockPromise {
   public:
-    auto get_return_object() noexcept {
-      LOG7("get_return_object");
+    constexpr auto get_return_object() noexcept {
       return Block{std::coroutine_handle<BlockPromise>::from_promise(*this)};
     }
 
-    void unhandled_exception() { std::rethrow_exception(std::current_exception()); }
+    inline void unhandled_exception() { std::rethrow_exception(std::current_exception()); }
 
     using executor_type = void;
     using coro_type = Block;
 
-    std::suspend_never initial_suspend() const noexcept { return {}; }
+    constexpr std::suspend_never initial_suspend() const noexcept { return {}; }
 
-    std::suspend_never final_suspend() const noexcept {
-      LOG6("final_suspend");
-      return {};
-    }
+    constexpr std::suspend_never final_suspend() const noexcept { return {}; }
   };
 
 public:
   using promise_type = BlockPromise;
 
-  explicit Block(std::coroutine_handle<promise_type> handle) noexcept : _handle(handle) {}
+  constexpr explicit Block(std::coroutine_handle<promise_type> handle) noexcept : _handle(handle) {}
 
-  Block(Block &&task) noexcept : _handle(std::exchange(task._handle, {})) {}
+  constexpr Block(Block &&task) noexcept : _handle(std::exchange(task._handle, {})) {}
 
-  ~Block() { LOG7("TaskAwaiter destructor for {}", (uint64_t)_handle.address()); }
+  constexpr ~Block() {}
 
 protected:
   std::coroutine_handle<promise_type> _handle;
@@ -67,7 +63,7 @@ protected:
  * @return decltype(auto)
  */
 template <class Awaiter>
-decltype(auto) block(Awaiter &&awaiter) {
+constexpr decltype(auto) block(Awaiter &&awaiter) {
   using awaiter_type = std::remove_reference_t<Awaiter>;
   using result_type = typename awaiter_traits<awaiter_type>::result_type;
   std::binary_semaphore sem{0};

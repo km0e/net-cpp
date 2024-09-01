@@ -51,7 +51,9 @@ public:
         }};
   }
   /// @brief response with ResponsePart
-  constexpr void resp(ResponsePart&& part) { this->_response = Response<ByteWriter>{std::move(part)}; }
+  constexpr void resp(ResponsePart&& part) {
+    this->_response = Response<ByteWriter>{std::move(part)};
+  }
   /// @brief response with ResponsePart and body
   constexpr void resp(ResponsePart&& part, std::invocable<ByteWriter&> auto&& body) {
     this->_response = Response<ByteWriter>{{std::move(part)}, std::forward<decltype(body)>(body)};
@@ -67,7 +69,7 @@ public:
         }};
   }
   /// @brief checkout the response
-  constexpr Response<ByteWriter> checkout(this HandleContext self) {
+  constexpr Response<ByteWriter> checkout(this HandleContext&& self) {
     if (!self._response) {
       self.easy_resp(Status::INTERNAL_SERVER_ERROR);
     }

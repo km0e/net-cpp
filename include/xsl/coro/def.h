@@ -19,34 +19,6 @@
 #  include <utility>
 XSL_CORO_NB
 
-/*
-void test1() {
-  auto executor = std::make_shared<xsl::coro::NoopExecutor>();
-  int value = 0;
-  auto task = [&]() -> xsl::Task<void> {
-    value = 1;
-    co_return;
-  }();
-  task.by(executor).detach();
-  assert(value == 1);
-}
-
-void test2() {
-  auto executor = std::make_shared<xsl::coro::NoopExecutor>();
-  int value = 0;
-  auto task = [](int& value) -> xsl::Task<void> {
-    value = 1;
-    co_return;
-  }(value);
-  task.by(executor).detach();
-  assert(value == 1);
-}
-
-test1 will throw error: segmentation fault
-do not know why, but test2 is ok
-so I think the problem is the lambda capture, do not use lambda capture
-*/
-
 struct noop_coroutine {
   struct promise_type {
     using result_type = void;

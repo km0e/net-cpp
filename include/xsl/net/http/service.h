@@ -153,7 +153,7 @@ public:
    *
    * @return impl_service::Service<abr_type, abw_type, router_type>
    */
-  constexpr impl_service::Service<abr_type, abw_type, router_type> build(this Service self) {
+  constexpr impl_service::Service<abr_type, abw_type, router_type> build(this Service&& self) {
     return {std::move(self.details)};
   }
   /**
@@ -161,7 +161,7 @@ public:
    *
    * @return decltype(auto)
    */
-  constexpr decltype(auto) build_shared(this Service self) {
+  constexpr decltype(auto) build_shared(this Service&& self) {
     return std::make_shared<impl_service::Service<abr_type, abw_type, router_type>>(
         std::move(self.details));
   }

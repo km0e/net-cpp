@@ -46,12 +46,12 @@ public:
   }
 
   template <std::invocable<result_type> _Transform>
-  constexpr decltype(auto) then(this ThenAwaiter self, _Transform &&transform) {
+  constexpr decltype(auto) then(this ThenAwaiter &&self, _Transform &&transform) {
     using Next = ThenAwaiter<AwaiterType, std::tuple<_Transform, Transform, Transforms...>>;
     // next transforms
-    auto next_transforms
-        = std::tuple_cat(std::make_tuple(std::forward<_Transform>(transform)), self._transforms);
-    return Next{self._handle, next_transforms};
+    auto next_transforms = std::tuple_cat(std::make_tuple(std::forward<_Transform>(transform)),
+                                          std::move(self._transforms));
+    return Next{std::exchange(self._handle, {}), std::move(next_transforms)};
   }
 
 protected:
@@ -83,7 +83,7 @@ public:
   constexpr result_type await_resume() { return Base::await_resume(); }
 
   template <std::invocable<result_type> _Transform>
-  constexpr decltype(auto) then(this ThenAwaiter self, _Transform &&transform) {
+  constexpr decltype(auto) then(this ThenAwaiter &&self, _Transform &&transform) {
     using Next = ThenAwaiter<AwaiterType, std::tuple<_Transform>>;
     // next transforms
     return Next{std::exchange(self._handle, {}),

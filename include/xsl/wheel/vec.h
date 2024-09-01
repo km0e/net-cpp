@@ -9,6 +9,7 @@
  *
  */
 #pragma once
+#include <utility>
 #ifndef XSL_WHEEL_VEC
 #  define XSL_WHEEL_VEC
 #  include "xsl/wheel/def.h"
@@ -80,7 +81,7 @@ public:
    */
   constexpr auto&& at(this auto&& self, std::size_t i) {
     assert(i < self._size);
-    return self._data[i];
+    return std::forward_like<decltype(self)>(self._data[i]);
   }
   /**
    * @brief Construct a new Fixed Vector object
@@ -89,10 +90,14 @@ public:
    * @param i
    * @return auto&&
    */
-  constexpr auto&& operator[](this auto&& self, std::size_t i) { return self.at(i); }
+  constexpr decltype(auto) operator[](this auto&& self, std::size_t i) { return self.at(i); }
 
-  constexpr auto begin(this auto&& self) { return self._data.get(); }
-  constexpr auto end(this auto&& self) { return self._data.get() + self._size; }
+  constexpr auto begin(this auto&& self) {
+    return std::forward_like<decltype(self)>(self._data.get());
+  }
+  constexpr auto end(this auto&& self) {
+    return std::forward_like<decltype(self)>(self._data.get() + self._size);
+  }
 
   constexpr bool empty(this auto&& self) { return self.size() == 0; }
   constexpr std::size_t size(this auto&& self) { return self._size; }

@@ -63,9 +63,10 @@ TEST(Signal, SafeForceStop) {
     }
   });
   producer.join();
-  count += w.stop<true>();//TODO: bug?
+  volatile int rest = w.stop<true>();  // TODO: bug?
   consumer.join();
-  ASSERT_EQ(count, N);
+  INFO("res: {}, count: {}", (int)rest, count);
+  ASSERT_EQ(rest + count, N);
 };
 
 int main(int argc, char **argv) {

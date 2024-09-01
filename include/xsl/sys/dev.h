@@ -9,6 +9,7 @@
  *
  */
 #pragma once
+#include <type_traits>
 #ifndef XSL_SYS_RAW_DEV
 #  define XSL_SYS_RAW_DEV
 #  include "xsl/coro.h"
@@ -42,9 +43,11 @@ struct RawOwner {
 /// @brief RawReadDevice is a wrapper for read-only file descriptor
 struct RawReadDevice : public RawOwner {
   using RawOwner::RawOwner;
-  constexpr decltype(auto) async(this auto self, Poller &poller) noexcept {
-    using io_traits_type = IOTraits<decltype(self)>;
-    using poll_traits_type = typename decltype(self)::poll_traits_type;
+  template <class _Self>
+    requires(!std::is_reference_v<_Self>)
+  constexpr decltype(auto) async(this _Self &&self, Poller &poller) noexcept {
+    using io_traits_type = IOTraits<_Self>;
+    using poll_traits_type = typename _Self::poll_traits_type;
     auto signal = poll_by_signal<poll_traits_type>(poller, self.raw(), IOM_EVENTS::IN);
     return typename io_traits_type::async_type{std::move(self).into_raw(), std::move(signal)};
   }
@@ -52,10 +55,11 @@ struct RawReadDevice : public RawOwner {
 /// @brief RawWriteDevice is a wrapper for write-only file descriptor
 struct RawWriteDevice : public RawOwner {
   using RawOwner::RawOwner;
-
-  constexpr decltype(auto) async(this auto self, Poller &poller) noexcept {
-    using io_traits_type = IOTraits<decltype(self)>;
-    using poll_traits_type = typename decltype(self)::poll_traits_type;
+  template <class _Self>
+    requires(!std::is_reference_v<_Self>)
+  constexpr decltype(auto) async(this _Self &&self, Poller &poller) noexcept {
+    using io_traits_type = IOTraits<_Self>;
+    using poll_traits_type = typename _Self::poll_traits_type;
     auto signal = poll_by_signal<poll_traits_type>(poller, self.raw(), IOM_EVENTS::OUT);
     return typename io_traits_type::async_type{std::move(self).into_raw(), std::move(signal)};
   }
@@ -65,7 +69,8 @@ struct RawReadWriteDevice : public RawOwner {
   using RawOwner::RawOwner;
 
   template <class _Self>
-  constexpr decltype(auto) async(this _Self self, Poller &poller) noexcept {
+    requires(!std::is_reference_v<_Self>)
+  constexpr decltype(auto) async(this _Self &&self, Poller &poller) noexcept {
     using poll_traits_type = typename _Self::poll_traits_type;
     using async_type = typename _Self::async_type;
     auto [r_sig, w_sig]
@@ -131,7 +136,8 @@ struct RawAsyncReadWriteDevice : public RawReadWriteDevice {
   }
 
   template <class _Self>
-  constexpr decltype(auto) split(this _Self self) noexcept {
+    requires(!std::is_reference_v<_Self>)
+  constexpr decltype(auto) split(this _Self &&self) noexcept {
     using in_type = typename _Self::template rebind<In>;
     using out_type = typename _Self::template rebind<Out>;
 

@@ -26,9 +26,9 @@ XSL_WHEEL_NB
 
 template <typename _Type, size_t _Extent>
   requires(!std::is_const_v<_Type>)
-constexpr std::span<byte,
-                    _Extent == std::dynamic_extent ? std::dynamic_extent : _Extent * sizeof(_Type)>
-as_writable_bytes [[nodiscard]] (std::span<_Type, _Extent> __sp) noexcept {
+[[nodiscard]] constexpr std::span<byte, _Extent == std::dynamic_extent ? std::dynamic_extent
+                                                                       : _Extent * sizeof(_Type)>
+as_writable_bytes(std::span<_Type, _Extent> __sp) noexcept {
   auto data = reinterpret_cast<byte*>(__sp.data());
   auto size = __sp.size_bytes();
   constexpr auto extent
@@ -70,8 +70,13 @@ constexpr void u16_to_bytes(uint16_t value, byte* bytes) {
   std::copy(raw.begin(), raw.end(), bytes);
 }
 
-constexpr uint16_t u16_from_bytes(const byte* bytes);
 
+constexpr uint16_t u16_from_bytes(const byte* bytes) {
+  uint16_t value;
+  std::copy(bytes, bytes + sizeof(uint16_t),
+            wheel::as_writable_bytes(std::span(&value, 1)).begin());
+  return value;
+}
 constexpr void bool_to_bytes(bool value, byte* bytes);
 
 constexpr bool bool_from_bytes(const byte* bytes);

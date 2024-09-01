@@ -13,8 +13,10 @@
 #  define XSL_WHEEL_MUTEX
 #  include "xsl/sync/def.h"
 
+#  include <memory>
 #  include <mutex>
 #  include <shared_mutex>
+#  include <utility>
 XSL_SYNC_NB
 
 template <class T>
@@ -27,8 +29,8 @@ class LockGuard {
 public:
   constexpr LockGuard(T& m, V& v) : lock(m), v(v) {}
   constexpr ~LockGuard() {}
-  constexpr decltype(auto) operator->(this auto&& self) { return &self.v; }
-  constexpr decltype(auto) operator*(this auto&& self) { return self.v; }
+  constexpr auto operator->(this auto&& self) { return std::addressof(self.v); }
+  constexpr auto& operator*(this auto&& self) { return self.v; }
 
 private:
   std::lock_guard<T> lock;
@@ -41,7 +43,9 @@ public:
   constexpr UnqRes() : src(), mutex() {}
   constexpr UnqRes(T&& src) : src(std::move(src)), mutex() {}
   constexpr ~UnqRes() {}
-  constexpr decltype(auto) lock(this auto&& self) { return LockGuard<std::mutex, T>(self.mutex, self.src); }
+  constexpr decltype(auto) lock(this auto&& self) {
+    return LockGuard<std::mutex, T>(self.mutex, self.src);
+  }
 
 private:
   T src;
@@ -58,8 +62,8 @@ class ShardGuard {
 public:
   constexpr ShardGuard(std::shared_mutex& m, T& t) : m(m), t(t) { m.lock_shared(); }
   constexpr ~ShardGuard() { m.unlock_shared(); }
-  constexpr decltype(auto) operator->(this auto&& self) { return &self.t; }
-  constexpr decltype(auto) operator*(this auto&& self) { return self.t; }
+  constexpr auto operator->(this auto&& self) { return std::addressof(self.t); }
+  constexpr auto& operator*(this auto&& self) { return self.t; }
 
 private:
   std::shared_mutex& m;
@@ -73,10 +77,10 @@ public:
   constexpr ShardRes(R&& src) : src(std::move(src)), mutex() {}
   constexpr ShardRes(auto&&... args) : src(std::forward<decltype(args)>(args)...), mutex() {}
   constexpr ~ShardRes() {}
-  constexpr decltype(auto) lock_shared(this auto&& self) {
+  constexpr decltype(auto) lock_shared(this auto& self) {
     return ShardGuard<R>(self.mutex, self.src);
   }
-  constexpr decltype(auto) lock(this auto&& self) {
+  constexpr decltype(auto) lock(this auto& self) {
     return LockGuard<std::shared_mutex, R>(self.mutex, self.src);
   }
 

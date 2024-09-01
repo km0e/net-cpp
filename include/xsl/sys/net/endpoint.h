@@ -45,8 +45,11 @@ class EndpointSet {
     constexpr Iterator &operator=(const Iterator &) = default;
     constexpr ~Iterator() = default;
 
-    constexpr auto &&operator*(this auto &&self) { return self._ep; }
-    constexpr auto operator->(this auto &&self) { return &self._ep; }
+    constexpr auto &&operator*(this auto &&self) { return std::forward<decltype(self)>(self)._ep; }
+
+    constexpr auto operator->(this auto &&self) {
+      return &std::forward_like<decltype(self)>(self)._ep;
+    }
 
     constexpr Iterator &operator++() {
       _ep = _ep.raw()->ai_next;

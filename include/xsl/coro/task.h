@@ -143,13 +143,13 @@ public:
 protected:
   std::coroutine_handle<promise_type> _handle;
 
-  constexpr std::coroutine_handle<promise_type> move_handle() {
+  constexpr std::coroutine_handle<promise_type> move_handle() && {
     return std::exchange(this->_handle, {});
   }
 
 public:
   constexpr Task(std::coroutine_handle<promise_type> handle) noexcept : _handle(handle) {}
-  constexpr Task(Task &&task) noexcept : _handle(task.move_handle()) {}
+  constexpr Task(Task &&task) noexcept : _handle(std::move(task).move_handle()) {}
   constexpr Task &operator=(Task &&task) noexcept {
     _handle = task.move_handle();
     return *this;
@@ -158,7 +158,7 @@ public:
 
   constexpr awaiter_type operator co_await(this Task &&self) {
     LOG7("move handle to Awaiter");
-    return self.move_handle();
+    return std::move(self).move_handle();
   }
 
   constexpr auto then(this Task &&self, std::invocable<result_type> auto &&f) {
@@ -171,24 +171,23 @@ public:
    * @param self
    * @return result_type
    */
-  constexpr result_type block(this auto &&self) {
+  constexpr result_type block(this Task &&self) {
     LOG7("Task block");
-    return _coro::block(std::forward<decltype(self)>(self));
+    return _coro::block(std::move(self));
   }
   /**
    * @brief Set the executor
    *
-   * @tparam Self the task
-   * @tparam E the executor
-   * @param self the task
+   * @tparam E the executor type
+   * @param self the task, must be rvalue reference
    * @param executor the executor
-   * @return Self
+   * @return requires constexpr&&
    */
-  template <class Self, class E>
+  template <class E>
     requires std::constructible_from<std::shared_ptr<ExecutorBase>, E>
-  constexpr auto &&by(this Self &&self, E &&executor) {
+  constexpr auto &&by(this auto &&self, E &&executor) {
     self._handle.promise().by(std::forward<E>(executor));
-    return std::forward<Self>(self);
+    return std::forward<decltype(self)>(self);
   }
   /**
    * @brief Detach the task

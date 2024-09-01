@@ -11,16 +11,8 @@
 #include "xsl/wheel/def.h"
 #include "xsl/wheel/str.h"
 
-#include <algorithm>
-
 XSL_WHEEL_NB
 
-constexpr uint16_t u16_from_bytes(const byte* bytes) {
-  uint16_t value;
-  std::copy(bytes, bytes + sizeof(uint16_t),
-            wheel::as_writable_bytes(std::span(&value, 1)).begin());
-  return value;
-}
 
 // void bool_to_bytes(bool value, byte* bytes) { bytes[0] = value ? 1 : 0; }
 

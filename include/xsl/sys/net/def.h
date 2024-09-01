@@ -2,7 +2,7 @@
  * @file def.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Network definitions
- * @version 0.11
+ * @version 0.12
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -13,7 +13,6 @@
 #  define XSL_SYS_NET_DEF
 #  define XSL_SYS_NET_NB namespace xsl::_sys::net {
 #  define XSL_SYS_NET_NE }
-#  include "xsl/ai.h"
 #  include "xsl/feature.h"
 #  include "xsl/sys/sync.h"
 
@@ -25,17 +24,13 @@
 #  include <type_traits>
 XSL_SYS_NET_NB
 
+/// @brief Connection-based socket concept
 template <class SockTraits>
 concept CSocketTraits = SockTraits::type == SOCK_STREAM || SockTraits::type == SOCK_SEQPACKET;
 
-/**
- * @brief connection-based socket concept
- *
- * @tparam Sock
- */
+/// @brief Datagram-based socket concept
 template <class Sock>
-concept CSocket = CSocketTraits<typename Sock::socket_traits_type>
-                  && (ai::BRL<Sock> || ai::BWL<Sock> || ai::ABRL<Sock> || ai::ABWL<Sock>);
+concept CSocket = CSocketTraits<typename Sock::socket_traits_type>;
 
 template <class Sock>
 concept BindableSocket
@@ -117,7 +112,7 @@ namespace impl_sock {
               TcpIpv4SocketTraits, TcpIpv6SocketTraits, TcpIpSocketTraits, Udp<Ip<4>>, Udp<Ip<6>>,
               Udp<Placeholder>, UdpIpv4, UdpIpv6, UdpIp, UdpIpv4SocketTraits, UdpIpv6SocketTraits,
               UdpIpSocketTraits, AnySocketTraits>>,
-      Flags...>::type;
+      Flags...>;
 
   template <>
   struct SocketTraitsTag<Tcp<Ip<4>>> : std::type_identity<TcpIpv4SocketTraits> {};
@@ -178,7 +173,7 @@ namespace impl_sock {
 }  // namespace impl_sock
 
 template <class... Flags>
-using SocketTraits = impl_sock::SocketTraitsTagCompose<Flags...>;
+using SocketTraits = impl_sock::SocketTraitsTagCompose<Flags...>::type;
 
 namespace impl_sock {
   class SockAddrStorage {

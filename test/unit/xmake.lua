@@ -1,4 +1,5 @@
 add_deps("xsl_log_ctl")
+
 add_includedirs("$(projectdir)/test/include", { public = true })
 
 if is_mode("coverage") then

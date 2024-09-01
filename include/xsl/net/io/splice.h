@@ -2,7 +2,7 @@
  * @file splice.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Splice the data from one device to another
- * @version 0.11
+ * @version 0.12
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -11,31 +11,30 @@
 #pragma once
 #ifndef XSL_NET_IO_SPLICE
 #  define XSL_NET_IO_SPLICE
-#  include "xsl/ai.h"
 #  include "xsl/coro.h"
+#  include "xsl/io.h"
 #  include "xsl/net/io/def.h"
 XSL_NET_IO_NB
 /**
- * @brief splice data from one device to another
+ * @brief Splice the data from one device to another
  *
- * @tparam Executor the executor type
- * @tparam From the device type to read data from
- * @tparam To the device type to write data to
- * @param from the device to read data from
- * @param to the device to write data to
- * @param buffer the buffer used to store the temporary data
- * @return Lazy<void>
+ * @tparam From the source device
+ * @tparam To the destination device
+ * @param from the source device
+ * @param to the destination device
+ * @param buffer the buffer
+ * @return Task<void>
  */
-template <class Executor = coro::ExecutorBase, ai::ABRL From, ai::ABWL To>
-Task<void, Executor> splice(From& from, To& to, std::string& buffer) {
+template <class From, class To>
+Task<void> splice(From& from, To& to, std::string& buffer) {
   while (true) {
     auto [sz, err]
-        = co_await from.template read<Executor>(xsl::as_writable_bytes(std::span(buffer)));
+        = co_await AIOTraits<From>::read(from, xsl::as_writable_bytes(std::span(buffer)));
     if (err) {
       co_return;
     }
     auto [s_sz, s_err]
-        = co_await to.template write<Executor>(xsl::as_bytes(std::span(buffer).subspan(0, sz)));
+        = co_await AIOTraits<To>::write(to, xsl::as_bytes(std::span(buffer).subspan(0, sz)));
     if (s_err) {
       co_return;
     }

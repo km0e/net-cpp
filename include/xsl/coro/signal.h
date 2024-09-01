@@ -21,6 +21,7 @@
 #  include <functional>
 #  include <memory>
 #  include <mutex>
+#  include <span>
 #  include <utility>
 #  include <variant>
 
@@ -115,6 +116,11 @@ public:
   SignalReceiver<SignalStorage *> pin() { return {std::to_address(this->_storage)}; }
   /// @brief Check if the signal is valid
   operator bool() const { return this->_storage != nullptr; }
+  /// @brief Check if the signal is disconnected
+  bool is_disconnected() const {
+    static_assert(std::is_same_v<Pointer, std::shared_ptr<SignalStorage>>);
+    return this->_storage.use_count() == 1;
+  }
 };
 
 template <class Storage, std::size_t MaxSignals>
@@ -171,7 +177,8 @@ struct SignalTxTraits<SignalStorage, MaxSignals> {
 };
 
 /// @brief Signal sender
-template <std::size_t MaxSignals, class Pointer = std::shared_ptr<SignalStorage>>
+template <std::size_t MaxSignals = std::dynamic_extent,
+          class Pointer = std::shared_ptr<SignalStorage>>
 class SignalSender {
 public:
   using storage_type = SignalStorage;
@@ -206,6 +213,11 @@ public:
   SignalSender<MaxSignals, SignalStorage *> pin() { return {std::to_address(this->_storage)}; }
   /// @brief Check if the signal is valid
   operator bool() const { return this->_storage != nullptr; }
+  /// @brief Check if the signal is disconnected
+  bool is_disconnected() const {
+    static_assert(std::is_same_v<Pointer, std::shared_ptr<SignalStorage>>);
+    return this->_storage.use_count() == 1;
+  }
 };
 /**
  * @brief Create a signal
@@ -213,7 +225,7 @@ public:
  * @tparam MaxSignals the maximum number of signals
  * @return decltype(auto) a pair of SignalReceiver and SignalSender
  */
-template <std::size_t MaxSignals = 1>
+template <std::size_t MaxSignals = std::dynamic_extent>
 decltype(auto) signal() {
   auto storage = std::make_shared<SignalStorage>();
   auto copy = storage;

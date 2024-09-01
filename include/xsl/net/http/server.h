@@ -11,7 +11,6 @@
 #pragma once
 #ifndef XSL_NET_HTTP_SERVER
 #  define XSL_NET_HTTP_SERVER
-#  include "xsl/ai.h"
 #  include "xsl/coro.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/conn.h"
@@ -39,18 +38,17 @@ public:
   Server& operator=(Server&&) = default;
   ~Server() {}
 
-  template <class Executor = coro::ExecutorBase, class Service>
-  Task<void, Executor> serve_connection(Service&& service) {
+  template <class Service>
+  Task<void> serve_connection(Service&& service) {
     auto service_ptr = std::make_shared<Service>(std::forward<Service>(service));
     typename lower_type::value_type conn;
     while (true) {
-      auto [sz, err] = co_await ai::read_poly_resolve<Executor>(this->server, std::span{&conn, 1});
+      auto [sz, err] = co_await this->server.read(std::span{&conn, 1});
       if (sz != 1 || err) {
         LOG2("accept error: {}", std::make_error_code(err.value()).message());
         continue;
       }
-      http::serve_connection<Executor>(std::move(conn), service_ptr)
-          .detach(co_await coro::GetExecutor<Executor>());
+      http::serve_connection(std::move(conn), service_ptr).detach(co_await coro::GetExecutor());
     }
   }
 

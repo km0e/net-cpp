@@ -1,3 +1,13 @@
+/**
+ * @file msg.cpp
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2024-09-01
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #include "xsl/net/http/msg.h"
 #include "xsl/net/http/proto.h"
 #  include "xsl/net/http/def.h"
@@ -17,9 +27,6 @@ void RequestView::clear() {
   version = std::string_view{};
   headers.clear();
 }
-
-ResponseError::ResponseError(int code, std::string_view message) : code(code), message(message) {}
-ResponseError::~ResponseError() {}
 
 ResponsePart::ResponsePart()
     : ResponsePart(Version::HTTP_1_1, Status::OK, to_reason_phrase(Status::OK)) {}

@@ -12,7 +12,6 @@
 
 #ifndef XSL_NET_HTTP_MSG
 #  define XSL_NET_HTTP_MSG
-#  include "xsl/ai.h"
 #  include "xsl/coro.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/proto.h"
@@ -25,17 +24,10 @@
 #  include <tuple>
 #  include <utility>
 XSL_HTTP_NB
-
-class ResponseError {
-public:
-  ResponseError(int code, std::string_view message);
-  ~ResponseError();
-  int code;
-  std::string_view message;
-};
+using namespace xsl::io;
 
 const int DEFAULT_HEADER_COUNT = 16;
-
+/// @brief the response part
 class ResponsePart {
 public:
   ResponsePart();
@@ -53,8 +45,8 @@ public:
   us_map<std::string> headers;
   std::string to_string();
 };
-
-template <ai::ABWL ByteWriter>
+/// @brief the response
+template <ABWL ByteWriter>
 class Response {
 public:
   template <class... Args>
@@ -63,11 +55,11 @@ public:
   Response(Response&&) = default;
   Response& operator=(Response&&) = default;
   ~Response() {}
-  template <class Executor = coro::ExecutorBase>
-  Task<Result, Executor> sendto(ByteWriter& awd) {
+
+  Task<Result> sendto(ByteWriter& awd) {
     auto str = this->_part.to_string();
     DEBUG("response: {}", str);
-    auto [sz, err] = co_await ai::write_poly_resolve<Executor>(awd, xsl::as_bytes(std::span(str)));
+    auto [sz, err] = co_await awd.write(xsl::as_bytes(std::span(str)));
     if (err) {
       co_return std::make_tuple(sz, err);
     };
@@ -80,11 +72,10 @@ public:
     }
     co_return std::make_tuple(sz + bodySize, std::nullopt);
   }
-  Task<Result> sendto(ABW& awd) { return this->sendto<coro::ExecutorBase>(awd); }
   ResponsePart _part;
   std::function<Task<Result>(ByteWriter&)> _body;
 };
-
+/// @brief the request view
 class RequestView {
 public:
   RequestView();
@@ -104,8 +95,8 @@ public:
 
   void clear();
 };
-
-template <ai::ABRL ByteReader>
+/// @brief the request
+template <ABRL ByteReader>
 class Request {
 public:
   Request(io::Buffer<>&& raw, RequestView&& view, std::string_view content_part, ByteReader& ard)
@@ -119,11 +110,12 @@ public:
   Request& operator=(Request&&) = default;
   ~Request() {}
 
+  /// @brief check if the request has the header
   [[nodiscard]]
   inline bool has_header(std::string_view key) {
     return this->view.headers.find(key) != this->view.headers.end();
   }
-
+  /// @brief get the header
   [[nodiscard]]
   inline std::optional<std::string_view> get_header(std::string_view key) {
     auto iter = this->view.headers.find(key);

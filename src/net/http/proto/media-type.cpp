@@ -1,6 +1,14 @@
+/**
+ * @file media-type.cpp
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2024-09-01
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #include "xsl/net/http/proto/media-type.h"
-
-#include <bits/ranges_algo.h>
 
 #include <cstddef>
 XSL_HTTP_NB

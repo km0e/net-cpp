@@ -13,59 +13,104 @@
 #  define XSL_CORO_PUB_SUB
 #  include "xsl/coro/def.h"
 #  include "xsl/coro/signal.h"
-#  include "xsl/logctl.h"
+#  include "xsl/sync.h"
 
+#  include <concepts>
 #  include <cstddef>
-#  include <mutex>
+#  include <memory>
 #  include <optional>
-#  include <shared_mutex>
+#  include <ranges>
+#  include <span>
 #  include <unordered_map>
+#  include <vector>
 
 XSL_CORO_NB
 
-template <class T, std::size_t MaxSubscribers = 1, std::size_t MaxSignals = 1>
+template <class T, std::size_t MaxSignals = std::dynamic_extent>
+using PubSubStorage = ShardRes<std::unordered_map<T, SignalSender<MaxSignals>>>;
+
+template <class T, std::size_t MaxSignals = std::dynamic_extent>
 class PubSub {
 public:
   using value_type = T;
-  using sender_type = SignalSender<MaxSignals>;
+  using storage_type = PubSubStorage<value_type, MaxSignals>;
 
 private:
-  std::shared_mutex _mtx;
-  std::unordered_map<value_type, sender_type> _subscribers;
+  std::unique_ptr<storage_type> _storage;
 
 public:
-  PubSub() : _mtx(), _subscribers() {}
-  ~PubSub() { this->stop(); }
-
+  PubSub() : _storage(std::make_unique<storage_type>()) {}
+  PubSub(PubSub &&) = default;
+  PubSub &operator=(PubSub &&) = default;
+  ~PubSub() {
+    if (this->_storage) {
+      this->stop();
+    }
+  }
+  /**
+   * @brief Subscribe to the pubsub
+   *
+   * @tparam Args the arguments for the subscriber
+   * @param args the arguments for the subscriber
+   * @return std::optional<SignalReceiver<>>
+   */
   template <class... Args>
   std::optional<SignalReceiver<>> subscribe(Args &&...args) {
-    std::unique_lock lock{this->_mtx};
-    auto [r, w] = signal();
-    auto [iter, ok] = this->_subscribers.try_emplace({std::forward<Args>(args)...}, std::move(w));
-    DEBUG("{}", ok);
+    auto [r, w] = signal<MaxSignals>();
+    auto [iter, ok]
+        = this->_storage->lock()->try_emplace({std::forward<Args>(args)...}, std::move(w));
     return ok ? std::make_optional(std::move(r)) : std::nullopt;
   }
-
-  template <class... Args>
-  bool publish(Args &&...args) {
-    auto tx = [this](Args &&...args) -> auto {
-      std::shared_lock lock{this->_mtx};
-      auto iter = this->_subscribers.find({std::forward<Args>(args)...});
-      return iter != this->_subscribers.end() ? iter->second.pin() : nullptr;
-    }(std::forward<Args>(args)...);
+  /**
+   * @brief Publish to the receiver
+   *
+   * @tparam _Args the arguments for the publisher
+   * @param args the arguments for the publisher
+   * @return requires std::constructible_from<value_type, _Args...>
+   */
+  template <class... _Args>
+    requires std::constructible_from<value_type, _Args...>
+  bool publish(_Args &&...args) {
+    auto tx = [this](auto &&...args) -> auto {
+      auto storage = this->_storage->lock();
+      auto iter = storage->find({std::forward<_Args>(args)...});
+      return iter != storage->end() ? iter->second.pin() : nullptr;
+    }(std::forward<_Args>(args)...);
     if (tx) {
       tx.release();
       return true;
     }
     return false;
   }
-
+  /**
+   * @brief Publish to the receiver with a predicate
+   *
+   * @tparam Pred
+   * @param pred the predicate
+   * @return true
+   * @return false
+   */
+  template <std::predicate<const value_type &> Pred>
+  bool publish(Pred &&pred) {
+    auto tx_set = *this->_storage->lock_shared()
+                  | std::views::filter([&pred](auto &pair) { return pred(pair.first); })
+                  | std::views::transform([](auto &pair) { return pair.second.pin(); })
+                  | std::ranges::to<std::vector>();
+    if (tx_set.empty()) {
+      return false;
+    }
+    for (auto &tx : tx_set) {
+      tx.release();
+    }
+    return true;
+  }
+  /// @brief Stop the pubsub
   void stop() {
-    std::lock_guard lock{this->_mtx};
-    for (auto &[_, tx] : this->_subscribers) {
+    auto storage = this->_storage->lock();
+    for (auto &[_, tx] : *storage) {
       tx.stop();
     }
-    this->_subscribers.clear();
+    storage->clear();
   }
 };
 XSL_CORO_NE

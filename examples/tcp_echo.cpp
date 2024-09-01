@@ -21,24 +21,22 @@ std::string port = "8080";
 using namespace xsl::coro;
 using namespace xsl;
 
-template <class Executor = ExecutorBase>
-Task<void, Executor> talk(std::string_view ip, std::string_view port,
-                          std::shared_ptr<xsl::Poller> poller) {
+Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
   using Server = tcp::Server<Ip<4>>;
   auto server = tcp::make_server<Ip<4>>(ip, port, poller).value();
   Server::value_type skt;
   while (true) {
-    auto [sz, err] = co_await server.read<Executor>(std::span<Server::value_type>(&skt, 1));
+    auto [sz, err] = co_await server.read(std::span<Server::value_type>(&skt, 1));
     if (err) {
       LOG3("accept error: {}", std::make_error_code(*err).message());
       break;
     }
     auto [r, w] = std::move(*skt).split();
-    [](auto r, auto w) mutable -> Task<void, Executor> {
+    [](auto r, auto w) mutable -> Task<void> {
       std::string buffer(4096, '\0');
-      co_await net::splice<Executor>(r, w, buffer);
+      co_await net::splice(r, w, buffer);
     }(std::move(r), std::move(w))
-                                      .detach(co_await coro::GetExecutor<Executor>());
+                                      .detach(co_await coro::GetExecutor());
   }
   poller->shutdown();
   co_return;
@@ -52,8 +50,8 @@ int main(int argc, char *argv[]) {
 
   auto poller = std::make_shared<xsl::Poller>();
   auto executor = std::make_shared<NewThreadExecutor>();
-  talk<NewThreadExecutor>(ip, port, poller).detach(std::move(executor));
-  // echo(ip, port, poller).detach();
+  // talk<NewThreadExecutor>(ip, port, poller).detach(std::move(executor));
+  talk(ip, port, poller).detach();
   while (true) {
     poller->poll();
   }

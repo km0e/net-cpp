@@ -19,26 +19,25 @@
 
 #include <utility>
 XSL_SYS_NB
-std::pair<PipeReadDevice, PipeWriteDevice> pipe() {
+std::optional<std::pair<PipeReadDevice, PipeWriteDevice>> pipe() {
   int fds[2];
   if (pipe2(fds, O_NONBLOCK) == -1) {
     LOG2("Failed to create pipe, err: {}", strerror(errno));
-    return {{-1}, {-1}};
+    return std::nullopt;
   }
-  return {{fds[0]}, {fds[1]}};
+  return std::make_pair(PipeReadDevice{fds[0]}, PipeWriteDevice{fds[1]});
 }
 
-std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice> async_pipe(std::shared_ptr<Poller>& poller) {
+std::optional<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>> async_pipe(Poller& poller) {
   int fds[2];
   if (pipe2(fds, O_NONBLOCK | O_CLOEXEC) == -1) {
     LOG2("Failed to create pipe, err: {}", strerror(errno));
-    return {{nullptr, -1}, {nullptr, -1}};
+    return std::nullopt;
   }
-  auto read_sem = std::make_shared<BinarySignal>();
-  auto write_sem = std::make_shared<BinarySignal>();
-  poller->add(fds[0], PollForCoro<DefaultPollTraits, IOM_EVENTS::IN>{read_sem});
-  poller->add(fds[1], PollForCoro<DefaultPollTraits, IOM_EVENTS::OUT>{write_sem});
-  return {{read_sem, fds[0]}, {write_sem, fds[1]}};
+  auto [read_signal] = poll_by_signal<DefaultPollTraits>(poller, fds[0], IOM_EVENTS::IN);
+  auto [write_signal] = poll_by_signal<DefaultPollTraits>(poller, fds[1], IOM_EVENTS::OUT);
+  return std::make_pair(AsyncPipeReadDevice{fds[0], std::move(read_signal)},
+                        AsyncPipeWriteDevice{fds[1], std::move(write_signal)});
 }
 
 XSL_SYS_NE

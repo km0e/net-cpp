@@ -8,16 +8,20 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/ai.h"
 #include "xsl/sys.h"
-using namespace xsl::ai;
 using namespace xsl::sys;
 using namespace xsl;
 int main() {
-  static_assert(ai::BRL<RawDevice<In<DefaultDeviceTraits>>>);
-  static_assert(ai::BWL<RawDevice<Out<DefaultDeviceTraits>>>);
-  static_assert(ai::BRL<RawDevice<InOut<DefaultDeviceTraits>>>);
-  static_assert(ai::BWL<RawDevice<InOut<DefaultDeviceTraits>>>);
-  static_assert(ai::BRWL<RawDevice<InOut<DefaultDeviceTraits>>>);
+  static_assert(io::BRL<RawDevice<In<byte>>>);
+  static_assert(io::BWL<RawDevice<Out<byte>>>);
+  static_assert(io::BRL<RawDevice<InOut<byte>>>);
+  static_assert(io::BWL<RawDevice<InOut<byte>>>);
+  static_assert(io::BRWL<RawDevice<InOut<byte>>>);
+
+  static_assert(io::ABRL<RawAsyncDevice<In<byte>>>);
+  static_assert(io::ABWL<RawAsyncDevice<Out<byte>>>);
+  static_assert(io::ABRL<RawAsyncDevice<InOut<byte>>>);
+  static_assert(io::ABWL<RawAsyncDevice<InOut<byte>>>);
+  static_assert(io::ABRWL<RawAsyncDevice<InOut<byte>>>);
   return 0;
 }

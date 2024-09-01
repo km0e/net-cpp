@@ -1,3 +1,5 @@
+includes("coro")
+
 target("tcp_echo")do
     set_kind("binary")
     add_files("tcp_echo.cpp")

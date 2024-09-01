@@ -8,10 +8,9 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/feature.h"
-
 #include <CLI/CLI.hpp>
 #include <xsl/coro.h>
+#include <xsl/feature.h>
 #include <xsl/logctl.h>
 #include <xsl/net.h>
 #include <xsl/sys.h>
@@ -25,17 +24,14 @@ std::string port = "8080";
 using namespace xsl::coro;
 using namespace xsl;
 
-template <class Executor = ExecutorBase>
-Task<void, Executor> talk(std::string_view ip, std::string_view port,
-                          std::shared_ptr<xsl::Poller> poller) {
+Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
   std::string buffer(4096, '\0');
   auto [r, w] = udp::serv<Ip<4>>(ip.data(), port.data()).value().async(*poller).split();
   sys::net::SockAddr<UdpIpv4> addr{};
   std::string dst(128, '\0');
   std::uint16_t port_num;
   while (true) {
-    auto [rc_n, rc_err] = co_await sys::net::imm_recvfrom<Executor>(
-        r, xsl::as_writable_bytes(std::span(buffer)), addr);
+    auto [rc_n, rc_err] = co_await r.recvfrom(xsl::as_writable_bytes(std::span(buffer)), addr);
     if (rc_err) {
       LOG5("Error: {}", std::make_error_code(rc_err.value()).message());
       break;
@@ -45,8 +41,8 @@ Task<void, Executor> talk(std::string_view ip, std::string_view port,
       continue;
     }
     LOG4("Received: {} from {}:{}", std::string_view{buffer.data(), rc_n}, dst, port_num);
-    auto [sd_n, sd_err] = co_await sys::net::imm_sendto<Executor>(
-        w, xsl::as_bytes(std::span(buffer).subspan(0, rc_n)), addr);
+    auto [sd_n, sd_err]
+        = co_await w.sendto(xsl::as_bytes(std::span(buffer).subspan(0, rc_n)), addr);
     if (sd_err) {
       LOG5("Error: {}", std::make_error_code(sd_err.value()).message());
       break;
@@ -65,7 +61,7 @@ int main(int argc, char *argv[]) {
 
   auto poller = std::make_shared<xsl::Poller>();
   auto executor = std::make_shared<NewThreadExecutor>();
-  talk<NewThreadExecutor>(ip, port, poller).detach(std::move(executor));
+  talk(ip, port, poller).detach(std::move(executor));
   // echo(ip, port, poller).detach();
   while (true) {
     poller->poll();

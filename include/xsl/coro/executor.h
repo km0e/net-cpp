@@ -1,18 +1,21 @@
+/**
+ * @file executor.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Executor for coroutines
+ * @version 0.11
+ * @date 2024-09-01
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_CORO_EXECUTOR
 #  define XSL_CORO_EXECUTOR
 
 #  include "xsl/coro/def.h"
+#  include "xsl/def.h"
 
-#  include <functional>
 XSL_CORO_NB
-
-#  ifndef __cpp_lib_move_only_function
-template <class F>
-using move_only_function = std::function<F>;
-#  else
-using std::move_only_function;
-#  endif  // __cpp_lib_move_only_function
 
 class ExecutorBase {
 public:

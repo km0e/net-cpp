@@ -2,7 +2,7 @@
  * @file server.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief TcpServer
- * @version 0.11
+ * @version 0.12
  * @date 2024-08-18
  *
  * @copyright Copyright (c) 2024
@@ -11,7 +11,6 @@
 #pragma once
 #ifndef XSL_NET_TCP_SERVER
 #  define XSL_NET_TCP_SERVER
-#  include "xsl/ai.h"
 #  include "xsl/feature.h"
 #  include "xsl/net/tcp/def.h"
 #  include "xsl/net/tcp/utils.h"
@@ -22,6 +21,8 @@
 #  include <string_view>
 #  include <system_error>
 XSL_TCP_NB
+using namespace xsl::io;
+
 /**
  * @brief TcpServer
  *
@@ -34,6 +35,7 @@ class Server<Ip<Version>> {
 public:
   using lower_layer_type = Ip<Version>;
   using io_dev_type = sys::tcp::AsyncSocket<lower_layer_type>;
+  using io_traits_type = AIOTraits<io_dev_type>;
   using in_dev_type = io_dev_type::template rebind<In>;
   using out_dev_type = io_dev_type::template rebind<Out>;
   using value_type = std::unique_ptr<io_dev_type>;
@@ -48,17 +50,15 @@ public:
   Server &operator=(Server &&) = default;
 
   /**
-   * @brief read connections from the server
+   * @brief read data from the device
    *
-   * @tparam Executor the executor to use
-   * @param conns the connections to read
-   * @return Task<Result> the result of the operation
+   * @param conns the connections
+   * @return Task<Result>
    */
-  template <class Executor = coro::ExecutorBase>
-  Task<Result, Executor> read(std::span<value_type> conns) noexcept {
+  Task<Result> read(std::span<value_type> conns) noexcept {
     std::size_t i = 0;
     for (auto &conn : conns) {
-      auto res = co_await ai::read_poly_resolve<Executor>(*this);
+      auto res = co_await this->read();
       if (!res) {
         co_return Result{i, res.error()};
       }
@@ -67,22 +67,17 @@ public:
     }
     co_return {i, std::nullopt};
   }
-  Task<Result> read(std::span<value_type> conns) noexcept {
-    return read<coro::ExecutorBase>(conns);
-  }
-  template <class Executor = coro::ExecutorBase>
-  Task<std::expected<io_dev_type, std::errc>, Executor> accept() noexcept {
-    return this->read<Executor>();
-  }
-  template <class Executor = coro::ExecutorBase>
-  Task<std::expected<io_dev_type, std::errc>, Executor> read() noexcept {
+  /// @brief accept a connection
+  Task<std::expected<io_dev_type, std::errc>> accept() noexcept { return this->read(); }
+  /// @brief accept a connection
+  Task<std::expected<io_dev_type, std::errc>> read() noexcept {
     while (true) {
       auto res = sys::tcp::accept(this->_dev, nullptr);
       if (res) {
         co_return std::move(*res).async(*this->poller);
       } else if (res.error() == std::errc::resource_unavailable_try_again
                  || res.error() == std::errc::operation_would_block) {
-        if (!co_await this->_dev.poll_for_read()) {
+        if (!co_await this->_dev.read_signal) {
           co_return std::unexpected{std::errc::not_connected};
         }
       } else {
@@ -98,6 +93,15 @@ public:
 private:
   io_dev_type _dev;
 };
+/**
+ * @brief make a server
+ *
+ * @tparam LowerLayer the lower layer type, such as Ip<Version>(Version = 4 or 6)
+ * @param host the host
+ * @param port the port
+ * @param poller the poller
+ * @return std::expected<Server<LowerLayer>, std::error_condition>
+ */
 template <class LowerLayer>
 std::expected<Server<LowerLayer>, std::error_condition> make_server(
     std::string_view host, std::string_view port, const std::shared_ptr<Poller> &poller) {

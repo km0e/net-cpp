@@ -1,5 +1,14 @@
+/**
+ * @file test_convert_string.cpp
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2024-09-01
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #include "xsl/convert.h"
-#include "xsl/logctl.h"
 
 #include <gtest/gtest.h>
 
@@ -27,7 +36,6 @@ TEST(convert, string) {
 };
 
 int main(int argc, char **argv) {
-  xsl::no_log();
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

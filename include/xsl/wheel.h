@@ -23,7 +23,7 @@ using wheel::as_writable_bytes;
 using wheel::bool_from_bytes;
 using wheel::bool_to_bytes;
 using wheel::Defer;
-using wheel::dynamic_assert;
+using wheel::rt_assert;
 using wheel::FixedString;
 using wheel::FixedVector;
 using wheel::i32_from_bytes;

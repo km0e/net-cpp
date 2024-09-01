@@ -1,7 +1,16 @@
+/**
+ * @file context.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief HTTP context
+ * @version 0.1
+ * @date 2024-09-01
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_NET_HTTP_CONTEXT
 #  define XSL_NET_HTTP_CONTEXT
-#  include "xsl/ai.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/proto.h"
@@ -9,7 +18,8 @@
 #  include <chrono>
 #  include <optional>
 XSL_HTTP_NB
-template <ai::ABRL ByteReader, ai::ABWL ByteWriter>
+using namespace xsl::io;
+template <ABRL ByteReader, ABWL ByteWriter>
 class HandleContext {
 public:
   using response_body_type = Task<Result>(ByteWriter&);
@@ -19,51 +29,45 @@ public:
   HandleContext& operator=(HandleContext&&) = default;
   ~HandleContext() {}
 
+  /// @brief easy response with status code
   void easy_resp(Status status_code) {
     this->_response
         = Response<ByteWriter>{{Version::HTTP_1_1, status_code, to_reason_phrase(status_code)}};
   }
-
+  /// @brief easy response with status code and body
   template <std::invocable<ByteWriter&> F>
   void easy_resp(Status status_code, F&& body) {
     this->_response = Response<ByteWriter>{
         {Version::HTTP_1_1, status_code, to_reason_phrase(status_code)}, std::forward<F>(body)};
   }
-
+  /// @brief easy response with status code and some arguments to construct the body
   template <class... Args>
     requires std::constructible_from<std::string, Args...>
   void easy_resp(Status status_code, Args&&... args) {
     this->_response = Response<ByteWriter>{
         {Version::HTTP_1_1, status_code, to_reason_phrase(status_code)},
-        [body = std::string(std::forward<Args>(args)...)](ByteWriter& awd)
-            -> Task<Result> { return awd.write(xsl::as_bytes(std::span(body))); }};
+        [body = std::string(std::forward<Args>(args)...)](ByteWriter& awd) -> Task<Result> {
+          return awd.write(xsl::as_bytes(std::span(body)));
+        }};
   }
-
+  /// @brief response with ResponsePart
   void resp(ResponsePart&& part) { this->_response = Response<ByteWriter>{std::move(part)}; }
-
+  /// @brief response with ResponsePart and body
   template <std::invocable<ByteWriter&> F>
   void resp(ResponsePart&& part, F&& body) {
     this->_response = Response<ByteWriter>{{std::move(part)}, std::forward<F>(body)};
   }
-
+  /// @brief response with ResponsePart and some arguments to construct the body
   template <class... Args>
     requires std::constructible_from<std::string, Args...>
   void resp(ResponsePart&& part, Args&&... args) {
-    this->_response = Response<ByteWriter>{{std::move(part)},
-                                           [body = std::string(std::forward<Args>(args)...)](
-                                               ByteWriter& awd) -> Task<Result> {
-                                             return awd.write(xsl::as_bytes(std::span(body)));
-                                           }};
+    this->_response = Response<ByteWriter>{
+        {std::move(part)},
+        [body = std::string(std::forward<Args>(args)...)](ByteWriter& awd) -> Task<Result> {
+          return awd.write(xsl::as_bytes(std::span(body)));
+        }};
   }
-
-  Task<Result> sendto(ByteWriter& awd) {
-    if (!this->_response) {
-      this->easy_resp(Status::INTERNAL_SERVER_ERROR);
-    }
-    this->check_and_add_date();
-    return this->_response->sendto(awd);
-  }
-
+  /// @brief checkout the response
   Response<ByteWriter> checkout(this HandleContext self) {
     if (!self._response) {
       self.easy_resp(Status::INTERNAL_SERVER_ERROR);
@@ -88,7 +92,7 @@ private:
 
 using HandleResult = Task<std::optional<Status>>;
 
-template <ai::ABRL ByteReader, ai::ABWL ByteWriter>
+template <ABRL ByteReader, ABWL ByteWriter>
 using Handler = std::function<HandleResult(HandleContext<ByteReader, ByteWriter>& ctx)>;
 
 XSL_HTTP_NE

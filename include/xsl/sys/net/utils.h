@@ -2,7 +2,7 @@
  * @file utils.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.11
  * @date 2024-08-19
  *
  * @copyright Copyright (c) 2024
@@ -14,6 +14,7 @@
 #  include "xsl/sys/net/def.h"
 #  include "xsl/sys/net/endpoint.h"
 #  include "xsl/sys/net/socket.h"
+#  include "xsl/sys/raw.h"
 
 #  include <netdb.h>
 #  include <sys/socket.h>
@@ -26,7 +27,7 @@ XSL_SYS_NET_NB
 template <class Traits>
 using BindResult = std::expected<Socket<Traits>, std::errc>;
 
-namespace impl_bind {
+namespace {
   static inline std::expected<int, std::errc> bind(addrinfo *ai) {
     int tmp_fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
     if (tmp_fd == -1) [[unlikely]] {
@@ -50,16 +51,17 @@ namespace impl_bind {
     }
     return tmp_fd;
   }
-}  // namespace impl_bind
-
+}  // namespace
+/// @brief Bind to an endpoint
 template <class Traits>
 BindResult<Traits> bind(const Endpoint<Traits> &ep) {
-  return impl_bind::bind(ep.raw()).transform([](int fd) { return Socket<Traits>(fd); });
+  return bind(ep.raw()).transform([](int fd) { return Socket<Traits>(fd); });
 }
+/// @brief Bind to an endpoint set
 template <class Traits>
 BindResult<Traits> bind(const EndpointSet<Traits> &eps) {
   for (auto &ep : eps) {
-    auto bind_res = impl_bind::bind(ep.raw());
+    auto bind_res = bind(ep.raw());
     if (bind_res) {
       return Socket<Traits>(*bind_res);
     }

@@ -45,8 +45,8 @@ int main(int argc, char* argv[]) {
 
   auto poller = std::make_shared<xsl::Poller>();
   auto executor = std::make_shared<NewThreadExecutor>();
-  // run(ip, port, poller).detach(std::move(executor));
-  run(ip, port, poller).detach();
+  run(ip, port, poller).detach(std::move(executor));
+  // run(ip, port, poller).detach();
   while (poller->valid()) {
     poller->poll();
   }

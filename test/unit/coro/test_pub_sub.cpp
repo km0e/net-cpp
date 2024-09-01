@@ -35,6 +35,22 @@ TEST(PubSub, SafeExit) {
   ASSERT_EQ(count, 1);
 }
 
+TEST(PubSub, PubByPred) {
+  PubSub<int, 100> pubsub{};
+  auto sub_res = pubsub.subscribe(1);
+  pubsub.subscribe(2);
+  pubsub.publish([](int v) { return v == 1; });
+  SignalReceiver rx = std::move(*sub_res);
+  int count = 0;
+  [](SignalReceiver<> sub, int &count) -> Task<void> {
+    while (co_await sub) {
+      count++;
+    }
+  }(std::move(rx), count)
+                                              .detach();
+  ASSERT_EQ(count, 1);
+}
+
 TEST(PubSub, HeavyConcurrent) {
   UniformDistributionGenerator gen{};
   auto executor = std::make_shared<coro::NewThreadExecutor>();

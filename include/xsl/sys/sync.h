@@ -2,7 +2,7 @@
  * @file sync.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Synchronization primitives
- * @version 0.11
+ * @version 0.12
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -12,7 +12,6 @@
 #ifndef XSL_SYS_SYNC
 #  define XSL_SYS_SYNC
 #  include "xsl/coro.h"
-#  include "xsl/feature.h"
 #  include "xsl/sync.h"
 #  include "xsl/sys/def.h"
 
@@ -23,7 +22,9 @@
 #  include <cstdint>
 #  include <functional>
 #  include <memory>
+#  include <string>
 #  include <string_view>
+#  include <tuple>
 #  include <utility>
 XSL_SYS_NB
 const int TIMEOUT = 100;
@@ -47,12 +48,14 @@ enum class IOM_EVENTS : std::uint32_t {
   ONESHOT = EPOLL_EVENTS::EPOLLONESHOT,
   ET = EPOLL_EVENTS::EPOLLET,
 };
+
 IOM_EVENTS operator|(IOM_EVENTS a, IOM_EVENTS b);
 IOM_EVENTS& operator|=(IOM_EVENTS& a, IOM_EVENTS b);
 IOM_EVENTS operator&(IOM_EVENTS a, IOM_EVENTS b);
 IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b);
 IOM_EVENTS operator~(IOM_EVENTS a);
 bool operator!(IOM_EVENTS a);
+std::string to_string(IOM_EVENTS events);
 #  endif
 
 enum class PollHandleHintTag : uint8_t {
@@ -78,7 +81,7 @@ concept Handler = requires(T t) {
   { t(0, IOM_EVENTS::NONE) } -> std::same_as<PollHandleHint>;
 };
 
-using PollHandler = std::function<PollHandleHint(int fd, IOM_EVENTS events)>;
+using PollHandler = std::move_only_function<PollHandleHint(int fd, IOM_EVENTS events)>;
 
 namespace impl_poll {
   template <IOM_EVENTS... Events>
@@ -87,45 +90,23 @@ namespace impl_poll {
     IOM_EVENTS get_events() { return (Events | ...); }
   };
 
-  template <class Traits, IOM_EVENTS... Events>
-  class PollForCoro : public PollBase<Events...> {
+  template <class Traits>
+  class PollForCoro {
   public:
-    PollForCoro(std::array<std::shared_ptr<BinarySignal>, sizeof...(Events)> sems)
-        : sems(std::move(sems)) {}
+    template <class _PubSub>
+    PollForCoro(_PubSub&& pubsub) : pubsub{std::forward<_PubSub>(pubsub)} {}
 
-    template <class... Sems>
-    PollForCoro(Sems&&... sems) : sems{std::forward<Sems>(sems)...} {}
     PollHandleHint operator()(int, IOM_EVENTS events) {
       if (Traits::poll_check(events) == PollHandleHintTag::DELETE) {
-        for (auto& sem : sems) {
-          sem->release(false);
-        }
         return PollHandleHintTag::DELETE;
       } else {
-        return handle_event(std::make_index_sequence<sizeof...(Events)>{}, events)
-                   ? PollHandleHintTag::DELETE
-                   : PollHandleHintTag::NONE;
+        pubsub.publish([&events](IOM_EVENTS e) { return !!(events & e); });
+        return PollHandleHintTag::NONE;
       }
     }
 
   private:
-    std::array<std::shared_ptr<BinarySignal>, sizeof...(Events)> sems;
-
-    template <std::size_t... I>
-    bool handle_event(std::index_sequence<I...>, IOM_EVENTS events) {
-      return (handle_event<Events, I>(events) && ...);
-    }
-
-    template <IOM_EVENTS E, std::size_t I>
-    bool handle_event(IOM_EVENTS events) {
-      if (sems[I].use_count() > 1) {
-        if (!!(events & E)) {
-          sems[I]->release(true);
-        }
-        return false;
-      }
-      return true;
-    }
+    PubSub<IOM_EVENTS, 1> pubsub;
   };
   template <IOM_EVENTS... Events>
   class PollCallback : public PollBase<Events...> {
@@ -166,8 +147,8 @@ struct DefaultPollTraits {
   }
 };
 
-template <class Traits, IOM_EVENTS... Events>
-using PollForCoro = impl_poll::PollForCoro<Traits, Events...>;
+template <class Traits>
+using PollForCoro = impl_poll::PollForCoro<Traits>;
 
 template <IOM_EVENTS... Events>
 using PollCallback = impl_poll::PollCallback<Events...>;
@@ -180,15 +161,7 @@ public:
   ~Poller();
   bool valid();
   bool add(int fd, IOM_EVENTS events, PollHandler&& handler);
-  template <class Poll>
-  bool add(int fd, Poll&& poll) {
-    return add(fd, poll.get_events() | IOM_EVENTS::ET, std::forward<Poll>(poll));
-  }
   bool modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler);
-  template <class Poll>
-  bool modify(int fd, Poll&& poll) {
-    return modify(fd, poll.get_events() | IOM_EVENTS::ET, std::forward<Poll>(poll));
-  }
   void poll();
   void remove(int fd);
   /**
@@ -203,5 +176,21 @@ private:
   std::shared_ptr<HandleProxy> proxy;
 };
 
+/**
+ * @brief Poll by signal
+ *
+ * @tparam Traits the poll traits
+ * @param poller the poller
+ * @param fd the file descriptor
+ * @param events the events
+ * @return auto the signal
+ */
+template <class Traits>
+auto poll_by_signal(Poller& poller, int fd, std::same_as<IOM_EVENTS> auto... events) {
+  PubSub<IOM_EVENTS, 1> pubsub{};
+  auto res = std::make_tuple(*pubsub.subscribe(events)...);
+  poller.add(fd, (events | ...) | IOM_EVENTS::ET, PollForCoro<Traits>{std::move(pubsub)});
+  return std::move(res);
+}
 XSL_SYS_NE
 #endif

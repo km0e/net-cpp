@@ -1,3 +1,13 @@
+/**
+ * @file chain.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2024-09-01
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_CORO_CHAIN
 #  define XSL_CORO_CHAIN
@@ -11,7 +21,7 @@
 #  include <type_traits>
 #  include <utility>
 XSL_CORO_NB
-template <class AwaiterType, class TransformGroup = std::tuple<>>
+template <class AwaiterType, class TransformGroup = std::tuple<>>//TODO: for then
 class ChainAwaiter;
 
 template <class AwaiterType, class Transform, class... Transforms>

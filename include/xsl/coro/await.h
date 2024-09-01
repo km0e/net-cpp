@@ -1,3 +1,13 @@
+/**
+ * @file await.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Await for coroutine
+ * @version 0.1
+ * @date 2024-09-01
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_CORO_AWAIT
 #  define XSL_CORO_AWAIT
@@ -10,17 +20,16 @@
 
 XSL_CORO_NB
 
-template <class Executor = ExecutorBase>
 class GetExecutor {
 public:
-  using executor_type = Executor;
+  using executor_type = ExecutorBase;
   GetExecutor() : _executor() {}
 
   bool await_ready() const noexcept { return true; }
 
   template <class _Promise>
   bool await_suspend(std::coroutine_handle<_Promise>) noexcept {
-    dynamic_assert(false, "GetExecutor::await_suspend should not be called");
+    rt_assert(false, "GetExecutor::await_suspend should not be called");
     return false;
   }
 

@@ -1,8 +1,18 @@
+/**
+ * @file parse.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Parse the http request
+ * @version 0.1
+ * @date 2024-09-01
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 
 #ifndef XSL_NET_HTTP_PARSE
 #  define XSL_NET_HTTP_PARSE
-#  include "xsl/ai.h"
+#  include "xsl/io/def.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
@@ -15,6 +25,8 @@
 #  include <tuple>
 #  include <utility>
 XSL_HTTP_NB
+using namespace xsl::io;
+
 using ParseResult = std::tuple<std::size_t, std::expected<RequestView, std::errc>>;
 
 class ParseUnit {
@@ -60,13 +72,8 @@ const std::size_t HTTP_BUFFER_BLOCK_SIZE = 1024;
 struct HttpParseTraits {
   using parser_type = ParseUnit;
 };
-
+/// @brief the parsed data
 struct ParseData {
-  ParseData() noexcept : buffer{}, request{}, content_part{} {}
-  ParseData(io::Buffer<>&& buffer, RequestView&& request, std::string_view content_part)
-      : buffer(std::move(buffer)), request(std::move(request)), content_part(content_part) {}
-  ParseData(ParseData&&) = default;
-  ParseData& operator=(ParseData&&) = default;
   io::Buffer<> buffer;
   RequestView request;
   std::string_view content_part;
@@ -85,11 +92,18 @@ public:
   Parser(Parser&&) = default;
   Parser& operator=(Parser&&) = default;
   ~Parser() {}
-  template <class Executor = coro::ExecutorBase, ai::ABRL Reader>
-  Task<std::errc, Executor> read(Reader& reader, ParseData& buf) {
+  /**
+   * @brief read the request
+   *
+   * @tparam Reader the reader type
+   * @param reader the reader
+   * @param buf the buffer to store the parsed data
+   * @return Task<std::errc>
+   */
+  template <ABRL Reader>
+  Task<std::errc> read(Reader& reader, ParseData& buf) {
     while (true) {
-      auto [sz, err] = co_await ai::read_poly_resolve<Executor>(
-          reader, this->buffer.front().span(this->used_size));
+      auto [sz, err] = co_await reader.read(this->buffer.front().span(this->used_size));
       if (err) {
         co_return std::move(*err);
       }
@@ -101,9 +115,6 @@ public:
         co_return err;
       }
     }
-  }
-  Task<std::errc> read(ABR& reader, ParseData& buf) {
-    return this->read<coro::ExecutorBase>(reader, buf);
   }
   void reset() {
     this->used_size = 0;
@@ -151,4 +162,15 @@ private:
 };
 
 XSL_HTTP_NE
+XSL_IO_NB
+template <class Traits>
+struct AIOTraits<_net::http::Parser<Traits>> {
+  using value_type = _net::http::ParseData;
+  using device_type = _net::http::Parser<Traits>;
+  template <ABRL Reader>
+  static Task<std::errc> read(device_type& dev, Reader& reader, value_type& buf) {
+    return dev.read(reader, buf);
+  }
+};
+XSL_IO_NE
 #endif

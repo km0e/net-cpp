@@ -12,7 +12,6 @@
 #ifndef XSL_SYS
 #  define XSL_SYS
 #  include "xsl/def.h"
-#  include "xsl/sys/io.h"
 #  include "xsl/sys/net/conn.h"
 #  include "xsl/sys/net/connect.h"
 #  include "xsl/sys/net/def.h"
@@ -20,7 +19,7 @@
 #  include "xsl/sys/net/resolve.h"
 #  include "xsl/sys/net/socket.h"
 #  include "xsl/sys/net/utils.h"
-#  include "xsl/sys/raw.h"
+#  include "xsl/sys/io.h"
 #  include "xsl/sys/sync.h"
 XSL_NB
 namespace sys::net {
@@ -28,22 +27,23 @@ namespace sys::net {
   using _sys::net::bind;
   using _sys::net::CLIENT_FLAGS;
   using _sys::net::connect;
-  using _sys::net::imm_recv;
-  using _sys::net::imm_recvfrom;
-  using _sys::net::imm_send;
-  using _sys::net::imm_sendto;
+  using _sys::net::recv;
+  using _sys::net::recvfrom;
   using _sys::net::ResolveFlag;
   using _sys::net::Resolver;
+  using _sys::net::send;
+  using _sys::net::sendto;
   using _sys::net::SERVER_FLAGS;
   using _sys::net::SockAddr;
   using _sys::net::Socket;
 }  // namespace sys::net
 namespace sys {
-  using _sys::AsyncRawDevice;
-  using _sys::DefaultDeviceTraits;
-  using _sys::imm_sendfile;
+  using _sys::RawAsyncDevice;
   using _sys::RawDevice;
-  using _sys::SendfileHint;
+  using _sys::read;
+  using _sys::write;
+  using _sys::write_file;
+  using _sys::WriteFileHint;
 }  // namespace sys
 namespace sys::tcp {
 

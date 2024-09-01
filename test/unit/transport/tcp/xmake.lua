@@ -1,5 +1,4 @@
-add_deps("xsl_tcp")
--- includes("tcp_server")
+add_deps("xsl_net")
 
 target("test_tcp_connect")
     set_kind("binary")

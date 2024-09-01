@@ -1,3 +1,13 @@
+/**
+ * @file router.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief HTTP router
+ * @version 0.1
+ * @date 2024-09-01
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_NET_HTTP_ROUTER
 #  define XSL_NET_HTTP_ROUTER
@@ -37,7 +47,7 @@ concept RouterLike = requires(R r, Method hm, std::string_view path, Tag&& tag, 
 namespace router_details {
   class HttpRouteNode {
   public:
-    using tag_type = std::size_t;///< tag type
+    using tag_type = std::size_t;  ///< tag type
     HttpRouteNode() : handlers{}, fallbacks{}, children{} {}
     /**
      * @brief Construct a new Http Route Node object
@@ -58,7 +68,7 @@ namespace router_details {
      */
     void add_route(Method method, std::string_view path, tag_type&& tag) {
       LOG5("Adding route: {}", path);
-      dynamic_assert(path[0] == '/', "Invalid path");
+      rt_assert(path[0] == '/', "Invalid path");
       auto pos = path.find('/', 1);
 
       if (pos != std::string_view::npos) {
@@ -81,7 +91,7 @@ namespace router_details {
       if (child->second.add(method, std::move(tag))) {
         return;
       }
-      dynamic_assert(false, "Route already exists");
+      rt_assert(false, "Route already exists");
     }
     /**
      * @brief Add a fallback route
@@ -92,7 +102,7 @@ namespace router_details {
      */
     void add_fallback(Method method, std::string_view path, tag_type&& tag) {
       LOG5("Adding fallback route: {}", path);
-      dynamic_assert(path[0] == '/', "Invalid path");
+      rt_assert(path[0] == '/', "Invalid path");
       auto pos = path.find('/', 1);
 
       if (pos != std::string_view::npos) {
@@ -106,9 +116,8 @@ namespace router_details {
             .first->second.add_fallback(method, path.substr(sub.length() + 1), std::move(tag));
       }
       auto sub_path = path.substr(1);
-      dynamic_assert(sub_path.empty(), "Fallback path must be empty");
-      dynamic_assert(fallbacks[static_cast<uint8_t>(method)] == tag_type{},
-                     "Fallback already exists");
+      rt_assert(sub_path.empty(), "Fallback path must be empty");
+      rt_assert(fallbacks[static_cast<uint8_t>(method)] == tag_type{}, "Fallback already exists");
       fallbacks[static_cast<uint8_t>(method)] = std::move(tag);
     }
     /**

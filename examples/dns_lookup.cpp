@@ -25,14 +25,12 @@ std::string port = "53";
 using namespace xsl::coro;
 using namespace xsl;
 
-template <class Executor = ExecutorBase>
-Task<void, Executor> talk(std::string_view ip, std::string_view port,
-                          std::shared_ptr<xsl::Poller> poller) {
+Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
   auto server = dns::serv<Ip<4>>(ip.data(), port.data(), *poller).value();
   std::string buffer(4096, '\0');
   while (true) {
     std::cin >> buffer;
-    auto res = co_await server.query<Executor>(buffer);
+    auto res = co_await server.query(buffer);
     if (res.empty()) {
       LOG5("Error: invalid domain name");
       continue;
@@ -51,7 +49,7 @@ int main(int argc, char *argv[]) {
 
   auto poller = std::make_shared<xsl::Poller>();
   auto executor = std::make_shared<NewThreadExecutor>();
-  talk<NewThreadExecutor>(ip, port, poller).detach(std::move(executor));
+  talk(ip, port, poller).detach(std::move(executor));
   // echo(ip, port, poller).detach();
   while (true) {
     poller->poll();

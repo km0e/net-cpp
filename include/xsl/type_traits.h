@@ -2,7 +2,7 @@
  * @file type_traits.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Type traits
- * @version 0.11
+ * @version 0.12
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -79,19 +79,19 @@ using existing = std::bool_constant<existing_v<T, Pack>>;
 namespace impl_remove {
   template <template <class L, class R> class Pred, class T, class Pack, class... Checked>
     requires requires {
-      { Pred<T, Pack>::value } -> std::convertible_to<bool>;
+      { Pred<T, int>::value } -> std::convertible_to<bool>;
     }
   struct remove_first_if;
 
   template <template <class L, class R> class Pred, class T, template <class...> class Pack,
             class This, class... Rest, class... Checked>
   struct remove_first_if<Pred, T, Pack<This, Rest...>, Checked...>
-      : std::conditional_t<Pred<T, This>::value, std::type_identity<Pack<Checked..., Rest...>>,
+      : std::conditional_t<Pred<T, This>::value, _2<Pack<Checked..., Rest...>, This>,
                            remove_first_if<Pred, T, Pack<Rest...>, Checked..., This>> {};
 
   template <template <class L, class R> class Pred, class T, template <class...> class Pack,
             class... Checked>
-  struct remove_first_if<Pred, T, Pack<>, Checked...> : std::type_identity<Pack<Checked...>> {};
+  struct remove_first_if<Pred, T, Pack<>, Checked...> : _2<Pack<Checked...>, void> {};
 
   template <template <class L, class R> class Pred, class Opts, class Pack, class... Checked>
   struct remove_first_of_if;
@@ -109,7 +109,7 @@ namespace impl_remove {
 }  // namespace impl_remove
 
 template <template <class L, class R> class Pred, class T, class Pack>
-using remove_first_if_t = typename impl_remove::remove_first_if<Pred, T, Pack>::type;
+using remove_first_if = typename impl_remove::remove_first_if<Pred, T, Pack>::self;
 
 template <template <class L, class R> class Pred, class Opts, class Pack>
 using remove_first_of_if = typename impl_remove::remove_first_of_if<Pred, Opts, Pack>::self;
@@ -192,6 +192,22 @@ namespace impl_inner {
 
 template <class T>
 using inner_t = typename impl_inner::inner<T>::type;
+
+namespace {
+  template <template <class> class Map, class Pack, class... Res>
+  struct for_each;
+
+  template <template <class> class Map, template <class...> class Pack, class T, class... Ts,
+            class... Res>
+  struct for_each<Map, Pack<T, Ts...>, Res...>
+      : for_each<Map, Pack<Ts...>, Res..., typename Map<T>::type> {};
+
+  template <template <class> class Map, template <class...> class Pack, class... Res>
+  struct for_each<Map, Pack<>, Res...> : std::type_identity<Pack<Res...>> {};
+}  // namespace
+
+template <template <class> class Map, class Pack>
+using for_each_t = for_each<Map, Pack>::type;
 
 XSL_NE
 #endif

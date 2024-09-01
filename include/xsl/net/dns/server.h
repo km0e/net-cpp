@@ -46,8 +46,8 @@ public:
   Server(Server &&) = default;
   Server &operator=(Server &&) = default;
   ~Server() = default;
-  template <class Executor = coro::ExecutorBase>
-  Task<std::string, Executor> query(const std::string_view &name, QueryFlags flags = QueryFlags()) {
+
+  Task<std::string> query(const std::string_view &name, QueryFlags flags = QueryFlags()) {
     std::size_t offset = 0;
 
     Header header{};
@@ -68,20 +68,20 @@ public:
     offset += 2;
     serialize(ExtQClass::ANY, this->buffer.get() + offset);
     offset += 2;
+    //TODO: send the query
+    // auto [w_sz, w_err]
+    //     = co_await this->socket.write(std::span{this->buffer.get(), offset});
+    // if (w_err) {
+    //   co_return std::string{};
+    // }
 
-    auto [w_sz, w_err]
-        = co_await this->socket.template write<Executor>(std::span{this->buffer.get(), offset});
-    if (w_err) {
-      co_return std::string{};
-    }
+    // auto [r_sz, r_err]
+    //     = co_await this->socket.read(std::span{this->buffer.get(), 512});
+    // if (r_err) {
+    //   co_return std::string{};
+    // }
 
-    auto [r_sz, r_err]
-        = co_await this->socket.template read<Executor>(std::span{this->buffer.get(), 512});
-    if (r_err) {
-      co_return std::string{};
-    }
-
-    co_return std::string{reinterpret_cast<const char *>(this->buffer.get()), r_sz};
+    // co_return std::string{reinterpret_cast<const char *>(this->buffer.get()), r_sz};
   }
 
 private:

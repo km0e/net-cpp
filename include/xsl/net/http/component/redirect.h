@@ -1,3 +1,13 @@
+/**
+ * @file redirect.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Redirect component
+ * @version 0.1
+ * @date 2024-09-01
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #pragma once
 #ifndef XSL_NET_HTTP_COMPONENT_REDIRECT
 #  define XSL_NET_HTTP_COMPONENT_REDIRECT
@@ -9,7 +19,9 @@
 #  include <optional>
 
 XSL_HTTP_NB
-template <ai::ABRL ByteReader, ai::ABWL ByteWriter>
+using namespace xsl::io;
+
+template <ABRL ByteReader, ABWL ByteWriter>
 Handler<ByteReader, ByteWriter> create_redirect_handler(std::string_view path) {
   return [path](HandleContext<ByteReader, ByteWriter>& ctx) -> HandleResult {
     DEBUG("redirect to {}", path);

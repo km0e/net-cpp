@@ -11,8 +11,8 @@
 #pragma once
 #ifndef XSL_NET_IO_BUFFER
 #  define XSL_NET_IO_BUFFER
-#  include "xsl/ai.h"
 #  include "xsl/feature.h"
+#  include "xsl/io.h"
 #  include "xsl/net/io/def.h"
 
 #  include <cstddef>
@@ -56,7 +56,7 @@ namespace impl_buffer {
 
   template <class T>
   class Buffer<T>
-      : public std::conditional_t<std::is_same_v<T, Dyn>, ai::AsyncWritable<byte>, Placeholder> {
+      : public std::conditional_t<std::is_same_v<T, Dyn>, AsyncWritable<byte>, Placeholder> {
   public:
     using value_type = byte;
 
@@ -71,7 +71,7 @@ namespace impl_buffer {
     void clear() { _blocks.clear(); }
     Block& front() { return _blocks.front(); }
 
-    Task<Result> write(ABW& awd) {
+    Task<xsl::io::Result> write(ABW& awd) {
       std::size_t total_size = 0;
       for (auto& block : _blocks) {
         auto [size, err] = co_await awd.write(block.span());

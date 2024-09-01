@@ -11,7 +11,6 @@
 #pragma once
 #ifndef XSL_NET_HTTP_SERVICE
 #  define XSL_NET_HTTP_SERVICE
-#  include "xsl/ai.h"
 #  include "xsl/coro.h"
 #  include "xsl/feature.h"
 #  include "xsl/net/http/component/redirect.h"
@@ -23,9 +22,10 @@
 
 #  include <memory>
 XSL_HTTP_NB
+using namespace xsl::io;
 
 namespace impl_service {
-  template <ai::ABRL In, ai::ABWL Out, RouterLike<std::size_t> R>
+  template <ABRL In, ABWL Out, RouterLike<std::size_t> R>
   struct InnerDetails {
     InnerDetails() : router{}, handlers{}, status_handlers{} {}
     R router;
@@ -33,7 +33,7 @@ namespace impl_service {
     std::unordered_map<Status, Handler<In, Out>> status_handlers;
   };
 
-  template <ai::ABRL ABr, ai::ABWL ABw, RouterLike<std::size_t> R>
+  template <ABRL ABr, ABWL ABw, RouterLike<std::size_t> R>
   class Service {
   public:
     //<async byte reader
@@ -90,7 +90,7 @@ namespace impl_service {
  * @tparam LowerLayer the lower layer type, such as Tcp<Ip<4>>
  * @tparam R the router type, such as Router
  */
-template <ai::ABRL ABr, ai::ABWL ABw, RouterLike<std::size_t> R = Router>
+template <ABRL ABr, ABWL ABw, RouterLike<std::size_t> R = Router>
 class Service {
 public:
   using abr_type = ABr;
@@ -168,7 +168,7 @@ private:
   std::size_t tag;
   std::unique_ptr<details_type> details;
 };
-template <ai::ABRWL ABrw, RouterLike<std::size_t> R = Router>
+template <ABRWL ABrw, RouterLike<std::size_t> R = Router>
 Service<typename ABrw::template rebind<In>, typename ABrw::template rebind<Out>, R> make_service() {
   return {};
 }

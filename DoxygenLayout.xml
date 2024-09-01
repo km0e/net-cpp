@@ -7,6 +7,11 @@
     <!-- <tab type="mainpage" visible="yes" title=""/> -->
     <!-- <tab type="pages" visible="yes" title="" intro=""/> -->
     <tab type="user" url="@ref readme" title="Readme" />
+    <tab type="usergroup" url="@ref examples" visible="yes" title="Examples">
+      <tab type="user" url="@ref signal_example" title="Signal" />
+      <tab type="user" url="@ref pub_sub_example" title="PubSub" />
+      <tab type="user" url="@ref tcp_example" title="Tcp" />
+    </tab>
     <tab type="usergroup" url="@ref benchmarks" visible="yes" title="Benchmarks">
       <tab type="user" url="@ref bench_spsc" title="spsc" />
     </tab>

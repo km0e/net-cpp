@@ -18,7 +18,7 @@ using namespace xsl;
 
 template <class Executor = ExecutorBase, bool DynamicService = false,
           bool DynamicConnection = false>
-Task<void, Executor> run(std::string_view ip, std::string_view port,
+Task<void> run(std::string_view ip, std::string_view port,
                          std::shared_ptr<xsl::Poller> poller) {
   using Server = tcp::Server<Ip<4>>;
   auto server = tcp::make_server<Ip<4>>(ip, port, poller).value();
@@ -37,7 +37,7 @@ Task<void, Executor> run(std::string_view ip, std::string_view port,
       if constexpr (DynamicConnection) {
         return server.accept();
       } else {
-        return server.accept<Executor>();
+        return server.accept();
       }
     }();
     if (!skt) {
@@ -47,8 +47,8 @@ Task<void, Executor> run(std::string_view ip, std::string_view port,
     INFO("New connection is accepted");
     auto conn = http1::make_connection(std::move(*skt));
     std::move(conn)
-        .template serve_connection<Executor>(http_service)  // same as accept, also can be dynamic
-        .detach(co_await coro::GetExecutor<Executor>());
+        .serve_connection(http_service)  // same as accept, also can be dynamic
+        .detach(co_await coro::GetExecutor());
   }
   poller->shutdown();
   co_return;
@@ -56,7 +56,7 @@ Task<void, Executor> run(std::string_view ip, std::string_view port,
 
 template <class Executor = ExecutorBase, bool DynamicService = false,
           bool DynamicConnection = false>
-Task<void, Executor> run_step(std::string_view ip, std::string_view port,
+Task<void> run_step(std::string_view ip, std::string_view port,
                               std::shared_ptr<xsl::Poller> poller) {
   using Server = tcp::Server<Ip<4>>;
   auto server = tcp::make_server<Ip<4>>(ip, port, poller).value();
@@ -75,7 +75,7 @@ Task<void, Executor> run_step(std::string_view ip, std::string_view port,
     if constexpr (DynamicConnection) {
       return http_server.serve_connection(std::move(http_service));
     } else {
-      return http_server.serve_connection<Executor>(std::move(http_service));
+      return http_server.serve_connection(std::move(http_service));
     }
   }();
   poller->shutdown();

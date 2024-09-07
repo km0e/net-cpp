@@ -16,6 +16,7 @@
 #  include "xsl/sys.h"
 
 #  include <expected>
+#  include <system_error>
 XSL_TCP_NB
 /**
  * @brief Dial a tcp connection to a host and port
@@ -59,9 +60,9 @@ constexpr std::expected<sys::tcp::Socket<LowerLayer>, std::error_condition> serv
   if (!bind_res) {
     return std::unexpected(bind_res.error());
   }
-  auto lres = sys::tcp::listen(*bind_res);
-  if (!lres) {
-    return std::unexpected(lres.error());
+  auto lres = bind_res->listen();
+  if (lres != std::errc{}) {
+    return std::unexpected(lres);
   }
   return sys::tcp::Socket<LowerLayer>{std::move(*bind_res)};
 }

@@ -45,7 +45,7 @@ Task<void> run(std::string_view ip, std::string_view port,
       break;
     }
     INFO("New connection is accepted");
-    auto conn = http1::make_connection(std::move(*skt));
+    auto conn = http::make_connection(std::move(*skt));
     std::move(conn)
         .serve_connection(http_service)  // same as accept, also can be dynamic
         .detach(co_await coro::GetExecutor());

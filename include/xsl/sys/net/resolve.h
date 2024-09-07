@@ -74,9 +74,9 @@ namespace impl {
     addrinfo *res;
     std::memset(&hints, 0, sizeof(hints));
     hints.ai_flags = static_cast<int>(flags);
-    hints.ai_family = Traits::family;
-    hints.ai_socktype = Traits::type;
-    hints.ai_protocol = Traits::protocol;
+    hints.ai_family = Traits{}.family();
+    hints.ai_socktype = Traits{}.type();
+    hints.ai_protocol = Traits{}.protocol();
     int ret = getaddrinfo(name, serv, &hints, &res);
     if (ret != 0) {
       return std::unexpected{std::error_condition{ret, ResolveCategory()}};

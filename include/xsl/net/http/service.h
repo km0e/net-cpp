@@ -13,6 +13,7 @@
 #  define XSL_NET_HTTP_SERVICE
 #  include "xsl/coro.h"
 #  include "xsl/feature.h"
+#  include "xsl/io.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/component/redirect.h"
 #  include "xsl/net/http/component/static.h"
@@ -38,22 +39,22 @@ namespace impl_service {
   class Service {
   public:
     //<async byte reader
-    using abr_type = ABr;
+    using in_dev_type = ABr;
 
     //<async byte writer
-    using abw_type = ABw;
+    using out_dev_type = ABw;
 
     using router_type = R;
 
-    using context_type = HandleContext<abr_type, abw_type>;
+    using context_type = HandleContext<in_dev_type, out_dev_type>;
 
-    using handler_type = Handler<abr_type, abw_type>;
+    using handler_type = Handler<in_dev_type, out_dev_type>;
 
-    using details_type = InnerDetails<abr_type, abw_type, router_type>;
+    using details_type = InnerDetails<in_dev_type, out_dev_type, router_type>;
 
     constexpr Service(std::unique_ptr<details_type>&& details) : details(std::move(details)) {}
 
-    Task<Response<abw_type>> operator()(Request<abr_type>&& request) {
+    Task<Response<out_dev_type>> operator()(Request<in_dev_type>&& request) {
       INFO("New request: {} {}", request.view.method, request.view.path);
       auto route_ctx = RouteContext{request.method, request.view.path};
 
@@ -170,7 +171,7 @@ private:
   std::size_t tag;
   std::unique_ptr<details_type> details;
 };
-template <ABRWL ABrw, RouterLike<std::size_t> R = Router>
+template <ABRWL ABrw = ABRW, RouterLike<std::size_t> R = Router>
 constexpr Service<typename ABrw::template rebind<In>, typename ABrw::template rebind<Out>, R>
 make_service() {
   return {};

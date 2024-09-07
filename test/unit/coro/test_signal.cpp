@@ -17,53 +17,50 @@
 using namespace xsl;
 
 TEST(Signal, Pin) {
-  auto [r, w] = signal<1>();
-  auto pin_r = r.pin();
-  auto pin_w = w.pin();
-  auto moved_r = std::move(r);
-  auto moved_w = std::move(w);
-  ASSERT_TRUE(pin_r);
-  ASSERT_TRUE(pin_w);
-  pin_w.release();
-  ASSERT_TRUE([&pin_r] -> Task<bool> { co_return co_await pin_r; }().block());
+  Signal<1> sig{};
+  auto pin = sig.pin();
+  auto moved = std::move(sig);
+  ASSERT_TRUE(pin);
+  pin.release();
+  ASSERT_TRUE([&pin] -> Task<bool> { co_return co_await pin; }().block());
 }
 
 TEST(Signal, SafeStop) {
   const int N = 100000;
-  auto [r, w] = signal<N>();
+  Signal<N> sig{};
   int count = 0;
   std::jthread consumer([&] {
-    while ([&] -> Task<bool> { co_return co_await r; }().block()) {
+    while ([&] -> Task<bool> { co_return co_await sig; }().block()) {
       ++count;
     }
   });
   std::jthread producer([&] {
     for (int i = 0; i < N; i++) {
-      w.release();
+      sig.release();
     }
   });
   producer.join();
-  w.stop();
+  sig.stop();
   consumer.join();
   ASSERT_EQ(count, N);
 };
 
 TEST(Signal, SafeForceStop) {
   const int N = 100000;
-  auto [r, w] = signal<N>();
+  Signal<N> sig{};
   int count = 0;
   std::jthread consumer([&] {
-    while ([&] -> Task<bool> { co_return co_await r; }().block()) {
+    while ([&] -> Task<bool> { co_return co_await sig; }().block()) {
       ++count;
     }
   });
   std::jthread producer([&] {
     for (int i = 0; i < N; i++) {
-      w.release();
+      sig.release();
     }
   });
   producer.join();
-  volatile int rest = w.stop<true>();  // TODO: bug?
+  volatile int rest = sig.stop<true>();  // TODO: bug?
   consumer.join();
   INFO("res: {}, count: {}", (int)rest, count);
   ASSERT_EQ(rest + count, N);

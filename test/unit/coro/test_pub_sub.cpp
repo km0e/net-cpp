@@ -18,48 +18,48 @@
 
 using namespace xsl;
 TEST(ExactPubSub, SafeExit) {
-  SignalReceiver rx = [] -> auto {
+  auto sig = [] -> auto {
     auto [pubsub, rx] = _coro::make_exact_pub_sub<int>(1);
     pubsub.publish(1);
     return std::move(rx);
   }();
   int count = 0;
-  [](SignalReceiver<> sub, int &count) -> Task<void> {
+  [](auto sub, int &count) -> Task<void> {
     while (co_await sub) {
       count++;
     }
-  }(std::move(rx), count)
-                                              .detach();
+  }(std::move(sig), count)
+                                  .detach();
   ASSERT_EQ(count, 1);
 }
 
 TEST(ExactPubSub, PubByPred) {
-  auto [pubsub, rx1, rx2] = _coro::make_exact_pub_sub<int>(1, 2);
+  auto [pubsub, sig1, sig2] = _coro::make_exact_pub_sub<int>(1, 2);
   pubsub.publish([](int v) { return v == 1; });
   int count = 0;
-  [](SignalReceiver<> sub, int &count) -> Task<void> {
+  [](auto sub, int &count) -> Task<void> {
     while (co_await sub) {
       count++;
     }
-  }(std::move(rx1), count)
-                                              .detach();
+  }(std::move(sig1), count)
+                                  .detach();
   ASSERT_EQ(count, 1);
 }
 
 TEST(PubSub, SafeExit) {
-  SignalReceiver rx = [] -> auto {
+  auto sig = [] -> auto {
     PubSub<int, 100> pubsub{};
     auto sub_res = pubsub.subscribe(1);
     pubsub.publish(1);
     return std::move(*sub_res);
   }();
   int count = 0;
-  [](SignalReceiver<> sub, int &count) -> Task<void> {
+  [](auto sub, int &count) -> Task<void> {
     while (co_await sub) {
       count++;
     }
-  }(std::move(rx), count)
-                                              .detach();
+  }(std::move(sig), count)
+                                  .detach();
   ASSERT_EQ(count, 1);
 }
 
@@ -67,15 +67,15 @@ TEST(PubSub, PubByPred) {
   PubSub<int, 100> pubsub{};
   auto sub_res = pubsub.subscribe(1);
   pubsub.subscribe(2);
-  pubsub.publish([](int v) { return v == 1; });
-  SignalReceiver rx = std::move(*sub_res);
+  pubsub.publish([](const int &v) { return v == 1; });
+  auto sig = std::move(*sub_res);
   int count = 0;
-  [](SignalReceiver<> sub, int &count) -> Task<void> {
+  [](auto sub, int &count) -> Task<void> {
     while (co_await sub) {
       count++;
     }
-  }(std::move(rx), count)
-                                              .detach();
+  }(std::move(sig), count)
+                                  .detach();
   ASSERT_EQ(count, 1);
 }
 
@@ -97,8 +97,8 @@ TEST(PubSub, HeavyConcurrent) {
       if (!sub_res) {
         co_return;
       }
-      SignalReceiver rx = std::move(*sub_res);
-      while (co_await rx) {
+      auto sig = std::move(*sub_res);
+      while (co_await sig) {
         counter[v]++;
       }
       sem.release();

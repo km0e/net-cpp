@@ -21,7 +21,6 @@
 #  include "xsl/net/http/proto.h"
 #  include "xsl/net/http/proto/accept.h"
 #  include "xsl/net/http/proto/media-type.h"
-#  include "xsl/sys.h"
 #  include "xsl/wheel.h"
 
 #  include <algorithm>
@@ -141,10 +140,9 @@ protected:
     part.headers.emplace("Last-Modified", to_date_string(last_modified));
     part.headers.emplace("Content-Type", content_type.to_string_view());
 
-    auto send_file
-        = [hint = sys::WriteFileHint{path.native(), 0, file_size}](ByteWriter& awd) mutable {
-            return AIOTraits<ByteWriter>::write_file(awd, std::move(hint));
-          };
+    auto send_file = [hint = WriteFileHint{path.native(), 0, file_size}](ByteWriter& awd) mutable {
+      return AIOTraits<ByteWriter>::write_file(awd, std::move(hint));
+    };
     ctx.resp(std::move(part), std::move(send_file));
     return std::nullopt;
   }

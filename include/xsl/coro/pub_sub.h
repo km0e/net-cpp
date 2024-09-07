@@ -22,7 +22,6 @@
 #  include <ranges>
 #  include <span>
 #  include <unordered_map>
-#  include <vector>
 
 XSL_CORO_NB
 
@@ -33,20 +32,42 @@ public:
   using storage_type = Storage;
 
 protected:
-  std::unique_ptr<ShardRes<storage_type>> _storage;
+  std::shared_ptr<ShardRes<storage_type>> _storage;
 
 public:
-  template <class... Args>
-    requires std::constructible_from<ShardRes<storage_type>, Args...>
-  constexpr PubSubBase(Args &&...args)
-      : _storage(std::make_unique<ShardRes<storage_type>>(std::forward<Args>(args)...)) {}
   constexpr PubSubBase(ShardRes<storage_type> *storage) : _storage(storage) {}
   constexpr PubSubBase(PubSubBase &&) = default;
+  constexpr PubSubBase(const PubSubBase &) = default;
   constexpr PubSubBase &operator=(PubSubBase &&) = default;
+  constexpr PubSubBase &operator=(const PubSubBase &) = default;
   constexpr ~PubSubBase() {
     if (this->_storage) {
       this->stop();
     }
+  }
+  /**
+   * @brief Get the immediate signal
+   *
+   * @param key
+   * @return constexpr decltype(auto)
+   * @note The signal's lifetime is managed by the pubsub
+   */
+  constexpr decltype(auto) imm_signal(const key_type &key) {
+    auto guard = this->_storage->lock_shared();
+    auto iter = std::ranges::find_if(*guard, [&key](auto &pair) { return pair.first == key; });
+    return iter != guard->end() ? iter->second.pin() : nullptr;
+  }
+  /**
+   * @brief Get the signal
+   *
+   * @param key
+   * @return constexpr decltype(auto)
+   * @note The signal's lifetime is managed by the pubsub, but the signal can be safely released
+   */
+  constexpr decltype(auto) signal(const key_type &key) {
+    auto guard = this->_storage->lock_shared();
+    auto iter = std::ranges::find_if(*guard, [&key](auto &pair) { return pair.first == key; });
+    return iter != guard->end() ? std::make_optional(iter->second) : std::nullopt;
   }
   /**
    * @brief Publish to the receiver
@@ -62,9 +83,9 @@ public:
   constexpr bool publish(_Args &&...args) {
     key_type key{std::forward<_Args>(args)...};
     auto tx = [this, &key]() {
-      auto &storage = *this->_storage->lock_shared();
-      auto iter = std::ranges::find_if(storage, [&key](auto &pair) { return pair.first == key; });
-      return iter != storage.end() ? iter->second.pin() : nullptr;
+      auto guard = this->_storage->lock_shared();
+      auto iter = std::ranges::find_if(*guard, [&key](auto &pair) { return pair.first == key; });
+      return iter != guard->end() ? iter->second.pin() : nullptr;
     }();
     if (tx) {
       tx.release();
@@ -82,17 +103,15 @@ public:
    */
   template <std::predicate<const key_type &> Pred>
   constexpr bool publish(Pred &&pred) {
+    bool empty = true;
     auto tx_set = *this->_storage->lock_shared()
                   | std::views::filter([&pred](auto &pair) { return pred(pair.first); })
-                  | std::views::transform([](auto &pair) { return pair.second.pin(); })
-                  | std::ranges::to<std::vector>();
-    if (tx_set.empty()) {
-      return false;
-    }
-    for (auto &tx : tx_set) {
+                  | std::views::transform([](auto &pair) { return pair.second.pin(); });
+    for (auto &&tx : tx_set) {
       tx.release();
+      empty = false;
     }
-    return true;
+    return !empty;
   }
   /// @brief Stop the pubsub
   constexpr void stop() {
@@ -104,7 +123,7 @@ public:
 };
 
 template <class T, std::size_t N, std::size_t MaxSignals = std::dynamic_extent>
-using ExactPubSubStorage = std::array<std::pair<T, SignalSender<MaxSignals>>, N>;
+using ExactPubSubStorage = std::array<std::pair<T, Signal<MaxSignals>>, N>;
 
 /**
  * @brief Make a pubsub with exact keys
@@ -122,18 +141,22 @@ template <class T, std::size_t MaxSignals = std::dynamic_extent>
 constexpr decltype(auto) make_exact_pub_sub(auto &&...keys) {
   const std::size_t N = sizeof...(keys);
   return []<std::size_t... I>(std::index_sequence<I...>, auto &&..._keys) {
-    auto signals = std::make_tuple((static_cast<void>(I), signal<MaxSignals>())...);
+    auto signals = std::make_tuple((static_cast<void>(I), Signal<MaxSignals>())...);
+    auto copy = signals;
     return std::make_tuple(
-        PubSubBase(new ShardRes<ExactPubSubStorage<T, N, MaxSignals>>{{std::pair{
-            std::forward<decltype(_keys)>(_keys), std::move(std::get<I>(signals).second)}...}}),
-        std::move(std::get<I>(signals).first)...);
+        PubSubBase(new ShardRes<ExactPubSubStorage<T, N, MaxSignals>>{
+            {std::pair{std::forward<decltype(_keys)>(_keys), std::move(std::get<I>(signals))}...}}),
+        std::move(std::get<I>(copy))...);
   }(std::make_index_sequence<N>{}, std::forward<decltype(keys)>(keys)...);
 }
 
+template <class T, std::size_t N, std::size_t MaxSignals = std::dynamic_extent>
+using ExactPubSub = PubSubBase<ExactPubSubStorage<T, N, MaxSignals>>;
+
 template <class T, std::size_t MaxSignals = std::dynamic_extent>
-class PubSub : public PubSubBase<std::unordered_map<T, SignalSender<MaxSignals>>> {
+class PubSub : public PubSubBase<std::unordered_map<T, Signal<MaxSignals>>> {
 private:
-  using Base = PubSubBase<std::unordered_map<T, SignalSender<MaxSignals>>>;
+  using Base = PubSubBase<std::unordered_map<T, Signal<MaxSignals>>>;
   using typename Base::key_type;
   using typename Base::storage_type;
 
@@ -148,11 +171,11 @@ public:
    * @param args
    * @return std::optional<SignalReceiver<>>
    */
-  constexpr std::optional<SignalReceiver<>> subscribe(auto &&...args) {
-    auto [r, w] = signal<MaxSignals>();
-    auto [iter, ok] = this->_storage->lock()->try_emplace({std::forward<decltype(args)>(args)...},
-                                                          std::move(w));
-    return ok ? std::make_optional(std::move(r)) : std::nullopt;
+  constexpr std::optional<Signal<MaxSignals>> subscribe(auto &&...args) {
+    Signal<MaxSignals> sig{};
+    auto [iter, ok]
+        = this->_storage->lock()->try_emplace({std::forward<decltype(args)>(args)...}, sig);
+    return ok ? std::make_optional(std::move(sig)) : std::nullopt;
   }
   /**
    * @brief Publish to the receiver

@@ -27,10 +27,9 @@ using namespace xsl;
 
 Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
   std::string buffer(4096, '\0');
-  auto [r, w] = udp::dial<Ip<4>>(ip.data(), port.data()).value().async(*poller).split();
+  auto rw = udp::dial<Ip<4>>(ip.data(), port.data()).value().async(*poller);
   while (true) {
-    sys::net::SockAddr<> dst;
-    auto [n_recv, err_recv] = co_await r.recv(xsl::as_writable_bytes(std::span(buffer)));
+    auto [n_recv, err_recv] = co_await rw.recv(xsl::as_writable_bytes(std::span(buffer)));
     if (err_recv.has_value()) {
       LOG2("Failed to recv data, err : {}", std::make_error_code(err_recv.value()).message());
       break;
@@ -38,7 +37,7 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
     LOG4("Recv: {}", std::string_view{buffer.data(), n_recv});
     // std::cin >> buffer;
     LOG5("Input: {} bytes", buffer.size());
-    auto [n, err] = co_await w.send(xsl::as_bytes(std::span(buffer)));
+    auto [n, err] = co_await rw.send(xsl::as_bytes(std::span(buffer)));
     if (err.has_value()) {
       LOG2("Failed to send data, err : {}", std::make_error_code(err.value()).message());
       break;

@@ -25,7 +25,6 @@
 #  include <memory>
 #  include <string>
 #  include <string_view>
-#  include <tuple>
 #  include <utility>
 XSL_SYS_NB
 const int TIMEOUT = 100;
@@ -268,7 +267,8 @@ constexpr auto poll_by_signal(Poller& poller, int fd, std::same_as<IOM_EVENTS> a
 
   return [&add]<std::size_t... I>(std::index_sequence<I...>, auto&& pubsub) {
     return add(std::get<I>(std::forward<decltype(pubsub)>(pubsub))...);
-  }(std::make_index_sequence<sizeof...(events) + 1>{}, make_exact_pub_sub<IOM_EVENTS>(events...));
+  }(std::make_index_sequence<sizeof...(events) + 1>{},
+         make_exact_pub_sub<IOM_EVENTS, 1>(events...));
 }
 XSL_SYS_NE
 #endif

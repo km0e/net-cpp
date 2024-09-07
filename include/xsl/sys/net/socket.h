@@ -45,8 +45,8 @@ class ReadSocket : public RawReadDevice {
 public:
   using Base = RawReadDevice;
   using async_type = AsyncReadSocket<Traits>;
-  using socket_traits_type = Traits;
-  using poll_traits_type = typename socket_traits_type::poll_traits_type;
+  using traits_type = Traits;
+  using poll_traits_type = typename traits_type::poll_traits_type;
   using Base::Base;
 };
 /// @brief Write-only socket device
@@ -55,90 +55,55 @@ class WriteSocket : public RawWriteDevice {
 public:
   using Base = RawWriteDevice;
   using async_type = AsyncWriteSocket<Traits>;
-  using socket_traits_type = Traits;
-  using poll_traits_type = typename socket_traits_type::poll_traits_type;
+  using traits_type = Traits;
+  using poll_traits_type = typename traits_type::poll_traits_type;
   using Base::Base;
 };
 /// @brief Read-write socket device
 template <class Traits>
-class ReadWriteSocket : public RawReadWriteDevice {
+class ReadWriteSocket : public Traits, public RawReadWriteDevice, public NetRxTraits {
 public:
   using Base = RawReadWriteDevice;
   using async_type = AsyncReadWriteSocket<Traits>;
-  using socket_traits_type = Traits;
-  using poll_traits_type = typename socket_traits_type::poll_traits_type;
+  using traits_type = Traits;
+  using poll_traits_type = typename traits_type::poll_traits_type;
   using Base::Base;
 };
 /// @brief Async read-only socket device
 template <class Traits>
-class AsyncReadSocket : public RawAsyncReadDevice {
+class AsyncReadSocket : public Traits, public RawAsyncReadDevice, public NetAsyncRxTraits {
 public:
   using Base = RawAsyncReadDevice;
   using value_type = byte;
-  using socket_traits_type = Traits;
+  using traits_type = Traits;
   using dynamic_type = AsyncReadSocket;
   using io_dyn_chains = xsl::_n<AsyncReadSocket, DynAsyncReadDevice<AsyncReadSocket>>;
 
   using Base::Base;
-  /**
-   * @brief read data from the socket
-   *
-   * @param buf the buffer to indicate the data
-   * @return constexpr Task<Result>
-   */
-  constexpr Task<Result> recv(std::span<byte> buf) {
-    if constexpr (CSocketTraits<Traits>) {
-      return _sys::net::recv(this->fd, buf, this->read_signal);
-    } else {
-      return _sys::net::imm_recv(this->fd, buf, this->read_signal);
-    }
-  }
-  /**
-   * @brief read data from the socket
-   *
-   * @tparam SockAddr the socket address type
-   * @param buf the buffer to indicate the data
-   * @param addr the socket address
-   * @return constexpr Task<Result>
-   */
-  template <class SockAddr>
-  constexpr Task<Result> recvfrom(std::span<byte> buf, SockAddr &addr) {
-    if constexpr (CSocketTraits<Traits>) {
-      return _sys::net::recvfrom(this->fd, buf, addr, this->read_signal);
-    } else {
-      return _sys::net::recvfrom(this->fd, buf, addr, this->read_signal);
-    }
-  }
 };
 /// @brief Async write-only socket device
 template <class Traits>
-class AsyncWriteSocket : public RawAsyncWriteDevice {
+class AsyncWriteSocket : public Traits, public RawAsyncWriteDevice, public NetAsyncTxTraits {
 public:
   using Base = RawAsyncWriteDevice;
   using value_type = byte;
 
-  using socket_traits_type = Traits;
+  using traits_type = Traits;
   using dynamic_type = AsyncWriteSocket;
   using io_dyn_chains = xsl::_n<AsyncWriteSocket, DynAsyncWriteDevice<AsyncWriteSocket>>;
 
   using Base::Base;
-
-  constexpr Task<Result> send(std::span<const byte> buf) {
-    return _sys::net::send(this->fd, buf, this->write_signal);
-  }
-
-  template <class SockAddr>
-  constexpr Task<Result> sendto(std::span<const byte> buf, SockAddr &addr) {
-    return _sys::net::sendto(this->fd, buf, addr, this->write_signal);
-  }
 };
 /// @brief Async read-write socket device
 template <class Traits>
-class AsyncReadWriteSocket : public RawAsyncReadWriteDevice {
+class AsyncReadWriteSocket : public Traits,
+                             public RawAsyncReadWriteDevice,
+                             public NetAsyncRxTraits,
+                             public NetAsyncTxTraits {
 public:
   using Base = RawAsyncReadWriteDevice;
 
-  using socket_traits_type = Traits;
+  using traits_type = Traits;
 
   using value_type = byte;
 
@@ -200,8 +165,8 @@ using Socket = SocketCompose<InOut<SocketTraits<Flags...>>>::type;
 
 template <class Socket>
 constexpr std::expected<Socket, std::errc> make_socket() {
-  int fd = ::socket(Socket::socket_traits_type::family, Socket::socket_traits_type::type,
-                    Socket::socket_traits_type::protocol);
+  typename Socket::traits_type socket_traits;
+  int fd = ::socket(socket_traits.family(), socket_traits.type(), socket_traits.protocol());
   if (fd < 0) {
     return std::unexpected{std::errc(errno)};
   }
@@ -260,8 +225,8 @@ struct AIOTraits<_sys::net::AsyncWriteSocket<Traits>> {
 
   static Task<Result> write(device_type &dev, std::span<const byte> buf) { return dev.send(buf); }
 
-  static constexpr Task<Result> write_file(device_type &dev, _sys::WriteFileHint &&hint) {
-    return _sys::net::write_file(dev.fd, std::move(hint), dev.write_signal);
+  static constexpr Task<Result> write_file(device_type &dev, io::WriteFileHint &&hint) {
+    return dev.send_file(std::move(hint));
   }
 };
 

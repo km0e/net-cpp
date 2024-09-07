@@ -76,5 +76,15 @@ concept AsyncReadWriteDeviceLike
 
 template <class Device>
 concept ABRWL = AsyncReadWriteDeviceLike<Device, byte>;
+
+/// @brief Write file hint
+struct WriteFileHint {
+  std::string
+      path;  ///< file path, must be string, not string_view. Because this function will be called
+             ///< in coroutine, and the path may be destroyed before the function is called.
+  std::size_t offset;
+  std::size_t size;
+};
+
 XSL_IO_NE
 #endif  // XSL_IO_DEF

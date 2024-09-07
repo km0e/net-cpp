@@ -42,8 +42,6 @@ namespace sys {
   using _sys::RawDevice;
   using _sys::read;
   using _sys::write;
-  using _sys::write_file;
-  using _sys::WriteFileHint;
 }  // namespace sys
 namespace sys::tcp {
 

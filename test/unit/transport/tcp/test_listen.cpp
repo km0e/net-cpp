@@ -29,7 +29,7 @@ TEST(bind, create) {
   auto skt = xsl::sys::net::bind(ai);
   ASSERT_TRUE(skt.has_value());
   ASSERT_NE(skt->raw(), 0);
-  ASSERT_TRUE(xsl::sys::tcp::listen(*skt).has_value());
+  ASSERT_TRUE(skt->listen() == std::errc{});
 }
 
 int main(int argc, char **argv) {

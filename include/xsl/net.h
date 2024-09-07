@@ -52,6 +52,7 @@ namespace dns {
 namespace http {
   using xsl::_net::http::HandleContext;
   using xsl::_net::http::HandleResult;
+  using xsl::_net::http::make_connection;
   using xsl::_net::http::Method;
   using xsl::_net::http::ParseData;
   using xsl::_net::http::Parser;
@@ -70,7 +71,7 @@ namespace http {
 }  // namespace http
 
 namespace http1 {
-  using xsl::_net::http::make_connection;
+  using xsl::_net::http::Connection;
   using xsl::_net::http::make_service;
   using xsl::_net::http::Server;
   using xsl::_net::http::Service;

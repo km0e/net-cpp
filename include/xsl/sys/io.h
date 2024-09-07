@@ -18,31 +18,6 @@
 #  include <sys/sendfile.h>
 #  include <unistd.h>
 XSL_SYS_NB
-using RawHandle = int;
-/**
- * @brief write to device
- *
- * @tparam Pointer the pointer type, typically is a shared_ptr
- * @param _raw the raw handle
- * @param sig the signal receiver
- * @param data the data to write
- * @return Task<io::Result>
- */
-template <class Pointer>
-Task<io::Result> write(RawHandle _raw, std::span<const byte> data, SignalReceiver<Pointer> &sig) {
-  do {
-    ssize_t n = ::write(_raw, data.data(), data.size());
-    if (n >= 0) {
-      co_return {n, std::nullopt};
-    } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      if (!co_await sig) {
-        co_return {0, {std::errc::not_connected}};
-      }
-    } else {
-      co_return {0, {std::errc(errno)}};
-    }
-  } while (true);
-}
 /**
  * @brief read from device
  *
@@ -53,11 +28,42 @@ Task<io::Result> write(RawHandle _raw, std::span<const byte> data, SignalReceive
  * @return Task<io::Result>
  */
 template <class Pointer>
-Task<io::Result> read(RawHandle _raw, std::span<byte> buf, SignalReceiver<Pointer> &sig) {
+Task<io::Result> read(RawHandle _raw, std::span<byte> buf, const Signal<1, Pointer> &sig) {
   do {
     ssize_t n = ::read(_raw, buf.data(), buf.size());
     if (n >= 0) {
       LOG6("{} recv {} bytes", _raw, n);
+      co_return {n, std::nullopt};
+    } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      if (!co_await sig) {
+        co_return {0, {std::errc::not_connected}};
+      }
+    } else {
+      co_return {0, {std::errc(errno)}};
+    }
+  } while (true);
+}
+
+struct FileRxTraits {
+  Task<io::Result> read(this auto &&self, std::span<byte> buf) {
+    return _sys::read(self.raw(), buf, self.read_signal());
+  }
+};
+
+/**
+ * @brief write to device
+ *
+ * @tparam Pointer the pointer type, typically is a shared_ptr
+ * @param _raw the raw handle
+ * @param sig the signal receiver
+ * @param data the data to write
+ * @return Task<io::Result>
+ */
+template <class Pointer>
+Task<io::Result> write(RawHandle _raw, std::span<const byte> data, const Signal<1, Pointer> &sig) {
+  do {
+    ssize_t n = ::write(_raw, data.data(), data.size());
+    if (n >= 0) {
       co_return {n, std::nullopt};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
       if (!co_await sig) {
@@ -77,7 +83,7 @@ Task<io::Result> read(RawHandle _raw, std::span<byte> buf, SignalReceiver<Pointe
  * @return Task<io::Result>
  */
 template <class Dev>
-Task<io::Result> write_file(Dev &dev, _sys::WriteFileHint hint) {
+Task<io::Result> write_file(Dev &dev, io::WriteFileHint hint) {
   int ffd = open(hint.path.c_str(), O_RDONLY | O_CLOEXEC);
   if (ffd == -1) {
     LOG2("open file failed");
@@ -95,7 +101,18 @@ Task<io::Result> write_file(Dev &dev, _sys::WriteFileHint hint) {
   }
   Defer defer2{[src, pa_size] { munmap(src, pa_size); }};
   std::span<byte> data{reinterpret_cast<byte *>(src) + (offset - pa_offset), map_size};
+  DEBUG("ready to send {}", data.size());
   co_return co_await dev.write(data);
 }
+struct FileTxTraits {
+  Task<io::Result> write(this auto &&self, std::span<const byte> data) {
+    return _sys::write(self.raw(), data, self.write_signal());
+  }
+
+  template <class Pointer>
+  Task<io::Result> write_file(this auto &&self, io::WriteFileHint &&hint) {
+    return _sys::write_file(self, std::move(hint));
+  }
+};
 XSL_SYS_NE
 #endif

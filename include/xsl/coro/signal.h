@@ -16,6 +16,7 @@
 #  include "xsl/wheel.h"
 
 #  include <cassert>
+#  include <concepts>
 #  include <coroutine>
 #  include <cstddef>
 #  include <functional>
@@ -87,8 +88,8 @@ struct SignalRxTraits<SignalStorage> {
 };
 
 /// @brief Signal receiver
-template <class Pointer = std::shared_ptr<SignalStorage>>
-class SignalReceiver {
+template <class Pointer = SignalStorage *>
+class SignalAwaiter {
 public:
   using storage_type = SignalStorage;
   using traits_type = SignalRxTraits<storage_type>;
@@ -97,9 +98,9 @@ private:
   Pointer _storage;
 
 public:
-  constexpr SignalReceiver(auto &&storage) : _storage(std::forward<decltype(storage)>(storage)) {}
-  constexpr SignalReceiver(SignalReceiver &&) = default;
-  constexpr SignalReceiver &operator=(SignalReceiver &&) = default;
+  constexpr SignalAwaiter(auto &&storage) : _storage(std::forward<decltype(storage)>(storage)) {}
+  constexpr SignalAwaiter(SignalAwaiter &&) = default;
+  constexpr SignalAwaiter &operator=(SignalAwaiter &&) = default;
   /// @brief Check if the signal is ready
   constexpr bool await_ready() noexcept { return traits_type::await_ready(*this->_storage); }
   /// @brief Suspend the signal
@@ -111,15 +112,6 @@ public:
   [[nodiscard("must use the result of await_resume to confirm the signal is still alive")]]
   constexpr bool await_resume() {
     return traits_type::await_resume(*this->_storage);
-  }
-  /// @brief Pin the signal, return a raw SignalReceiver
-  constexpr SignalReceiver<SignalStorage *> pin() { return {std::to_address(this->_storage)}; }
-  /// @brief Check if the signal is valid
-  constexpr operator bool() const { return this->_storage != nullptr; }
-  /// @brief Check if the signal is disconnected
-  constexpr bool is_disconnected() const {
-    static_assert(std::is_same_v<Pointer, std::shared_ptr<SignalStorage>>);
-    return this->_storage.use_count() == 1;
   }
 };
 
@@ -179,21 +171,25 @@ struct SignalTxTraits<SignalStorage, MaxSignals> {
 /// @brief Signal sender
 template <std::size_t MaxSignals = std::dynamic_extent,
           class Pointer = std::shared_ptr<SignalStorage>>
-class SignalSender {
+class Signal {
 public:
-  using storage_type = SignalStorage;
+  using pointer_traits = std::pointer_traits<Pointer>;
+  using storage_type = typename pointer_traits::element_type;
   using traits_type = SignalTxTraits<storage_type, MaxSignals>;
 
 private:
   Pointer _storage;
 
 public:
-  constexpr SignalSender(auto &&storage) : _storage(std::forward<decltype(storage)>(storage)) {}
-  constexpr SignalSender(SignalSender &&) = default;
-  constexpr SignalSender(const SignalSender &) = delete;
-  constexpr SignalSender &operator=(SignalSender &&) = default;
-  constexpr SignalSender &operator=(const SignalSender &) = delete;
-  constexpr ~SignalSender() {
+  constexpr Signal() : _storage(std::make_shared<storage_type>()) {}
+  template <class _Storage>
+    requires(!std::same_as<std::remove_cvref_t<_Storage>, Signal>)
+  constexpr Signal(_Storage &&storage) : _storage(std::forward<decltype(storage)>(storage)) {}
+  constexpr Signal(Signal &&) = default;
+  constexpr Signal(const Signal &) = default;
+  constexpr Signal &operator=(Signal &&) = default;
+  constexpr Signal &operator=(const Signal &) = default;
+  constexpr ~Signal() {
     if constexpr (std::is_pointer_v<Pointer>) {
       return;
     }
@@ -201,6 +197,11 @@ public:
       this->stop();
     }
   }
+  SignalAwaiter<storage_type *> operator co_await() const {
+    assert(this->_storage != nullptr && "Signal is not initialized");
+    return {std::to_address(this->_storage)};
+  }
+
   /// @brief Release the signal
   constexpr void release() { return traits_type::release(*this->_storage); }
   /// @brief Stop the signal
@@ -209,29 +210,14 @@ public:
     return traits_type::template stop<Force>(*this->_storage);
   }
   /// @brief Pin the signal, return a raw SignalSender
-  constexpr SignalSender<MaxSignals, SignalStorage *> pin() {
-    return {std::to_address(this->_storage)};
-  }
+  constexpr Signal<MaxSignals, SignalStorage *> pin() { return {std::to_address(this->_storage)}; }
   /// @brief Check if the signal is valid
   constexpr operator bool() const { return this->_storage != nullptr; }
   /// @brief Check if the signal is disconnected
-  constexpr bool is_disconnected() const {
+  constexpr std::size_t use_count() const {
     static_assert(std::is_same_v<Pointer, std::shared_ptr<SignalStorage>>);
-    return this->_storage.use_count() == 1;
+    return this->_storage.use_count();
   }
 };
-/**
- * @brief Create a signal
- *
- * @tparam MaxSignals the maximum number of signals
- * @return decltype(auto) a pair of SignalReceiver and SignalSender
- */
-template <std::size_t MaxSignals = std::dynamic_extent>
-constexpr decltype(auto) signal() {
-  auto storage = std::make_shared<SignalStorage>();
-  auto copy = storage;
-  return std::make_pair(SignalReceiver<decltype(storage)>(std::move(storage)),
-                        SignalSender<MaxSignals, decltype(copy)>(std::move(copy)));
-}
 XSL_CORO_NE
 #endif

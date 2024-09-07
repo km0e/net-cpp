@@ -44,19 +44,71 @@ namespace impl_sock {
   };
 
   template <int Family>
-  struct FamilyTraits {
-    static constexpr int family = Family;  ///< family constant
+  class StaticFamily {
+  public:
+    static consteval int family() { return Family; }
+  };
+
+  template <int Family>
+  class FamilyTraits {
+  protected:
+    int _family = Family;  ///< family constant
+  public:
+    consteval int family() { return _family; }
+  };
+
+  template <>
+  class FamilyTraits<AF_INET> : public StaticFamily<AF_INET> {};
+
+  template <>
+  class FamilyTraits<AF_INET6> : public StaticFamily<AF_INET6> {};
+
+  template <int Type>
+  class StaticType {
+  public:
+    consteval int type() { return Type; }
   };
 
   template <int Type>
-  struct TypeTraits {
-    static constexpr int type = Type;  ///< type constant
+  class TypeTraits {
+  protected:
+    int _type = Type;  ///< type constant
+  public:
+    consteval int type() { return _type; }
+    static consteval bool is_connection_based() { return false; }
+  };
+
+  template <>
+  class TypeTraits<SOCK_STREAM> : public StaticType<SOCK_STREAM> {
+  public:
+    static consteval bool is_connection_based() { return true; }
+  };
+
+  template <>
+  class TypeTraits<SOCK_DGRAM> : public StaticType<SOCK_DGRAM> {
+  public:
+    static consteval bool is_connection_based() { return false; }
   };
 
   template <int Protocol>
-  struct ProtocolTraits {
-    static constexpr int protocol = Protocol;  ///< protocol constant
+  class StaticProtocol {
+  public:
+    consteval int protocol() { return Protocol; }
   };
+
+  template <int Protocol>
+  class ProtocolTraits {
+  protected:
+    int _protocol = Protocol;  ///< protocol constant
+  public:
+    consteval int protocol() { return _protocol; }
+  };
+
+  template <>
+  class ProtocolTraits<IPPROTO_TCP> : public StaticProtocol<IPPROTO_TCP> {};
+
+  template <>
+  class ProtocolTraits<IPPROTO_UDP> : public StaticProtocol<IPPROTO_UDP> {};
 
   struct AnySocketTraits {
     using poll_traits_type = DefaultPollTraits;
@@ -287,7 +339,7 @@ namespace impl_sock {
   };
 
   template <class Traits>
-    requires(Traits::family == AF_INET)
+    requires(Traits::family() == AF_INET)
   class SockAddr<Traits> : public SockAddrStorage {
     using Base = SockAddrStorage;
 
@@ -308,6 +360,18 @@ namespace impl_sock {
       inet_pton(AF_INET, ip.data(), &addr->sin_addr);
       _addrlen = sizeof(sockaddr_in);
     }
+    constexpr std::errc parse(this auto &&self, std::string &ip, uint16_t &port) {
+      auto &storage = self.SockAddrStorage::_addr;
+      ip.resize(INET_ADDRSTRLEN);
+      sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(&storage);
+      if (inet_ntop(AF_INET, &addr->sin_addr, ip.data(), INET_ADDRSTRLEN)) {
+        ip.resize(std::strlen(ip.data()));
+        port = ntohs(addr->sin_port);
+      } else {
+        return std::errc{errno};
+      }
+      return {};
+    }
 
   private:
     using Base::_addr;
@@ -315,7 +379,7 @@ namespace impl_sock {
   };
 
   template <class Traits>
-    requires(Traits::family == AF_INET6)
+    requires(Traits::family() == AF_INET6)
   class SockAddr<Traits> : public SockAddrStorage {
     using Base = SockAddrStorage;
 
@@ -337,6 +401,26 @@ namespace impl_sock {
       inet_pton(AF_INET6, ip.data(), &addr->sin6_addr);
       _addrlen = sizeof(sockaddr_in6);
     }
+    /**
+     * @brief raw address
+     *
+     * @param self this, some derived class
+     * @param ip ip address
+     * @param port port number
+     * @return std::expected<void, std::errc>
+     */
+    constexpr std::errc parse(this auto &&self, std::string &ip, uint16_t &port) {
+      auto &storage = self.SockAddrStorage::_addr;
+      ip.resize(INET6_ADDRSTRLEN);
+      sockaddr_in6 *addr = reinterpret_cast<sockaddr_in6 *>(&storage);
+      if (inet_ntop(AF_INET6, &addr->sin6_addr, ip.data(), INET6_ADDRSTRLEN)) {
+        ip.resize(std::strlen(ip.data()));
+        port = ntohs(addr->sin6_port);
+      } else {
+        return std::errc{errno};
+      }
+      return {};
+    }
 
   private:
     using Base::_addr;
@@ -346,6 +430,9 @@ namespace impl_sock {
 
 template <class... Flags>
 using SockAddr = impl_sock::SockAddr<SocketTraits<Flags...>>;
+
+template <class Traits>
+class ReadWriteSocket;
 
 XSL_SYS_NET_NE
 #endif

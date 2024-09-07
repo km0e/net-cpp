@@ -31,11 +31,10 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
       LOG3("accept error: {}", std::make_error_code(*err).message());
       break;
     }
-    auto [r, w] = std::move(*skt).split();
-    [](auto r, auto w) mutable -> Task<void> {
+    [](auto rw) mutable -> Task<void> {
       std::string buffer(4096, '\0');
-      co_await net::splice(r, w, buffer);
-    }(std::move(r), std::move(w))
+      co_await net::splice(rw, rw, buffer);
+    }(std::move(*skt))
                                       .detach(co_await coro::GetExecutor());
   }
   poller->shutdown();

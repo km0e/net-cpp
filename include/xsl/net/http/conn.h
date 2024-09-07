@@ -27,41 +27,21 @@ XSL_HTTP_NB
 using namespace xsl::io;
 
 namespace {
-  template <class...>
-  struct BaseCastCompose;
-
-  template <class Abr, class Abw, class Service>
-  struct BaseCastCompose<Abr, Abw, Service> {
-    template <class T, class U, class V>
-    static constexpr auto cast(T&& ard, U&& awd, V&& service) {
-      using rabr_type = typename Service::abr_type;
-      using rabw_type = typename Service::abw_type;
-      static_assert(dyn_cast_v<IODynGet, Abr, rabr_type>,
-                    "Input device type mismatched with the service");
-      static_assert(dyn_cast_v<IODynGet, Abw, rabw_type>,
-                    "Output device type mismatched with the service");
-      return std::make_tuple(to_dyn_unique<IODynGet, rabr_type>(std::forward<T>(ard)),
-                             to_dyn_unique<IODynGet, rabw_type>(std::forward<U>(awd)),
-                             std::addressof(service));
-    }
-  };
-  template <class ABrw, class Service>
-  struct BaseCastCompose<ABrw, Service> {
-    template <class T, class U, class V>
-    static constexpr decltype(auto) cast(T&& ard, U&& awd, V&& service) {
-      using l_in_type = std::decay_t<T>;
-      using l_out_type = std::decay_t<U>;
-      using r_in_type = typename Service::abr_type;
-      using r_out_type = typename Service::abw_type;
-      static_assert(dyn_cast_v<IODynGet, l_in_type, r_in_type>,
-                    "Input device type mismatched with the service");
-      static_assert(dyn_cast_v<IODynGet, l_out_type, r_out_type>,
-                    "Output device type mismatched with the service");
-      return std::make_tuple(to_dyn_unique<IODynGet, r_in_type>(std::forward<T>(ard)),
-                             to_dyn_unique<IODynGet, r_out_type>(std::forward<U>(awd)),
-                             std::addressof(service));
-    }
-  };
+  template <class T, class U, class V>
+  static constexpr auto io_dev_align(T&& ard, U&& awd, V&& service) {
+    using r_dev_type = std::decay_t<V>;
+    using l_in_dev_type = std::decay_t<T>;
+    using l_out_dev_type = std::decay_t<U>;
+    using r_in_dev_type = typename r_dev_type::in_dev_type;
+    using r_out_dev_type = typename r_dev_type::out_dev_type;
+    static_assert(dyn_cast_v<IODynGetChain, l_in_dev_type, r_in_dev_type>,
+                  "Input device type mismatched with the service");
+    static_assert(dyn_cast_v<IODynGetChain, l_out_dev_type, r_out_dev_type>,
+                  "Output device type mismatched with the service");
+    return std::make_tuple(to_dyn_unique<IODynGetChain, r_in_dev_type>(std::forward<T>(ard)),
+                           to_dyn_unique<IODynGetChain, r_out_dev_type>(std::forward<U>(awd)),
+                           std::addressof(service));
+  }
 }  // namespace
 /**
  * @brief serve the connection
@@ -118,8 +98,7 @@ template <ABRWL ABrw, class Service, class ParserTraits = HttpParseTraits>
 Task<void> serve_connection(std::unique_ptr<ABrw> ard, std::shared_ptr<Service> service,
                             Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
   auto [r, w] = std::move(*ard).split();
-  auto [pard, pawd, pservice]
-      = BaseCastCompose<ABrw, Service>::cast(std::move(r), std::move(w), *service);
+  auto [pard, pawd, pservice] = io_dev_align(std::move(r), std::move(w), *service);
   co_return co_await imm_serve_connection(*pard, *pawd, *pservice, std::move(parser));
 }
 /// @brief the connection class
@@ -169,8 +148,8 @@ public:
   }
   template <class Service>
   Task<void> serve_connection(this Connection self, std::shared_ptr<Service> service) {
-    auto [pard, pawd, pservice] = BaseCastCompose<abr_type, abw_type, Service>::cast(
-        std::move(self._ard), std::move(self._awd), *service);
+    auto [pard, pawd, pservice]
+        = io_dev_align(std::move(self._ard), std::move(self._awd), *service);
     co_return co_await http::imm_serve_connection(*pard, *pawd, *pservice, std::move(self._parser));
   }
 
@@ -182,8 +161,8 @@ private:
 };
 /// @brief make a connection
 template <ABRWL ABrw>
-constexpr Connection<typename ABrw::template rebind<In>, typename ABrw::template rebind<Out>> make_connection(
-    ABrw&& dev) {
+constexpr Connection<typename ABrw::template rebind<In>, typename ABrw::template rebind<Out>>
+make_connection(ABrw&& dev) {
   auto [r, w] = std::move(dev).split();
   return {std::move(r), std::move(w)};
 }

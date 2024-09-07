@@ -9,7 +9,6 @@
  *
  */
 #pragma once
-#include <utility>
 #ifndef XSL_WHEEL_VEC
 #  define XSL_WHEEL_VEC
 #  include "xsl/wheel/def.h"
@@ -19,6 +18,7 @@
 #  include <cstddef>
 #  include <initializer_list>
 #  include <memory>
+#  include <utility>
 #  include <vector>
 XSL_WHEEL_NB
 template <typename T>

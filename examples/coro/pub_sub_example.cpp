@@ -21,7 +21,7 @@
  * @param sum the sum of the received values
  * @return xsl::Task<void>
  */
-xsl::Task<void> consumer(xsl::SignalReceiver<> r, std::atomic<int> &sum) {
+xsl::Task<void> consumer(xsl::SignalAwaiter<> r, std::atomic<int> &sum) {
   while (co_await r) {
     sum += 1;
   }

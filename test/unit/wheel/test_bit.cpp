@@ -15,7 +15,7 @@
 using namespace xsl::wheel;
 
 TEST(bit, ceil2pow2) {
-  EXPECT_EQ(ceil2pow2(0), 1);
+  EXPECT_EQ(ceil2pow2(0), 0);
   EXPECT_EQ(ceil2pow2(1), 1);
   EXPECT_EQ(ceil2pow2(2), 2);
   EXPECT_EQ(ceil2pow2(3), 4);

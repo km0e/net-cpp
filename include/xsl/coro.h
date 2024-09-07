@@ -29,12 +29,12 @@ namespace coro {
 // using _coro::BinarySignal;
 using _coro::block;
 using _coro::detach;
-using _coro::signal;
-using _coro::SignalReceiver;
-using _coro::SignalSender;
+using _coro::Signal;
+using _coro::SignalAwaiter;
 // using _coro::UnsafeBinarySignal;
 // using _coro::UnsafeSignal;
 
+using _coro::ExactPubSub;
 using _coro::make_exact_pub_sub;
 using _coro::PubSub;
 // using _coro::Subscriber;

@@ -59,7 +59,7 @@ namespace impl_buffer {
 
   template <class T>
   class Buffer<T>
-      : public std::conditional_t<std::is_same_v<T, Dyn>, AsyncWritable<byte>, Placeholder> {
+      : public std::conditional_t<std::is_same_v<T, Dyn>, AsyncReadBuffer<byte>, Placeholder> {
   public:
     using value_type = byte;
 

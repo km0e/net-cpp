@@ -57,7 +57,7 @@ public:
   Task<Result> read(std::span<value_type> conns) noexcept {
     std::size_t i = 0;
     for (auto &conn : conns) {
-      auto res = co_await this->read();
+      auto res = co_await this->accept();
       if (!res) {
         co_return Result{i, res.error()};
       }
@@ -67,23 +67,12 @@ public:
     co_return {i, std::nullopt};
   }
   /// @brief accept a connection
-  constexpr Task<std::expected<io_dev_type, std::errc>> accept() noexcept { return this->read(); }
-  /// @brief accept a connection
-  Task<std::expected<io_dev_type, std::errc>> read() noexcept {
-    while (true) {
-      auto res = sys::tcp::accept(this->_dev, nullptr);
-      if (res) {
-        co_return std::move(*res).async(*this->poller);
-      } else if (res.error() == std::errc::resource_unavailable_try_again
-                 || res.error() == std::errc::operation_would_block) {
-        if (!co_await this->_dev.read_signal) {
-          co_return std::unexpected{std::errc::not_connected};
-        }
-      } else {
-        co_return std::unexpected{res.error()};
-      }
-    }
+  constexpr decltype(auto) accept() noexcept {
+    return this->_dev.accept(nullptr).then([this](auto &&res) {
+      return res.transform([this](auto &&skt) { return std::move(skt).async(*this->poller); });
+    });
   }
+
   std::string host;
   std::string port;
 

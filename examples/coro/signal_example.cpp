@@ -17,7 +17,7 @@ const int N = 100000;
  * @param w
  * @return xsl::Task<void>
  */
-xsl::Task<void> simple_producer(xsl::SignalSender<N> w) {
+xsl::Task<void> simple_producer(xsl::Signal<N> w) {
   for (int i = 0; i < 100000; i++) {
     w.release();
   }
@@ -30,7 +30,7 @@ xsl::Task<void> simple_producer(xsl::SignalSender<N> w) {
  * @param w
  * @return xsl::Task<void>
  */
-xsl::Task<void> force_producer(xsl::SignalSender<N> w) {
+xsl::Task<void> force_producer(xsl::Signal<N> w) {
   for (int i = 0; i < 100000; i++) {
     w.release();
   }
@@ -43,7 +43,7 @@ xsl::Task<void> force_producer(xsl::SignalSender<N> w) {
  * @param r
  * @return xsl::Task<int>
  */
-xsl::Task<int> consumer(xsl::SignalReceiver<> r) {
+xsl::Task<int> consumer(xsl::SignalAwaiter<> r) {
   int count = 0;
   while (co_await r) {
     ++count;

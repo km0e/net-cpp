@@ -162,7 +162,8 @@ public:
   }
 
   constexpr auto then(this Task &&self, std::invocable<result_type> auto &&f) {
-    return ThenAwaiter<awaiter_type>(self.move_handle()).then(std::forward<decltype(f)>(f));
+    return ThenAwaiter<awaiter_type>(std::move(self).move_handle())
+        .then(std::forward<decltype(f)>(f));
   }
   /**
    * @brief Block the task

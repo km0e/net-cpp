@@ -20,15 +20,12 @@
 #  include "xsl/net/http/router.h"
 #  include "xsl/net/http/server.h"
 #  include "xsl/net/http/service.h"
-#  include "xsl/net/io/buffer.h"
 #  include "xsl/net/io/splice.h"
 #  include "xsl/net/tcp/server.h"
 #  include "xsl/net/tcp/utils.h"
 #  include "xsl/net/udp/utils.h"
 XSL_NB
 namespace net {
-  using xsl::_net::io::Block;
-  using xsl::_net::io::Buffer;
   using xsl::_net::io::splice;
 }  // namespace net
 namespace tcp {

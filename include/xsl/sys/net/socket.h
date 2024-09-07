@@ -12,7 +12,7 @@
 #ifndef XSL_SYS_NET_SOCKET
 #  define XSL_SYS_NET_SOCKET
 #  include "xsl/feature.h"
-#  include "xsl/io.h"
+#  include "xsl/io/dyn.h"
 #  include "xsl/sys/dev.h"
 #  include "xsl/sys/net/def.h"
 #  include "xsl/sys/net/io.h"
@@ -38,6 +38,25 @@ struct SocketSelector;
 
 template <class... Flags>
 struct AsyncSocketSelector;
+
+template <class Traits>
+struct AsyncSocketSelector<In<Traits>> {
+  using type = AsyncReadSocket<Traits>;
+};
+
+template <class Traits>
+struct AsyncSocketSelector<Out<Traits>> {
+  using type = AsyncWriteSocket<Traits>;
+};
+
+template <class Traits>
+struct AsyncSocketSelector<InOut<Traits>> {
+  using type = AsyncReadWriteSocket<Traits>;
+};
+
+template <class... Flags>
+using AsyncSocketCompose = organize_feature_flags_t<
+    AsyncSocketSelector<Item<is_same_pack, In<void>, Out<void>, InOut<void>>>, Flags...>;
 
 /// @brief Read-only socket device
 template <class Traits>
@@ -77,7 +96,7 @@ public:
   using value_type = byte;
   using traits_type = Traits;
   using dynamic_type = AsyncReadSocket;
-  using io_dyn_chains = xsl::_n<AsyncReadSocket, DynAsyncReadDevice<AsyncReadSocket>>;
+  using io_dyn_chains = xsl::_n<AsyncReadSocket, io::DynAsyncReadDevice<AsyncReadSocket>>;
 
   using Base::Base;
 };
@@ -89,8 +108,12 @@ public:
   using value_type = byte;
 
   using traits_type = Traits;
+
   using dynamic_type = AsyncWriteSocket;
   using io_dyn_chains = xsl::_n<AsyncWriteSocket, DynAsyncWriteDevice<AsyncWriteSocket>>;
+
+  template <template <class> class InOut = InOut>
+  using rebind = AsyncSocketCompose<InOut<Traits>>::type;
 
   using Base::Base;
 };
@@ -109,7 +132,7 @@ public:
 
   using Base::Base;
   template <template <class> class InOut = InOut>
-  using rebind = AsyncSocketSelector<InOut<Traits>>::type;
+  using rebind = AsyncSocketCompose<InOut<Traits>>::type;
 };
 
 template <class... Flags>
@@ -134,25 +157,6 @@ template <class... Flags>
 using SocketCompose
     = organize_feature_flags_t<SocketSelector<Item<is_same_pack, In<void>, Out<void>, InOut<void>>>,
                                Flags...>;
-
-template <class Traits>
-struct AsyncSocketSelector<In<Traits>> {
-  using type = AsyncReadSocket<Traits>;
-};
-
-template <class Traits>
-struct AsyncSocketSelector<Out<Traits>> {
-  using type = AsyncWriteSocket<Traits>;
-};
-
-template <class Traits>
-struct AsyncSocketSelector<InOut<Traits>> {
-  using type = AsyncReadWriteSocket<Traits>;
-};
-
-template <class... Flags>
-using AsyncSocketCompose = organize_feature_flags_t<
-    AsyncSocketSelector<Item<is_same_pack, In<void>, Out<void>, InOut<void>>>, Flags...>;
 
 /**
  * @brief determine the socket type
@@ -211,9 +215,9 @@ struct IOTraits<_sys::net::ReadWriteSocket<Traits>> {
 template <class Traits>
 struct AIOTraits<_sys::net::AsyncReadSocket<Traits>> {
   using value_type = byte;
-  using device_type = _sys::net::AsyncReadSocket<Traits>;
+  using in_dev_type = _sys::net::AsyncReadSocket<Traits>;
 
-  static constexpr Task<Result> read(device_type &dev, std::span<byte> buf) {
+  static constexpr Task<Result> read(in_dev_type &dev, std::span<byte> buf) {
     return dev.recv(buf);
   }
 };
@@ -221,11 +225,11 @@ struct AIOTraits<_sys::net::AsyncReadSocket<Traits>> {
 template <class Traits>
 struct AIOTraits<_sys::net::AsyncWriteSocket<Traits>> {
   using value_type = byte;
-  using device_type = _sys::net::AsyncWriteSocket<Traits>;
+  using out_dev_type = _sys::net::AsyncWriteSocket<Traits>;
 
-  static Task<Result> write(device_type &dev, std::span<const byte> buf) { return dev.send(buf); }
+  static Task<Result> write(out_dev_type &dev, std::span<const byte> buf) { return dev.send(buf); }
 
-  static constexpr Task<Result> write_file(device_type &dev, io::WriteFileHint &&hint) {
+  static constexpr Task<Result> write_file(out_dev_type &dev, io::WriteFileHint &&hint) {
     return dev.send_file(std::move(hint));
   }
 };
@@ -233,13 +237,15 @@ struct AIOTraits<_sys::net::AsyncWriteSocket<Traits>> {
 template <class Traits>
 struct AIOTraits<_sys::net::AsyncReadWriteSocket<Traits>> {
   using value_type = byte;
-  using device_type = _sys::net::AsyncReadWriteSocket<Traits>;
+  using io_dev_type = _sys::net::AsyncReadWriteSocket<Traits>;
+  using in_dev_type = io_dev_type::template rebind<In>;
+  using out_dev_type = io_dev_type::template rebind<Out>;
 
-  static constexpr Task<Result> read(device_type &dev, std::span<byte> buf) {
+  static constexpr Task<Result> read(io_dev_type &dev, std::span<byte> buf) {
     return dev.recv(buf);
   }
 
-  static constexpr Task<Result> write(device_type &dev, std::span<const byte> buf) {
+  static constexpr Task<Result> write(io_dev_type &dev, std::span<const byte> buf) {
     return dev.send(buf);
   }
 };

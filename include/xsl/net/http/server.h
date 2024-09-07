@@ -26,11 +26,12 @@ template <class LowerServer>
 class Server {
 public:
   using lower_type = LowerServer;
-  using io_dev_type = typename lower_type::io_dev_type;
-  using abr_type = typename lower_type::in_dev_type;
-  using abw_type = typename lower_type::out_dev_type;
-  using context_type = HandleContext<abr_type, abw_type>;
-  using handler_type = Handler<abr_type, abw_type>;
+  using aio_traits_type = AIOTraits<typename lower_type::io_dev_type>;
+  using io_dev_type = typename aio_traits_type::value_type;
+  using in_dev_type = typename aio_traits_type::in_dev_type;
+  using out_dev_type = typename aio_traits_type::out_dev_type;
+  using context_type = HandleContext<in_dev_type, out_dev_type>;
+  using handler_type = Handler<in_dev_type, out_dev_type>;
 
   constexpr Server(lower_type&& server) : server(std::move(server)) {}
 

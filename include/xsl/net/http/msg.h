@@ -13,9 +13,10 @@
 #ifndef XSL_NET_HTTP_MSG
 #  define XSL_NET_HTTP_MSG
 #  include "xsl/coro.h"
+#  include "xsl/io/byte.h"
+#  include "xsl/io/def.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/proto.h"
-#  include "xsl/net/io/buffer.h"
 #  include "xsl/wheel.h"
 
 #  include <functional>
@@ -46,16 +47,19 @@ public:
   std::string to_string();
 };
 /// @brief the response
-template <ABWL ByteWriter>
+template <ABOLike ABO>
 class Response {
 public:
+  using abo_traits_type = AIOTraits<ABO>;
+  using out_dev_type = typename abo_traits_type::out_dev_type;
+
   constexpr Response(ResponsePart&& part, auto&&... args)
       : _part(std::move(part)), _body(std::forward<decltype(args)>(args)...) {}
   constexpr Response(Response&&) = default;
   constexpr Response& operator=(Response&&) = default;
   ~Response() {}
 
-  Task<Result> sendto(ByteWriter& awd) {
+  Task<Result> sendto(out_dev_type& awd) {
     auto str = this->_part.to_string();
     LOG6("response: {}", str);
     auto [sz, err] = co_await awd.write(xsl::as_bytes(std::span(str)));
@@ -72,7 +76,7 @@ public:
     co_return std::make_tuple(sz + bodySize, std::nullopt);
   }
   ResponsePart _part;
-  std::function<Task<Result>(ByteWriter&)> _body;
+  std::function<Task<Result>(out_dev_type&)> _body;
 };
 /// @brief the request view
 class RequestView {
@@ -100,16 +104,17 @@ public:
   }
 };
 /// @brief the request
-template <ABRL ByteReader>
+template <ABILike ABI>
 class Request {
 public:
-  constexpr Request(io::Buffer<>&& raw, RequestView&& view, std::string_view content_part,
-                    ByteReader& ard)
+  using abi_traits_type = AIOTraits<ABI>;
+  using in_dev_type = typename abi_traits_type::in_dev_type;
+  constexpr Request(ByteBuffer&& raw, RequestView&& view, std::string_view content_part, ABI& aid)
       : method(xsl::from_string_view<Method>(view.method)),
         view(std::move(view)),
         raw(std::move(raw)),
         content_part(content_part),
-        _ard(ard) {}
+        _ard(aid) {}
 
   constexpr Request(Request&&) = default;
   constexpr Request& operator=(Request&&) = default;
@@ -132,10 +137,10 @@ public:
 
   Method method;
   RequestView view;
-  io::Buffer<> raw;
+  ByteBuffer raw;
 
   std::string_view content_part;
-  ByteReader& _ard;
+  in_dev_type& _ard;
 };
 
 XSL_HTTP_NE

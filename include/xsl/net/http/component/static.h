@@ -38,11 +38,16 @@ struct StaticFileConfig {
   FixedVector<std::string_view> compress_encodings = {};
   bool compress = false;
 };
-template <ABRL ByteReader, ABWL ByteWriter>
+template <ABILike ABI, ABOLike ABO>
 class StaticFileServer {
 public:
+  using abi_traits_type = AIOTraits<ABI>;
+  using abo_traits_type = AIOTraits<ABO>;
+  using in_dev_type = typename abi_traits_type::in_dev_type;
+  using out_dev_type = typename abo_traits_type::out_dev_type;
+
   constexpr StaticFileServer(StaticFileConfig&& cfg) : cfg(std::move(cfg)) {}
-  constexpr std::optional<Status> sendfile(HandleContext<ByteReader, ByteWriter>& ctx,
+  constexpr std::optional<Status> sendfile(HandleContext<in_dev_type, out_dev_type>& ctx,
                                            std::filesystem::path& path,
                                            const MediaTypeView& content_type) {
     if (auto ok_media_type = ctx.request.get_header("Accept");
@@ -113,7 +118,7 @@ public:
 protected:
   StaticFileConfig cfg;
 
-  constexpr std::optional<Status> try_sendfile(HandleContext<ByteReader, ByteWriter>& ctx,
+  constexpr std::optional<Status> try_sendfile(HandleContext<in_dev_type, out_dev_type>& ctx,
                                                const std::filesystem::path& path,
                                                const MediaTypeView& content_type) {
     std::error_code ec;
@@ -140,19 +145,25 @@ protected:
     part.headers.emplace("Last-Modified", to_date_string(last_modified));
     part.headers.emplace("Content-Type", content_type.to_string_view());
 
-    auto send_file = [hint = WriteFileHint{path.native(), 0, file_size}](ByteWriter& awd) mutable {
-      return AIOTraits<ByteWriter>::write_file(awd, std::move(hint));
-    };
+    auto send_file
+        = [hint = WriteFileHint{path.native(), 0, file_size}](out_dev_type& awd) mutable {
+            return abo_traits_type::write_file(awd, std::move(hint));
+          };
     ctx.resp(std::move(part), std::move(send_file));
     return std::nullopt;
   }
 };
 
-template <ABRL ByteReader, ABWL ByteWriter>
-class FileRouteHandler : public StaticFileServer<ByteReader, ByteWriter> {
-  using Base = StaticFileServer<ByteReader, ByteWriter>;
+template <ABILike ABI, ABOLike ABO>
+class FileRouteHandler : public StaticFileServer<ABI, ABO> {
+  using Base = StaticFileServer<ABI, ABO>;
 
 public:
+  using abi_traits_type = AIOTraits<ABI>;
+  using abo_traits_type = AIOTraits<ABO>;
+  using in_dev_type = typename abi_traits_type::in_dev_type;
+  using out_dev_type = typename abo_traits_type::out_dev_type;
+
   constexpr FileRouteHandler(StaticFileConfig&& cfg) : Base(std::move(cfg)), content_type{} {
     this->content_type = MediaTypeView::from_extension(this->cfg.path.extension().native());
   }
@@ -161,19 +172,25 @@ public:
   constexpr FileRouteHandler(const FileRouteHandler&) = default;
   constexpr FileRouteHandler& operator=(const FileRouteHandler&) = default;
   constexpr ~FileRouteHandler() {}
-  HandleResult operator()(HandleContext<ByteReader, ByteWriter>& ctx) {
+  HandleResult operator()(HandleContext<in_dev_type, out_dev_type>& ctx) {
     co_return this->sendfile(ctx, this->cfg.path, this->content_type);
   }
   MediaTypeView content_type;
 };
-template <ABRL ByteReader, ABWL ByteWriter>
-class FolderRouteHandler : public StaticFileServer<ByteReader, ByteWriter> {
-  using Base = StaticFileServer<ByteReader, ByteWriter>;
+
+template <ABILike ABI, ABOLike ABO>
+class FolderRouteHandler : public StaticFileServer<ABI, ABO> {
+  using Base = StaticFileServer<ABI, ABO>;
 
 public:
+  using abi_traits_type = AIOTraits<ABI>;
+  using abo_traits_type = AIOTraits<ABO>;
+  using in_dev_type = typename abi_traits_type::in_dev_type;
+  using out_dev_type = typename abo_traits_type::out_dev_type;
+
   constexpr FolderRouteHandler(StaticFileConfig&& cfg) : Base(std::move(cfg)) {}
   constexpr ~FolderRouteHandler() {}
-  HandleResult operator()(HandleContext<ByteReader, ByteWriter>& ctx) {
+  HandleResult operator()(HandleContext<in_dev_type, out_dev_type>& ctx) {
     LOG5("FolderRouteHandler: {}", ctx.current_path);
     if (ctx.current_path.empty()) {
       LOG5("FolderRouteHandler: empty path");
@@ -187,18 +204,18 @@ public:
   }
 };
 /// @brief create a static handler from the config
-template <ABRL ByteReader, ABWL ByteWriter>
-constexpr Handler<ByteReader, ByteWriter> create_static_handler(StaticFileConfig&& cfg) {
+template <ABILike ABI, ABOLike ABO>
+constexpr Handler<ABI, ABO> create_static_handler(StaticFileConfig&& cfg) {
+  using handler_type = Handler<ABI, ABO>;
   rt_assert(!cfg.path.empty(), "path is empty");
   std::error_code ec;
   auto status = std::filesystem::status(cfg.path, ec);
   rt_assert(!ec, std::format("stat failed: {}", ec.message()));
   if (status.type() == std::filesystem::file_type::directory) {
-    return Handler<ByteReader, ByteWriter>{
-        FolderRouteHandler<ByteReader, ByteWriter>{std::move(cfg)}};
+    return handler_type{FolderRouteHandler<ABI, ABO>{std::move(cfg)}};
   } else if (status.type() == std::filesystem::file_type::regular) {
-    auto frh = FileRouteHandler<ByteReader, ByteWriter>(std::move(cfg));
-    return Handler<ByteReader, ByteWriter>{std::move(frh)};
+    auto frh = FileRouteHandler<ABI, ABO>(std::move(cfg));
+    return handler_type{std::move(frh)};
   }
   rt_assert(false, "path is not a file or directory");
   return {};

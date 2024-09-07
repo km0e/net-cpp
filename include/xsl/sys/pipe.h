@@ -12,7 +12,6 @@
 #ifndef XSL_SYS_PIPE
 #  define XSL_SYS_PIPE
 #  include "xsl/coro.h"
-#  include "xsl/feature.h"
 #  include "xsl/sys/def.h"
 #  include "xsl/sys/dev.h"
 #  include "xsl/sys/sync.h"

@@ -9,10 +9,12 @@
  *
  */
 #pragma once
+#include "xsl/io/byte.h"
 #ifndef XSL_NET_HTTP_CONN
 #  define XSL_NET_HTTP_CONN
 #  include "xsl/coro.h"
 #  include "xsl/dyn.h"
+#  include "xsl/feature.h"
 #  include "xsl/io.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
@@ -47,7 +49,7 @@ namespace {
  * @brief serve the connection
  *
  * @tparam ABr the async byte reader
- * @tparam ABw the async byte writer
+ * @tparam ABO the async byte writer
  * @tparam Service the service type
  * @tparam ParserTraits the parser traits
  * @param ard
@@ -57,8 +59,8 @@ namespace {
  * @return Task<void>
  * @note this function would not save the state of the arguments, do not directly call it
  */
-template <ABRL ABr, ABWL ABw, class Service, class ParserTraits = HttpParseTraits>
-Task<void> imm_serve_connection(ABr& ard, ABw& awd, Service& service, Parser<ParserTraits> parser) {
+template <ABILike ABI, ABOLike ABO, class Service, class ParserTraits = HttpParseTraits>
+Task<void> imm_serve_connection(ABI& ard, ABO& awd, Service& service, Parser<ParserTraits> parser) {
   ParseData parse_data{};
   while (true) {
     {
@@ -74,7 +76,7 @@ Task<void> imm_serve_connection(ABr& ard, ABw& awd, Service& service, Parser<Par
     Request request{std::move(parse_data.buffer), std::move(parse_data.request),
                     parse_data.content_part, ard};
     DEBUG("ready to serve request: {}", request.view.path);
-    Response<ABw> resp = co_await (service)(
+    Response<ABO> resp = co_await (service)(
         std::move(request));  // TODO: may be will also need to be a coroutine in the future
     DEBUG("ready to send response: {}", static_cast<uint16_t>(resp._part.status_code));
     auto [sz, err] = co_await resp.sendto(awd);
@@ -86,7 +88,7 @@ Task<void> imm_serve_connection(ABr& ard, ABw& awd, Service& service, Parser<Par
 /**
  * @brief serve the connection
  *
- * @tparam ABrw the async byte reader and writer
+ * @tparam ABIO the async byte reader and writer
  * @tparam Service the service type
  * @tparam ParserTraits the parser traits
  * @param ard
@@ -94,28 +96,30 @@ Task<void> imm_serve_connection(ABr& ard, ABw& awd, Service& service, Parser<Par
  * @param parser
  * @return Task<void>
  */
-template <ABRWL ABrw, class Service, class ParserTraits = HttpParseTraits>
-Task<void> serve_connection(std::unique_ptr<ABrw> ard, std::shared_ptr<Service> service,
+template <ABIOLike ABIO, class Service, class ParserTraits = HttpParseTraits>
+Task<void> serve_connection(std::unique_ptr<ABIO> ard, std::shared_ptr<Service> service,
                             Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
   auto [r, w] = std::move(*ard).split();
   auto [pard, pawd, pservice] = io_dev_align(std::move(r), std::move(w), *service);
   co_return co_await imm_serve_connection(*pard, *pawd, *pservice, std::move(parser));
 }
 /// @brief the connection class
-template <ABRL ABr, ABWL ABw>
+template <ABILike ABI, ABOLike ABO>
 class Connection {
-  using abr_type = ABr;
-  using abw_type = ABw;
+  using abi_traits_type = AIOTraits<ABI>;
+  using abo_traits_type = AIOTraits<ABO>;
+  using in_dev_type = typename abi_traits_type::in_dev_type;
+  using out_dev_type = typename abo_traits_type::out_dev_type;
 
 public:
-  constexpr Connection(abr_type&& in_dev, abw_type&& out_dev)
+  constexpr Connection(in_dev_type&& in_dev, out_dev_type&& out_dev)
       : _ard(std::move(in_dev)), _awd(std::move(out_dev)), _parser{} {}
 
   constexpr Connection(Connection&&) = default;
   constexpr Connection& operator=(Connection&&) = default;
-  constexpr ~Connection() {}
+  ~Connection() {}
 
-  Task<Result> read(std::span<Request<abr_type>> reqs) {
+  Task<Result> read(std::span<Request<in_dev_type>> reqs) {
     std::size_t i = 0;
     ParseData parse_data;
     for (auto& req : reqs) {
@@ -129,14 +133,14 @@ public:
         }
         LOG4("New request: {} {}", parse_data.request.method, parse_data.request.path);
       }
-      req = Request<abr_type>{std::move(parse_data.buffer), std::move(parse_data.request),
-                              parse_data.content_part, this->_ard};
+      req = Request<in_dev_type>{std::move(parse_data.buffer), std::move(parse_data.request),
+                                 parse_data.content_part, this->_ard};
       ++i;
     }
     co_return Result{i, std::nullopt};
   }
 
-  Task<Result> write(std::span<const Response<abw_type>> resps) {
+  Task<Result> write(std::span<const Response<out_dev_type>> resps) {
     for (auto& resp : resps) {
       auto [sz, err] = co_await resp.sendto(this->_awd);
       if (err) {
@@ -154,20 +158,20 @@ public:
   }
 
 private:
-  abr_type _ard;
-  abw_type _awd;
+  in_dev_type _ard;
+  out_dev_type _awd;
 
   Parser<HttpParseTraits> _parser;
 };
 /// @brief make a connection
-template <ABRWL ABrw>
-constexpr Connection<typename ABrw::template rebind<In>, typename ABrw::template rebind<Out>>
-make_connection(ABrw&& dev) {
+template <ABIOLike ABIO>
+constexpr Connection<typename ABIO::template rebind<In>, typename ABIO::template rebind<Out>>
+make_connection(ABIO&& dev) {
   auto [r, w] = std::move(dev).split();
   return {std::move(r), std::move(w)};
 }
 /// @brief make a connection
-template <class ABrw>
-void make_connection(ABrw& dev) = delete;
+template <class ABIO>
+void make_connection(ABIO& dev) = delete;
 XSL_HTTP_NE
 #endif

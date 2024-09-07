@@ -12,6 +12,7 @@
 #ifndef XSL_IO_SPLICE
 #  define XSL_IO_SPLICE
 #  include "xsl/coro.h"
+#  include "xsl/io/byte.h"
 #  include "xsl/io/def.h"
 #  include "xsl/logctl.h"
 #  include "xsl/wheel.h"
@@ -21,15 +22,18 @@
 XSL_IO_NB
 
 namespace {
-  template <ABRL ABR, ABWL ABW>
+  template <ABILike ABR, ABOLike ABW>
   Task<Result> splice_once(ABR& from, ABW& to, std::string& buffer) {
-    auto [sz, err] = co_await from.read(xsl::as_writable_bytes(std::span(buffer)));
+    using abi_traits = AIOTraits<ABR>;
+    using abo_traits = AIOTraits<ABW>;
+    auto [sz, err] = co_await abi_traits::read(from, xsl::as_writable_bytes(std::span(buffer)));
     if (err) {
       WARN("Failed to read data from the device, err: {}", std::make_error_code(*err).message());
       co_return {sz, err};
     }
     DEBUG("Read {} bytes from the device", sz);
-    auto [s_sz, s_err] = co_await to.write(xsl::as_bytes(std::span(buffer).subspan(0, sz)));
+    auto [s_sz, s_err]
+        = co_await abo_traits::write(to, xsl::as_bytes(std::span(buffer).subspan(0, sz)));
     if (s_err) {
       WARN("Failed to write data to the device, err: {}", std::make_error_code(*s_err).message());
       co_return {s_sz, s_err};
@@ -39,13 +43,13 @@ namespace {
   }
 }  // namespace
 
-template <ABRL ABR, ABWL ABW>
+template <ABILike ABR, ABOLike ABW>
 constexpr Task<Result> splice_once(ABR* from, ABR* to, std::string buffer) {
   return splice_once(*from, *to, buffer);
 }
 
-template <ABRL FromPtr, ABWL ToPtr>
-Task<Result> splice(FromPtr* from, ToPtr* to, std::string buffer) {
+template <ABILike ABR, ABOLike ABW>
+Task<Result> splice(ABR* from, ABW* to, std::string buffer) {
   std::size_t total = 0;
   while (true) {
     auto [sz, err] = co_await splice_once(*from, *to, buffer);

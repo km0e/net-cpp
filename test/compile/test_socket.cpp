@@ -9,6 +9,7 @@
  *
  */
 #include "xsl/feature.h"
+#include "xsl/io/byte.h"
 #include "xsl/sys.h"
 using namespace xsl::sys;
 using namespace xsl;
@@ -17,8 +18,8 @@ int main() {
   static_assert(io::BWL<net::Socket<TcpIp>>);
   static_assert(io::BRWL<net::Socket<TcpIp>>);
 
-  static_assert(io::ABRL<net::AsyncSocket<TcpIp>>);
-  static_assert(io::ABWL<net::AsyncSocket<TcpIp>>);
-  static_assert(io::ABRWL<net::AsyncSocket<TcpIp>>);
+  static_assert(io::ABILike<net::AsyncSocket<TcpIp>>);
+  static_assert(io::ABOLike<net::AsyncSocket<TcpIp>>);
+  static_assert(io::ABIOLike<net::AsyncSocket<TcpIp>>);
   return 0;
 }

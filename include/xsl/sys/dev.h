@@ -26,6 +26,28 @@ struct RawAsyncReadDevice;
 struct RawAsyncWriteDevice;
 struct RawAsyncReadWriteDevice;
 
+template <class... Flags>
+struct RawAsyncDeviceSelector;
+
+template <class... Flags>
+struct RawAsyncDeviceSelector<In<byte>, Flags...> {
+  using type = RawAsyncReadDevice;
+};
+
+template <class... Flags>
+struct RawAsyncDeviceSelector<Out<byte>, Flags...> {
+  using type = RawAsyncWriteDevice;
+};
+
+template <class... Flags>
+struct RawAsyncDeviceSelector<InOut<byte>, Flags...> {
+  using type = RawAsyncReadWriteDevice;
+};
+
+template <class... Flags>
+using RawAsyncDeviceCompose = organize_feature_flags_t<
+    RawAsyncDeviceSelector<Item<is_same_pack, In<void>, Out<void>, InOut<void>>>, Flags...>;
+
 /// @brief RawOwner is a wrapper for file descriptor
 struct RawOwner {
   int fd;
@@ -116,6 +138,9 @@ struct RawAsyncReadWriteDevice : public RawReadWriteDevice,
                                  public FileTxTraits {
   using Base = RawReadWriteDevice;
 
+  template <template <class> class InOut = InOut>
+  using rebind = RawAsyncDeviceCompose<InOut<byte>>::type;
+
   Signal<1> _read_signal;
   Signal<1> _write_signal;
 
@@ -169,28 +194,6 @@ template <class... Flags>
 using RawDeviceCompose = organize_feature_flags_t<
     RawDeviceSelector<Item<is_same_pack, In<void>, Out<void>, InOut<void>>>, Flags...>;
 
-template <class... Flags>
-struct RawAsyncDeviceSelector;
-
-template <class... Flags>
-struct RawAsyncDeviceSelector<In<byte>, Flags...> {
-  using type = RawAsyncReadDevice;
-};
-
-template <class... Flags>
-struct RawAsyncDeviceSelector<Out<byte>, Flags...> {
-  using type = RawAsyncWriteDevice;
-};
-
-template <class... Flags>
-struct RawAsyncDeviceSelector<InOut<byte>, Flags...> {
-  using type = RawAsyncReadWriteDevice;
-};
-
-template <class... Flags>
-using RawAsyncDeviceCompose = organize_feature_flags_t<
-    RawAsyncDeviceSelector<Item<is_same_pack, In<void>, Out<void>, InOut<void>>>, Flags...>;
-
 /// @brief RawDevice is a wrapper for file descriptor
 template <class... Flags>
 using RawDevice = RawDeviceCompose<Flags...>::type;
@@ -233,9 +236,9 @@ struct IOTraits<_sys::RawReadWriteDevice> {
 template <>
 struct AIOTraits<_sys::RawAsyncReadDevice> {
   using value_type = byte;
-  using device_type = _sys::RawAsyncReadDevice;
+  using in_dev_type = _sys::RawAsyncReadDevice;
 
-  static constexpr Task<Result> read(device_type &dev, std::span<byte> buf) {
+  static constexpr Task<Result> read(in_dev_type &dev, std::span<byte> buf) {
     return dev.read(buf);
   }
 };
@@ -243,13 +246,13 @@ struct AIOTraits<_sys::RawAsyncReadDevice> {
 template <>
 struct AIOTraits<_sys::RawAsyncWriteDevice> {
   using value_type = byte;
-  using device_type = _sys::RawAsyncWriteDevice;
+  using out_dev_type = _sys::RawAsyncWriteDevice;
 
-  static constexpr Task<Result> write(device_type &dev, std::span<const byte> buf) {
+  static constexpr Task<Result> write(out_dev_type &dev, std::span<const byte> buf) {
     return dev.write(buf);
   }
 
-  static constexpr Task<Result> write_file(device_type &dev, io::WriteFileHint &&hint) {
+  static constexpr Task<Result> write_file(out_dev_type &dev, io::WriteFileHint &&hint) {
     return _sys::write_file(dev, std::move(hint));
   }
 };
@@ -257,13 +260,15 @@ struct AIOTraits<_sys::RawAsyncWriteDevice> {
 template <>
 struct AIOTraits<_sys::RawAsyncReadWriteDevice> {
   using value_type = byte;
-  using device_type = _sys::RawAsyncReadWriteDevice;
+  using io_dev_type = _sys::RawAsyncReadWriteDevice;
+  using in_dev_type = io_dev_type::template rebind<In>;
+  using out_dev_type = io_dev_type::template rebind<Out>;
 
-  static constexpr Task<Result> read(device_type &dev, std::span<byte> buf) {
+  static constexpr Task<Result> read(io_dev_type &dev, std::span<byte> buf) {
     return dev.read(buf);
   }
 
-  static constexpr Task<Result> write(device_type &dev, std::span<const byte> buf) {
+  static constexpr Task<Result> write(io_dev_type &dev, std::span<const byte> buf) {
     return dev.write(buf);
   }
 };

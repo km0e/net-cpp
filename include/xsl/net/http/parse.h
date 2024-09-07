@@ -12,11 +12,11 @@
 
 #ifndef XSL_NET_HTTP_PARSE
 #  define XSL_NET_HTTP_PARSE
+#  include "xsl/io/byte.h"
 #  include "xsl/io/def.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
-#  include "xsl/net/io/buffer.h"
 
 #  include <cstddef>
 #  include <expected>
@@ -74,7 +74,7 @@ struct HttpParseTraits {
 };
 /// @brief the parsed data
 struct ParseData {
-  io::Buffer<> buffer;
+  ByteBuffer buffer;
   RequestView request;
   std::string_view content_part;
 };
@@ -91,7 +91,7 @@ public:
 
   constexpr Parser(Parser&&) = default;
   constexpr Parser& operator=(Parser&&) = default;
-  constexpr ~Parser() {}
+  ~Parser() {}
   /**
    * @brief read the request
    *
@@ -100,10 +100,12 @@ public:
    * @param buf the buffer to store the parsed data
    * @return Task<std::errc>
    */
-  template <ABRL Reader>
-  Task<std::errc> read(Reader& reader, ParseData& buf) {
+  template <ABILike ABI>
+  Task<std::errc> read(ABI& reader, ParseData& buf) {
+    using abi_traits_type = AIOTraits<ABI>;
     while (true) {
-      auto [sz, err] = co_await reader.read(this->buffer.front().span(this->used_size));
+      auto [sz, err]
+          = co_await abi_traits_type::read(reader, this->buffer.front().span(this->used_size));
       if (err) {
         co_return std::move(*err);
       }
@@ -124,7 +126,7 @@ public:
   }
 
 private:
-  io::Buffer<> buffer;
+  ByteBuffer buffer;
   std::size_t used_size;
   std::size_t parsed_size;
   parser_type parser;
@@ -167,8 +169,8 @@ template <class Traits>
 struct AIOTraits<_net::http::Parser<Traits>> {
   using value_type = _net::http::ParseData;
   using device_type = _net::http::Parser<Traits>;
-  template <ABRL Reader>
-  static constexpr Task<std::errc> read(device_type& dev, Reader& reader, value_type& buf) {
+  template <ABILike ABI>
+  static constexpr Task<std::errc> read(device_type& dev, ABI& reader, value_type& buf) {
     return dev.read(reader, buf);
   }
 };

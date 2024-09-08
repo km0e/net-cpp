@@ -83,8 +83,8 @@ Task<std::optional<std::errc>> splice_single(From from, To to) {
  */
 template <AsyncRawDeviceLike From, AsyncRawDeviceLike To>
 Task<void> splice(From from, To to, AsyncPipeReadDevice pipe_in, AsyncPipeWriteDevice pipe_out) {
-  splice_single(std::move(from), std::move(pipe_out)).detach(co_await coro::GetExecutor());
-  splice_single(std::move(pipe_in), std::move(to)).detach(co_await coro::GetExecutor());
+  co_yield splice_single(std::move(from), std::move(pipe_out));
+  co_yield splice_single(std::move(pipe_in), std::move(to));
   co_return;
 }
 /**

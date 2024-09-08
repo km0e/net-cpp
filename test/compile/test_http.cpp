@@ -18,8 +18,7 @@ using namespace xsl;
 
 template <class Executor = ExecutorBase, bool DynamicService = false,
           bool DynamicConnection = false>
-Task<void> run(std::string_view ip, std::string_view port,
-                         std::shared_ptr<xsl::Poller> poller) {
+Task<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
   using Server = tcp::Server<Ip<4>>;
   auto server = tcp::make_server<Ip<4>>(ip, port, poller).value();
   auto service = [&] {
@@ -46,9 +45,7 @@ Task<void> run(std::string_view ip, std::string_view port,
     }
     INFO("New connection is accepted");
     auto conn = http::make_connection(std::move(*skt));
-    std::move(conn)
-        .serve_connection(http_service)  // same as accept, also can be dynamic
-        .detach(co_await coro::GetExecutor());
+    co_yield std::move(conn).serve_connection(http_service);  // same as accept, also can be dynamic
   }
   poller->shutdown();
   co_return;
@@ -57,7 +54,7 @@ Task<void> run(std::string_view ip, std::string_view port,
 template <class Executor = ExecutorBase, bool DynamicService = false,
           bool DynamicConnection = false>
 Task<void> run_step(std::string_view ip, std::string_view port,
-                              std::shared_ptr<xsl::Poller> poller) {
+                    std::shared_ptr<xsl::Poller> poller) {
   using Server = tcp::Server<Ip<4>>;
   auto server = tcp::make_server<Ip<4>>(ip, port, poller).value();
   auto http_server = http1::Server{std::move(server)};

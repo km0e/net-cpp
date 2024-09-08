@@ -49,7 +49,7 @@ public:
         LOG2("accept error: {}", std::make_error_code(err.value()).message());
         continue;
       }
-      http::serve_connection(std::move(conn), service_ptr).detach(co_await coro::GetExecutor());
+      co_yield http::serve_connection(std::move(conn), service_ptr);
     }
   }
 

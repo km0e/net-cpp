@@ -11,7 +11,6 @@
 #pragma once
 #ifndef XSL_CORO
 #  define XSL_CORO
-#  include "xsl/coro/await.h"
 #  include "xsl/coro/block.h"
 #  include "xsl/coro/detach.h"
 #  include "xsl/coro/executor.h"
@@ -22,7 +21,6 @@
 XSL_NB
 namespace coro {
   using _coro::ExecutorBase;
-  using _coro::GetExecutor;
   using _coro::NewThreadExecutor;
   using _coro::NoopExecutor;
 }  // namespace coro

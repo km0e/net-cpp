@@ -2,7 +2,7 @@
  * @file task.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Task coroutine
- * @version 0.2
+ * @version 0.21
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -20,6 +20,7 @@
 #  include "xsl/logctl.h"
 
 #  include <cassert>
+#  include <concepts>
 #  include <coroutine>
 #  include <expected>
 #  include <type_traits>
@@ -90,7 +91,17 @@ public:
 
   constexpr const std::shared_ptr<ExecutorBase> &executor() const noexcept { return _executor; }
 
-  constexpr void by(this auto &&self, auto &&executor) {
+  template <class Awaiter>
+    requires(!std::is_reference_v<Awaiter>) && requires(Awaiter &&awaiter) {
+      { detach(std::forward<Awaiter>(awaiter)) };
+    }
+  constexpr std::suspend_never yield_value(Awaiter &&awaiter) {
+    _coro::detach(std::forward<Awaiter>(awaiter), this->executor());
+    return {};
+  }
+
+  constexpr void by(this auto &&self,
+                    std::convertible_to<std::shared_ptr<ExecutorBase>> auto &&executor) {
     self._executor = std::forward<decltype(executor)>(executor);
   }
 
@@ -100,6 +111,7 @@ public:
     this->_next = handle;
     if constexpr (!std::is_same_v<typename Promise::executor_type, void>) {
       if (!this->executor()) {
+        LOG6("set executor");
         this->_executor = handle.promise().executor();
       }
     }
@@ -184,10 +196,9 @@ public:
    * @param executor the executor
    * @return requires constexpr&&
    */
-  template <class E>
-    requires std::constructible_from<std::shared_ptr<ExecutorBase>, E>
-  constexpr auto &&by(this auto &&self, E &&executor) {
-    self._handle.promise().by(std::forward<E>(executor));
+  constexpr auto &&by(this auto &&self,
+                      std::convertible_to<std::shared_ptr<ExecutorBase>> auto &&executor) {
+    self._handle.promise().by(std::forward<decltype(executor)>(executor));
     return std::forward<decltype(self)>(self);
   }
   /**
@@ -207,10 +218,9 @@ public:
    * @param executor the executor
    * @return void
    */
-  template <class E>
-    requires std::constructible_from<std::shared_ptr<ExecutorBase>, E>
-  constexpr void detach(this Task &&self, E &&executor) {
-    std::move(self).by(std::forward<E>(executor)).detach();
+  constexpr void detach(this Task &&self,
+                        std::convertible_to<std::shared_ptr<ExecutorBase>> auto &&executor) {
+    _coro::detach(std::move(self), std::forward<decltype(executor)>(executor));
   }
 };
 XSL_CORO_NE

@@ -10,6 +10,7 @@
  */
 #include "xsl/feature.h"
 #include "xsl/logctl.h"
+#include "xsl/net.h"
 #include "xsl/sys.h"
 
 #include <CLI/CLI.hpp>
@@ -27,7 +28,7 @@ std::string port = "12347";
 TEST(connect, connect) {
   using namespace xsl::sys::net;
   using namespace xsl;
-  auto res = Resolver{}.resolve<Tcp<Ip<4>>>(host.c_str(), port.c_str());
+  auto res = getaddrinfo<Tcp<Ip<4>>>(host.c_str(), port.c_str());
   ASSERT_TRUE(res.has_value());
   auto ai = std::move(res.value());
   auto poller = std::make_shared<Poller>();

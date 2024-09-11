@@ -12,7 +12,8 @@
 #ifndef XSL_SYS_NET_UTILS_H
 #  define XSL_SYS_NET_UTILS_H
 #  include "xsl/sys/net/def.h"
-#  include "xsl/sys/net/endpoint.h"
+#  include "xsl/sys/net/dns.h"
+#  include "xsl/sys/net/sockaddr.h"
 #  include "xsl/sys/net/socket.h"
 #  include "xsl/sys/raw.h"
 
@@ -28,8 +29,8 @@ template <class Traits>
 using BindResult = std::expected<Socket<Traits>, std::errc>;
 
 namespace {
-  static constexpr std::expected<int, std::errc> bind(addrinfo *ai) {
-    int tmp_fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+  static constexpr std::expected<int, std::errc> bind(addrinfo &ai) {
+    int tmp_fd = socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
     if (tmp_fd == -1) [[unlikely]] {
       return std::unexpected{std::errc{errno}};
     }
@@ -45,23 +46,30 @@ namespace {
       return std::unexpected{std::errc{errno}};
     }
     LOG5("Set reuse addr to fd: {}", tmp_fd);
-    if (::bind(tmp_fd, ai->ai_addr, ai->ai_addrlen) == -1) [[unlikely]] {
+    if (::bind(tmp_fd, ai.ai_addr, ai.ai_addrlen) == -1) [[unlikely]] {
       close(tmp_fd);
       return std::unexpected{std::errc{errno}};
     }
     return tmp_fd;
   }
 }  // namespace
-/// @brief Bind to an endpoint
-template <class Traits>
-constexpr BindResult<Traits> bind(const Endpoint<Traits> &ep) {
-  return bind(ep.raw()).transform([](int fd) { return Socket<Traits>(fd); });
+
+/// @brief Bind to an socket address
+template <class... Flags, class Traits = SocketTraits<Flags...>>
+constexpr BindResult<Traits> bind(const SockAddr<Traits> &sa) {
+  return make_socket<Socket<Traits>>().and_then([&sa](auto &&skt) -> BindResult<Traits> {
+    auto [addr, addrlen] = sa.raw();
+    if (::bind(skt.raw(), &addr, addrlen) == -1) {
+      return std::unexpected{std::errc{errno}};
+    }
+    return {std::move(skt)};
+  });
 }
-/// @brief Bind to an endpoint set
+/// @brief Bind to an address of a list of address infos
 template <class Traits>
-constexpr BindResult<Traits> bind(const EndpointSet<Traits> &eps) {
-  for (auto &ep : eps) {
-    auto bind_res = bind(ep.raw());
+constexpr BindResult<Traits> bind(const AddrInfos<Traits> &ais) {
+  for (auto &ai : ais) {
+    auto bind_res = bind(ai);
     if (bind_res) {
       return Socket<Traits>(*bind_res);
     }

@@ -12,7 +12,6 @@
 #ifndef XSL_NET_HTTP_SERVICE
 #  define XSL_NET_HTTP_SERVICE
 #  include "xsl/coro.h"
-#  include "xsl/feature.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/component/redirect.h"
 #  include "xsl/net/http/component/static.h"
@@ -26,12 +25,17 @@ XSL_HTTP_NB
 using namespace xsl::io;
 
 namespace impl_service {
-  template <ABILike In, ABOLike Out, RouterLike<std::size_t> R>
+  template <ABILike ABI, ABOLike ABO, RouterLike<std::size_t> R>
   struct InnerDetails {
+    using abi_traits_type = AIOTraits<ABI>;
+    using abo_traits_type = AIOTraits<ABO>;
+    using in_dev_type = typename abi_traits_type::in_dev_type;
+    using out_dev_type = typename abo_traits_type::out_dev_type;
+
     constexpr InnerDetails() : router{}, handlers{}, status_handlers{} {}
     R router;
-    std::unordered_map<std::size_t, Handler<In, Out>> handlers;
-    std::unordered_map<Status, Handler<In, Out>> status_handlers;
+    std::unordered_map<std::size_t, Handler<in_dev_type, out_dev_type>> handlers;
+    std::unordered_map<Status, Handler<in_dev_type, out_dev_type>> status_handlers;
   };
 
   template <ABILike ABI, ABOLike ABO, RouterLike<std::size_t> R>

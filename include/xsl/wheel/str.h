@@ -36,6 +36,12 @@ as_writable_bytes(std::span<_Type, _Extent> __sp) noexcept {
   return std::span<byte, extent>{data, size};
 }
 
+template <size_t _Extent = std::dynamic_extent>
+[[nodiscard]]
+constexpr std::span<byte, _Extent> as_writable_bytes(byte* data, size_t size) noexcept {
+  return {data, size};
+}
+
 template <typename _Type, size_t _Extent>
 [[nodiscard]]
 constexpr std::span<const byte,
@@ -48,35 +54,12 @@ as_bytes(std::span<_Type, _Extent> __sp) noexcept {
   return std::span<const byte, extent>{data, size};
 }
 
-constexpr void i32_to_bytes(int32_t value, byte* bytes) {
-  // bytes[0] = (value >> 24) & 0xFF;
-  // bytes[1] = (value >> 16) & 0xFF;
-  // bytes[2] = (value >> 8) & 0xFF;
-  // bytes[3] = value & 0xFF;
-
-  auto raw = wheel::as_bytes(std::span(&value, 1));
-  std::copy(raw.begin(), raw.end(), bytes);
-}
-constexpr int32_t i32_from_bytes(const byte* bytes) {
-  int32_t value;
-  std::copy(bytes, bytes + sizeof(int32_t), wheel::as_writable_bytes(std::span(&value, 1)).begin());
-  return value;
-}
-constexpr void u16_to_bytes(uint16_t value, byte* bytes) {
-  // bytes[0] = (value >> 8) & 0xFF;
-  // bytes[1] = value & 0xFF;
-
-  auto raw = wheel::as_bytes(std::span(&value, 1));
-  std::copy(raw.begin(), raw.end(), bytes);
+template <size_t _Extent = std::dynamic_extent>
+[[nodiscard]]
+constexpr std::span<const byte, _Extent> as_bytes(const byte* data, size_t size) noexcept {
+  return {data, size};
 }
 
-
-constexpr uint16_t u16_from_bytes(const byte* bytes) {
-  uint16_t value;
-  std::copy(bytes, bytes + sizeof(uint16_t),
-            wheel::as_writable_bytes(std::span(&value, 1)).begin());
-  return value;
-}
 constexpr void bool_to_bytes(bool value, byte* bytes);
 
 constexpr bool bool_from_bytes(const byte* bytes);

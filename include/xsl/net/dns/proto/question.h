@@ -9,14 +9,46 @@
  *
  */
 #pragma once
-#ifndef XSL_NET_DNS_PROTO_QUESTION_H
-#  define XSL_NET_DNS_PROTO_QUESTION_H
-#  include "xsl/net/dns/def.h"
+#ifndef XSL_NET_DNS_PROTO_QUESTION
+#  define XSL_NET_DNS_PROTO_QUESTION
+#  include "xsl/net/dns/proto/def.h"
+#  include "xsl/net/dns/utils.h"
+
+#  include <expected>
+#  include <string_view>
+#  include <system_error>
+
 XSL_NET_DNS_NB
-struct Question {
-  std::string name;
-  std::uint16_t type;
-  std::uint16_t qclass;
-};
+/**
+ * @brief serialize the question
+ *
+ * @param buf buffer to store the serialized data
+ * @param dn domain name
+ * @param type type
+ * @param class_ class
+ * @param compressor domain name compressor
+ * @return constexpr std::errc
+ */
+constexpr std::errc serialized(std::span<byte> &buf, const std::string_view &dn, Type type,
+                               Class class_, DnCompressor &compressor) {
+  auto status = compressor.prepare(dn);
+  if (!status) {
+    return status.error();
+  }
+  compressor.compress(buf);
+  serialized(buf, type);
+  serialized(buf, class_);
+  return {};
+}
+/// @brief skip the question part
+constexpr std::errc skip_question(std::span<const byte> &src) {
+  auto ec = skip_dn(src);
+  if (ec != std::errc{}) {
+    return ec;
+  }
+  src = src.subspan(4);
+  return {};
+}
+
 XSL_NET_DNS_NE
 #endif

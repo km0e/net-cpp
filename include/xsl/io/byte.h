@@ -9,7 +9,7 @@
  *
  */
 #pragma once
-#include <concepts>
+#include "xsl/def.h"
 #ifndef XSL_IO_BYTE
 #  define XSL_IO_BYTE
 #  include "xsl/feature.h"
@@ -19,6 +19,7 @@
 #  include "xsl/sys/io.h"
 #  include "xsl/type_traits.h"
 
+#  include <concepts>
 #  include <forward_list>
 XSL_IO_NB
 
@@ -32,10 +33,16 @@ public:
   constexpr Block(Block &&) = default;
   constexpr Block &operator=(Block &&) = default;
   constexpr ~Block() = default;
-
-  constexpr std::span<byte> span() { return {data.get(), valid_size}; }
-  constexpr std::span<byte> span(std::size_t offset) {
+  /// @brief Get the span of the data
+  constexpr std::span<byte> span(std::size_t offset = 0) {
     return {data.get() + offset, valid_size - offset};
+  }
+  constexpr std::span<const byte> span(std::size_t offset = 0) const {
+    return {data.get() + offset, valid_size - offset};
+  }
+  constexpr byte *invalid_begin() { return data.get() + valid_size; }
+  constexpr std::span<byte> invalid_span(std::size_t size) {
+    return {data.get() + valid_size, size};
   }
 
   std::unique_ptr<byte[]> data;  ///< the data

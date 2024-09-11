@@ -77,12 +77,8 @@ public:
   constexpr ShardRes(R&& src) : src(std::move(src)), mutex() {}
   constexpr ShardRes(auto&&... args) : src(std::forward<decltype(args)>(args)...), mutex() {}
   constexpr ~ShardRes() {}
-  constexpr decltype(auto) lock_shared(this auto& self) {
-    return ShardGuard<R>(self.mutex, self.src);
-  }
-  constexpr decltype(auto) lock(this auto& self) {
-    return LockGuard<std::shared_mutex, R>(self.mutex, self.src);
-  }
+  constexpr ShardGuard<R> lock_shared(this auto& self) { return {self.mutex, self.src}; }
+  constexpr LockGuard<std::shared_mutex, R> lock(this auto& self) { return {self.mutex, self.src}; }
 
 private:
   R src;

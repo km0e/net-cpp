@@ -8,6 +8,7 @@
  * @copyright Copyright (c) 2024
  *
  */
+#include "xsl/feature.h"
 #include "xsl/logctl.h"
 #include "xsl/sys.h"
 
@@ -15,9 +16,9 @@
 
 using namespace xsl::sys::net;
 TEST(net, sockaddr_zero) {
-  SockAddr<> zero{};
+  SockAddrCompose<xsl::TcpIpv4> zero{};
   zero.reset();
-  SockAddr<> init{};
+  SockAddrCompose<xsl::TcpIpv4> init{};
   ASSERT_EQ(zero, init);
 };
 

@@ -12,6 +12,7 @@
 #ifndef XSL_IO
 #  define XSL_IO
 #  include "xsl/def.h"
+#  include "xsl/io/byte.h"
 #  include "xsl/io/def.h"
 #  include "xsl/io/splice.h"
 
@@ -20,10 +21,10 @@ XSL_NB
 using io::AIOTraits;
 using io::IOTraits;
 
+using io::Block;
 using io::splice;
 using io::splice_once;
 using io::WriteFileHint;
-
 
 template <class Dev>
 struct IODynGetChain {

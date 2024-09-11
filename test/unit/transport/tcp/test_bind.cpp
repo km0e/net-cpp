@@ -24,10 +24,7 @@ uint16_t port = 12348;
 
 TEST(bind, create) {
   using namespace xsl;
-  auto res = xsl::sys::net::Resolver{}.resolve<Tcp<Ip<4>>>(port);
-  ASSERT_TRUE(res.has_value());
-  auto ai = std::move(res.value());
-  auto skt = xsl::sys::net::bind(ai);
+  auto skt = xsl::sys::net::bind<TcpIpv4>({"0.0.0.0", port});
   ASSERT_TRUE(skt.has_value());
   ASSERT_NE(skt.value().raw(), 0);
 }

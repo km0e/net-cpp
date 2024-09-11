@@ -16,7 +16,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <expected>
 #include <span>
+#include <system_error>
 XSL_NET_DNS_NB
 /**
  * @brief Get all the label start offsets of a compressed domain name
@@ -95,17 +97,18 @@ static std::size_t match(short *offs, int noff, int *offset, const std::uint8_t 
  * @return Status
  */
 [[nodiscard("must check the return value")]]
-Status DnCompressor::prepare(std::string_view src) {
-  if (src.empty() || src.size() > size_limits::name) return {-1};
+std::expected<std::size_t, std::errc> DnCompressor::prepare(std::string_view src) {
+  if (src.empty() || src.size() > size_limits::name)
+    return std::unexpected{std::errc::invalid_argument};  /// invalid domain name
   if (src.back() == '.') src.remove_suffix(1);
   if (src.empty()) return {1};
   auto label_cnt = get_label_lens(lens, src);
-  if (!label_cnt) return {-1};
+  if (!label_cnt) return std::unexpected{std::errc::invalid_argument};  /// invalid domain name
 
   for (auto p : std::span{dnptrs, dnptrs_cnt}) {
     short offs[128];
     int noff = get_offs(offs, *dnptrs, p);
-    if (!noff) return {-2};
+    if (!noff) return std::unexpected{std::errc::illegal_byte_sequence};  // invalid pointer
     auto offset = 0;
     auto m = match(offs, noff, &offset, *dnptrs, src.data() + src.size(), lens, label_cnt);
     if (m > suffix_len) {
@@ -115,17 +118,42 @@ Status DnCompressor::prepare(std::string_view src) {
     }
   }
   this->_src = src;
-  return {
-      static_cast<int>(src.size() - suffix_len + 2 + (0 < suffix_len && suffix_len < src.size()))};
+  return {src.size() - suffix_len + 2 + (0 < suffix_len && suffix_len < src.size())};
 }
 /**
  * @brief Compress the domain name
  *
  * @param dst
  */
-void DnCompressor::compress(std::span<byte> dst) {
+// void DnCompressor::compress(std::span<byte> dst) {
+//   if (_src.empty()) {
+//     *dst.data() = 0;
+//     return;
+//   }
+//   assert(dst.size() > 0
+//          && dst.size()
+//                 >= _src.size() - suffix_len + 2 + (0 < suffix_len && suffix_len < _src.size()));
+//   memcpy(dst.data() + 1, _src.data(), _src.size() - suffix_len);
+//   std::size_t i = 0;
+//   for (std::size_t j = 0; i < _src.size() - suffix_len; j++) {
+//     dst[i] = lens[j];
+//     i += lens[j] + 1;  // jump to the next label length field
+//   }
+//   if (suffix_len) {
+//     dst[i++] = 0xc0 | suffix_off >> 8;  // high 2 bits should be 11
+//   }
+//   dst[i++] = suffix_off;  // low 8 bits or 0 if suffix_len is 0
+
+//   if (i > 2) {
+//     dnptrs[dnptrs_cnt] = dst.data();  // store the pointer
+//     dnptrs_cnt++;                     // increase the pointer count
+//   }
+//   this->reset();
+// }
+void DnCompressor::compress(std::span<byte> &dst) {
   if (_src.empty()) {
     *dst.data() = 0;
+    dst = dst.subspan(1);
     return;
   }
   assert(dst.size() > 0
@@ -146,6 +174,7 @@ void DnCompressor::compress(std::span<byte> dst) {
     dnptrs[dnptrs_cnt] = dst.data();  // store the pointer
     dnptrs_cnt++;                     // increase the pointer count
   }
+  dst = dst.subspan(i);  // i is the size of the compressed domain name
   this->reset();
 }
 constexpr void DnCompressor::reset() {
@@ -153,4 +182,48 @@ constexpr void DnCompressor::reset() {
   suffix_len = 0;
   suffix_off = 0;
 }
+
+std::errc DnDecompressor::prepare(std::span<const byte> &src) {
+  const byte *ptr = src.data();
+  for (;;) {
+    src = src.subspan(1);
+    if (*ptr == 0) return {};
+    while (*ptr & 0xc0) {  // jump to the label if it is a pointer
+      if ((*ptr & 0xc0) != 0xc0) return std::errc::illegal_byte_sequence;  // invalid pointer
+      ptr = this->base + ((ptr[0] & 0x3f) << 8 | ptr[1]);
+      src = src.subspan(1);
+      return this->prepare_rest(ptr);
+    }
+    assert(ptr - base < 0x4000);
+    memcpy(this->buf + this->buf_end, ptr + 1, *ptr);
+    this->buf[this->buf_end + *ptr] = '.';
+    this->buf_end += *ptr + 1;
+    src = src.subspan(*ptr);
+    ptr += *ptr + 1;
+  }
+}
+std::size_t DnDecompressor::needed() const { return buf_end; }
+
+std::errc DnDecompressor::prepare_rest(const byte *ptr) {
+  for (;;) {
+    if (*ptr == 0) return {};
+    while (*ptr & 0xc0) {  // jump to the label if it is a pointer
+      if ((*ptr & 0xc0) != 0xc0) return std::errc::illegal_byte_sequence;  // invalid pointer
+      ptr = this->base + ((ptr[0] & 0x3f) << 8 | ptr[1]);
+    }
+    assert(ptr - base < 0x4000);
+    memcpy(this->buf + this->buf_end, ptr + 1, *ptr);
+    this->buf[this->buf_end + *ptr] = '.';
+    this->buf_end += *ptr + 1;
+    ptr += *ptr + 1;
+  }
+}
+
+void DnDecompressor::decompress(std::span<byte> &src) {
+  assert(src.size() > 0 && src.size() >= buf_end);
+  memcpy(src.data(), buf, buf_end);
+  src = src.subspan(buf_end);
+  this->buf_end = 0;
+}
+
 XSL_NET_DNS_NE

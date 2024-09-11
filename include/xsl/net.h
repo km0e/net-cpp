@@ -11,7 +11,10 @@
 #pragma once
 #ifndef XSL_NET_H
 #  define XSL_NET_H
-#  include "xsl/net/dns/server.h"
+#  include "xsl/net/dns/proto/def.h"
+#  include "xsl/net/dns/proto/header.h"
+#  include "xsl/net/dns/proto/question.h"
+#  include "xsl/net/dns/resolver.h"
 #  include "xsl/net/dns/utils.h"
 #  include "xsl/net/http/conn.h"
 #  include "xsl/net/http/msg.h"
@@ -29,7 +32,6 @@ namespace net {
   using xsl::_net::io::splice;
 }  // namespace net
 namespace tcp {
-
   using xsl::_net::tcp::dial;
   using xsl::_net::tcp::make_server;
   using xsl::_net::tcp::serv;
@@ -41,9 +43,16 @@ namespace udp {
   using xsl::_net::udp::serv;
 }  // namespace udp
 namespace dns {
+  using xsl::_net::dns::Class;
+  using xsl::_net::dns::dial;
   using xsl::_net::dns::DnCompressor;
-  using xsl::_net::dns::serv;
-  using xsl::_net::dns::Server;
+  using xsl::_net::dns::DnDecompressor;
+  using xsl::_net::dns::Header;
+  using xsl::_net::dns::serialized;
+  using xsl::_net::dns::skip_question;
+  using xsl::_net::dns::Type;
+  // using xsl::_net::dns::Server;
+  using xsl::_net::dns::ResolverImpl;
 }  // namespace dns
 
 namespace http {

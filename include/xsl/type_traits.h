@@ -2,7 +2,7 @@
  * @file type_traits.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Type traits
- * @version 0.12
+ * @version 0.13
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -208,6 +208,29 @@ namespace {
 
 template <template <class> class Map, class Pack>
 using for_each_t = for_each<Map, Pack>::type;
+
+namespace {
+  template <class T, class U>
+  struct like {
+    using no_ref_t = std::remove_reference_t<T>;
+    using no_ref_u = std::conditional_t<std::is_const_v<no_ref_t>, const U, U>;
+
+    using ref_u = std::conditional_t<
+        std::is_lvalue_reference_v<T>, no_ref_u &,
+        std::conditional_t<std::is_rvalue_reference_v<T>, no_ref_u &&, no_ref_u>>;
+
+    using type = std::conditional_t<std::is_const_v<T>, const ref_u, ref_u>;
+  };
+}  // namespace
+
+/**
+ * @brief Get the like object
+ *
+ * @tparam T the reference type
+ * @tparam U the target type
+ */
+template <class T, class U>
+using like_t = typename like<T, std::remove_cvref_t<U>>::type;
 
 XSL_NE
 #endif

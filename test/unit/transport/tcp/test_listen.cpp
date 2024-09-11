@@ -8,6 +8,7 @@
  * @copyright Copyright (c) 2024
  *
  */
+#include "xsl/feature.h"
 #include "xsl/logctl.h"
 #include "xsl/sys.h"
 
@@ -23,10 +24,7 @@ uint16_t port = 12349;
 
 TEST(bind, create) {
   using namespace xsl::sys::net;
-  auto res = Resolver{}.resolve<Tcp<Ip<4>>>(port);
-  ASSERT_TRUE(res.has_value());
-  auto ai = std::move(res.value());
-  auto skt = xsl::sys::net::bind(ai);
+  auto skt = xsl::sys::net::bind<TcpIpv4>({"0.0.0.0", port});
   ASSERT_TRUE(skt.has_value());
   ASSERT_NE(skt->raw(), 0);
   ASSERT_TRUE(skt->listen() == std::errc{});

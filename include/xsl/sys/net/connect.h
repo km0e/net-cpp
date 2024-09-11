@@ -13,7 +13,7 @@
 #  define XSL_SYS_NET_CONNECT
 #  include "xsl/coro.h"
 #  include "xsl/sys/net/def.h"
-#  include "xsl/sys/net/endpoint.h"
+#  include "xsl/sys/net/dns.h"
 #  include "xsl/sys/net/socket.h"
 #  include "xsl/sys/raw.h"
 #  include "xsl/sys/sync.h"
@@ -83,7 +83,7 @@ namespace {
   }
 
   template <class Traits>
-  Task<std::expected<AsyncSocket<Traits>, std::errc>> connect(addrinfo *ai, Poller &poller) {
+  Task<std::expected<AsyncSocket<Traits>, std::errc>> connect(addrinfo &ai, Poller &poller) {
     auto skt = make_socket<Socket<Traits>>();
     if (!skt) {
       co_return std::unexpected{skt.error()};
@@ -93,17 +93,17 @@ namespace {
       close(skt->raw());
       co_return std::unexpected{snb_res.error()};
     }
-    co_return co_await raw_connect<Traits>(std::move(*skt), ai->ai_addr, ai->ai_addrlen, poller);
+    co_return co_await raw_connect<Traits>(std::move(*skt), ai.ai_addr, ai.ai_addrlen, poller);
   }
   template <class Traits>
     requires(!CSocketTraits<Traits>)
-  std::expected<Socket<Traits>, std::errc> connect(addrinfo *ai) {
+  std::expected<Socket<Traits>, std::errc> connect(addrinfo &ai) {
     auto skt = make_socket<Socket<Traits>>();
     if (!skt) {
       return std::unexpected{skt.error()};
     }
     LOG5("Created fd: {}", skt->raw());
-    int ec = filter_interrupt(::connect, skt->raw(), ai->ai_addr, ai->ai_addrlen);
+    int ec = filter_interrupt(::connect, skt->raw(), ai.ai_addr, ai.ai_addrlen);
     if (ec != 0) {
       return std::unexpected{std::errc{errno}};
     }
@@ -135,7 +135,7 @@ template <class Traits>
 using ConnectResult = std::expected<AsyncSocket<Traits>, std::errc>;
 
 /**
- * @brief connect to a remote endpoint
+ * @brief connect to a remote socket address
  *
  * @tparam Traits the socket traits
  * @param sa the socket address
@@ -146,42 +146,24 @@ template <class Traits>
 inline decltype(auto) connect(const SockAddr<Traits> &sa, Poller &poller) {
   return connect<Traits>(sa, poller);
 }
-/**
- * @brief connect to a remote endpoint
- *
- * @tparam Traits
- * @param ep
- * @param poller
- * @return decltype(auto)
- */
-template <class Traits>
-inline decltype(auto) connect(const Endpoint<Traits> &ep, Poller &poller) {
-  return connect<Traits>(ep.raw(), poller);
-}
-/// TODO: for dns resolve
+/// @brief connect to a remote address
 template <class Traits>
   requires(!CSocketTraits<Traits>)
-constexpr decltype(auto) connect(const Endpoint<Traits> &ep) {
-  return connect<Traits>(ep.raw());
-}
-
-template <class Traits>
-  requires(!CSocketTraits<Traits>)
-constexpr decltype(auto) connect(const EndpointSet<Traits> &eps) {
+constexpr decltype(auto) connect(const AddrInfos<Traits> &ais) {
   std::expected<Socket<Traits>, std::errc> res{std::unexpect, std::errc{0}};
-  for (auto &ep : eps) {
-    res = connect<Traits>(ep.raw());
+  for (auto &ai : ais) {
+    res = connect<Traits>(ai);
     if (res) {
       return res;
     }
   }
   return res;
 }
-
+/// @brief connect to a remote address
 template <class Traits>
-Task<ConnectResult<Traits>> connect(const EndpointSet<Traits> &eps, Poller &poller) {
-  for (auto &ep : eps) {
-    auto res = co_await connect<Traits>(ep.raw(), poller);
+Task<ConnectResult<Traits>> connect(const AddrInfos<Traits> &ais, Poller &poller) {
+  for (auto &ai : ais) {
+    auto res = co_await connect<Traits>(ai, poller);
     if (res) {
       co_return std::move(*res);
     }

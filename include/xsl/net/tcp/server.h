@@ -36,8 +36,6 @@ public:
   using lower_layer_type = Ip<Version>;
   using io_dev_type = sys::tcp::AsyncSocket<lower_layer_type>;
   using io_traits_type = AIOTraits<io_dev_type>;
-  using in_dev_type = io_dev_type::template rebind<In>;
-  using out_dev_type = io_dev_type::template rebind<Out>;
   using value_type = std::unique_ptr<io_dev_type>;
 
   constexpr Server(std::string_view host, std::string_view port, auto &&poller, auto &&...args)
@@ -68,7 +66,7 @@ public:
   }
   /// @brief accept a connection
   constexpr decltype(auto) accept() noexcept {
-    return this->_dev.accept(nullptr).then([this](auto &&res) {
+    return this->_dev.accept().then([this](auto &&res) {
       return res.transform([this](auto &&skt) { return std::move(skt).async(*this->poller); });
     });
   }

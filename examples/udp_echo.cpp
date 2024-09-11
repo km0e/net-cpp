@@ -27,7 +27,7 @@ using namespace xsl;
 Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
   std::string buffer(4096, '\0');
   auto rw = udp::serv<Ip<4>>(ip.data(), port.data()).value().async(*poller);
-  sys::net::SockAddr<UdpIpv4> addr{};
+  sys::net::SockAddrCompose<UdpIpv4> addr{};
   std::string dst(128, '\0');
   std::uint16_t port_num;
   while (true) {

@@ -31,7 +31,7 @@ template <class LowerLayer>
 Task<std::expected<sys::tcp::Socket<LowerLayer>, std::error_condition>> dial(const char *host,
                                                                              const char *port,
                                                                              Poller &poller) {
-  auto res = sys::net::Resolver{}.resolve<Tcp<LowerLayer>>(host, port, sys::net::CLIENT_FLAGS);
+  auto res = getaddrinfo<Tcp<LowerLayer>>(host, port, sys::net::dns::CLIENT_FLAGS);
   if (!res) {
     co_return std::unexpected{res.error()};
   }
@@ -52,7 +52,7 @@ Task<std::expected<sys::tcp::Socket<LowerLayer>, std::error_condition>> dial(con
 template <class LowerLayer>
 constexpr std::expected<sys::tcp::Socket<LowerLayer>, std::error_condition> serv(const char *host,
                                                                                  const char *port) {
-  auto addr = sys::net::Resolver{}.resolve<Tcp<LowerLayer>>(host, port, sys::net::SERVER_FLAGS);
+  auto addr = getaddrinfo<Tcp<LowerLayer>>(host, port, sys::net::dns::SERVER_FLAGS);
   if (!addr) {
     return std::unexpected(addr.error());
   }

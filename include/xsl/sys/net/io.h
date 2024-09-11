@@ -15,6 +15,7 @@
 #  include "xsl/io/def.h"
 #  include "xsl/logctl.h"
 #  include "xsl/sys/net/def.h"
+#  include "xsl/sys/net/sockaddr.h"
 
 #  include <fcntl.h>
 #  include <sys/sendfile.h>
@@ -157,7 +158,7 @@ Task<io::Result> imm_recvfrom(RawHandle _raw, std::span<byte> buf, SockAddr &add
                               Signal<1, Pointer> &sig) {
   auto [sockaddr, addrlen] = addr.raw();
   do {
-    ssize_t n = ::recvfrom(_raw, buf.data(), buf.size(), 0, sockaddr, addrlen);
+    ssize_t n = ::recvfrom(_raw, buf.data(), buf.size(), 0, &sockaddr, &addrlen);
     if (n >= 0) {
       co_return {n, std::nullopt};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -196,8 +197,14 @@ struct NetRxTraits {
   constexpr std::expected<ReadWriteSocket<Traits>, std::errc> accept(this Self &&self,
                                                                      SockAddr<Traits> *addr
                                                                      = nullptr) {
-    auto [sockaddr, addrlen] = addr == nullptr ? SockAddr<Traits>::null() : addr->raw();
-    int tmp_fd = ::accept4(self.raw(), sockaddr, addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
+    auto tmp_fd = [&self, addr] {
+      if (addr == nullptr) {
+        return ::accept(self.raw(), nullptr, nullptr);
+      } else {
+        auto [sockaddr, addrlen] = addr->raw();
+        return ::accept(self.raw(), &sockaddr, &addrlen);
+      }
+    }();
     if (tmp_fd < 0) {
       return std::unexpected{std::errc(errno)};
     }
@@ -305,7 +312,7 @@ Task<io::Result> sendto(RawHandle _raw, std::span<const byte> data, SockAddr &ad
   auto [sockaddr, addrlen] = addr.raw();
   std::size_t total = 0;
   do {
-    ssize_t n = ::sendto(_raw, data.data(), data.size(), 0, sockaddr, *addrlen);
+    ssize_t n = ::sendto(_raw, data.data(), data.size(), 0, &sockaddr, addrlen);
     if (n >= 0) {
       data = data.subspan(n);
       total += n;

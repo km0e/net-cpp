@@ -25,12 +25,8 @@ using wheel::bool_to_bytes;
 using wheel::Defer;
 using wheel::FixedString;
 using wheel::FixedVector;
-using wheel::i32_from_bytes;
-using wheel::i32_to_bytes;
 using wheel::PtrLike;
 using wheel::rt_assert;
-using wheel::u16_from_bytes;
-using wheel::u16_to_bytes;
 using wheel::us_map;
 XSL_NE
 #endif  // XSL_UTILS_WHEEL

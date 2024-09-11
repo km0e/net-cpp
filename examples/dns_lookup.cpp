@@ -19,23 +19,35 @@
 #include <iostream>
 #include <string>
 
-std::string ip = "58.20.127.238";
+// std::string ip = "58.20.127.238";
+// std::string ip = "8.8.8.8";
+// std::string ip = "1.1.1.1";
+std::string ip = "223.5.5.5";
+
 std::string port = "53";
 
 using namespace xsl::coro;
 using namespace xsl;
 
 Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
-  auto server = dns::serv<Ip<4>>(ip.data(), port.data(), *poller).value();
+  auto cli = *dns::dial<Ip<4>>(ip.data(), port.data(), *poller);
+  co_yield cli.run();
   std::string buffer(4096, '\0');
   while (true) {
     std::cin >> buffer;
-    auto res = co_await server.query(buffer);
-    if (res.empty()) {
-      LOG5("Error: invalid domain name");
+    auto res = co_await cli.query(buffer);
+    if (!res) {
+      LOG5("Error: {}", to_string(res.error()));
       continue;
     }
-    LOG4("Received: {}", res);
+    char ip[16];
+    for (const auto &rr : **res) {
+      if (rr.type() == dns::Type::A) {
+        auto data = rr.rdata();
+        snprintf(ip, 16, "%d.%d.%d.%d", data[0], data[1], data[2], data[3]);
+        INFO("IP: {}", ip);
+      }
+    }
   }
   poller->shutdown();
   co_return;
@@ -48,9 +60,9 @@ int main(int argc, char *argv[]) {
   CLI11_PARSE(app, argc, argv);
 
   auto poller = std::make_shared<xsl::Poller>();
-  auto executor = std::make_shared<NewThreadExecutor>();
-  talk(ip, port, poller).detach(std::move(executor));
-  // echo(ip, port, poller).detach();
+  // auto executor = std::make_shared<NewThreadExecutor>();
+  // talk(ip, port, poller).detach(std::move(executor));
+  talk(ip, port, poller).detach();
   while (true) {
     poller->poll();
   }

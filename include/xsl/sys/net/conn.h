@@ -12,6 +12,7 @@
 #ifndef XSL_SYS_NET_CONN
 #  define XSL_SYS_NET_CONN
 #  include "xsl/sys/net/def.h"
+#  include "xsl/sys/net/sockaddr.h"
 
 #  include <expected>
 XSL_SYS_NET_NB

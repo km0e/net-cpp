@@ -17,6 +17,7 @@
 
 #  include <expected>
 XSL_UDP_NB
+using namespace sys::net;
 /**
  * @brief Dial a tcp connection to a host and port
  *
@@ -29,7 +30,7 @@ XSL_UDP_NB
 template <class LowerLayer>
 constexpr std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> dial(const char *host,
                                                                                  const char *port) {
-  auto res = sys::net::Resolver{}.resolve<Udp<LowerLayer>>(host, port, sys::net::CLIENT_FLAGS);
+  auto res = getaddrinfo<Udp<LowerLayer>>(host, port, sys::net::dns::CLIENT_FLAGS);
   if (!res) {
     return std::unexpected{res.error()};
   }
@@ -38,6 +39,12 @@ constexpr std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> dial
     return std::unexpected{conn_res.error()};
   }
   return std::move(*conn_res);
+}
+/// @brief dial a connection to a socket address
+template <class LowerLayer>
+constexpr std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> dial(
+    sys::net::SockAddr<Udp<LowerLayer>> sa) {
+  return sys::net::connect(sa);
 }
 /**
  * @brief Create a tcp accept socket
@@ -50,7 +57,7 @@ constexpr std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> dial
 template <class LowerLayer>
 constexpr std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> serv(const char *host,
                                                                                  const char *port) {
-  auto addr = sys::net::Resolver{}.resolve<Udp<LowerLayer>>(host, port, sys::net::SERVER_FLAGS);
+  auto addr = getaddrinfo<Udp<LowerLayer>>(host, port, sys::net::dns::SERVER_FLAGS);
   if (!addr) {
     return std::unexpected(addr.error());
   }
@@ -59,6 +66,12 @@ constexpr std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> serv
     return std::unexpected{bind_res.error()};
   }
   return std::move(*bind_res);
+}
+/// @brief create a server socket from a socket address
+template <class LowerLayer>
+constexpr std::expected<sys::udp::Socket<LowerLayer>, std::error_condition> serv(
+    sys::net::SockAddr<Udp<LowerLayer>> sa) {
+  return sys::net::bind(sa);
 }
 XSL_UDP_NE
 #endif

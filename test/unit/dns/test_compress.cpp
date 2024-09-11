@@ -1,7 +1,7 @@
 /**
  * @file test_compress.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
+ * @brief DNS compression test
  * @version 0.1
  * @date 2024-08-20
  *
@@ -16,15 +16,14 @@
 #include <string_view>
 using namespace xsl::dns;
 TEST(dns, compress) {
-  std::string_view src_dns[] = {"www.google.com", "mail.google.com", "com", "."};
+  std::string_view src_dns[] = {"www.google.com.", "mail.google.com", "com", "."};
   unsigned char dst_dns[256];
+  auto data_span = std::span{dst_dns, 256};
   memset(dst_dns, 0, 256);
-  int total = 0;
   DnCompressor dc(dst_dns);
-  auto n = dc.prepare(src_dns[0]);
-  ASSERT_GT(n.size(), 0);
-  dc.compress({dst_dns + total, n.size()});
-  total += n.size();
+  auto res_n = dc.prepare(src_dns[0]);
+  ASSERT_EQ(*res_n, 16);
+  dc.compress(data_span);
   ASSERT_EQ(dst_dns[0], 3);
   ASSERT_EQ(dst_dns[1], 'w');
   ASSERT_EQ(dst_dns[2], 'w');
@@ -41,10 +40,9 @@ TEST(dns, compress) {
   ASSERT_EQ(dst_dns[13], 'o');
   ASSERT_EQ(dst_dns[14], 'm');
   ASSERT_EQ(dst_dns[15], 0);
-  n = dc.prepare(src_dns[1]);
-  ASSERT_GT(n.size(), 0);
-  dc.compress({dst_dns + total, n.size()});
-  total += n.size();
+  res_n = dc.prepare(src_dns[1]);
+  ASSERT_EQ(*res_n, 7);
+  dc.compress(data_span);
   ASSERT_EQ(dst_dns[16], 4);
   ASSERT_EQ(dst_dns[17], 'm');
   ASSERT_EQ(dst_dns[18], 'a');
@@ -52,18 +50,16 @@ TEST(dns, compress) {
   ASSERT_EQ(dst_dns[20], 'l');
   ASSERT_EQ(dst_dns[21], 0xc0);
   ASSERT_EQ(dst_dns[22], 0x04);
-  n = dc.prepare(src_dns[2]);
-  ASSERT_GT(n.size(), 0);
-  dc.compress({dst_dns + total, n.size()});
-  total += n.size();
+  res_n = dc.prepare(src_dns[2]);
+  ASSERT_EQ(*res_n, 2);
+  dc.compress(data_span);
   ASSERT_EQ(dst_dns[23], 0xc0);
   ASSERT_EQ(dst_dns[24], 0x0b);
+  res_n = dc.prepare(src_dns[3]);
+  ASSERT_EQ(*res_n, 1);
+  dc.compress(data_span);
   ASSERT_EQ(dst_dns[25], 0);
-  n = dc.prepare(src_dns[3]);
-  ASSERT_GT(n.size(), 0);
-  dc.compress({dst_dns + total, n.size()});
-  total += n.size();
-  ASSERT_EQ(total, 26);
+  ASSERT_EQ(256 - data_span.size(), 26);
 };
 
 int main(int argc, char **argv) {

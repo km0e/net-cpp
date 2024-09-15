@@ -22,6 +22,8 @@
 #  include <type_traits>
 #  include <utility>
 XSL_SYS_NB
+using Signal = SPSCSignal<1>;
+
 struct RawAsyncReadDevice;
 struct RawAsyncWriteDevice;
 struct RawAsyncReadWriteDevice;
@@ -104,7 +106,7 @@ struct RawReadWriteDevice : public RawOwner {
 struct RawAsyncReadDevice : public RawReadDevice, public FileRxTraits {
   using Base = RawReadDevice;
 
-  Signal<1> _read_signal;
+  Signal _read_signal;
 
   constexpr RawAsyncReadDevice(int fd, auto &&signal) noexcept
       : Base(fd), _read_signal(std::forward<decltype(signal)>(signal)) {}
@@ -114,13 +116,13 @@ struct RawAsyncReadDevice : public RawReadDevice, public FileRxTraits {
     _read_signal = std::move(rhs._read_signal);
     return *this;
   }
-  constexpr Signal<1> &read_signal() noexcept { return _read_signal; }
+  constexpr Signal &read_signal() noexcept { return _read_signal; }
 };
 /// @brief RawAsyncWriteDevice is a wrapper for write-only file descriptor with async support
 struct RawAsyncWriteDevice : public RawWriteDevice, public FileTxTraits {
   using Base = RawWriteDevice;
 
-  Signal<1> _write_signal;
+  Signal _write_signal;
 
   constexpr RawAsyncWriteDevice(int fd, auto &&signal) noexcept
       : Base(fd), _write_signal(std::forward<decltype(signal)>(signal)) {}
@@ -130,7 +132,7 @@ struct RawAsyncWriteDevice : public RawWriteDevice, public FileTxTraits {
     _write_signal = std::move(rhs._write_signal);
     return *this;
   }
-  constexpr Signal<1> &write_signal() noexcept { return _write_signal; }
+  constexpr Signal &write_signal() noexcept { return _write_signal; }
 };
 /// @brief RawAsyncReadWriteDevice is a wrapper for read-write file descriptor with async support
 struct RawAsyncReadWriteDevice : public RawReadWriteDevice,
@@ -141,10 +143,10 @@ struct RawAsyncReadWriteDevice : public RawReadWriteDevice,
   template <template <class> class InOut = InOut>
   using rebind = RawAsyncDeviceCompose<InOut<byte>>::type;
 
-  Signal<1> _read_signal;
-  Signal<1> _write_signal;
+  Signal _read_signal;
+  Signal _write_signal;
 
-  constexpr RawAsyncReadWriteDevice(int fd, Signal<1> &&read_signal, Signal<1> &&write_signal)
+  constexpr RawAsyncReadWriteDevice(int fd, Signal &&read_signal, Signal &&write_signal)
       : Base(fd), _read_signal(std::move(read_signal)), _write_signal(std::move(write_signal)) {}
 
   constexpr RawAsyncReadWriteDevice(RawAsyncReadWriteDevice &&rhs) noexcept
@@ -167,9 +169,9 @@ struct RawAsyncReadWriteDevice : public RawReadWriteDevice,
                                              {self.fd, std::move(self._write_signal)});
   }
 
-  constexpr Signal<1> &read_signal() noexcept { return _read_signal; }
+  constexpr auto &read_signal() noexcept { return _read_signal; }
 
-  constexpr Signal<1> &write_signal() noexcept { return _write_signal; }
+  constexpr auto &write_signal() noexcept { return _write_signal; }
 };
 
 template <class... Flags>

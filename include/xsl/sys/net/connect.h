@@ -28,7 +28,7 @@ XSL_SYS_NET_NB
 
 namespace {
   template <class PollTraits>
-  Task<std::expected<std::tuple<Signal<1>, Signal<1>>, std::errc>> blocking_connect(
+  Task<std::expected<std::tuple<SPSCSignal<1>, SPSCSignal<1>>, std::errc>> blocking_connect(
       int fd, Poller &poller) {
     auto [write_signal] = poll_by_signal<PollTraits>(poller, fd, IOM_EVENTS::OUT);
     if (!co_await write_signal) {

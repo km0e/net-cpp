@@ -13,6 +13,7 @@
 #  define XSL_CORO_PUB_SUB
 #  include "xsl/coro/def.h"
 #  include "xsl/coro/signal.h"
+#  include "xsl/coro/signal/mpsc.h"
 #  include "xsl/sync.h"
 
 #  include <concepts>
@@ -20,7 +21,6 @@
 #  include <memory>
 #  include <optional>
 #  include <ranges>
-#  include <span>
 #  include <unordered_map>
 
 XSL_CORO_NB
@@ -122,8 +122,8 @@ public:
   }
 };
 
-template <class T, std::size_t N, std::size_t MaxSignals = std::dynamic_extent>
-using ExactPubSubStorage = std::array<std::pair<T, Signal<MaxSignals>>, N>;
+template <class T, std::size_t N, class Signal = Signal<>>
+using ExactPubSubStorage = std::array<std::pair<T, Signal>, N>;
 
 /**
  * @brief Make a pubsub with exact keys
@@ -137,26 +137,27 @@ using ExactPubSubStorage = std::array<std::pair<T, Signal<MaxSignals>>, N>;
  * auto [pubsub1, signal3, signal4] = make_exact_pub_sub<int, 2>(3, 4);
  * @endcode
  */
-template <class T, std::size_t MaxSignals = std::dynamic_extent>
+template <class T, class Signal = Signal<>>
 constexpr decltype(auto) make_exact_pub_sub(auto &&...keys) {
   const std::size_t N = sizeof...(keys);
   return []<std::size_t... I>(std::index_sequence<I...>, auto &&..._keys) {
-    auto signals = std::make_tuple((static_cast<void>(I), Signal<MaxSignals>())...);
+    auto signals = std::make_tuple((static_cast<void>(I), Signal())...);
     auto copy = signals;
     return std::make_tuple(
-        PubSubBase(new ShardRes<ExactPubSubStorage<T, N, MaxSignals>>{
+        PubSubBase(new ShardRes<ExactPubSubStorage<T, N, Signal>>{
             {std::pair{std::forward<decltype(_keys)>(_keys), std::move(std::get<I>(signals))}...}}),
         std::move(std::get<I>(copy))...);
   }(std::make_index_sequence<N>{}, std::forward<decltype(keys)>(keys)...);
 }
 
-template <class T, std::size_t N, std::size_t MaxSignals = std::dynamic_extent>
-using ExactPubSub = PubSubBase<ExactPubSubStorage<T, N, MaxSignals>>;
+template <class T, std::ptrdiff_t N, class Signal = Signal<>>
+using ExactPubSub = PubSubBase<ExactPubSubStorage<T, N, Signal>>;
 
-template <class T, std::size_t MaxSignals = std::dynamic_extent>
+template <class T, std::ptrdiff_t MaxSignals = mpsc_max_signals::value>
 class PubSub : public PubSubBase<std::unordered_map<T, Signal<MaxSignals>>> {
 private:
-  using Base = PubSubBase<std::unordered_map<T, Signal<MaxSignals>>>;
+  using signal_type = Signal<MaxSignals>;
+  using Base = PubSubBase<std::unordered_map<T, signal_type>>;
   using typename Base::key_type;
   using typename Base::storage_type;
 
@@ -171,8 +172,8 @@ public:
    * @param args
    * @return std::optional<SignalReceiver<>>
    */
-  constexpr std::optional<Signal<MaxSignals>> subscribe(auto &&...args) {
-    Signal<MaxSignals> sig{};
+  constexpr std::optional<signal_type> subscribe(auto &&...args) {
+    signal_type sig{};
     auto [iter, ok]
         = this->_storage->lock()->try_emplace({std::forward<decltype(args)>(args)...}, sig);
     return ok ? std::make_optional(std::move(sig)) : std::nullopt;

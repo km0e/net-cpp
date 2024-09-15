@@ -39,8 +39,8 @@ XSL_SYS_NET_NB
  * @param sig
  * @return Task<io::Result>
  */
-template <class Pointer>
-Task<io::Result> recv(RawHandle _raw, std::span<byte> buf, Signal<1, Pointer> &sig) {
+template <class SignalTraits, class Pointer>
+Task<io::Result> recv(RawHandle _raw, std::span<byte> buf, AnySignal<SignalTraits, Pointer> &sig) {
   assert(buf.size() > 0);
   do {
     ssize_t n = ::recv(_raw, buf.data(), buf.size(), 0);
@@ -48,8 +48,9 @@ Task<io::Result> recv(RawHandle _raw, std::span<byte> buf, Signal<1, Pointer> &s
     if (n > 0) {
       co_return {n, std::nullopt};
     } else if (n == 0) {
-      co_return {0, {std::errc::not_connected}};
+      co_return {0, {std::errc::bad_message}};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      LOG6("no more data to read, waiting for signal");
       if (!co_await sig) {
         co_return {0, {std::errc::not_connected}};
       }
@@ -80,8 +81,9 @@ constexpr Task<io::Result> recv(Dev &dev, std::span<byte> buf) {
  * @param sig
  * @return Task<io::Result>
  */
-template <class Pointer>
-Task<io::Result> imm_recv(RawHandle _raw, std::span<byte> buf, Signal<1, Pointer> &sig) {
+template <class SignalTraits, class Pointer>
+Task<io::Result> imm_recv(RawHandle _raw, std::span<byte> buf,
+                          AnySignal<SignalTraits, Pointer> &sig) {
   do {
     ssize_t n = ::recv(_raw, buf.data(), buf.size(), 0);
     LOG6("{} recv {} bytes", _raw, n);
@@ -108,9 +110,9 @@ Task<io::Result> imm_recv(RawHandle _raw, std::span<byte> buf, Signal<1, Pointer
  * @param sig the signal receiver
  * @return Task<io::Result>
  */
-template <class Pointer, class SockAddr>
+template <class SignalTraits, class Pointer, class SockAddr>
 Task<io::Result> recvfrom(RawHandle _raw, std::span<byte> buf, SockAddr &addr,
-                          Signal<1, Pointer> &sig) {
+                          AnySignal<SignalTraits, Pointer> &sig) {
   assert(buf.size() > 0);
   auto [sockaddr, addrlen] = addr.raw();
   do {
@@ -153,9 +155,9 @@ constexpr Task<io::Result> recvfrom(Dev &dev, std::span<byte> buf, SockAddr &add
  * @param sig the signal receiver
  * @return Task<io::Result>
  */
-template <class Pointer, class SockAddr>
+template <class SignalTraits, class Pointer, class SockAddr>
 Task<io::Result> imm_recvfrom(RawHandle _raw, std::span<byte> buf, SockAddr &addr,
-                              Signal<1, Pointer> &sig) {
+                              AnySignal<SignalTraits, Pointer> &sig) {
   auto [sockaddr, addrlen] = addr.raw();
   do {
     ssize_t n = ::recvfrom(_raw, buf.data(), buf.size(), 0, &sockaddr, &addrlen);
@@ -199,10 +201,10 @@ struct NetRxTraits {
                                                                      = nullptr) {
     auto tmp_fd = [&self, addr] {
       if (addr == nullptr) {
-        return ::accept(self.raw(), nullptr, nullptr);
+        return ::accept4(self.raw(), nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC);
       } else {
         auto [sockaddr, addrlen] = addr->raw();
-        return ::accept(self.raw(), &sockaddr, &addrlen);
+        return ::accept4(self.raw(), &sockaddr, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
       }
     }();
     if (tmp_fd < 0) {
@@ -262,8 +264,9 @@ struct NetAsyncRxTraits : public NetRxTraits {
  * @param sig the signal receiver
  * @return Task<io::Result>
  */
-template <class Pointer>
-Task<io::Result> send(RawHandle _raw, std::span<const byte> data, Signal<1, Pointer> &sig) {
+template <class SignalTraits, class Pointer>
+Task<io::Result> send(RawHandle _raw, std::span<const byte> data,
+                      AnySignal<SignalTraits, Pointer> &sig) {
   std::size_t total = 0;
   do {
     ssize_t n = ::send(_raw, data.data(), data.size(), 0);
@@ -306,9 +309,9 @@ constexpr Task<io::Result> send(Dev &dev, std::span<const byte> data) {
  * @param sig the signal receiver
  * @return Task<io::Result>
  */
-template <class Pointer, class SockAddr>
+template <class SignalTraits, class Pointer, class SockAddr>
 Task<io::Result> sendto(RawHandle _raw, std::span<const byte> data, SockAddr &addr,
-                        Signal<1, Pointer> &sig) {
+                        AnySignal<SignalTraits, Pointer> &sig) {
   auto [sockaddr, addrlen] = addr.raw();
   std::size_t total = 0;
   do {
@@ -352,8 +355,9 @@ constexpr Task<io::Result> sendto(Dev &dev, std::span<const byte> data, SockAddr
  * @param sig the signal receiver
  * @return Task<io::Result>
  */
-template <class Pointer>
-Task<io::Result> send_file(RawHandle _raw, io::WriteFileHint hint, Signal<1, Pointer> &sig) {
+template <class SignalTraits, class Pointer>
+Task<io::Result> send_file(RawHandle _raw, io::WriteFileHint hint,
+                           AnySignal<SignalTraits, Pointer> &sig) {
   int ffd = open(hint.path.c_str(), O_RDONLY | O_CLOEXEC);
   if (ffd == -1) {
     LOG2("open file failed");

@@ -268,7 +268,7 @@ constexpr auto poll_by_signal(Poller& poller, int fd, std::same_as<IOM_EVENTS> a
   return [&add]<std::size_t... I>(std::index_sequence<I...>, auto&& pubsub) {
     return add(std::get<I>(std::forward<decltype(pubsub)>(pubsub))...);
   }(std::make_index_sequence<sizeof...(events) + 1>{},
-         make_exact_pub_sub<IOM_EVENTS, 1>(events...));
+         make_exact_pub_sub<IOM_EVENTS, SPSCSignal<1>>(events...));
 }
 XSL_SYS_NE
 #endif

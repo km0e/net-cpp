@@ -17,9 +17,25 @@
 #include <unordered_map>
 
 using namespace xsl;
-TEST(ExactPubSub, SafeExit) {
+TEST(ExactPubSub, Exit) {
   auto sig = [] -> auto {
     auto [pubsub, rx] = _coro::make_exact_pub_sub<int>(1);
+    pubsub.publish(1);
+    return std::move(rx);
+  }();
+  int count = 0;
+  [](auto sub, int &count) -> Task<void> {
+    while (co_await sub) {
+      count++;
+    }
+  }(std::move(sig), count)
+                                  .detach();
+  ASSERT_EQ(count, 1);
+}
+
+TEST(ExactPubSub, UnSafeExit) {
+  auto sig = [] -> auto {
+    auto [pubsub, rx] = _coro::make_exact_pub_sub<int, UnsafeSignal<1>>(1);
     pubsub.publish(1);
     return std::move(rx);
   }();

@@ -33,7 +33,7 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
     }
     co_yield [](auto rw) mutable -> Task<void> {
       std::string buffer(4096, '\0');
-      co_await net::splice(rw, rw, buffer);
+      co_await net::splice(rw, rw, buffer);//TODO: update splice to use the new API
     }(std::move(*skt));
   }
   poller->shutdown();

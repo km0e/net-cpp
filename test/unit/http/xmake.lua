@@ -1,7 +1,6 @@
 includes("http_server","proto")
 -- includes("component")
 add_deps("xsl_http")
-add_packages("gtest")
 
 for _, file in ipairs(os.files("test_*.cpp")) do
     local name = path.basename(file)

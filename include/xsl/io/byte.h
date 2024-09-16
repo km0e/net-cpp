@@ -9,9 +9,9 @@
  *
  */
 #pragma once
-#include "xsl/def.h"
 #ifndef XSL_IO_BYTE
 #  define XSL_IO_BYTE
+#  include "xsl/def.h"
 #  include "xsl/feature.h"
 #  include "xsl/io/ai.h"
 #  include "xsl/io/def.h"

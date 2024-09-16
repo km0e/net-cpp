@@ -33,11 +33,6 @@ constexpr SocketAttribute operator|(SocketAttribute a, SocketAttribute b) {
   return static_cast<SocketAttribute>(static_cast<int>(a) | static_cast<int>(b));
 }
 
-template <class Sock>
-concept BindableSocket
-    = Sock::socket_traits_type::family == AF_INET
-      || Sock::socket_traits_type::family == AF_INET6;  // TODO: more family support
-
 template <int Family>
 class StaticFamily {
 public:
@@ -113,40 +108,27 @@ class ProtocolTraits<IPPROTO_TCP> : public StaticProtocol<IPPROTO_TCP> {};
 template <>
 class ProtocolTraits<IPPROTO_UDP> : public StaticProtocol<IPPROTO_UDP> {};
 
-struct AnySocketTraits : FamilyTraits<AF_UNSPEC>, TypeTraits<0>, ProtocolTraits<0> {
-  using poll_traits_type = DefaultPollTraits;
+template <class Up, class Down>
+concept SocketTraitsCompatible
+    = ((!requires { Down::family(); }) || (Down::family() == Up::family()))
+      && ((!requires { Down::type(); }) || (Down::type() == Up::type()))
+      && ((!requires { Down::protocol(); }) || (Down::protocol() == Up::protocol()));
+
+template <int Family, int Type, int Protocol>
+struct SocketTraitsBase : FamilyTraits<Family>, TypeTraits<Type>, ProtocolTraits<Protocol> {
+  using poll_traits_type = DefaultPollTraits;  ///< poll traits
+  SocketTraitsBase() = default;
+  SocketTraitsBase(int family, int type, int protocol)
+      : FamilyTraits<Family>(family), TypeTraits<Type>(type), ProtocolTraits<Protocol>(protocol) {}
 };
 
-struct TcpIpv4SocketTraits : FamilyTraits<AF_INET>,
-                             TypeTraits<SOCK_STREAM>,
-                             ProtocolTraits<IPPROTO_TCP> {
-  using poll_traits_type = DefaultPollTraits;  ///< poll traits
-};
-struct TcpIpv6SocketTraits : FamilyTraits<AF_INET6>,
-                             TypeTraits<SOCK_STREAM>,
-                             ProtocolTraits<IPPROTO_TCP> {
-  using poll_traits_type = DefaultPollTraits;  ///< poll traits
-};
-struct TcpIpSocketTraits : FamilyTraits<AF_UNSPEC>,
-                           TypeTraits<SOCK_STREAM>,
-                           ProtocolTraits<IPPROTO_TCP> {
-  using poll_traits_type = DefaultPollTraits;  ///< poll traits
-};
-struct UdpIpv4SocketTraits : FamilyTraits<AF_INET>,
-                             TypeTraits<SOCK_DGRAM>,
-                             ProtocolTraits<IPPROTO_UDP> {
-  using poll_traits_type = DefaultPollTraits;  ///< poll traits
-};
-struct UdpIpv6SocketTraits : FamilyTraits<AF_INET6>,
-                             TypeTraits<SOCK_DGRAM>,
-                             ProtocolTraits<IPPROTO_UDP> {
-  using poll_traits_type = DefaultPollTraits;  ///< poll traits
-};
-struct UdpIpSocketTraits : FamilyTraits<AF_UNSPEC>,
-                           TypeTraits<SOCK_DGRAM>,
-                           ProtocolTraits<IPPROTO_UDP> {
-  using poll_traits_type = DefaultPollTraits;  ///< poll traits
-};
+struct AnySocketTraits : public SocketTraitsBase<AF_UNSPEC, 0, 0> {};
+struct TcpIpv4SocketTraits : public SocketTraitsBase<AF_INET, SOCK_STREAM, IPPROTO_TCP> {};
+struct TcpIpv6SocketTraits : public SocketTraitsBase<AF_INET6, SOCK_STREAM, IPPROTO_TCP> {};
+struct TcpIpSocketTraits : public SocketTraitsBase<AF_UNSPEC, SOCK_STREAM, IPPROTO_TCP> {};
+struct UdpIpv4SocketTraits : public SocketTraitsBase<AF_INET, SOCK_DGRAM, IPPROTO_UDP> {};
+struct UdpIpv6SocketTraits : public SocketTraitsBase<AF_INET6, SOCK_DGRAM, IPPROTO_UDP> {};
+struct UdpIpSocketTraits : public SocketTraitsBase<AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP> {};
 
 namespace impl_sock {
   template <class... Flags>

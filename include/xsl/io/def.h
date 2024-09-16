@@ -19,7 +19,6 @@
 #  include <cstddef>
 #  include <optional>
 #  include <span>
-#  include <system_error>
 #  include <tuple>
 XSL_IO_NB
 

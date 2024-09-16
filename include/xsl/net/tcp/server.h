@@ -9,12 +9,12 @@
  *
  */
 #pragma once
-#include "xsl/sys/net/gai.h"
 #ifndef XSL_NET_TCP_SERVER
 #  define XSL_NET_TCP_SERVER
 #  include "xsl/feature.h"
 #  include "xsl/net/tcp/def.h"
 #  include "xsl/sys.h"
+#  include "xsl/sys/net/gai.h"
 
 #  include <cstdint>
 #  include <expected>

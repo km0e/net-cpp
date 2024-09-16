@@ -6,8 +6,7 @@ if is_mode("coverage") then
     add_cxxflags("-O0", "-g", "-fprofile-arcs", "-ftest-coverage")
     add_ldflags("-fprofile-arcs", "-ftest-coverage")
 end
-
-add_packages("quill")
+add_packages("gtest")
 
 includes("http", "feature", "coro", "convert", "regex", "wheel")
 includes("dns")

@@ -36,6 +36,7 @@ namespace sys::net {
   using _sys::net::SockAddrCompose;
   using _sys::net::Socket;
   using _sys::net::SocketTraits;
+  using _sys::net::SocketTraitsCompatible;
   namespace dns {
     using _sys::net::CLIENT_FLAGS;
     using _sys::net::SERVER_FLAGS;

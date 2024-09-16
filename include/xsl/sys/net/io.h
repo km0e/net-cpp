@@ -15,6 +15,7 @@
 #  include "xsl/io/def.h"
 #  include "xsl/logctl.h"
 #  include "xsl/sys/net/def.h"
+#  include "xsl/sys/net/sockaddr.h"
 
 #  include <fcntl.h>
 #  include <sys/sendfile.h>
@@ -178,8 +179,9 @@ struct NetAsyncRx {
       return imm_recv(self.raw(), buf, self.read_signal());
     }
   }
-  template <class SockAddr>
-  Task<io::Result> recvfrom(this auto &&self, std::span<byte> buf, SockAddr &addr) {
+  template <class Traits, SocketTraitsCompatible<Traits> Up>
+  Task<io::Result> recvfrom(this AsyncReadWriteSocket<Traits> &self, std::span<byte> buf,
+                            SockAddr<Up> &addr) {
     if constexpr (self.is_connection_based()) {
       return net::recvfrom(self.raw(), buf, addr, self.read_signal());
     } else {
@@ -328,8 +330,9 @@ struct NetAsyncTx {
     return net::send(self.raw(), data, self.write_signal());
   }
   /// @brief Send data to a specific address through a device
-  template <class SockAddr>//TODO: add SockAddr concept
-  Task<io::Result> sendto(this auto &&self, std::span<const byte> data, SockAddr &addr) {
+  template <class Traits, SocketTraitsCompatible<Traits> Up>
+  Task<io::Result> sendto(this AsyncReadWriteSocket<Traits> &self, std::span<const byte> data,
+                          SockAddr<Up> &addr) {
     return net::sendto(self.raw(), data, addr, self.write_signal());
   }
   /// @brief write file to device

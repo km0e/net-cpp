@@ -1,8 +1,6 @@
-add_packages("gtest")
-
-for _, file in ipairs(os.files("test_*.cpp")) do
+for _, file in ipairs(os.files("*.cpp")) do
     local name = path.basename(file)
-    target(name)
+    target("unitest_" .. name)
         set_kind("binary")
         set_default(false)
         add_files(name .. ".cpp")

@@ -35,11 +35,10 @@ public:
 
   using value_type = byte;
 
-  explicit SocketBase(int family, int type, int protocol,
-                      SocketAttribute attr
-                      = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)
-      : Traits(),
-        Base(::socket(family, type | static_cast<int>(attr), protocol)) {}  // TODO: TraitsBase
+  SocketBase(int family, int type, int protocol,
+             SocketAttribute attr = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)
+      : Traits(family, type, protocol),
+        Base(::socket(family, type | static_cast<int>(attr), protocol)) {}
 
   explicit SocketBase(SocketAttribute attr
                       = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)

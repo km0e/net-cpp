@@ -34,7 +34,7 @@ public:
    * truncated
    * @return std::size_t
    */
-  std::expected<std::size_t, std::errc> prepare(std::string_view src);
+  std::expected<std::size_t, errc> prepare(std::string_view src);
   /**
    * @brief compress the domain name
    *
@@ -62,7 +62,7 @@ class DnDecompressor {
 public:
   constexpr DnDecompressor(const byte *base) : base(base), buf(), buf_end(0) {}
   /// @brief prepare the domain name for decompression
-  std::errc prepare(std::span<const byte> &src);
+  errc prepare(std::span<const byte> &src);
   /// @brief get the needed memory size for the decompressed domain name
   std::size_t needed() const;
   /// @brief decompress the domain name
@@ -74,14 +74,14 @@ private:
   byte buf[size_limits::name];
   std::size_t buf_end;
 
-  std::errc prepare_rest(const byte *ptr);
+  errc prepare_rest(const byte *ptr);
 };
 /// @brief skip the domain name, update the src
-constexpr std::errc skip_dn(std::span<const byte> &src) {
+constexpr errc skip_dn(std::span<const byte> &src) {
   std::size_t offset = 0;
   while (src[offset] != 0) {
     if (src[offset] & 0xc0) {
-      if (src[offset] != 0xc0) return std::errc::illegal_byte_sequence;
+      if (src[offset] != 0xc0) return errc::illegal_byte_sequence;
       offset += 1;
       break;
     }

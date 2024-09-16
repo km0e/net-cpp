@@ -2,7 +2,7 @@
  * @file raw.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Raw device
- * @version 0.12
+ * @version 0.2
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -14,6 +14,7 @@
 #  include "xsl/sys/def.h"
 
 #  include <fcntl.h>
+#  include <sys/socket.h>
 #  include <unistd.h>
 
 #  include <expected>
@@ -25,21 +26,21 @@ XSL_SYS_NB
  *
  * @tparam is_blocking true if the object is blocking, false otherwise
  * @param fd the file descriptor
- * @return std::expected<void, std::errc>
+ * @return std::expected<void, errc>
  */
 template <bool is_blocking>
-constexpr std::expected<void, std::errc> set_blocking(int fd) {
+constexpr std::expected<void, errc> set_blocking(int fd) {
   int flags = fcntl(fd, F_GETFL, 0);
   if (flags == -1) {
-    return std::unexpected{std::errc(errno)};
+    return std::unexpected{errc(errno)};
   }
   if constexpr (!is_blocking) {
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-      return std::unexpected{std::errc(errno)};
+      return std::unexpected{errc(errno)};
     }
   } else {
     if (fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) == -1) {
-      return std::unexpected{std::errc(errno)};
+      return std::unexpected{errc(errno)};
     }
   }
   return {};
@@ -49,9 +50,9 @@ constexpr std::expected<void, std::errc> set_blocking(int fd) {
  *
  * @param fd the file descriptor
  * @param blocking true if the object is blocking, false otherwise
- * @return std::expected<void, std::errc>
+ * @return std::expected<void, errc>
  */
-std::expected<void, std::errc> set_blocking(int fd, bool blocking);
+std::expected<void, errc> set_blocking(int fd, bool blocking);
 /**
  * @brief Filter the interrupt
  *
@@ -69,6 +70,15 @@ constexpr int filter_interrupt(F &&f, auto &&...args) {
   } while (ret == -1 && errno == EINTR);
   return ret;
 }
+
+constexpr errc check_ec(int ret) {
+  if (ret == -1) {
+    return errc{errno};
+  }
+  return {};
+}
+
+inline std::error_condition current_ec() { return std::make_error_condition(errc{errno}); }
 
 // TODO: Implement the timer
 //  int timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);

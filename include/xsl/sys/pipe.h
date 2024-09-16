@@ -41,10 +41,10 @@ std::optional<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>> async_pipe(
  * @tparam To the destination device
  * @param from the source device
  * @param to the destination device
- * @return Task<std::optional<std::errc>>
+ * @return Task<std::optional<errc>>
  */
 template <AsyncRawDeviceLike From, AsyncRawDeviceLike To>
-Task<std::optional<std::errc>> splice_single(From from, To to) {
+Task<std::optional<errc>> splice_single(From from, To to) {
   std::size_t offset = 0;
   do {
     ssize_t n = ::splice(from.raw(), nullptr, to.raw(), nullptr, MAX_SINGLE_FWD_SIZE,
@@ -56,16 +56,16 @@ Task<std::optional<std::errc>> splice_single(From from, To to) {
       if (offset != 0) {
         break;
       }
-      co_return std::errc::no_message;
+      co_return errc::no_message;
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
       if (offset != 0) {
         break;
       }
       if (!co_await from.poll_for_read()) {
-        co_return std::errc::not_connected;
+        co_return errc::not_connected;
       }
     } else {
-      co_return std::errc(errno);
+      co_return errc(errno);
     }
   } while (false);
   co_return std::nullopt;

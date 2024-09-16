@@ -16,18 +16,18 @@
 #include <expected>
 #include <system_error>
 XSL_SYS_NB
-std::expected<void, std::errc> set_blocking(int fd, bool blocking) {
+std::expected<void, errc> set_blocking(int fd, bool blocking) {
   int flags = fcntl(fd, F_GETFL, 0);
   if (flags == -1) {
-    return std::unexpected{std::errc(errno)};
+    return std::unexpected{errc(errno)};
   }
   if (!blocking) [[likely]] {
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-      return std::unexpected{std::errc(errno)};
+      return std::unexpected{errc(errno)};
     }
   } else {
     if (fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) == -1) {
-      return std::unexpected{std::errc(errno)};
+      return std::unexpected{errc(errno)};
     }
   }
   return {};

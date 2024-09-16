@@ -9,11 +9,11 @@
  *
  */
 #pragma once
+#include "xsl/sys/net/gai.h"
 #ifndef XSL_NET_TCP_SERVER
 #  define XSL_NET_TCP_SERVER
 #  include "xsl/feature.h"
 #  include "xsl/net/tcp/def.h"
-#  include "xsl/net/tcp/utils.h"
 #  include "xsl/sys.h"
 
 #  include <cstdint>
@@ -93,12 +93,16 @@ constexpr std::expected<Server<LowerLayer>, std::error_condition> make_server(
     std::string_view host, std::string_view port, const std::shared_ptr<Poller> &poller) {
   LOG5("Start listening on {}:{}", host, port);
   auto copy_poller = poller;
-  auto skt = serv<LowerLayer>(host.data(), port.data());
+  auto skt = _sys::net::gai_bind<Tcp<LowerLayer>>(host.data(), port.data());
   if (!skt) {
     return std::unexpected(skt.error());
   }
-  return Server<LowerLayer>{host, port, std::move(copy_poller),
-                            std::move(*skt).async(*copy_poller)};
+  auto ec = skt->listen();
+  if (ec != errc{}) {
+    return std::unexpected(ec);
+  }
+  auto async_skt = std::move(*skt).async(*copy_poller);
+  return Server<LowerLayer>{host, port, std::move(copy_poller), std::move(async_skt)};
 }
 XSL_TCP_NE
 #endif

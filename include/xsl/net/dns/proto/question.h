@@ -27,9 +27,9 @@ XSL_NET_DNS_NB
  * @param type type
  * @param class_ class
  * @param compressor domain name compressor
- * @return constexpr std::errc
+ * @return errc
  */
-constexpr std::errc serialized(std::span<byte> &buf, const std::string_view &dn, Type type,
+constexpr errc serialized(std::span<byte> &buf, const std::string_view &dn, Type type,
                                Class class_, DnCompressor &compressor) {
   auto status = compressor.prepare(dn);
   if (!status) {
@@ -41,9 +41,9 @@ constexpr std::errc serialized(std::span<byte> &buf, const std::string_view &dn,
   return {};
 }
 /// @brief skip the question part
-constexpr std::errc skip_question(std::span<const byte> &src) {
+constexpr errc skip_question(std::span<const byte> &src) {
   auto ec = skip_dn(src);
-  if (ec != std::errc{}) {
+  if (ec != errc{}) {
     return ec;
   }
   src = src.subspan(4);

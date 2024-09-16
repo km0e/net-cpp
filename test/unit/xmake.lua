@@ -9,7 +9,7 @@ end
 
 add_packages("quill")
 
-includes("http", "transport", "feature", "coro", "convert", "regex", "wheel")
+includes("http", "feature", "coro", "convert", "regex", "wheel")
 includes("dns")
 includes("sys")
 includes("sync")

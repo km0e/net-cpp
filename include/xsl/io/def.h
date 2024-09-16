@@ -29,7 +29,7 @@ struct IOTraits;
 template <class Dev>
 struct AIOTraits;
 
-using Result = std::tuple<std::size_t, std::optional<std::errc>>;
+using Result = std::tuple<std::size_t, std::optional<errc>>;
 
 template <class Device, class T>
 concept ReadDeviceLike = requires(Device t, std::span<T> buf) {

@@ -19,7 +19,6 @@
 #include <iostream>
 #include <string>
 
-// std::string ip = "58.20.127.238";
 // std::string ip = "8.8.8.8";
 // std::string ip = "1.1.1.1";
 std::string ip = "223.5.5.5";
@@ -63,8 +62,6 @@ int main(int argc, char *argv[]) {
   // auto executor = std::make_shared<NewThreadExecutor>();
   // talk(ip, port, poller).detach(std::move(executor));
   talk(ip, port, poller).detach();
-  while (true) {
-    poller->poll();
-  }
+  poller->run();
   return 0;
 }

@@ -3,8 +3,8 @@
 
 #include <gtest/gtest.h>
 
-#include <system_error>
 using namespace xsl::http;
+using namespace xsl;
 TEST(http_parse, complete) {
   ParseUnit parser;
   const char* data = "GET / HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
@@ -25,7 +25,7 @@ TEST(http_parse, empty) {
   auto [sz, res] = parser.parse(data, len);
   ASSERT_FALSE(res.has_value());
   auto err = std::move(res.error());
-  ASSERT_EQ(err, std::errc::resource_unavailable_try_again);
+  ASSERT_EQ(err, errc::resource_unavailable_try_again);
 }
 TEST(http_parse, partial) {
   ParseUnit parser;
@@ -34,7 +34,7 @@ TEST(http_parse, partial) {
   auto [sz, res] = parser.parse(data, len);
   ASSERT_FALSE(res.has_value());
   auto err = std::move(res.error());
-  ASSERT_EQ(err, std::errc::resource_unavailable_try_again);
+  ASSERT_EQ(err, errc::resource_unavailable_try_again);
 }
 TEST(http_parse, invalid_format) {
   ParseUnit parser;
@@ -43,7 +43,7 @@ TEST(http_parse, invalid_format) {
   auto [sz, res] = parser.parse(data, len);
   ASSERT_FALSE(res.has_value());
   auto err = std::move(res.error());
-  ASSERT_EQ(err, std::errc::illegal_byte_sequence);
+  ASSERT_EQ(err, errc::illegal_byte_sequence);
 }
 TEST(http_parse, test_version) {
   ParseUnit parser;
@@ -52,7 +52,7 @@ TEST(http_parse, test_version) {
   auto [sz, res] = parser.parse(data, len);
   ASSERT_FALSE(res.has_value());
   auto err = std::move(res.error());
-  ASSERT_EQ(err, std::errc::illegal_byte_sequence);
+  ASSERT_EQ(err, errc::illegal_byte_sequence);
 }
 TEST(http_parse, test_query) {
   ParseUnit parser;

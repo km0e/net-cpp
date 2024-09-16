@@ -97,18 +97,18 @@ static std::size_t match(short *offs, int noff, int *offset, const std::uint8_t 
  * @return Status
  */
 [[nodiscard("must check the return value")]]
-std::expected<std::size_t, std::errc> DnCompressor::prepare(std::string_view src) {
+std::expected<std::size_t, errc> DnCompressor::prepare(std::string_view src) {
   if (src.empty() || src.size() > size_limits::name)
-    return std::unexpected{std::errc::invalid_argument};  /// invalid domain name
+    return std::unexpected{errc::invalid_argument};  /// invalid domain name
   if (src.back() == '.') src.remove_suffix(1);
   if (src.empty()) return {1};
   auto label_cnt = get_label_lens(lens, src);
-  if (!label_cnt) return std::unexpected{std::errc::invalid_argument};  /// invalid domain name
+  if (!label_cnt) return std::unexpected{errc::invalid_argument};  /// invalid domain name
 
   for (auto p : std::span{dnptrs, dnptrs_cnt}) {
     short offs[128];
     int noff = get_offs(offs, *dnptrs, p);
-    if (!noff) return std::unexpected{std::errc::illegal_byte_sequence};  // invalid pointer
+    if (!noff) return std::unexpected{errc::illegal_byte_sequence};  // invalid pointer
     auto offset = 0;
     auto m = match(offs, noff, &offset, *dnptrs, src.data() + src.size(), lens, label_cnt);
     if (m > suffix_len) {
@@ -183,13 +183,13 @@ constexpr void DnCompressor::reset() {
   suffix_off = 0;
 }
 
-std::errc DnDecompressor::prepare(std::span<const byte> &src) {
+errc DnDecompressor::prepare(std::span<const byte> &src) {
   const byte *ptr = src.data();
   for (;;) {
     src = src.subspan(1);
     if (*ptr == 0) return {};
     while (*ptr & 0xc0) {  // jump to the label if it is a pointer
-      if ((*ptr & 0xc0) != 0xc0) return std::errc::illegal_byte_sequence;  // invalid pointer
+      if ((*ptr & 0xc0) != 0xc0) return errc::illegal_byte_sequence;  // invalid pointer
       ptr = this->base + ((ptr[0] & 0x3f) << 8 | ptr[1]);
       src = src.subspan(1);
       return this->prepare_rest(ptr);
@@ -204,11 +204,11 @@ std::errc DnDecompressor::prepare(std::span<const byte> &src) {
 }
 std::size_t DnDecompressor::needed() const { return buf_end; }
 
-std::errc DnDecompressor::prepare_rest(const byte *ptr) {
+errc DnDecompressor::prepare_rest(const byte *ptr) {
   for (;;) {
     if (*ptr == 0) return {};
     while (*ptr & 0xc0) {  // jump to the label if it is a pointer
-      if ((*ptr & 0xc0) != 0xc0) return std::errc::illegal_byte_sequence;  // invalid pointer
+      if ((*ptr & 0xc0) != 0xc0) return errc::illegal_byte_sequence;  // invalid pointer
       ptr = this->base + ((ptr[0] & 0x3f) << 8 | ptr[1]);
     }
     assert(ptr - base < 0x4000);

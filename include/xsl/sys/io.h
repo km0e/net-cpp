@@ -36,10 +36,10 @@ Task<io::Result> read(RawHandle _raw, std::span<byte> buf, const Signal<1, Point
       co_return {n, std::nullopt};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
       if (!co_await sig) {
-        co_return {0, {std::errc::not_connected}};
+        co_return {0, {errc::not_connected}};
       }
     } else {
-      co_return {0, {std::errc(errno)}};
+      co_return {0, {errc(errno)}};
     }
   } while (true);
 }
@@ -67,10 +67,10 @@ Task<io::Result> write(RawHandle _raw, std::span<const byte> data, const Signal<
       co_return {n, std::nullopt};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
       if (!co_await sig) {
-        co_return {0, {std::errc::not_connected}};
+        co_return {0, {errc::not_connected}};
       }
     } else {
-      co_return {0, {std::errc(errno)}};
+      co_return {0, {errc(errno)}};
     }
   } while (true);
 }
@@ -87,7 +87,7 @@ Task<io::Result> write_file(Dev &dev, io::WriteFileHint hint) {
   int ffd = open(hint.path.c_str(), O_RDONLY | O_CLOEXEC);
   if (ffd == -1) {
     LOG2("open file failed");
-    co_return io::Result{0, {std::errc(errno)}};
+    co_return io::Result{0, {errc(errno)}};
   }
   Defer defer{[ffd] { close(ffd); }};
   off_t offset = hint.offset;
@@ -97,7 +97,7 @@ Task<io::Result> write_file(Dev &dev, io::WriteFileHint hint) {
   auto *src = mmap(nullptr, pa_size, PROT_READ, MAP_PRIVATE, ffd, pa_offset);
   if (src == MAP_FAILED) {
     LOG2("mmap failed");
-    co_return io::Result{0, {std::errc(errno)}};
+    co_return io::Result{0, {errc(errno)}};
   }
   Defer defer2{[src, pa_size] { munmap(src, pa_size); }};
   std::span<byte> data{reinterpret_cast<byte *>(src) + (offset - pa_offset), map_size};

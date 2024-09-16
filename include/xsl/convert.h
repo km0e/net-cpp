@@ -24,8 +24,8 @@ constexpr T from_string_view(std::string_view str);
 // for std::error_code
 constexpr std::string to_string(const std::error_code& ec) { return ec.message(); }
 
-// for std::errc
-inline std::string to_string(const std::errc& ec) { return std::make_error_code(ec).message(); }
+// for errc
+inline std::string to_string(const errc& ec) { return std::make_error_code(ec).message(); }
 
 template <typename T>
 concept ToString = std::convertible_to<T, std::string> || requires(T t) {

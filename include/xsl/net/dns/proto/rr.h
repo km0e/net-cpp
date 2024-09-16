@@ -78,7 +78,7 @@ private:
   std::unique_ptr<byte[]> data;
 };
 /// @brief deserialize the resource record
-std::expected<std::pair<std::string, RR>, std::errc> deserialized(std::span<const byte> &src,
+std::expected<std::pair<std::string, RR>, errc> deserialized(std::span<const byte> &src,
                                                                   DnDecompressor &decompressor);
 XSL_NET_DNS_NE
 #endif

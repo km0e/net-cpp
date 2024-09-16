@@ -36,10 +36,10 @@ as_writable_bytes(std::span<_Type, _Extent> __sp) noexcept {
   return std::span<byte, extent>{data, size};
 }
 
-template <size_t _Extent = std::dynamic_extent>
+template <class T, size_t _Extent = std::dynamic_extent>
 [[nodiscard]]
-constexpr std::span<byte, _Extent> as_writable_bytes(byte* data, size_t size) noexcept {
-  return {data, size};
+constexpr std::span<byte, _Extent> as_writable_bytes(T* data, size_t size) noexcept {
+  return wheel::as_writable_bytes(std::span<T, _Extent>{data, size});
 }
 
 template <typename _Type, size_t _Extent>
@@ -54,10 +54,10 @@ as_bytes(std::span<_Type, _Extent> __sp) noexcept {
   return std::span<const byte, extent>{data, size};
 }
 
-template <size_t _Extent = std::dynamic_extent>
+template <class T, size_t _Extent = std::dynamic_extent>
 [[nodiscard]]
-constexpr std::span<const byte, _Extent> as_bytes(const byte* data, size_t size) noexcept {
-  return {data, size};
+constexpr std::span<const byte, _Extent> as_bytes(T* data, size_t size) noexcept {
+  return wheel::as_bytes(std::span<T, _Extent>{data, size});
 }
 
 constexpr void bool_to_bytes(bool value, byte* bytes);

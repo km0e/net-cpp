@@ -88,28 +88,28 @@ TEST(dns_proto, question) {
   Class class_ = Class::IN;
 
   auto status = dns::serialized(buf, dns[0], type, class_, compressor);
-  EXPECT_EQ(status, std::errc{});
+  EXPECT_EQ(status, errc{});
   EXPECT_EQ(std::memcmp(bytes, expected, 18), 0);
 
   std::span<const byte> bytes_span(bytes, 256);
   status = dns::skip_question(bytes_span);
-  EXPECT_EQ(status, std::errc{});
+  EXPECT_EQ(status, errc{});
   EXPECT_EQ(256 - bytes_span.size(), 20);
 
   status = dns::serialized(buf, dns[1], type, class_, compressor);
-  EXPECT_EQ(status, std::errc{});
+  EXPECT_EQ(status, errc{});
   EXPECT_EQ(std::memcmp(bytes + 20, expected + 20, 11), 0);
 
   status = dns::skip_question(bytes_span);
-  EXPECT_EQ(status, std::errc{});
+  EXPECT_EQ(status, errc{});
   EXPECT_EQ(256 - bytes_span.size(), 31);
 
   status = dns::serialized(buf, dns[2], type, class_, compressor);
-  EXPECT_EQ(status, std::errc{});
+  EXPECT_EQ(status, errc{});
   EXPECT_EQ(std::memcmp(bytes + 31, expected + 31, 5), 0);
 
   status = dns::skip_question(bytes_span);
-  EXPECT_EQ(status, std::errc{});
+  EXPECT_EQ(status, errc{});
   EXPECT_EQ(256 - bytes_span.size(), 37);
 }
 

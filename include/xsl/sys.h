@@ -13,21 +13,20 @@
 #  define XSL_SYS
 #  include "xsl/def.h"
 #  include "xsl/sys/io.h"
-#  include "xsl/sys/net/conn.h"
-#  include "xsl/sys/net/connect.h"
 #  include "xsl/sys/net/def.h"
-#  include "xsl/sys/net/dns.h"
+#  include "xsl/sys/net/gai.h"
 #  include "xsl/sys/net/io.h"
 #  include "xsl/sys/net/sockaddr.h"
 #  include "xsl/sys/net/socket.h"
-#  include "xsl/sys/net/utils.h"
 #  include "xsl/sys/sync.h"
 XSL_NB
 namespace sys::net {
   using _sys::net::AddrInfos;
+  using _sys::net::AsyncReadWriteSocket;
   using _sys::net::AsyncSocket;
-  using _sys::net::bind;
-  using _sys::net::connect;
+  using _sys::net::gai_async_connect;
+  using _sys::net::gai_bind;
+  using _sys::net::gai_connect;
   using _sys::net::getaddrinfo;
   using _sys::net::recv;
   using _sys::net::recvfrom;
@@ -43,6 +42,7 @@ namespace sys::net {
   }  // namespace dns
 }  // namespace sys::net
 namespace sys {
+  using _sys::Poller;
   using _sys::RawAsyncDevice;
   using _sys::RawDevice;
   using _sys::read;
@@ -55,9 +55,6 @@ namespace sys::tcp {
 
   template <class LowerLayer>
   using AsyncSocket = net::AsyncSocket<Tcp<LowerLayer>>;
-
-  using _sys::net::accept;
-  using _sys::net::listen;
 }  // namespace sys::tcp
 namespace sys::udp {
 

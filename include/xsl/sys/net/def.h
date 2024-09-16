@@ -2,7 +2,7 @@
  * @file def.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Network definitions
- * @version 0.12
+ * @version 0.13
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -24,13 +24,14 @@
 #  include <type_traits>
 XSL_SYS_NET_NB
 
-/// @brief Connection-based socket concept
-template <class SockTraits>
-concept CSocketTraits = SockTraits::type == SOCK_STREAM || SockTraits::type == SOCK_SEQPACKET;
+enum class SocketAttribute : int {
+  NonBlocking = SOCK_NONBLOCK,
+  CloseOnExec = SOCK_CLOEXEC,
+};
 
-/// @brief Datagram-based socket concept
-template <class Sock>
-concept CSocket = CSocketTraits<typename Sock::socket_traits_type>;
+constexpr SocketAttribute operator|(SocketAttribute a, SocketAttribute b) {
+  return static_cast<SocketAttribute>(static_cast<int>(a) | static_cast<int>(b));
+}
 
 template <class Sock>
 concept BindableSocket
@@ -48,7 +49,7 @@ class FamilyTraits {
 protected:
   int _family = Family;  ///< family constant
 public:
-  consteval int family() { return _family; }
+  constexpr int family() { return _family; }
 };
 
 template <>
@@ -60,7 +61,7 @@ class FamilyTraits<AF_INET6> : public StaticFamily<AF_INET6> {};
 template <int Type>
 class StaticType {
 public:
-  consteval int type() { return Type; }
+  static constexpr int type() { return Type; }
 };
 
 template <int Type>
@@ -68,7 +69,7 @@ class TypeTraits {
 protected:
   int _type = Type;  ///< type constant
 public:
-  consteval int type() { return _type; }
+  constexpr int type() { return _type; }
   static consteval bool is_connection_based() { return false; }
 };
 
@@ -84,10 +85,18 @@ public:
   static consteval bool is_connection_based() { return false; }
 };
 
+/// @brief Connection-based socket concept
+template <class SockTraits>
+concept ConnectionBasedSocketTraits = SockTraits::is_connection_based();
+
+/// @brief Connection-less socket concept
+template <class SockTraits>
+concept ConnectionLessSocketTraits = !SockTraits::is_connection_based();
+
 template <int Protocol>
 class StaticProtocol {
 public:
-  consteval int protocol() { return Protocol; }
+  static constexpr int protocol() { return Protocol; }
 };
 
 template <int Protocol>
@@ -95,7 +104,7 @@ class ProtocolTraits {
 protected:
   int _protocol = Protocol;  ///< protocol constant
 public:
-  consteval int protocol() { return _protocol; }
+  constexpr int protocol() { return _protocol; }
 };
 
 template <>
@@ -104,9 +113,7 @@ class ProtocolTraits<IPPROTO_TCP> : public StaticProtocol<IPPROTO_TCP> {};
 template <>
 class ProtocolTraits<IPPROTO_UDP> : public StaticProtocol<IPPROTO_UDP> {};
 
-struct AnySocketTraits : FamilyTraits<AF_UNSPEC>,
-                         TypeTraits<SOCK_STREAM>,
-                         ProtocolTraits<0> {
+struct AnySocketTraits : FamilyTraits<AF_UNSPEC>, TypeTraits<0>, ProtocolTraits<0> {
   using poll_traits_type = DefaultPollTraits;
 };
 
@@ -220,5 +227,7 @@ using SocketTraits = impl_sock::SocketTraitsTagCompose<Flags...>::type;
 template <class Traits>
 class ReadWriteSocket;
 
+template <class Traits>
+class AsyncReadWriteSocket;
 XSL_SYS_NET_NE
 #endif

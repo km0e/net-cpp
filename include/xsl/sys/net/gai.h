@@ -12,9 +12,13 @@
 #ifndef XSL_SYS_NET_DNS
 #  define XSL_SYS_NET_DNS
 #  include "xsl/sys/net/def.h"
+#  include "xsl/sys/net/socket.h"
+#  include "xsl/sys/raw.h"
+#  include "xsl/sys/sync.h"
 
 #  include <netdb.h>
 
+#  include <cerrno>
 #  include <cstddef>
 #  include <cstdio>
 #  include <cstring>
@@ -22,7 +26,7 @@
 #  include <system_error>
 #  include <utility>
 XSL_SYS_NET_NB
-/// @brief The traits for the socket
+/// @brief Address information
 template <class Traits>
 class AddrInfos {
   class Iterator {
@@ -129,7 +133,6 @@ template <class Traits>
 using ResolveResult = std::expected<AddrInfos<Traits>, std::error_condition>;
 
 namespace {
-
   template <class Traits>
   constexpr ResolveResult<Traits> resolve(const char *name, const char *serv, ResolveFlag flags) {
     addrinfo hints;
@@ -145,7 +148,6 @@ namespace {
     }
     return {AddrInfos<Traits>(res)};
   }
-
 }  // namespace
 
 /**
@@ -199,12 +201,114 @@ constexpr decltype(auto) getaddrinfo(const char *serv, ResolveFlag flags = Resol
  @return ResolveResult
  */
 template <class... Flags>
-constexpr decltype(auto) getaddrinfo(uint16_t port, ResolveFlag flags = ResolveFlag::ADDRCONFIG
-                                                                        | ResolveFlag::PASSIVE) {
+constexpr decltype(auto) getaddrinfo(const uint16_t port,
+                                     ResolveFlag flags
+                                     = ResolveFlag::ADDRCONFIG | ResolveFlag::PASSIVE) {
   char port_str[6];
   std::snprintf(port_str, sizeof(port_str), "%u", port);
   return resolve<SocketTraits<Flags...>>(nullptr, port_str, flags);
 };
+
+/**
+ * @brief Connect to a remote address
+ *
+ * @tparam Flags The flags for getaddrinfo, should be Ip<4>/Ip<6>, Tcp/Udp, TcpIpv4 ...
+ * @tparam Traits
+ * @tparam Args
+ * @param args The arguments for getaddrinfo
+ * @return std::expected<Socket<Traits>, std::error_condition>
+ */
+template <class... Flags, ConnectionLessSocketTraits Traits = SocketTraits<Flags...>, class... Args>
+constexpr std::expected<Socket<Traits>, std::error_condition> gai_connect(Args &&...args) {
+  auto res_resolved = getaddrinfo<Flags...>(std::forward<Args>(args)...);
+  if (!res_resolved) {
+    return std::unexpected{res_resolved.error()};
+  }
+  auto skt = Socket<Traits>();
+  if (!skt.is_valid()) {
+    return std::unexpected{current_ec()};
+  }
+  int ec = 0;
+  for (auto &ai : *res_resolved) {
+    ec = filter_interrupt(::connect, skt.raw(), ai.ai_addr, ai.ai_addrlen);
+    if (ec == 0) {
+      return std::move(skt);
+    }
+  }
+  return std::unexpected{errc{errno}};
+}
+
+/**
+ * @brief Connect to a remote address
+ *
+ * @tparam Flags The flags for getaddrinfo, should be Ip<4>/Ip<6>, Tcp/Udp, TcpIpv4 ...
+ * @tparam Traits
+ * @tparam Args
+ * @param poller The poller
+ * @param args The arguments for getaddrinfo
+ * @return Task<std::expected<AsyncSocket<Traits>, std::error_condition>>
+ */
+template <class... Flags, ConnectionBasedSocketTraits Traits = SocketTraits<Flags...>,
+          class... Args>
+Task<std::expected<AsyncSocket<Traits>, std::error_condition>> gai_async_connect(Poller &poller,
+                                                                                 Args &&...args) {
+  auto res_resolved = getaddrinfo<Traits>(std::forward<Args>(args)...);
+  if (!res_resolved) {
+    co_return std::unexpected{res_resolved.error()};
+  }
+  net::ReadWriteSocket<Traits> skt{};
+  if (!skt.is_valid()) {
+    co_return std::unexpected{current_ec()};
+  }
+  LOG5("Created fd: {}", skt.raw());
+  errc ec;
+  for (auto &ai : *res_resolved) {
+    ec = skt.check_and_upgrade(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
+    if (ec != errc{}) {
+      continue;
+    }
+    auto res_skt = co_await raw_connect(std::move(skt), *ai.ai_addr, ai.ai_addrlen, poller);
+    if (res_skt) {
+      co_return std::move(*res_skt);
+    }
+  }
+  co_return std::unexpected{errc{ec}};
+}
+/**
+ * @brief Bind to a local address
+ *
+ * @tparam Flags The flags for getaddrinfo, should be Ip<4>/Ip<6>, Tcp/Udp, TcpIpv4 ...
+ * @tparam Traits
+ * @tparam Args
+ * @param args The arguments for getaddrinfo
+ * @return std::expected<Socket<Traits>, std::error_condition>
+ */
+template <class... Flags, class Traits = SocketTraits<Flags...>, class... Args>
+std::expected<Socket<Traits>, std::error_condition> gai_bind(Args &&...args) {
+  auto res_resolved = getaddrinfo<Flags...>(std::forward<Args>(args)...);
+  if (!res_resolved) {
+    return std::unexpected{res_resolved.error()};
+  }
+  auto skt = Socket<Traits>();
+  if (!skt.is_valid()) {
+    return std::unexpected{current_ec()};
+  }
+  errc ec{};
+  for (auto &ai : *res_resolved) {
+    ec = skt.check_and_upgrade(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
+    LOG5("Set non-blocking to fd: {}", skt.raw());
+    int opt = 1;
+    if (setsockopt(skt.raw(), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
+      continue;
+    }
+    LOG5("Set reuse addr to fd: {}", skt.raw());
+    if (::bind(skt.raw(), ai.ai_addr, ai.ai_addrlen) == 0) {
+      return std::move(skt);
+    }
+    ec = errc{errno};
+  }
+  return std::unexpected{std::make_error_condition(ec)};
+}
 
 XSL_SYS_NET_NE
 #endif

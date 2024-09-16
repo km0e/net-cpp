@@ -26,7 +26,7 @@ using namespace xsl;
 
 Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
   std::string buffer(4096, '\0');
-  auto rw = udp::serv<Ip<4>>(ip.data(), port.data()).value().async(*poller);
+  auto rw =net::gai_bind<UdpIpv4>(ip.data(), port.data()).value().async(*poller);
   sys::net::SockAddrCompose<UdpIpv4> addr{};
   std::string dst(128, '\0');
   std::uint16_t port_num;
@@ -36,7 +36,7 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
       LOG5("Error: {}", std::make_error_code(rc_err.value()).message());
       break;
     }
-    if (auto res = addr.parse(dst, port_num); res != std::errc{}) {
+    if (auto res = addr.parse(dst, port_num); res != errc{}) {
       LOG5("Error: {}", to_string(res));
       continue;
     }
@@ -62,9 +62,7 @@ int main(int argc, char *argv[]) {
   auto poller = std::make_shared<xsl::Poller>();
   auto executor = std::make_shared<NewThreadExecutor>();
   talk(ip, port, poller).detach(std::move(executor));
-  // echo(ip, port, poller).detach();
-  while (true) {
-    poller->poll();
-  }
+  // talk(ip, port, poller).detach();
+  poller->run();
   return 0;
 }

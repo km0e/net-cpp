@@ -9,13 +9,13 @@
  *
  */
 #pragma once
-#include "xsl/io/byte.h"
 #ifndef XSL_NET_HTTP_CONN
 #  define XSL_NET_HTTP_CONN
 #  include "xsl/coro.h"
 #  include "xsl/dyn.h"
 #  include "xsl/feature.h"
 #  include "xsl/io.h"
+#  include "xsl/io/byte.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
@@ -66,7 +66,7 @@ Task<void> imm_serve_connection(ABI& ard, ABO& awd, Service& service, Parser<Par
     {
       LOG5("Start to read request");
       auto res = co_await parser.read(ard, parse_data);
-      if (res != std::errc{}) {
+      if (res != errc{}) {
         LOG3("recv error: {}", std::make_error_code(res).message());
         break;
       }
@@ -126,7 +126,7 @@ public:
       {
         auto res = co_await _parser.read(this->_ard, parse_data);
         if (!res) {
-          if (res.error() != std::errc::no_message) {
+          if (res.error() != errc::no_message) {
             LOG3("recv error: {}", std::make_error_code(res.error()).message());
           }
           co_return Result{i, res.error()};

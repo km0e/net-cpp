@@ -54,12 +54,13 @@ public:
   constexpr explicit Detach(std::coroutine_handle<promise_type> handle) noexcept
       : _handle(handle) {}
 
-  constexpr Detach(Detach &&task) noexcept : _handle(std::exchange(task._handle, {})) {}
+  constexpr Detach(Detach &&ano) noexcept : _handle(std::exchange(ano._handle, {})) {}
 
-  constexpr void operator()(std::convertible_to<std::shared_ptr<ExecutorBase>> auto &&executor) {
+  constexpr void operator()(this auto self,
+                            std::convertible_to<std::shared_ptr<ExecutorBase>> auto &&executor) {
     LOG6("detach");
-    _handle.promise().by(std::forward<decltype(executor)>(executor));
-    _handle.resume();
+    self._handle.promise().by(std::forward<decltype(executor)>(executor));
+    self._handle.resume();
   }
 
 private:
@@ -71,10 +72,11 @@ template <class Awaiter,
   requires Awaitable<Awaiter, Detach<typename awaiter_traits<Awaiter>::result_type>>
            && (!std::is_reference_v<Awaiter>)
 constexpr void detach(Awaiter &&awaiter, Executor &&executor = nullptr) {
-  [](Awaiter &&awaiter) -> Detach<typename awaiter_traits<Awaiter>::result_type> {
+  auto d = [](Awaiter &&awaiter) -> Detach<typename awaiter_traits<Awaiter>::result_type> {
     LOG6("detach");
     co_await std::move(awaiter);
-  }(std::forward<Awaiter>(awaiter))(std::forward<decltype(executor)>(executor));
+  }(std::forward<Awaiter>(awaiter));
+  std::move(d)(std::forward<decltype(executor)>(executor));
 }
 
 XSL_CORO_NE

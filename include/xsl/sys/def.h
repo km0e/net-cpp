@@ -15,8 +15,14 @@
 #  define XSL_SYS_NE }
 #  include "xsl/io/def.h"
 
+#  include <fcntl.h>
 XSL_SYS_NB
 using RawHandle = int;
+
+enum class DeviceAttribute {
+  NonBlocking = O_NONBLOCK,
+  CloseOnExec = O_CLOEXEC,
+};
 
 template <class Dev>
 concept AsyncRawDeviceLike = requires { typename io::AIOTraits<Dev>::value_type; };

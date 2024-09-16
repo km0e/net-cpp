@@ -49,7 +49,7 @@ public:
    * @brief Get the immediate signal
    *
    * @param key
-   * @return constexpr decltype(auto)
+   * @return decltype(auto)
    * @note The signal's lifetime is managed by the pubsub
    */
   constexpr decltype(auto) imm_signal(const key_type &key) {
@@ -61,7 +61,7 @@ public:
    * @brief Get the signal
    *
    * @param key
-   * @return constexpr decltype(auto)
+   * @return decltype(auto)
    * @note The signal's lifetime is managed by the pubsub, but the signal can be safely released
    */
   constexpr decltype(auto) signal(const key_type &key) {

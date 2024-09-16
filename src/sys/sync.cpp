@@ -12,7 +12,6 @@
 #include "xsl/sys/sync.h"
 
 #include <csignal>
-#include <format>
 XSL_SYS_NB
 constexpr IOM_EVENTS& operator|=(IOM_EVENTS& a, IOM_EVENTS b) {
   a = static_cast<IOM_EVENTS>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
@@ -25,10 +24,7 @@ constexpr IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b) {
 constexpr IOM_EVENTS operator~(IOM_EVENTS a) {
   return static_cast<IOM_EVENTS>(~static_cast<uint32_t>(a));
 }
-constexpr std::string to_string(IOM_EVENTS events) {
-  // format to binary
-  return std::format("{:b}", static_cast<uint32_t>(events));
-}
+
 
 Poller::Poller()
     : Poller(

@@ -2,7 +2,7 @@
  * @file dev.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Raw device
- * @version 0.1
+ * @version 0.11
  * @date 2024-08-31
  *
  * @copyright Copyright (c) 2024
@@ -16,6 +16,7 @@
 #  include "xsl/feature.h"
 #  include "xsl/io.h"
 #  include "xsl/io/def.h"
+#  include "xsl/sys/def.h"
 #  include "xsl/sys/io.h"
 #  include "xsl/sys/sync.h"
 
@@ -54,15 +55,23 @@ using RawAsyncDeviceCompose = organize_feature_flags_t<
 struct RawOwner {
   int fd;
 
-  constexpr RawOwner(int fd) noexcept : fd(fd) {}
+  explicit constexpr RawOwner(int fd) noexcept : fd(fd) {}
   constexpr RawOwner(RawOwner &&rhs) noexcept : fd(std::exchange(rhs.fd, -1)) {}
   constexpr RawOwner &operator=(RawOwner &&rhs) noexcept {
     fd = std::exchange(rhs.fd, -1);
     return *this;
   }
-
-  constexpr int raw() const noexcept { return fd; }
+  constexpr ~RawOwner() noexcept {
+    if (fd >= 0) {
+      ::close(fd);
+    }
+  }
+  /// @brief get raw file descriptor
+  constexpr auto &&raw(this auto &&self) noexcept { return std::forward<decltype(self)>(self).fd; }
+  /// @brief into raw file descriptor
   constexpr int into_raw() && noexcept { return std::exchange(fd, -1); }
+  /// @brief check if the file descriptor is valid
+  constexpr bool is_valid() const noexcept { return fd >= 0; }
 };
 /// @brief RawReadDevice is a wrapper for read-only file descriptor
 struct RawReadDevice : public RawOwner {
@@ -167,6 +176,15 @@ struct RawAsyncReadWriteDevice : public RawReadWriteDevice,
 
     return std::make_pair<in_type, out_type>({self.fd, std::move(self._read_signal)},
                                              {self.fd, std::move(self._write_signal)});
+  }
+
+  /// @brief downgrade to sync device
+  template <class _Self>
+    requires(!std::is_reference_v<_Self>)
+  constexpr decltype(auto) sync(this _Self &&self, Poller &poller) noexcept {
+    RawHandle _raw = std::move(self).into_raw();
+    poller.remove(_raw);
+    return typename _Self::sync_type{_raw};
   }
 
   constexpr auto &read_signal() noexcept { return _read_signal; }

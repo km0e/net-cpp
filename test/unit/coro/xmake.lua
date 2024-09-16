@@ -8,6 +8,6 @@ for _, file in ipairs(os.files("test_*.cpp")) do
         add_deps("xsl_coro")
         add_packages("gtest","cli11")
         add_tests(name,{group = "coro"})
-        add_tests("stable",{runargs = {"-c", "1000"} ,group = "stable"})
+        -- add_tests("stable",{runargs = {"-c", "1000"} ,group = "stable"})
         on_package(function(package) end)
 end

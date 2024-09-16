@@ -20,17 +20,17 @@
 #include <memory>
 #include <utility>
 XSL_NET_DNS_NB
-std::expected<std::pair<std::string, RR>, std::errc> deserialized(std::span<const byte> &src,
+std::expected<std::pair<std::string, RR>, errc> deserialized(std::span<const byte> &src,
                                                                  DnDecompressor &decompressor) {
   auto ec = decompressor.prepare(src);
-  if (ec != std::errc{}) {
+  if (ec != errc{}) {
     return std::unexpected{ec};
   }
   uint16_t u16;
   xsl::deserialize(src.data() + 8, u16);
   std::size_t rest_length = 2 + 2 + 4 + 2 + ntohs(u16);
   if (rest_length > src.size()) {  // not enough data
-    return std::unexpected{std::errc::result_out_of_range};
+    return std::unexpected{errc::result_out_of_range};
   }
   auto name = std::string(decompressor.needed(), '\0');
   auto name_span = xsl::as_writable_bytes(std::span{name});

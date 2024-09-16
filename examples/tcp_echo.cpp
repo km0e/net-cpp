@@ -48,10 +48,8 @@ int main(int argc, char *argv[]) {
 
   auto poller = std::make_shared<xsl::Poller>();
   auto executor = std::make_shared<NewThreadExecutor>();
-  // talk<NewThreadExecutor>(ip, port, poller).detach(std::move(executor));
-  talk(ip, port, poller).detach();
-  while (true) {
-    poller->poll();
-  }
+  talk(ip, port, poller).detach(std::move(executor));
+  // talk(ip, port, poller).detach();
+  poller->run();
   return 0;
 }

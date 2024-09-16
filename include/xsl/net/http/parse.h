@@ -27,7 +27,7 @@
 XSL_HTTP_NB
 using namespace xsl::io;
 
-using ParseResult = std::tuple<std::size_t, std::expected<RequestView, std::errc>>;
+using ParseResult = std::tuple<std::size_t, std::expected<RequestView, errc>>;
 
 class ParseUnit {
 public:
@@ -98,10 +98,10 @@ public:
    * @tparam Reader the reader type
    * @param reader the reader
    * @param buf the buffer to store the parsed data
-   * @return Task<std::errc>
+   * @return Task<errc>
    */
   template <ABILike ABI>
-  Task<std::errc> read(ABI& reader, ParseData& buf) {
+  Task<errc> read(ABI& reader, ParseData& buf) {
     using abi_traits_type = AIOTraits<ABI>;
     while (true) {
       auto [sz, err]
@@ -111,7 +111,7 @@ public:
       }
       this->used_size += sz;
       if (auto err = this->parse_request(sz, buf);
-          err == std::errc{} || err != std::errc::resource_unavailable_try_again) {
+          err == errc{} || err != errc::resource_unavailable_try_again) {
         this->used_size = 0;
         this->parsed_size = 0;
         co_return err;
@@ -131,7 +131,7 @@ private:
   std::size_t parsed_size;
   parser_type parser;
 
-  constexpr std::errc parse_request(std::size_t sz, ParseData& buf) {
+  constexpr errc parse_request(std::size_t sz, ParseData& buf) {
     auto& front = this->buffer.front();
     auto [len, req] = this->parser.parse(
         reinterpret_cast<const char*>(front.data.get() + this->parsed_size), sz);
@@ -144,7 +144,7 @@ private:
       LOG6("parsed request: {} {}", buf.request.method, buf.request.path);
       return {};
     }
-    if (req.error() == std::errc::resource_unavailable_try_again) {
+    if (req.error() == errc::resource_unavailable_try_again) {
       this->parsed_size += len;
       if (this->used_size == HTTP_BUFFER_BLOCK_SIZE) {
         io::Block block{HTTP_BUFFER_BLOCK_SIZE};
@@ -170,7 +170,7 @@ struct AIOTraits<_net::http::Parser<Traits>> {
   using value_type = _net::http::ParseData;
   using device_type = _net::http::Parser<Traits>;
   template <ABILike ABI>
-  static constexpr Task<std::errc> read(device_type& dev, ABI& reader, value_type& buf) {
+  static constexpr Task<errc> read(device_type& dev, ABI& reader, value_type& buf) {
     return dev.read(reader, buf);
   }
 };

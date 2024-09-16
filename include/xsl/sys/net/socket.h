@@ -2,7 +2,7 @@
  * @file socket.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Socket type
- * @version 0.12
+ * @version 0.13
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -14,6 +14,7 @@
 #  include "xsl/feature.h"
 #  include "xsl/io/dyn.h"
 #  include "xsl/sys/dev.h"
+#  include "xsl/sys/net/conn.h"
 #  include "xsl/sys/net/def.h"
 #  include "xsl/sys/net/io.h"
 #  include "xsl/type_traits.h"
@@ -23,6 +24,28 @@
 #  include <expected>
 XSL_SYS_NET_NB
 using namespace xsl::io;
+
+template <class Traits, class Base>
+class SocketBase : public Traits, public Base {
+public:
+  using Base::Base;
+
+  using traits_type = Traits;
+  using poll_traits_type = typename traits_type::poll_traits_type;
+
+  using value_type = byte;
+
+  explicit SocketBase(int family, int type, int protocol,
+                      SocketAttribute attr
+                      = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)
+      : Traits(),
+        Base(::socket(family, type | static_cast<int>(attr), protocol)) {}  // TODO: TraitsBase
+
+  explicit SocketBase(SocketAttribute attr
+                      = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)
+      : Traits(),
+        Base(::socket(this->family(), this->type() | static_cast<int>(attr), this->protocol())) {}
+};
 
 template <class Traits>
 class AsyncReadSocket;
@@ -60,41 +83,52 @@ using AsyncSocketCompose = organize_feature_flags_t<
 
 /// @brief Read-only socket device
 template <class Traits>
-class ReadSocket : public RawReadDevice {
+class ReadSocket : public SocketBase<Traits, RawReadDevice> {
 public:
-  using Base = RawReadDevice;
+  using Base = SocketBase<Traits, RawReadDevice>;
   using async_type = AsyncReadSocket<Traits>;
-  using traits_type = Traits;
-  using poll_traits_type = typename traits_type::poll_traits_type;
   using Base::Base;
 };
 /// @brief Write-only socket device
 template <class Traits>
-class WriteSocket : public RawWriteDevice {
+class WriteSocket : public SocketBase<Traits, RawWriteDevice> {
 public:
-  using Base = RawWriteDevice;
+  using Base = SocketBase<Traits, RawWriteDevice>;
   using async_type = AsyncWriteSocket<Traits>;
-  using traits_type = Traits;
-  using poll_traits_type = typename traits_type::poll_traits_type;
   using Base::Base;
 };
 /// @brief Read-write socket device
 template <class Traits>
-class ReadWriteSocket : public Traits, public RawReadWriteDevice, public NetRxTraits {
+class ReadWriteSocket : public SocketBase<Traits, RawReadWriteDevice>,
+                        public ConnectionUtils<Traits> {
 public:
-  using Base = RawReadWriteDevice;
+  using Base = SocketBase<Traits, RawReadWriteDevice>;
   using async_type = AsyncReadWriteSocket<Traits>;
-  using traits_type = Traits;
-  using poll_traits_type = typename traits_type::poll_traits_type;
   using Base::Base;
+  /**
+   * @brief check and upgrade socket
+   *
+   * @param family
+   * @param type
+   * @param protocol
+   * @return errc
+   */
+  constexpr errc check_and_upgrade(int family, int type, int protocol) {
+    if (this->family() != family || this->type() != type || this->protocol() != protocol) {
+      /// change socket attributes to arguments
+      ::close(this->raw());
+      this->raw() = ::socket(family, type, protocol);
+      return check_ec(this->raw());
+    }
+    return {};
+  }
 };
 /// @brief Async read-only socket device
 template <class Traits>
-class AsyncReadSocket : public Traits, public RawAsyncReadDevice, public NetAsyncRxTraits {
+class AsyncReadSocket : public SocketBase<Traits, RawAsyncReadDevice>, public NetAsyncRx {
 public:
-  using Base = RawAsyncReadDevice;
-  using value_type = byte;
-  using traits_type = Traits;
+  using Base = SocketBase<Traits, RawAsyncReadDevice>;
+
   using dynamic_type = AsyncReadSocket;
   using io_dyn_chains = xsl::_n<AsyncReadSocket, io::DynAsyncReadDevice<AsyncReadSocket>>;
 
@@ -102,12 +136,9 @@ public:
 };
 /// @brief Async write-only socket device
 template <class Traits>
-class AsyncWriteSocket : public Traits, public RawAsyncWriteDevice, public NetAsyncTxTraits {
+class AsyncWriteSocket : public SocketBase<Traits, RawAsyncWriteDevice>, public NetAsyncTx {
 public:
-  using Base = RawAsyncWriteDevice;
-  using value_type = byte;
-
-  using traits_type = Traits;
+  using Base = SocketBase<Traits, RawAsyncWriteDevice>;
 
   using dynamic_type = AsyncWriteSocket;
   using io_dyn_chains = xsl::_n<AsyncWriteSocket, DynAsyncWriteDevice<AsyncWriteSocket>>;
@@ -119,20 +150,19 @@ public:
 };
 /// @brief Async read-write socket device
 template <class Traits>
-class AsyncReadWriteSocket : public Traits,
-                             public RawAsyncReadWriteDevice,
-                             public NetAsyncRxTraits,
-                             public NetAsyncTxTraits {
+class AsyncReadWriteSocket : public SocketBase<Traits, RawAsyncReadWriteDevice>,
+                             public NetAsyncRx,
+                             public NetAsyncTx,
+                             public ConnectionUtils<Traits> {
+  using Base = SocketBase<Traits, RawAsyncReadWriteDevice>;
+
 public:
-  using Base = RawAsyncReadWriteDevice;
-
-  using traits_type = Traits;
-
-  using value_type = byte;
-
   using Base::Base;
+
   template <template <class> class InOut = InOut>
   using rebind = AsyncSocketCompose<InOut<Traits>>::type;
+
+  using sync_type = ReadWriteSocket<Traits>;
 };
 
 template <class... Flags>
@@ -168,11 +198,12 @@ template <class... Flags>
 using Socket = SocketCompose<InOut<SocketTraits<Flags...>>>::type;
 
 template <class Socket>
-constexpr std::expected<Socket, std::errc> make_socket() {
+constexpr std::expected<Socket, errc> make_socket(int sock_attr) {
   typename Socket::traits_type socket_traits;
-  int fd = ::socket(socket_traits.family(), socket_traits.type(), socket_traits.protocol());
+  int fd = ::socket(socket_traits.family(), socket_traits.type() | sock_attr,
+                    socket_traits.protocol());
   if (fd < 0) {
-    return std::unexpected{std::errc(errno)};
+    return std::unexpected{errc(errno)};
   }
   return Socket{fd};
 }
@@ -184,7 +215,9 @@ constexpr std::expected<Socket, std::errc> make_socket() {
  */
 template <class... Flags>
 using AsyncSocket = AsyncSocketCompose<InOut<SocketTraits<Flags...>>>::type;
+
 XSL_SYS_NET_NE
+
 XSL_IO_NB
 template <class Traits>
 struct IOTraits<_sys::net::ReadSocket<Traits>> {

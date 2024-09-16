@@ -25,30 +25,30 @@ XSL_NET_DNS_NB
  * @see https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
  */
 enum class RCode : std::uint8_t {
-  NO_ERROR = 0,         // No error condition -> std::errc::success
-  FORMAT_ERROR = 1,     // Format error -> std::errc::invalid_argument
-  SERVER_FAILURE = 2,   // Server failure -> std::errc::io_error
-  NAME_ERROR = 3,       // Name Error -> std::errc::no_such_file_or_directory
-  NOT_IMPLEMENTED = 4,  // Not Implemented -> std::errc::function_not_supported
-  REFUSED = 5,          // Refused -> std::errc::operation_not_permitted
+  NO_ERROR = 0,         // No error condition -> errc::success
+  FORMAT_ERROR = 1,     // Format error -> errc::invalid_argument
+  SERVER_FAILURE = 2,   // Server failure -> errc::io_error
+  NAME_ERROR = 3,       // Name Error -> errc::no_such_file_or_directory
+  NOT_IMPLEMENTED = 4,  // Not Implemented -> errc::function_not_supported
+  REFUSED = 5,          // Refused -> errc::operation_not_permitted
 };
-/// @brief Map RCode to std::errc
-constexpr std::errc map_errc(RCode rcode) {
+/// @brief Map RCode to errc
+constexpr errc map_errc(RCode rcode) {
   switch (rcode) {
     case RCode::NO_ERROR:
-      return std::errc{};
+      return errc{};
     case RCode::FORMAT_ERROR:
-      return std::errc::invalid_argument;
+      return errc::invalid_argument;
     case RCode::SERVER_FAILURE:
-      return std::errc::io_error;
+      return errc::io_error;
     case RCode::NAME_ERROR:
-      return std::errc::no_such_file_or_directory;
+      return errc::no_such_file_or_directory;
     case RCode::NOT_IMPLEMENTED:
-      return std::errc::function_not_supported;
+      return errc::function_not_supported;
     case RCode::REFUSED:
-      return std::errc::operation_not_permitted;
+      return errc::operation_not_permitted;
     default:
-      return std::errc::protocol_error;
+      return errc::protocol_error;
   }
 }
 

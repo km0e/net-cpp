@@ -2,7 +2,7 @@
  * @file def.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.11
+ * @version 0.12
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -13,10 +13,12 @@
 #  define XSL_DEF
 #  include <cstdint>
 #  include <functional>
+#  include <system_error>
 #  define XSL_NB namespace xsl {
 #  define XSL_NE }
 XSL_NB
 using byte = std::uint8_t;
+using std::errc;
 
 #  ifndef __cpp_lib_move_only_function
 template <class F>

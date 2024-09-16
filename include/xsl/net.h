@@ -25,23 +25,19 @@
 #  include "xsl/net/http/service.h"
 #  include "xsl/net/io/splice.h"
 #  include "xsl/net/tcp/server.h"
-#  include "xsl/net/tcp/utils.h"
-#  include "xsl/net/udp/utils.h"
 XSL_NB
 namespace net {
+  using sys::net::gai_async_connect;
+  using sys::net::gai_bind;
+  using sys::net::gai_connect;
   using xsl::_net::io::splice;
 }  // namespace net
 namespace tcp {
-  using xsl::_net::tcp::dial;
   using xsl::_net::tcp::make_server;
-  using xsl::_net::tcp::serv;
   using xsl::_net::tcp::Server;
 }  // namespace tcp
 
-namespace udp {
-  using xsl::_net::udp::dial;
-  using xsl::_net::udp::serv;
-}  // namespace udp
+namespace udp {}  // namespace udp
 namespace dns {
   using xsl::_net::dns::Class;
   using xsl::_net::dns::dial;

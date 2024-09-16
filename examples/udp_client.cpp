@@ -2,7 +2,7 @@
  * @file udp_client.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.11
+ * @version 0.12
  * @date 2024-08-20
  *
  * @copyright Copyright (c) 2024
@@ -27,22 +27,20 @@ using namespace xsl;
 
 Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
   std::string buffer(4096, '\0');
-  auto rw = udp::dial<Ip<4>>(ip.data(), port.data()).value().async(*poller);
+  auto rw = net::gai_connect<UdpIpv4>(ip.data(), port.data()).value().async(*poller);
   while (true) {
+    std::cin >> buffer;
+    auto [n, err] = co_await rw.send(xsl::as_bytes(std::span(buffer)));
+    if (err.has_value()) {
+      LOG2("Failed to send data, err : {}", std::make_error_code(err.value()).message());
+      break;
+    }
     auto [n_recv, err_recv] = co_await rw.recv(xsl::as_writable_bytes(std::span(buffer)));
     if (err_recv.has_value()) {
       LOG2("Failed to recv data, err : {}", std::make_error_code(err_recv.value()).message());
       break;
     }
     LOG4("Recv: {}", std::string_view{buffer.data(), n_recv});
-    // std::cin >> buffer;
-    LOG5("Input: {} bytes", buffer.size());
-    auto [n, err] = co_await rw.send(xsl::as_bytes(std::span(buffer)));
-    if (err.has_value()) {
-      LOG2("Failed to send data, err : {}", std::make_error_code(err.value()).message());
-      break;
-    }
-    LOG4("Sent: {}", std::string_view{buffer.data(), n});
   }
   poller->shutdown();
   co_return;
@@ -58,8 +56,6 @@ int main(int argc, char *argv[]) {
   auto executor = std::make_shared<NewThreadExecutor>();
   talk(ip, port, poller).detach(std::move(executor));
   // echo(ip, port, poller).detach();
-  while (true) {
-    poller->poll();
-  }
+  poller->run();
   return 0;
 }

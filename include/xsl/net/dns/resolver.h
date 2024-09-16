@@ -19,7 +19,6 @@
 #  include "xsl/net/dns/proto/question.h"
 #  include "xsl/net/dns/proto/rr.h"
 #  include "xsl/net/dns/utils.h"
-#  include "xsl/net/udp/utils.h"
 #  include "xsl/sync.h"
 #  include "xsl/sys.h"
 #  include "xsl/wheel.h"
@@ -59,7 +58,7 @@ public:
         id{0},
         cache{} {}
   ~ResolverImpl() = default;
-  Task<std::expected<const std::forward_list<RR> *, std::errc>> query(std::string_view dn) {
+  Task<std::expected<const std::forward_list<RR> *, errc>> query(std::string_view dn) {
     if (*dn.rbegin() == '.') {
       dn = dn.substr(0, dn.size() - 1);
     }
@@ -84,7 +83,7 @@ public:
 
       auto ec = serialized(ser_span, dn, Type::A, Class::IN, compressor);
       // auto ec = serialize(dn, Type::A, Class::IN, query.datagram);
-      if (ec != std::errc{}) {
+      if (ec != errc{}) {
         co_return std::unexpected{ec};
       }
     }
@@ -95,7 +94,7 @@ public:
     this->send_signal.release();
 
     if (!co_await query.over) {
-      co_return std::unexpected{std::errc::operation_canceled};
+      co_return std::unexpected{errc::operation_canceled};
     }
 
     auto des_span = xsl::as_bytes(query.datagram.span());
@@ -105,11 +104,11 @@ public:
     }
 
     if (header.qdcount != 1) {
-      co_return std::unexpected{std::errc::illegal_byte_sequence};
+      co_return std::unexpected{errc::illegal_byte_sequence};
     }
 
     auto ec = skip_question(des_span);  // this will consume the question part
-    if (ec != std::errc{}) {
+    if (ec != errc{}) {
       co_return std::unexpected{ec};
     }
 
@@ -198,7 +197,7 @@ public:
    * @brief query the domain name
    *
    * @param dn domain name
-   * @return Task<std::expected<const std::forward_list<RR> *, std::errc>>
+   * @return Task<std::expected<const std::forward_list<RR> *, errc>>
    */
   decltype(auto) query(const std::string_view &dn) { return this->impl->query(dn); }
   /// @brief run the resolver
@@ -220,7 +219,7 @@ template <class Ip>
 std::expected<Resolver<Ip>, std::error_condition> dial(const std::string_view &ip,
                                                        const std::string_view &port,
                                                        Poller &poller) {
-  auto socket = udp::dial<Ip>(ip.data(), port.data());
+  auto socket = sys::net::gai_connect<Udp<Ip>>(ip.data(), port.data());
   if (!socket) {
     return std::unexpected{socket.error()};
   }

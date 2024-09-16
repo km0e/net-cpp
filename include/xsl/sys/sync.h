@@ -59,7 +59,10 @@ constexpr IOM_EVENTS operator&(IOM_EVENTS a, IOM_EVENTS b) {
 constexpr IOM_EVENTS& operator&=(IOM_EVENTS& a, IOM_EVENTS b);
 constexpr IOM_EVENTS operator~(IOM_EVENTS a);
 constexpr bool operator!(IOM_EVENTS a) { return a == IOM_EVENTS::NONE; }
-constexpr std::string to_string(IOM_EVENTS events);
+constexpr std::string to_string(IOM_EVENTS events) {
+  // format to binary
+  return std::format("{:b}", static_cast<uint32_t>(events));
+}
 #  endif
 
 enum class PollHandleHintTag : uint8_t {
@@ -191,42 +194,39 @@ public:
     }
     return true;
   }
-  constexpr void poll() {
-    if (!this->valid()) {
-      return;
-    }
-    // LOG6("Start polling");
-    epoll_event events[10];
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGINT);
-    sigaddset(&mask, SIGTERM);
-    sigaddset(&mask, SIGQUIT);
-    int n = epoll_pwait(this->fd, events, 10, TIMEOUT, &mask);
-    if (n == -1) {
-      LOG2("Failed to poll");
-      return;
-    }
-    // LOG6("Polling {} events", n);
-    for (int i = 0; i < n; i++) {
-      auto handler = this->handlers.lock_shared()->at(events[i].data.fd);
-      auto fd = events[i].data.fd;
-      auto ev = static_cast<IOM_EVENTS>(events[i].events);
-      LOG6("Handling {} for fd: {}", static_cast<uint32_t>(ev), fd);
-      PollHandleHint hint = (*this->proxy)(bind(std::ref(*handler), fd, ev));
-      LOG5("HandleRes {} for fd: {}", to_string_view(hint.tag), (int)events[i].data.fd);
-      switch (hint.tag) {
-        case PollHandleHintTag::DELETE:
-          this->remove(events[i].data.fd);
-          break;
-        case PollHandleHintTag::MODIFY:
-          this->modify(events[i].data.fd, hint.data.events, std::nullopt);
-          break;
-        default:
-          break;
+  constexpr void run() {
+    while (this->valid()) {
+      epoll_event events[10];
+      sigset_t mask;
+      sigemptyset(&mask);
+      sigaddset(&mask, SIGINT);
+      sigaddset(&mask, SIGTERM);
+      sigaddset(&mask, SIGQUIT);
+      int n = epoll_pwait(this->fd, events, 10, TIMEOUT, &mask);
+      if (n == -1) {
+        LOG2("Failed to poll");
+        return;
+      }
+      // LOG6("Polling {} events", n);
+      for (int i = 0; i < n; i++) {
+        auto handler = this->handlers.lock_shared()->at(events[i].data.fd);
+        auto fd = events[i].data.fd;
+        auto ev = static_cast<IOM_EVENTS>(events[i].events);
+        LOG5("Handling {} for fd: {}", to_string(ev), fd);
+        PollHandleHint hint = (*this->proxy)(bind(std::ref(*handler), fd, ev));
+        LOG5("HandleRes {} for fd: {}", to_string_view(hint.tag), (int)events[i].data.fd);
+        switch (hint.tag) {
+          case PollHandleHintTag::DELETE:
+            this->remove(events[i].data.fd);
+            break;
+          case PollHandleHintTag::MODIFY:
+            this->modify(events[i].data.fd, hint.data.events, std::nullopt);
+            break;
+          default:
+            break;
+        }
       }
     }
-    // LOG6("Polling done");
   }
   void remove(int fd);
   /// @brief shutdown the poller

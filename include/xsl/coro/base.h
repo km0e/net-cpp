@@ -14,10 +14,7 @@
 #  include "xsl/coro/def.h"
 #  include "xsl/logctl.h"
 
-#  include <cassert>
 #  include <optional>
-#  include <type_traits>
-#  include <utility>
 XSL_CORO_NB
 /**
  * @brief Base class for coroutine promise

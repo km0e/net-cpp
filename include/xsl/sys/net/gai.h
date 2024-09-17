@@ -26,6 +26,7 @@
 #  include <system_error>
 #  include <utility>
 XSL_SYS_NET_NB
+
 /// @brief Address information
 template <class Traits>
 class AddrInfos {

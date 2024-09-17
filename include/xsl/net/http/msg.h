@@ -48,7 +48,7 @@ public:
 };
 /// @brief the response
 template <ABOLike ABO>
-class Response {
+class Response {//TODO: abstract the body
 public:
   using abo_traits_type = AIOTraits<ABO>;
   using out_dev_type = typename abo_traits_type::out_dev_type;
@@ -105,7 +105,7 @@ public:
 };
 /// @brief the request
 template <ABILike ABI>
-class Request {
+class Request {//TODO: abstract the ard
 public:
   using abi_traits_type = AIOTraits<ABI>;
   using in_dev_type = typename abi_traits_type::in_dev_type;

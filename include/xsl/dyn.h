@@ -43,7 +43,7 @@ constexpr decltype(auto) to_dyn_unique(auto&& t) {
     return std::addressof(t);
   } else {
     return std::unique_ptr<Dyn>{std::make_unique<
-        typename remove_first_if<dyn_cast_pred, Dyn, typename GetChain<raw_type>::type>::type2>(
+        typename remove_first_if<typename GetChain<raw_type>::type, dyn_cast_pred, Dyn>::type2>(
         std::forward<decltype(t)>(t))};
   }
 }

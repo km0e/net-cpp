@@ -16,6 +16,7 @@
 #  include "xsl/coro/def.h"
 #  include "xsl/coro/detach.h"
 #  include "xsl/coro/executor.h"
+#  include "xsl/coro/guard.h"
 #  include "xsl/coro/then.h"
 #  include "xsl/logctl.h"
 
@@ -23,6 +24,7 @@
 #  include <concepts>
 #  include <coroutine>
 #  include <expected>
+#  include <tuple>
 #  include <type_traits>
 #  include <utility>
 
@@ -91,12 +93,18 @@ public:
 
   constexpr const std::shared_ptr<ExecutorBase> &executor() const noexcept { return _executor; }
 
-  template <class Awaiter>
+  template <class Awaiter, class... _Args>
     requires(!std::is_reference_v<Awaiter>) && requires(Awaiter &&awaiter) {
       { detach(std::forward<Awaiter>(awaiter)) };
     }
-  constexpr std::suspend_never yield_value(Awaiter &&awaiter) {
-    _coro::detach(std::forward<Awaiter>(awaiter), this->executor());
+  constexpr std::suspend_never yield_value(Awaiter &&awaiter, _Args &&...args) {
+    if constexpr (sizeof...(args) == 0) {
+      _coro::detach(std::forward<Awaiter>(awaiter), this->executor());
+    } else {
+      GuardCreator creator(
+          std::forward_as_tuple(std::forward<Awaiter>(awaiter), std::forward<_Args>(args)...));
+      _coro::detach(std::move(creator), this->executor());
+    }
     return {};
   }
 
@@ -189,35 +197,23 @@ public:
     return _coro::block(std::move(self));
   }
   /**
-   * @brief Set the executor
+   * @brief Block the task
    *
-   * @tparam E the executor type
-   * @param self the task, must be rvalue reference
+   * @param self
    * @param executor the executor
-   * @return requires constexpr&&
+   * @return auto&&
    */
   constexpr auto &&by(this auto &&self,
                       std::convertible_to<std::shared_ptr<ExecutorBase>> auto &&executor) {
     self._handle.promise().by(std::forward<decltype(executor)>(executor));
     return std::forward<decltype(self)>(self);
   }
-  /**
-   * @brief Detach the task
-   *
-   * @param self the task, must be rvalue reference
-   */
+  /// @brief Detach the task
   constexpr void detach(this Task &&self) {
     LOG6("task detach");
     _coro::detach(std::move(self));
   }
-  /**
-   * @brief Detach the task
-   *
-   * @tparam E
-   * @param self the task, must be rvalue reference
-   * @param executor the executor
-   * @return void
-   */
+  /// @brief Detach the task with executor
   constexpr void detach(this Task &&self,
                         std::convertible_to<std::shared_ptr<ExecutorBase>> auto &&executor) {
     _coro::detach(std::move(self), std::forward<decltype(executor)>(executor));

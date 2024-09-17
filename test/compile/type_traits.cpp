@@ -42,10 +42,10 @@ struct test_remove_first_if : std::bool_constant<std::is_same_v<L, R>> {};
 
 void _remove_first_if() {
   static_assert(
-      std::is_same_v<remove_first_if<test_remove_first_if, int, _n<int, char>>, _2<_n<char>, int>>);
+      std::is_same_v<remove_first_if<_n<int, char>, test_remove_first_if, int>, _2<_n<char>, int>>);
   static_assert(
-      std::is_same_v<remove_first_if<test_remove_first_if, int, _n<char, int>>, _2<_n<char>, int>>);
-  static_assert(std::is_same_v<remove_first_if<test_remove_first_if, int, _n<char, char>>,
+      std::is_same_v<remove_first_if<_n<char, int>, test_remove_first_if, int>, _2<_n<char>, int>>);
+  static_assert(std::is_same_v<remove_first_if<_n<char, char>, test_remove_first_if, int>,
                                _2<_n<char, char>, void>>);
 }
 

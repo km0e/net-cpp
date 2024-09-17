@@ -23,15 +23,13 @@ struct noop_coroutine {
   struct promise_type {
     using result_type = void;
     using executor_type = void;
-    noop_coroutine get_return_object() { return noop_coroutine{}; }
-    std::suspend_never initial_suspend() { return {}; }
-    std::suspend_never final_suspend() noexcept { return {}; }
-    void return_void() {}
-    void unhandled_exception() {}
-    template <class F>
-    void dispatch(F &&) {}
+    constexpr noop_coroutine get_return_object() { return noop_coroutine{}; }
+    constexpr std::suspend_never initial_suspend() { return {}; }
+    constexpr std::suspend_never final_suspend() noexcept { return {}; }
+    constexpr void return_void() {}
+    constexpr void unhandled_exception() {}
     template <class Promise>
-    void resume(std::coroutine_handle<Promise>) {}
+    constexpr void resume(std::coroutine_handle<Promise>) {}
   };
   using promise_type = promise_type;
 };

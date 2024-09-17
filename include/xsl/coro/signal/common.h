@@ -29,7 +29,10 @@ private:
   Pointer _storage;
 
 public:
-  constexpr SignalAwaiter(auto &&storage) : _storage(std::forward<decltype(storage)>(storage)) {}
+  template <class _Storage>
+    requires(!std::same_as<std::remove_cvref_t<_Storage>, SignalAwaiter>)
+  explicit constexpr SignalAwaiter(_Storage &&storage)
+      : _storage(std::forward<_Storage>(storage)) {}
   constexpr SignalAwaiter(SignalAwaiter &&) = default;
   constexpr SignalAwaiter &operator=(SignalAwaiter &&) = default;
   /// @brief Check if the signal is ready
@@ -81,7 +84,7 @@ public:
   }
   awaiter_type operator co_await() const {
     assert(this->_storage != nullptr && "Signal has been moved");
-    return {std::to_address(this->_storage)};
+    return awaiter_type{std::to_address(this->_storage)};
   }
   /// @brief Release the signal
   constexpr bool release() {

@@ -107,8 +107,10 @@ namespace impl_remove {
             class... Checked>
   struct remove_first_of_if<Pred, Opts, Pack<>, Checked...> : _2<Pack<Checked...>, void> {};
 }  // namespace impl_remove
+template <class L, class R>
+struct always_true : std::true_type {};
 
-template <template <class L, class R> class Pred, class T, class Pack>
+template <class Pack, template <class L, class R> class Pred = always_true, class T = void>
 using remove_first_if = typename impl_remove::remove_first_if<Pred, T, Pack>::self;
 
 template <template <class L, class R> class Pred, class Opts, class Pack>

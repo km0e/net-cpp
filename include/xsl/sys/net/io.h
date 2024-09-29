@@ -53,7 +53,7 @@ Task<io::Result> recv(RawHandle _raw, std::span<byte> buf, AnySignal<SignalTrait
         co_return {0, {errc::not_connected}};
       }
     } else {
-      LOG6("recv error: {}", std::make_error_code(errc(errno)).message());
+      LOG6("rh {} recv error: {}", _raw, std::make_error_code(errc(errno)).message());
       co_return {0, {errc(errno)}};
     }
   } while (true);

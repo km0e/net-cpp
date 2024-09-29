@@ -103,12 +103,12 @@ struct RawReadWriteDevice : public RawOwner {
 
   template <class _Self>
     requires(!std::is_reference_v<_Self>)
-  constexpr decltype(auto) async(this _Self &&self, Poller &poller) noexcept {
+  constexpr auto async(this _Self &&self, Poller &poller) noexcept {
     using poll_traits_type = typename _Self::poll_traits_type;
     using async_type = typename _Self::async_type;
     auto [r_sig, w_sig]
         = poll_by_signal<poll_traits_type>(poller, self.raw(), IOM_EVENTS::IN, IOM_EVENTS::OUT);
-    return async_type(std::move(self).into_raw(), std::move(r_sig), std::move(w_sig));
+    return async_type{std::move(self).into_raw(), std::move(r_sig), std::move(w_sig)};
   }
 };
 /// @brief RawAsyncReadDevice is a wrapper for read-only file descriptor with async support
@@ -174,8 +174,9 @@ struct RawAsyncReadWriteDevice : public RawReadWriteDevice,
     using in_type = typename _Self::template rebind<In>;
     using out_type = typename _Self::template rebind<Out>;
 
-    return std::make_pair<in_type, out_type>({self.fd, std::move(self._read_signal)},
-                                             {self.fd, std::move(self._write_signal)});
+    RawHandle _raw = std::move(self).into_raw();
+    return std::make_pair<in_type, out_type>({_raw, std::move(self._read_signal)},
+                                             {_raw, std::move(self._write_signal)});
   }
 
   /// @brief downgrade to sync device

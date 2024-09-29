@@ -9,10 +9,9 @@
  *
  */
 #pragma once
-#ifndef XSL_WHEEL_STR
-#  define XSL_WHEEL_STR
+#ifndef XSL_STR
+#  define XSL_STR
 #  include "xsl/def.h"
-#  include "xsl/wheel/def.h"
 
 #  include <algorithm>
 #  include <compare>
@@ -22,47 +21,58 @@
 #  include <string>
 #  include <string_view>
 
-XSL_WHEEL_NB
+XSL_NB
 
-template <typename _Type, size_t _Extent>
-  requires(!std::is_const_v<_Type>)
-[[nodiscard]] constexpr std::span<byte, _Extent == std::dynamic_extent ? std::dynamic_extent
-                                                                       : _Extent * sizeof(_Type)>
-as_writable_bytes(std::span<_Type, _Extent> __sp) noexcept {
-  auto data = reinterpret_cast<byte*>(__sp.data());
-  auto size = __sp.size_bytes();
-  constexpr auto extent
-      = _Extent == std::dynamic_extent ? std::dynamic_extent : _Extent * sizeof(_Type);
-  return std::span<byte, extent>{data, size};
+// template <typename T>
+// constexpr T from_string_view(std::string_view str);
+
+// for std::error_code
+constexpr std::string to_string(const std::error_code& ec) { return ec.message(); }
+
+// for errc
+inline std::string to_string(const errc& ec) { return std::make_error_code(ec).message(); }
+
+template <typename T>
+concept ToString = std::convertible_to<T, std::string> || requires(T t) {
+  { to_string(t) } -> std::convertible_to<std::string>;
+} || requires(T t) {
+  { t.to_string() } -> std::convertible_to<std::string>;
+};
+
+template <class T>
+  requires requires(T t) {
+    { t.to_string() } -> std::convertible_to<std::string>;
+  }
+std::string to_string(T&& t) {
+  return t.to_string();
 }
 
-template <class T, size_t _Extent = std::dynamic_extent>
-[[nodiscard]]
-constexpr std::span<byte, _Extent> as_writable_bytes(T* data, size_t size) noexcept {
-  return wheel::as_writable_bytes(std::span<T, _Extent>{data, size});
+template <class T>
+  requires std::convertible_to<T, std::string>
+std::string to_string(T&& t) {
+  return std::forward<T>(t);
 }
 
-template <typename _Type, size_t _Extent>
-[[nodiscard]]
-constexpr std::span<const byte,
-                    _Extent == std::dynamic_extent ? std::dynamic_extent : _Extent * sizeof(_Type)>
-as_bytes(std::span<_Type, _Extent> __sp) noexcept {
-  auto data = reinterpret_cast<const byte*>(__sp.data());
-  auto size = __sp.size_bytes();
-  constexpr auto extent
-      = _Extent == std::dynamic_extent ? std::dynamic_extent : _Extent * sizeof(_Type);
-  return std::span<const byte, extent>{data, size};
+template <class T>
+concept ToStringView = std::convertible_to<T, std::string_view> || requires(T t) {
+  { to_string_view(t) } -> std::convertible_to<std::string_view>;
+} || requires(T t) {
+  { t.to_string_view() } -> std::convertible_to<std::string_view>;
+};
+
+template <class T>
+  requires requires(T t) {
+    { t.to_string_view() } -> std::convertible_to<std::string_view>;
+  }
+std::string_view to_string_view(T&& t) {
+  return t.to_string_view();
 }
 
-template <class T, size_t _Extent = std::dynamic_extent>
-[[nodiscard]]
-constexpr std::span<const byte, _Extent> as_bytes(T* data, size_t size) noexcept {
-  return wheel::as_bytes(std::span<T, _Extent>{data, size});
+template <class T>
+  requires std::convertible_to<T, std::string_view>
+std::string_view to_string_view(T&& t) {
+  return std::forward<T>(t);
 }
-
-constexpr void bool_to_bytes(bool value, byte* bytes);
-
-constexpr bool bool_from_bytes(const byte* bytes);
 
 class FixedString {
 public:
@@ -166,5 +176,5 @@ constexpr std::string_view to_string_view(const FixedString& str) {
 constexpr std::strong_ordering operator<=>(const FixedString& lhs, const FixedString& rhs);
 constexpr std::strong_ordering operator<=>(const FixedString& lhs, std::string_view rhs);
 constexpr std::strong_ordering operator<=>(const FixedString& lhs, const char* rhs);
-XSL_WHEEL_NE
+XSL_NE
 #endif

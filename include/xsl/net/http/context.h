@@ -40,11 +40,11 @@ public:
   /// @brief easy response with status code
   constexpr void easy_resp(Status status_code) {
     this->_response
-        = response_type{{Version::HTTP_1_1, status_code, to_reason_phrase(status_code)}};
+        = response_type{{Version::HTTP_1_1, status_code, status_code.to_reason_phrase()}};
   }
   /// @brief easy response with status code and body
   constexpr void easy_resp(Status status_code, std::invocable<out_dev_type&> auto&& body) {
-    this->_response = response_type{{Version::HTTP_1_1, status_code, to_reason_phrase(status_code)},
+    this->_response = response_type{{Version::HTTP_1_1, status_code, status_code.to_reason_phrase()},
                                     std::forward<decltype(body)>(body)};
   }
   /// @brief easy response with status code and some arguments to construct the body
@@ -52,7 +52,7 @@ public:
     requires std::constructible_from<std::string, Args...>
   constexpr void easy_resp(Status status_code, Args&&... args) {
     this->_response = response_type{
-        {Version::HTTP_1_1, status_code, to_reason_phrase(status_code)},
+        {Version::HTTP_1_1, status_code, status_code.to_reason_phrase()},
         [body = std::string(std::forward<Args>(args)...)](out_dev_type& awd) -> Task<Result> {
           return abo_traits_type::write(awd, xsl::as_bytes(std::span(body)));
         }};

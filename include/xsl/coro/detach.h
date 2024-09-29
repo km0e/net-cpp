@@ -69,7 +69,7 @@ private:
 
 template <class Awaiter,
           std::convertible_to<std::shared_ptr<ExecutorBase>> Executor = std::nullptr_t>
-  requires Awaitable<Awaiter, Detach<typename awaiter_traits<Awaiter>::result_type>>
+  requires Awaitable<Awaiter, Detach<typename Awaiter::result_type>>
            && (!std::is_reference_v<Awaiter>)
 constexpr void detach(Awaiter &&awaiter, Executor &&executor = nullptr) {
   auto d = [](Awaiter &&awaiter) -> Detach<typename awaiter_traits<Awaiter>::result_type> {

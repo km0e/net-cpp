@@ -18,7 +18,6 @@
 #include <cstring>
 #include <expected>
 #include <span>
-#include <system_error>
 XSL_NET_DNS_NB
 /**
  * @brief Get all the label start offsets of a compressed domain name

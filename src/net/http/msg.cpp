@@ -22,7 +22,7 @@ RequestView::RequestView()
 RequestView::~RequestView() {}
 
 ResponsePart::ResponsePart()
-    : ResponsePart(Version::HTTP_1_1, Status::OK, to_reason_phrase(Status::OK)) {}
+    : ResponsePart(Version::HTTP_1_1, Status::OK, Status{Status::OK}.to_reason_phrase()) {}
 
 ResponsePart::ResponsePart(Version version, Status status_code, std::string_view&& status_message)
     : status_code(status_code),
@@ -30,9 +30,9 @@ ResponsePart::ResponsePart(Version version, Status status_code, std::string_view
       version(version),
       headers() {}
 ResponsePart::ResponsePart(Version version, Status status_code)
-    : ResponsePart(version, status_code, to_reason_phrase(status_code)) {}
+    : ResponsePart(version, status_code, status_code.to_reason_phrase()) {}
 ResponsePart::ResponsePart(Version version, uint16_t status_code)
-    : ResponsePart(version, static_cast<Status>(status_code)) {}
+    : ResponsePart(version, Status{status_code}) {}
 ResponsePart::ResponsePart(Status status_code) : ResponsePart(Version::HTTP_1_1, status_code) {}
 ResponsePart::ResponsePart(uint16_t status_code) : ResponsePart(Version::HTTP_1_1, status_code) {}
 
@@ -40,9 +40,9 @@ ResponsePart::~ResponsePart() {}
 std::string ResponsePart::to_string() {
   std::string res;
   res.reserve(1024);
-  res += http::to_string_view(version);
+  res += version.to_string_view();
   res += " ";
-  res += http::to_string_view(status_code);
+  res += status_code.to_string_view();
   res += " ";
   res += status_message;
   res += "\r\n";

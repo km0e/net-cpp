@@ -8,10 +8,10 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/wheel/def.h"
-#include "xsl/wheel/str.h"
+#include "xsl/def.h"
+#include "xsl/str.h"
 
-XSL_WHEEL_NB
+XSL_NB
 
 
 // void bool_to_bytes(bool value, byte* bytes) { bytes[0] = value ? 1 : 0; }
@@ -27,4 +27,4 @@ constexpr std::strong_ordering operator<=>(const FixedString& lhs, std::string_v
 constexpr std::strong_ordering operator<=>(const FixedString& lhs, const char* rhs) {
   return lhs.compare(std::string_view(rhs)) <=> 0;
 }
-XSL_WHEEL_NE
+XSL_NE

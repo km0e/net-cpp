@@ -12,54 +12,61 @@
 #ifndef XSL_CORO_GUARD
 #  define XSL_CORO_GUARD
 #  include "xsl/coro/def.h"
-#  include "xsl/type_traits.h"
 
+#  include <memory>
 #  include <tuple>
 #  include <type_traits>
 
 XSL_CORO_NB
 
-template <class AwaiterType, class TmpStorage>
-class GuardAwaiter;
+template <class Awaiter, class... Args>
+class ArgGuardAwaiter;
 
-template <class AwaiterType, class TmpStorage>
-class GuardAwaiter : public AwaiterType {
+template <class Awaiter, class... Args>
+class ArgGuardAwaiter : public Awaiter {
 private:
-  using Base = AwaiterType;
+  using Base = Awaiter;
 
 public:
   using result_type = Base::result_type;
   using executor_type = typename Base::executor_type;
 
-  template <class _Awaiter, class... _Args>
-  constexpr GuardAwaiter(_Awaiter &&aw, _Args &&...args)
-      : Base(std::forward<_Awaiter>(aw)), _tmp_storage(std::forward<_Args>(args)...) {}
+  constexpr ArgGuardAwaiter(Awaiter &&aw, std::unique_ptr<std::tuple<Args...>> &&tmp_tuple)
+      : Base(std::forward<Awaiter>(aw)), _tmp(std::move(tmp_tuple)) {}
 
   using Base::await_ready;
   using Base::await_resume;
   using Base::await_suspend;
 
 protected:
-  TmpStorage _tmp_storage;
+  std::unique_ptr<std::tuple<Args...>> _tmp;
 };
 
-template <class TmpTuple>
-class GuardCreator {
-public:
-  using result_type = std::decay_t<std::tuple_element_t<0, TmpTuple>>::result_type;
+template <class... Args>
+ArgGuardAwaiter(Args &&...) -> ArgGuardAwaiter<std::decay_t<Args>...>;
 
-  constexpr GuardCreator(TmpTuple &&tmp_tuple) : _tmp_tuple(std::forward<TmpTuple>(tmp_tuple)) {}
+template <class AwaiterGen, class... Args>
+class ArgGuard {
+public:
+  using result_type
+      = std::invoke_result_t<AwaiterGen, std::add_lvalue_reference_t<Args>...>::result_type;
+
+  template <class _AwaiterGen, class... _Args>
+  constexpr ArgGuard(_AwaiterGen &&awaiter_gen, _Args &&...args)
+      : _awaiter_gen(std::forward<_AwaiterGen>(awaiter_gen)),
+        _tmp_tuple(std::make_unique<std::tuple<Args...>>(std::forward<_Args>(args)...)) {}
 
   constexpr auto operator co_await() && {
-    using type_pair = remove_first_if<for_each_t<std::decay, TmpTuple>>;
-    using awaiter_type = typename type_pair::type1;
-    using tmp_storage = typename type_pair::type2;
-    return std::make_from_tuple<GuardAwaiter<awaiter_type, tmp_storage>>(_tmp_tuple);
+    return ArgGuardAwaiter(std::move(std::apply(_awaiter_gen, *_tmp_tuple)), std::move(_tmp_tuple));
   }
 
 private:
-  TmpTuple _tmp_tuple;
+  AwaiterGen _awaiter_gen;
+  std::unique_ptr<std::tuple<Args...>> _tmp_tuple;
 };
+
+template <class... Args>
+ArgGuard(Args &&...) -> ArgGuard<std::decay_t<Args>...>;
 
 XSL_CORO_NE
 #endif

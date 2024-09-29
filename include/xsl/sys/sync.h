@@ -205,7 +205,7 @@ public:
       int n = epoll_pwait(this->fd, events, 10, TIMEOUT, &mask);
       if (n == -1) {
         LOG2("Failed to poll");
-        return;
+        continue;
       }
       // LOG6("Polling {} events", n);
       for (int i = 0; i < n; i++) {

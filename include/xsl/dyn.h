@@ -36,6 +36,9 @@ namespace {
 template <template <class> class GetChain, class From, class To>
 constexpr bool dyn_cast_v = existing_v<To, for_each_t<DynGet, typename GetChain<From>::type>>;
 
+template <class DynChain, class Dyn>
+using dyn_cast_t = typename remove_first_if<DynChain, dyn_cast_pred, Dyn>::type2;
+
 template <template <class> class GetChain, class Dyn>
 constexpr decltype(auto) to_dyn_unique(auto&& t) {
   using raw_type = std::decay_t<decltype(t)>;

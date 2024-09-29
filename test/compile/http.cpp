@@ -44,7 +44,8 @@ Task<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::
       break;
     }
     INFO("New connection is accepted");
-    auto conn = http::make_connection(std::move(*skt));
+    auto [r, w] = std::move(*skt).async(*poller).split();
+    auto conn = http::Connection(std::move(r), std::move(w));
     co_yield std::move(conn).serve_connection(http_service);  // same as accept, also can be dynamic
   }
   poller->shutdown();

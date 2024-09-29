@@ -11,13 +11,12 @@
 #pragma once
 #ifndef XSL_SER
 #  define XSL_SER
+#  include "xsl/byte.h"
 #  include "xsl/def.h"
-#  include "xsl/wheel.h"
 
 #  include <cstring>
 #  include <span>
 XSL_NB
-
 
 constexpr void serialize(byte* buf, int32_t value) {
   auto raw = xsl::as_bytes(std::span(&value, 1));
@@ -40,7 +39,7 @@ constexpr void serialized(std::span<byte>& buf, uint16_t value) {
 }
 
 constexpr void deserialize(const byte* buf, int32_t& value) {
-  std::copy(buf, buf + sizeof(int32_t), wheel::as_writable_bytes(std::span(&value, 1)).begin());
+  std::copy(buf, buf + sizeof(int32_t), xsl::as_writable_bytes(std::span(&value, 1)).begin());
 }
 
 constexpr void deserialized(std::span<const byte>& buf, int32_t& value) {
@@ -49,12 +48,21 @@ constexpr void deserialized(std::span<const byte>& buf, int32_t& value) {
 }
 
 constexpr void deserialize(const byte* buf, uint16_t& value) {
-  std::copy(buf, buf + sizeof(uint16_t), wheel::as_writable_bytes(std::span(&value, 1)).begin());
+  std::copy(buf, buf + sizeof(uint16_t), xsl::as_writable_bytes(std::span(&value, 1)).begin());
 }
 
 constexpr void deserialized(std::span<const byte>& buf, uint16_t& value) {
   deserialize(buf.data(), value);
   buf = buf.subspan(sizeof(uint16_t));
+}
+
+constexpr void deserialize(const byte* buf, uint32_t& value) {
+  std::copy(buf, buf + sizeof(uint32_t), xsl::as_writable_bytes(std::span(&value, 1)).begin());
+}
+
+constexpr void deserialized(std::span<const byte>& buf, uint32_t& value) {
+  deserialize(buf.data(), value);
+  buf = buf.subspan(sizeof(uint32_t));
 }
 
 template <typename... Args>

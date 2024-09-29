@@ -11,13 +11,11 @@
 #pragma once
 #ifndef XSL_DEF
 #  define XSL_DEF
-#  include <cstdint>
 #  include <functional>
 #  include <system_error>
 #  define XSL_NB namespace xsl {
 #  define XSL_NE }
 XSL_NB
-using byte = std::uint8_t;
 using std::errc;
 
 #  ifndef __cpp_lib_move_only_function

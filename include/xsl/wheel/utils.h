@@ -12,7 +12,7 @@
 #ifndef XSL_WHEEL_UTILS
 #  define XSL_WHEEL_UTILS
 #  include "xsl/wheel/def.h"
-#  include "xsl/wheel/str.h"
+#  include "xsl/str.h"
 
 #  include <exception>
 #  include <functional>

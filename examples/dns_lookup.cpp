@@ -16,7 +16,9 @@
 #include <xsl/sys.h>
 #include <xsl/wheel.h>
 
+#include <forward_list>
 #include <iostream>
+#include <ostream>
 #include <string>
 
 // std::string ip = "8.8.8.8";
@@ -40,11 +42,17 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
       continue;
     }
     char ip[16];
-    for (const auto &rr : **res) {
+    const std::forward_list<dns::RR> &rrs = **res;
+    std::println(std::cout, "{:20}{:10}{:10}{:10}{:10}", "Name", "Type", "Class", "TTL", "RData");
+    for (auto &rr : rrs) {
+      std::print(std::cout, "{:20}{:10}{:10}{:10}", rr.name(), rr.type().to_string_view(),
+                 rr.class_().to_string_view(), rr.ttl());
       if (rr.type() == dns::Type::A) {
         auto data = rr.rdata();
         snprintf(ip, 16, "%d.%d.%d.%d", data[0], data[1], data[2], data[3]);
-        INFO("IP: {}", ip);
+        std::println(std::cout, "{}", ip);
+      } else if (rr.type() == dns::Type::CNAME) {
+        std::println(std::cout, "{}", std::string_view(reinterpret_cast<const char *>(rr.rdata().data())));
       }
     }
   }

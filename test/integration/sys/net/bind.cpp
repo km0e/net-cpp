@@ -93,7 +93,7 @@ TEST_F(AsyncSocketIOFixture, tcp_bind) {
   ASSERT_TRUE(res_skt.has_value());
   auto skt = std::move(*res_skt).async(*poller);
   echo(skt).detach();
-
+  xsl::flush_log();
   auto N = TEST_COUNT;
   while (N--) {
     auto res_client = net::gai_async_connect<TcpIpv4>(*poller, "127.0.0.1", port).block();

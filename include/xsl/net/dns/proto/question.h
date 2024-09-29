@@ -35,8 +35,8 @@ constexpr errc serialized(std::span<byte> &buf, const std::string_view &dn, Type
     return status.error();
   }
   compressor.compress(buf);
-  serialized(buf, type);
-  serialized(buf, class_);
+  type.serialized(buf);
+  class_.serialized(buf);
   return {};
 }
 /// @brief skip the question part

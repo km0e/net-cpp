@@ -12,8 +12,8 @@
 #ifndef XSL_NET_HTTP_CONN
 #  define XSL_NET_HTTP_CONN
 #  include "xsl/coro.h"
+#  include "xsl/coro/guard.h"
 #  include "xsl/dyn.h"
-#  include "xsl/feature.h"
 #  include "xsl/io.h"
 #  include "xsl/io/byte.h"
 #  include "xsl/logctl.h"
@@ -27,24 +27,6 @@
 #  include <utility>
 XSL_HTTP_NB
 using namespace xsl::io;
-
-namespace {
-  template <class T, class U, class V>
-  static constexpr auto io_dev_align(T&& ard, U&& awd, V&& service) {
-    using r_dev_type = std::decay_t<V>;
-    using l_in_dev_type = std::decay_t<T>;
-    using l_out_dev_type = std::decay_t<U>;
-    using r_in_dev_type = typename r_dev_type::in_dev_type;
-    using r_out_dev_type = typename r_dev_type::out_dev_type;
-    static_assert(dyn_cast_v<IODynGetChain, l_in_dev_type, r_in_dev_type>,
-                  "Input device type mismatched with the service");
-    static_assert(dyn_cast_v<IODynGetChain, l_out_dev_type, r_out_dev_type>,
-                  "Output device type mismatched with the service");
-    return std::make_tuple(to_dyn_unique<IODynGetChain, r_in_dev_type>(std::forward<T>(ard)),
-                           to_dyn_unique<IODynGetChain, r_out_dev_type>(std::forward<U>(awd)),
-                           std::addressof(service));
-  }
-}  // namespace
 /**
  * @brief serve the connection
  *
@@ -60,7 +42,8 @@ namespace {
  * @note this function would not save the state of the arguments, do not directly call it
  */
 template <ABILike ABI, ABOLike ABO, class Service, class ParserTraits = HttpParseTraits>
-Task<void> imm_serve_connection(ABI& ard, ABO& awd, Service& service, Parser<ParserTraits> parser) {
+Task<void> imm_serve_connection(ABI& ard, ABO& awd, Service& service,
+                                Parser<ParserTraits>& parser) {
   ParseData parse_data{};
   while (true) {
     {
@@ -85,6 +68,31 @@ Task<void> imm_serve_connection(ABI& ard, ABO& awd, Service& service, Parser<Par
     }
   }
 }
+
+template <ABILike ABI, ABOLike ABO, class Service, class ParserTraits = HttpParseTraits>
+decltype(auto) serve_connection(ABI&& _abr, ABO&& _abw, std::shared_ptr<Service>&& service,
+                                Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
+  using l_in_dev_type = std::decay_t<ABI>;
+  using l_out_dev_type = std::decay_t<ABO>;
+  using r_in_dev_type = typename Service::in_dev_type;
+  using r_out_dev_type = typename Service::out_dev_type;
+  static_assert(dyn_cast_v<IODynGetChain, l_in_dev_type, r_in_dev_type>,
+                "Input device type mismatched with the service");
+  static_assert(dyn_cast_v<IODynGetChain, l_out_dev_type, r_out_dev_type>,
+                "Output device type mismatched with the service");
+  using final_in_dev_type
+      = std::conditional_t<std::is_same_v<l_in_dev_type, r_in_dev_type>, l_in_dev_type,
+                           dyn_cast_t<typename IODynGetChain<l_in_dev_type>::type, r_in_dev_type>>;
+  using final_out_dev_type = std::conditional_t<
+      std::is_same_v<l_out_dev_type, r_out_dev_type>, l_out_dev_type,
+      dyn_cast_t<typename IODynGetChain<l_out_dev_type>::type, r_out_dev_type>>;
+  auto fn = [](r_in_dev_type& _abr, r_out_dev_type& _abw, auto& _service, auto& _parser) {
+    return imm_serve_connection(_abr, _abw, *_service, _parser);
+  };
+  return _coro::ArgGuard<decltype(fn), final_in_dev_type, final_out_dev_type,
+                                std::shared_ptr<Service>, Parser<ParserTraits>>{
+      fn, std::forward<ABI>(_abr), std::forward<ABO>(_abw), std::move(service), std::move(parser)};
+}
 /**
  * @brief serve the connection
  *
@@ -97,34 +105,65 @@ Task<void> imm_serve_connection(ABI& ard, ABO& awd, Service& service, Parser<Par
  * @return Task<void>
  */
 template <ABIOLike ABIO, class Service, class ParserTraits = HttpParseTraits>
-Task<void> serve_connection(std::unique_ptr<ABIO> ard, std::shared_ptr<Service> service,
-                            Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
-  auto [r, w] = std::move(*ard).split();
-  auto [pard, pawd, pservice] = io_dev_align(std::move(r), std::move(w), *service);
-  co_return co_await imm_serve_connection(*pard, *pawd, *pservice, std::move(parser));
+decltype(auto) serve_connection(ABIO&& _ab, std::shared_ptr<Service>&& service,
+                                Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
+  using l_io_dev_type = std::decay_t<ABIO>;
+  using l_in_dev_type = typename l_io_dev_type::in_dev_type;
+  using l_out_dev_type = typename l_io_dev_type::out_dev_type;
+  using r_in_dev_type = typename Service::in_dev_type;
+  using r_out_dev_type = typename Service::out_dev_type;
+  static_assert(dyn_cast_v<IODynGetChain, l_in_dev_type, r_in_dev_type>,
+                "Input device type mismatched with the service");
+  static_assert(dyn_cast_v<IODynGetChain, l_out_dev_type, r_out_dev_type>,
+                "Output device type mismatched with the service");
+  if constexpr (std::is_same_v<l_io_dev_type, r_in_dev_type>
+                && std::is_same_v<l_io_dev_type, r_out_dev_type>) {
+    return _coro::ArgGuard(
+        [](auto& _ab, auto& _service, auto& _parser) {
+          return imm_serve_connection(_ab, _ab, *_service, _parser);
+        },
+        std::move(_ab), std::move(service), std::move(parser));
+  } else if constexpr (requires { _ab.split(); }) {
+    auto [r, w] = std::move(_ab).split();
+    return serve_connection(std::move(r), std::move(w), std::move(service), std::move(parser));
+  }
 }
-/// @brief the connection class
-template <ABILike ABI, ABOLike ABO>
-class Connection {
-  using abi_traits_type = AIOTraits<ABI>;
-  using abo_traits_type = AIOTraits<ABO>;
-  using in_dev_type = typename abi_traits_type::in_dev_type;
-  using out_dev_type = typename abo_traits_type::out_dev_type;
 
+template <ABIOLike ABIO, class Service, class ParserTraits = HttpParseTraits>
+decltype(auto) serve_connection(std::unique_ptr<ABIO>&& _ab, std::shared_ptr<Service> service,
+                                Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
+  using l_io_dev_type = std::decay_t<ABIO>;
+  using l_in_dev_type = AIOTraits<l_io_dev_type>::in_dev_type;
+  using l_out_dev_type = AIOTraits<l_io_dev_type>::out_dev_type;
+  using r_in_dev_type = typename Service::in_dev_type;
+  using r_out_dev_type = typename Service::out_dev_type;
+  static_assert(dyn_cast_v<IODynGetChain, l_in_dev_type, r_in_dev_type>,
+                "Input device type mismatched with the service");
+  static_assert(dyn_cast_v<IODynGetChain, l_out_dev_type, r_out_dev_type>,
+                "Output device type mismatched with the service");
+  if constexpr (std::is_same_v<l_io_dev_type, r_in_dev_type>
+                && std::is_same_v<l_io_dev_type, r_out_dev_type>) {
+    return _coro::ArgGuard(
+        [](auto& _ab, auto& _service, auto& _parser) {
+          return imm_serve_connection(*_ab, *_ab, *_service, _parser);
+        },
+        std::move(_ab), std::move(service), std::move(parser));
+  } else if constexpr (requires { std::move(*_ab).split(); }) {
+    auto [r, w] = std::move(*_ab).split();
+    return serve_connection(std::move(r), std::move(w), std::move(service), std::move(parser));
+  }
+}
+
+class ConnectionBase {
 public:
-  constexpr Connection(in_dev_type&& in_dev, out_dev_type&& out_dev)
-      : _ard(std::move(in_dev)), _awd(std::move(out_dev)), _parser{} {}
-
-  constexpr Connection(Connection&&) = default;
-  constexpr Connection& operator=(Connection&&) = default;
-  ~Connection() {}
-
-  Task<Result> read(std::span<Request<in_dev_type>> reqs) {
+  ConnectionBase() : _parser{} {}
+  template <class _Conn>
+  Task<Result> read(this _Conn& self, std::span<Request<typename _Conn::in_dev_type>> reqs) {
     std::size_t i = 0;
     ParseData parse_data;
     for (auto& req : reqs) {
       {
-        auto res = co_await _parser.read(this->_ard, parse_data);
+        auto res = co_await self._parser.read(self.read_dev(), parse_data);
         if (!res) {
           if (res.error() != errc::no_message) {
             LOG3("recv error: {}", std::make_error_code(res.error()).message());
@@ -133,16 +172,19 @@ public:
         }
         LOG4("New request: {} {}", parse_data.request.method, parse_data.request.path);
       }
-      req = Request<in_dev_type>{std::move(parse_data.buffer), std::move(parse_data.request),
-                                 parse_data.content_part, this->_ard};
+      req = Request<typename _Conn::in_dev_type>{std::move(parse_data.buffer),
+                                                 std::move(parse_data.request),
+                                                 parse_data.content_part, self.read_dev()};
       ++i;
     }
     co_return Result{i, std::nullopt};
   }
 
-  Task<Result> write(std::span<const Response<out_dev_type>> resps) {
+  template <class _Conn>
+  Task<Result> write(this _Conn& self,
+                     std::span<const Response<typename _Conn::out_dev_type>> resps) {
     for (auto& resp : resps) {
-      auto [sz, err] = co_await resp.sendto(this->_awd);
+      auto [sz, err] = co_await resp.sendto(self.write_dev());
       if (err) {
         LOG3("send error: {}", std::make_error_code(*err).message());
         co_return Result{0, *err};
@@ -150,28 +192,74 @@ public:
     }
     co_return Result{0, std::nullopt};
   }
+
+protected:
+  Parser<HttpParseTraits> _parser;
+};
+
+template <class... IO>
+class Connection;
+
+template <ABIOLike ABIO>
+class Connection<ABIO> : public ConnectionBase {
+  using Base = ConnectionBase;
+  using io_dev_type = ABIO;
+  using abio_traits_type = AIOTraits<io_dev_type>;
+  using in_dev_type = typename abio_traits_type::in_dev_type;
+  using out_dev_type = typename abio_traits_type::out_dev_type;
+
+public:
+  constexpr Connection(io_dev_type&& ab) : Base{}, _ab(std::move(ab)) {}
+
+  constexpr Connection(Connection&&) = default;
+  constexpr Connection& operator=(Connection&&) = default;
+  ~Connection() {}
+
+  io_dev_type& read_dev() { return this->_ab; }
+  io_dev_type& write_dev() { return this->_ab; }
+
   template <class Service>
-  Task<void> serve_connection(this Connection self, std::shared_ptr<Service> service) {
-    auto [pard, pawd, pservice]
-        = io_dev_align(std::move(self._ard), std::move(self._awd), *service);
-    co_return co_await http::imm_serve_connection(*pard, *pawd, *pservice, std::move(self._parser));
+  decltype(auto) serve_connection(this Connection&& self, std::shared_ptr<Service> service) {
+    return http::serve_connection(std::move(self._ab), std::move(service), std::move(self._parser));
+  }
+
+private:
+  io_dev_type _ab;
+};
+
+/// @brief the connection class
+template <ABILike ABI, ABOLike ABO>
+class Connection<ABI, ABO> : public ConnectionBase {
+  using Base = ConnectionBase;
+  using in_dev_type = ABI;
+  using out_dev_type = ABO;
+  using abi_traits_type = AIOTraits<in_dev_type>;
+  using abo_traits_type = AIOTraits<out_dev_type>;
+
+public:
+  constexpr Connection(in_dev_type&& in_dev, out_dev_type&& out_dev)
+      : Base{}, _ard(std::move(in_dev)), _awd(std::move(out_dev)) {}
+
+  constexpr Connection(Connection&&) = default;
+  constexpr Connection& operator=(Connection&&) = default;
+  ~Connection() {}
+
+  in_dev_type& read_dev() { return this->_ard; }
+  out_dev_type& write_dev() { return this->_awd; }
+
+  template <class Service>
+  decltype(auto) serve_connection(this Connection&& self, std::shared_ptr<Service> service) {
+    return http::serve_connection(std::move(self._ard), std::move(self._awd), std::move(service),
+                                  std::move(self._parser));
   }
 
 private:
   in_dev_type _ard;
   out_dev_type _awd;
-
-  Parser<HttpParseTraits> _parser;
 };
-/// @brief make a connection
-template <ABIOLike ABIO>
-constexpr Connection<typename ABIO::template rebind<In>, typename ABIO::template rebind<Out>>
-make_connection(ABIO&& dev) {
-  auto [r, w] = std::move(dev).split();
-  return {std::move(r), std::move(w)};
-}
-/// @brief make a connection
-template <class ABIO>
-void make_connection(ABIO& dev) = delete;
+
+template <ABILike ABI, ABOLike ABO>
+Connection(ABI&&, ABO&&) -> Connection<ABI, ABO>;
+
 XSL_HTTP_NE
 #endif

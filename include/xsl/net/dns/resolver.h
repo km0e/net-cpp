@@ -12,6 +12,7 @@
 #ifndef XSL_NET_DNS_CLIENT
 #  define XSL_NET_DNS_CLIENT
 #  include "xsl/coro.h"
+#  include "xsl/feature.h"
 #  include "xsl/net/dns/cache.h"
 #  include "xsl/net/dns/def.h"
 #  include "xsl/net/dns/proto/def.h"
@@ -21,18 +22,19 @@
 #  include "xsl/net/dns/utils.h"
 #  include "xsl/sync.h"
 #  include "xsl/sys.h"
-#  include "xsl/wheel.h"
 
 #  include <atomic>
+#  include <concepts>
 #  include <cstdint>
 #  include <cstring>
 #  include <expected>
 #  include <forward_list>
+#  include <iterator>
 #  include <memory>
 #  include <string_view>
-#  include <system_error>
 #  include <unordered_map>
 #  include <utility>
+#  include <vector>
 XSL_NET_DNS_NB
 using namespace xsl::io;
 
@@ -50,15 +52,26 @@ struct Query {
 template <class LowerLayer>
 class ResolverImpl {
 public:
-  ResolverImpl(sys::udp::AsyncSocket<LowerLayer> &&socket)
-      : send_signal{},
-        send_wait_list{},
-        recv_wait_list{},
-        socket{std::move(socket)},
-        id{0},
-        cache{} {}
+  template <std::input_iterator _InIt>
+    requires std::same_as<std::iter_value_t<_InIt>, const char *>
+  ResolverImpl(_InIt first, _InIt last)
+      : send_signal{}, send_wait_list{}, recv_wait_list{}, socket{}, id{0}, cache{} {
+    for (auto it = first; it != last; it++) {
+      const char *pos = std::strchr(*it, ':');
+      std::uint16_t port = 53;
+      if (pos) {
+        port = std::stoul(pos + 1);
+      }
+      init_dns_servers.emplace_back(*it, port);
+    };
+  }
+  ResolverImpl(const char *ip, std::uint16_t port)
+      : send_signal{}, send_wait_list{}, recv_wait_list{}, socket{}, id{0}, cache{} {
+    init_dns_servers.emplace_back(ip, port);
+  }
   ~ResolverImpl() = default;
-  Task<std::expected<const std::forward_list<RR> *, errc>> query(std::string_view dn) {
+  Task<std::expected<const std::forward_list<RR> *, errc>> query(std::string_view dn, Type type,
+                                                                 Class class_) {
     if (*dn.rbegin() == '.') {
       dn = dn.substr(0, dn.size() - 1);
     }
@@ -81,8 +94,7 @@ public:
     {
       DnCompressor compressor{query.datagram.data.get()};
 
-      auto ec = serialized(ser_span, dn, Type::A, Class::IN, compressor);
-      // auto ec = serialize(dn, Type::A, Class::IN, query.datagram);
+      auto ec = serialized(ser_span, dn, type, class_, compressor);
       if (ec != errc{}) {
         co_return std::unexpected{ec};
       }
@@ -100,7 +112,7 @@ public:
     auto des_span = xsl::as_bytes(query.datagram.span());
     header.deserialize(des_span);  // this will consume the header part
     if (header.rcode() != RCode::NO_ERROR) {
-      co_return std::unexpected{map_errc(header.rcode())};
+      co_return std::unexpected{header.rcode().to_errc()};
     }
 
     if (header.qdcount != 1) {
@@ -130,6 +142,23 @@ public:
           continue;
         }
         rrs.emplace_front(std::move(rr));
+      }
+      if (rrs.empty()) {
+        for (std::size_t i = 0; i < header.nscount; i++) {
+          auto res_rr = deserialized(des_span, decompressor);
+          if (!res_rr) {
+            co_return std::unexpected{res_rr.error()};
+          }
+          auto [rr_name, rr] = std::move(*res_rr);
+          auto ans_sv = std::string_view{rr_name};
+          if (*ans_sv.rbegin() == '.') {
+            ans_sv = ans_sv.substr(0, ans_sv.size() - 1);
+          }
+          if (ans_sv != dn) {
+            continue;
+          }
+          rrs.emplace_front(std::move(rr));
+        }
       }
     }
     co_return cache.insert(dn, std::move(rrs));
@@ -174,13 +203,15 @@ public:
   }
 
 private:
-  Signal<> send_signal;
+  std::vector<sys::net::SockAddr<sys::net::SocketTraits<Udp<LowerLayer>>>> init_dns_servers;
 
   ShardRes<std::forward_list<Query *>> send_wait_list;
+  Signal<> send_signal;
 
   ShardRes<std::unordered_map<std::uint16_t, Query *>> recv_wait_list;
-  sys::udp::AsyncSocket<LowerLayer> socket;
   std::atomic_uint16_t id;
+
+  sys::udp::AsyncSocket<LowerLayer> socket;
 
   MemoryCache cache;
 };
@@ -188,8 +219,9 @@ private:
 template <class LowerLayer>
 class Resolver {
 public:
-  Resolver(sys::udp::AsyncSocket<LowerLayer> &&socket)
-      : impl{std::make_unique<ResolverImpl<LowerLayer>>(std::move(socket))} {}
+  template <class... Args>
+  Resolver(Args &&...args)
+      : impl{std::make_unique<ResolverImpl<LowerLayer>>(std::forward<Args>(args)...)} {}
   Resolver(Resolver &&) = default;
   Resolver &operator=(Resolver &&) = default;
   ~Resolver() = default;
@@ -199,31 +231,14 @@ public:
    * @param dn domain name
    * @return Task<std::expected<const std::forward_list<RR> *, errc>>
    */
-  decltype(auto) query(const std::string_view &dn) { return this->impl->query(dn); }
+  decltype(auto) query(const std::string_view &dn, Type type = Type::A, Class class_ = Class::IN) {
+    return this->impl->query(dn, type, class_);
+  }
   /// @brief run the resolver
   Task<void> run() { return this->impl->run(); }
 
 protected:
   std::unique_ptr<ResolverImpl<LowerLayer>> impl;
 };
-/**
- * @brief dial the DNS resolver
- *
- * @tparam Ip IP address type
- * @param ip IP address
- * @param port port
- * @param poller poller
- * @return std::expected<Resolver<Ip>, std::error_condition>
- */
-template <class Ip>
-std::expected<Resolver<Ip>, std::error_condition> dial(const std::string_view &ip,
-                                                       const std::string_view &port,
-                                                       Poller &poller) {
-  auto socket = sys::net::gai_connect<Udp<Ip>>(ip.data(), port.data());
-  if (!socket) {
-    return std::unexpected{socket.error()};
-  }
-  return Resolver<Ip>{std::move(*socket).async(poller)};
-}
 XSL_NET_DNS_NE
 #endif

@@ -14,6 +14,7 @@
 #  include "xsl/net/dns/proto/def.h"
 #  include "xsl/net/dns/proto/header.h"
 #  include "xsl/net/dns/proto/question.h"
+#  include "xsl/net/dns/proto/rr.h"
 #  include "xsl/net/dns/resolver.h"
 #  include "xsl/net/dns/utils.h"
 #  include "xsl/net/http/conn.h"
@@ -44,6 +45,7 @@ namespace dns {
   using xsl::_net::dns::DnCompressor;
   using xsl::_net::dns::DnDecompressor;
   using xsl::_net::dns::Header;
+  using xsl::_net::dns::RR;
   using xsl::_net::dns::serialized;
   using xsl::_net::dns::skip_question;
   using xsl::_net::dns::Type;
@@ -52,9 +54,9 @@ namespace dns {
 }  // namespace dns
 
 namespace http {
+  using xsl::_net::http::Connection;
   using xsl::_net::http::HandleContext;
   using xsl::_net::http::HandleResult;
-  using xsl::_net::http::make_connection;
   using xsl::_net::http::Method;
   using xsl::_net::http::ParseData;
   using xsl::_net::http::Parser;

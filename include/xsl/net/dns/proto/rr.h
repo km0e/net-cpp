@@ -53,17 +53,21 @@ public:
   RR(RR &&) = default;
   RR &operator=(RR &&) = default;
   ~RR() = default;
+  /// @brief get the name
+  const char *name() const { return reinterpret_cast<const char *>(data.get()); }
   /// @brief get the type
   Type type() const {
-    Type type;
-    deserialize(data.get(), type);
-    return type;
+    return Type::from_bytes(data.get());
   }
   /// @brief get the class
   Class class_() const {
-    Class class_;
-    deserialize(data.get() + 2, class_);
-    return class_;
+    return Class::from_bytes(data.get() + 2);
+  }
+  /// @brief get the ttl
+  std::uint32_t ttl() const {
+    uint32_t u32;
+    xsl::deserialize(data.get() + 4, u32);
+    return ntohl(u32);
   }
   /// @brief get the rdata length
   std::uint16_t rdlength() const {

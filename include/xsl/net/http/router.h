@@ -56,7 +56,7 @@ namespace router_details {
      * @param tag the tag of the route handler
      */
     constexpr HttpRouteNode(Method method, tag_type&& tag) : handlers{}, fallbacks{}, children{} {
-      handlers[static_cast<uint8_t>(method)] = std::move(tag);
+      handlers[method._method] = std::move(tag);
     }
     constexpr ~HttpRouteNode() {}
     /**
@@ -115,8 +115,8 @@ namespace router_details {
       }
       auto sub_path = path.substr(1);
       rt_assert(sub_path.empty(), "Fallback path must be empty");
-      rt_assert(fallbacks[static_cast<uint8_t>(method)] == tag_type{}, "Fallback already exists");
-      fallbacks[static_cast<uint8_t>(method)] = std::move(tag);
+      rt_assert(fallbacks[method._method] == tag_type{}, "Fallback already exists");
+      fallbacks[method._method] = std::move(tag);
     }
     /**
      * @brief Route the request
@@ -149,7 +149,7 @@ namespace router_details {
         }
         auto sub_path = ctx.current_path.substr(1);
         if (sub_path.empty()) {  // if the path is empty
-          auto& handler = fallbacks[static_cast<uint8_t>(ctx.method)];
+          auto& handler = fallbacks[ctx.method._method];
           if (handler != tag_type{}) {
             return &handler;
           }
@@ -182,14 +182,14 @@ namespace router_details {
     ShardRes<us_map<HttpRouteNode>> children;
 
     constexpr bool add(Method method, tag_type&& tag) {
-      if (handlers[static_cast<uint8_t>(method)] != tag_type{}) {
+      if (handlers[method._method] != tag_type{}) {
         return false;
       }
-      handlers[static_cast<uint8_t>(method)] = std::move(tag);
+      handlers[method._method] = std::move(tag);
       return true;
     }
     constexpr RouteResult direct_route(RouteContext& ctx) {
-      auto& handler = handlers[static_cast<uint8_t>(ctx.method)];
+      auto& handler = handlers[ctx.method._method];
       if (handler == tag_type{}) {
         return std::unexpected{Status::NOT_IMPLEMENTED};
       }

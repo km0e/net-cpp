@@ -13,7 +13,7 @@
 #include <xsl/logctl.h>
 #include <xsl/net.h>
 
-std::string ip = "127.0.0.1";
+std::string ip = "0.0.0.0";
 std::string port = "8080";
 
 using namespace xsl::coro;

@@ -30,50 +30,6 @@
 
 XSL_CORO_NB
 
-template <class Promise>
-class TaskAwaiter {
-protected:
-  using promise_type = Promise;
-
-public:
-  typedef typename promise_type::executor_type executor_type;
-  typedef typename promise_type::result_type result_type;
-
-  constexpr TaskAwaiter(std::coroutine_handle<promise_type> handle) : _handle(handle) {}
-  constexpr TaskAwaiter(TaskAwaiter &&another) noexcept
-      : _handle(std::exchange(another._handle, {})) {}
-  constexpr TaskAwaiter &operator=(TaskAwaiter &&another) noexcept {
-    _handle = std::exchange(another._handle, {});
-    return *this;
-  }
-  constexpr TaskAwaiter(const TaskAwaiter &) = delete;
-  constexpr TaskAwaiter &operator=(const TaskAwaiter &) = delete;
-  constexpr ~TaskAwaiter() {
-    LOG7("TaskAwaiter destructor for {}", (uint64_t)_handle.address());
-    if (_handle) {
-      assert(_handle.done());
-      _handle.destroy();
-    }
-  }
-  constexpr bool await_ready() const { return false; }
-
-  template <class _Promise>
-  constexpr std::coroutine_handle<promise_type> await_suspend(
-      std::coroutine_handle<_Promise> handle) {
-    LOG7("await_suspend: {} -> {}", (uint64_t)_handle.address(), (uint64_t)handle.address());
-    this->_handle.promise().next(handle);
-    return this->_handle;
-  }
-
-  constexpr result_type await_resume() {
-    LOG7("task await_resume for {}", (uint64_t)_handle.address());
-    return *_handle.promise();
-  }
-
-protected:
-  std::coroutine_handle<promise_type> _handle;
-};
-
 class NextBase {
 public:
   constexpr NextBase() : _next(nullptr), _executor(nullptr) {}
@@ -94,14 +50,12 @@ public:
   constexpr const std::shared_ptr<ExecutorBase> &executor() const noexcept { return _executor; }
 
   template <class Awaiter, class... _Args>
-    requires(!std::is_reference_v<Awaiter>) && requires(Awaiter &&awaiter) {
-      { detach(std::forward<Awaiter>(awaiter)) };
-    }
+    requires(!std::is_reference_v<Awaiter>)
   constexpr std::suspend_never yield_value(Awaiter &&awaiter, _Args &&...args) {
     if constexpr (sizeof...(args) == 0) {
       _coro::detach(std::forward<Awaiter>(awaiter), this->executor());
     } else {
-      GuardCreator creator(
+      ArgGuard creator(
           std::forward_as_tuple(std::forward<Awaiter>(awaiter), std::forward<_Args>(args)...));
       _coro::detach(std::move(creator), this->executor());
     }
@@ -157,8 +111,8 @@ template <class ResultType>
 class Task {
 public:
   using result_type = ResultType;
+  using executor_type = ExecutorBase;
   using promise_type = Promise<TaskPromiseBase<ResultType>>;
-  using awaiter_type = TaskAwaiter<promise_type>;
 
 protected:
   std::coroutine_handle<promise_type> _handle;
@@ -174,16 +128,20 @@ public:
     _handle = task.move_handle();
     return *this;
   }
-  constexpr ~Task() { assert(!_handle); }
+  constexpr ~Task() {
+    if (_handle) {
+      assert(_handle.done());
+      _handle.destroy();
+    }
+  }
 
-  constexpr awaiter_type operator co_await(this Task &&self) {
+  constexpr Task operator co_await(this Task &&self) {
     LOG7("move handle to Awaiter");
-    return std::move(self).move_handle();
+    return std::move(self);
   }
 
   constexpr auto then(this Task &&self, std::invocable<result_type> auto &&f) {
-    return ThenAwaiter<awaiter_type>(std::move(self).move_handle())
-        .then(std::forward<decltype(f)>(f));
+    return ThenAwaiter<Task>(std::move(self).move_handle()).then(std::forward<decltype(f)>(f));
   }
   /**
    * @brief Block the task
@@ -217,6 +175,22 @@ public:
   constexpr void detach(this Task &&self,
                         std::convertible_to<std::shared_ptr<ExecutorBase>> auto &&executor) {
     _coro::detach(std::move(self), std::forward<decltype(executor)>(executor));
+  }
+
+public:
+  constexpr bool await_ready() const { return false; }
+
+  template <class _Promise>
+  constexpr std::coroutine_handle<promise_type> await_suspend(
+      std::coroutine_handle<_Promise> handle) {
+    LOG7("await_suspend: {} -> {}", (uint64_t)_handle.address(), (uint64_t)handle.address());
+    this->_handle.promise().next(handle);
+    return this->_handle;
+  }
+
+  constexpr result_type await_resume() {
+    LOG7("task await_resume for {}", (uint64_t)_handle.address());
+    return *_handle.promise();
   }
 };
 XSL_CORO_NE

@@ -14,6 +14,7 @@
 #  include "xsl/coro/block.h"
 #  include "xsl/coro/detach.h"
 #  include "xsl/coro/executor.h"
+#  include "xsl/coro/guard.h"
 #  include "xsl/coro/pub_sub.h"
 #  include "xsl/coro/signal.h"
 #  include "xsl/coro/signal/common.h"
@@ -42,6 +43,7 @@ using _coro::make_exact_pub_sub;
 using _coro::PubSub;
 // using _coro::Subscriber;
 
+using _coro::ArgGuard;
 using _coro::Task;
 XSL_NE
 #endif

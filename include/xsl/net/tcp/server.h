@@ -59,7 +59,7 @@ public:
       if (!res) {
         co_return Result{i, res.error()};
       }
-      conn = std::make_unique<io_dev_type>(std::move(*res));
+      conn = std::make_unique<io_dev_type>(std::move(*res).async(*this->poller));
       ++i;
     }
     co_return {i, std::nullopt};

@@ -11,6 +11,7 @@
 #pragma once
 #ifndef XSL_IO_AI
 #  define XSL_IO_AI
+#  include "xsl/byte.h"
 #  include "xsl/feature.h"
 #  include "xsl/io/def.h"
 XSL_IO_NB

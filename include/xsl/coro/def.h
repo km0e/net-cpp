@@ -43,9 +43,6 @@ public:
   using result_type = typename Awaiter::result_type;
 };
 
-template <class ToAwaiter>
-using to_awaiter_t = decltype(operator co_await(std::declval<ToAwaiter>()));
-
 template <class ResultType>
 using Result = std::expected<ResultType, std::exception_ptr>;
 

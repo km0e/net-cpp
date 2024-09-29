@@ -48,7 +48,7 @@ public:
 };
 /// @brief the response
 template <ABOLike ABO>
-class Response {//TODO: abstract the body
+class Response {  // TODO: abstract the body
 public:
   using abo_traits_type = AIOTraits<ABO>;
   using out_dev_type = typename abo_traits_type::out_dev_type;
@@ -105,12 +105,12 @@ public:
 };
 /// @brief the request
 template <ABILike ABI>
-class Request {//TODO: abstract the ard
+class Request {  // TODO: abstract the ard
 public:
   using abi_traits_type = AIOTraits<ABI>;
   using in_dev_type = typename abi_traits_type::in_dev_type;
   constexpr Request(ByteBuffer&& raw, RequestView&& view, std::string_view content_part, ABI& aid)
-      : method(xsl::from_string_view<Method>(view.method)),
+      : method(Method::from_string_view(view.method)),
         view(std::move(view)),
         raw(std::move(raw)),
         content_part(content_part),

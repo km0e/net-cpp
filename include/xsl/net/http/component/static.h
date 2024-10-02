@@ -108,7 +108,7 @@ public:
             return std::nullopt;
           }
           DEBUG("try_sendfile failed: path: {} error: {}", path.native(),
-                to_string_view(*try_sendfile_res));
+                try_sendfile_res->to_reason_phrase());
         }
       }
     }

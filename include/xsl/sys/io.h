@@ -11,6 +11,7 @@
 #pragma once
 #ifndef XSL_SYS_IO
 #  define XSL_SYS_IO
+#  include "xsl/byte.h"
 #  include "xsl/io/def.h"
 #  include "xsl/sys/def.h"
 

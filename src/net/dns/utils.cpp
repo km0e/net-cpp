@@ -182,7 +182,8 @@ constexpr void DnCompressor::reset() {
   suffix_off = 0;
 }
 
-errc DnDecompressor::prepare(std::span<const byte> &src) {
+errc DnDecompressor::decompress(std::span<const byte> &src) {
+  this->buf_end = 0;/// reset the buffer
   const byte *ptr = src.data();
   for (;;) {
     src = src.subspan(1);
@@ -201,6 +202,11 @@ errc DnDecompressor::prepare(std::span<const byte> &src) {
     ptr += *ptr + 1;
   }
 }
+
+std::string_view DnDecompressor::dn() const {
+  return {reinterpret_cast<const char *>(buf), buf_end};
+}
+
 std::size_t DnDecompressor::needed() const { return buf_end; }
 
 errc DnDecompressor::prepare_rest(const byte *ptr) {
@@ -216,13 +222,6 @@ errc DnDecompressor::prepare_rest(const byte *ptr) {
     this->buf_end += *ptr + 1;
     ptr += *ptr + 1;
   }
-}
-
-void DnDecompressor::decompress(std::span<byte> &src) {
-  assert(src.size() > 0 && src.size() >= buf_end);
-  memcpy(src.data(), buf, buf_end);
-  src = src.subspan(buf_end);
-  this->buf_end = 0;
 }
 
 XSL_NET_DNS_NE

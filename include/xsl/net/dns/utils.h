@@ -2,7 +2,7 @@
  * @file utils.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.11
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -60,13 +60,14 @@ private:
 
 class DnDecompressor {
 public:
-  constexpr DnDecompressor(const byte *base) : base(base), buf(), buf_end(0) {}
+  constexpr DnDecompressor(const byte *base) : base(base), buf(), buf_end{} {}
   /// @brief prepare the domain name for decompression
-  errc prepare(std::span<const byte> &src);
+  errc decompress(std::span<const byte> &src);
+  /// @brief get the decompressed domain name
+  std::string_view dn() const;
   /// @brief get the needed memory size for the decompressed domain name
   std::size_t needed() const;
   /// @brief decompress the domain name
-  void decompress(std::span<byte> &src);
 
 private:
   const byte *base;

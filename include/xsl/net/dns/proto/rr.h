@@ -2,7 +2,7 @@
  * @file rr.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Resource Record
- * @version 0.1
+ * @version 0.11
  * @date 2024-09-09
  *
  * @copyright Copyright (c) 2024
@@ -48,21 +48,29 @@ XSL_NET_DNS_NB
  */
 class RR {
 public:
+  static RR from_bytes(std::span<const byte>&src) {
+    uint16_t u16;
+    xsl::deserialize(src.data() + 8, u16);
+    std::size_t rest_length = 2 + 2 + 4 + 2 + ntohs(u16);
+    if (rest_length > src.size()) {  // not enough data
+      return RR{nullptr};
+    }
+    auto ptr = std::make_unique<byte[]>(rest_length);
+    memcpy(ptr.get(), src.data(), rest_length);
+    src = src.subspan(rest_length);
+    return RR{std::move(ptr)};
+  }
+
   RR(std::convertible_to<std::unique_ptr<byte[]>> auto &&data)
       : data(std::forward<decltype(data)>(data)) {}
   RR(RR &&) = default;
   RR &operator=(RR &&) = default;
   ~RR() = default;
-  /// @brief get the name
-  const char *name() const { return reinterpret_cast<const char *>(data.get()); }
+  bool is_valid() { return this->data.get() != nullptr; }
   /// @brief get the type
-  Type type() const {
-    return Type::from_bytes(data.get());
-  }
+  Type type() const { return Type::from_bytes(data.get()); }
   /// @brief get the class
-  Class class_() const {
-    return Class::from_bytes(data.get() + 2);
-  }
+  Class class_() const { return Class::from_bytes(data.get() + 2); }
   /// @brief get the ttl
   std::uint32_t ttl() const {
     uint32_t u32;
@@ -83,6 +91,6 @@ private:
 };
 /// @brief deserialize the resource record
 std::expected<std::pair<std::string, RR>, errc> deserialized(std::span<const byte> &src,
-                                                                  DnDecompressor &decompressor);
+                                                             DnDecompressor &decompressor);
 XSL_NET_DNS_NE
 #endif

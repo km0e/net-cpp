@@ -12,7 +12,6 @@
 #ifndef XSL_SYS_RAW_DEV
 #  define XSL_SYS_RAW_DEV
 #  include "xsl/coro.h"
-#  include "xsl/def.h"
 #  include "xsl/feature.h"
 #  include "xsl/io.h"
 #  include "xsl/io/def.h"
@@ -147,6 +146,14 @@ struct RawAsyncWriteDevice : public RawWriteDevice, public FileTxTraits {
 struct RawAsyncReadWriteDevice : public RawReadWriteDevice,
                                  public FileRxTraits,
                                  public FileTxTraits {
+private:
+  template <class SignalSet>
+  constexpr RawAsyncReadWriteDevice(int fd, SignalSet &&signals) noexcept
+      : Base(fd),
+        _read_signal(std::get<0>(std::forward<SignalSet>(signals))),
+        _write_signal(std::get<1>(std::forward<SignalSet>(signals))) {}
+
+public:
   using Base = RawReadWriteDevice;
 
   template <template <class> class InOut = InOut>
@@ -157,6 +164,11 @@ struct RawAsyncReadWriteDevice : public RawReadWriteDevice,
 
   constexpr RawAsyncReadWriteDevice(int fd, Signal &&read_signal, Signal &&write_signal)
       : Base(fd), _read_signal(std::move(read_signal)), _write_signal(std::move(write_signal)) {}
+
+  template <class PollTraits>
+  constexpr RawAsyncReadWriteDevice(int fd, Poller &poller, PollTraits)
+      : RawAsyncReadWriteDevice(
+            fd, poll_by_signal<PollTraits>(poller, fd, IOM_EVENTS::IN, IOM_EVENTS::OUT)) {}
 
   constexpr RawAsyncReadWriteDevice(RawAsyncReadWriteDevice &&rhs) noexcept
       : Base(std::move(rhs)),

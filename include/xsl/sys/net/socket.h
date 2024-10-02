@@ -46,6 +46,29 @@ public:
         Base(::socket(this->family(), this->type() | static_cast<int>(attr), this->protocol())) {}
 };
 
+template <class Traits, class Base>
+class AsyncSocketBase : public Traits, public Base {
+public:
+  using Base::Base;
+
+  using traits_type = Traits;
+  using poll_traits_type = typename traits_type::poll_traits_type;
+
+  using value_type = byte;
+  AsyncSocketBase(Poller &poller, int family, int type, int protocol,
+                  SocketAttribute attr
+                  = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)
+      : Traits(family, type, protocol),
+        Base(::socket(family, type | static_cast<int>(attr), protocol), poller,
+             typename Traits::poll_traits_type{}) {}
+
+  explicit AsyncSocketBase(Poller &poller, SocketAttribute attr = SocketAttribute::NonBlocking
+                                                                  | SocketAttribute::CloseOnExec)
+      : Traits(),
+        Base(::socket(this->family(), this->type() | static_cast<int>(attr), this->protocol()),
+             poller, typename Traits::poll_traits_type{}) {}
+};
+
 template <class Traits>
 class AsyncReadSocket;
 
@@ -124,9 +147,9 @@ public:
 };
 /// @brief Async read-only socket device
 template <class Traits>
-class AsyncReadSocket : public SocketBase<Traits, RawAsyncReadDevice>, public NetAsyncRx {
+class AsyncReadSocket : public AsyncSocketBase<Traits, RawAsyncReadDevice>, public NetAsyncRx {
 public:
-  using Base = SocketBase<Traits, RawAsyncReadDevice>;
+  using Base = AsyncSocketBase<Traits, RawAsyncReadDevice>;
 
   using dynamic_type = AsyncReadSocket;
   using io_dyn_chains = xsl::_n<AsyncReadSocket, io::DynAsyncReadDevice<AsyncReadSocket>>;
@@ -135,9 +158,9 @@ public:
 };
 /// @brief Async write-only socket device
 template <class Traits>
-class AsyncWriteSocket : public SocketBase<Traits, RawAsyncWriteDevice>, public NetAsyncTx {
+class AsyncWriteSocket : public AsyncSocketBase<Traits, RawAsyncWriteDevice>, public NetAsyncTx {
 public:
-  using Base = SocketBase<Traits, RawAsyncWriteDevice>;
+  using Base = AsyncSocketBase<Traits, RawAsyncWriteDevice>;
 
   using dynamic_type = AsyncWriteSocket;
   using io_dyn_chains = xsl::_n<AsyncWriteSocket, DynAsyncWriteDevice<AsyncWriteSocket>>;
@@ -149,11 +172,11 @@ public:
 };
 /// @brief Async read-write socket device
 template <class Traits>
-class AsyncReadWriteSocket : public SocketBase<Traits, RawAsyncReadWriteDevice>,
+class AsyncReadWriteSocket : public AsyncSocketBase<Traits, RawAsyncReadWriteDevice>,
                              public NetAsyncRx,
                              public NetAsyncTx,
                              public ConnectionUtils<Traits> {
-  using Base = SocketBase<Traits, RawAsyncReadWriteDevice>;
+  using Base = AsyncSocketBase<Traits, RawAsyncReadWriteDevice>;
 
 public:
   using Base::Base;

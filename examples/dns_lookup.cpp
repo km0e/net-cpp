@@ -21,9 +21,9 @@
 #include <ostream>
 #include <string>
 
-// std::string ip = "8.8.8.8";
+std::string ip = "8.8.8.8";
 // std::string ip = "1.1.1.1";
-std::string ip = "223.5.5.5";
+// std::string ip = "223.5.5.5";
 
 std::string port = "53";
 
@@ -31,7 +31,7 @@ using namespace xsl::coro;
 using namespace xsl;
 
 Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
-  auto cli = *dns::dial<Ip<4>>(ip.data(), port.data(), *poller);
+  auto cli = dns::Resolver(*poller, {ip.data(), port.data()});
   co_yield cli.run();
   std::string buffer(4096, '\0');
   while (true) {
@@ -43,16 +43,17 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
     }
     char ip[16];
     const std::forward_list<dns::RR> &rrs = **res;
-    std::println(std::cout, "{:20}{:10}{:10}{:10}{:10}", "Name", "Type", "Class", "TTL", "RData");
+    std::println(std::cout, "{:10}{:10}{:10}{:10}", "Type", "Class", "TTL", "RData");
     for (auto &rr : rrs) {
-      std::print(std::cout, "{:20}{:10}{:10}{:10}", rr.name(), rr.type().to_string_view(),
+      std::print(std::cout, "{:10}{:10}{:<10}", rr.type().to_string_view(),
                  rr.class_().to_string_view(), rr.ttl());
       if (rr.type() == dns::Type::A) {
         auto data = rr.rdata();
-        snprintf(ip, 16, "%d.%d.%d.%d", data[0], data[1], data[2], data[3]);
-        std::println(std::cout, "{}", ip);
+        std::sprintf(ip, "%d.%d.%d.%d", data[0], data[1], data[2], data[3]);
+        std::println(std::cout, "{:10}", ip);
       } else if (rr.type() == dns::Type::CNAME) {
-        std::println(std::cout, "{}", std::string_view(reinterpret_cast<const char *>(rr.rdata().data())));
+        std::println(std::cout, "{}",
+                     std::string_view(reinterpret_cast<const char *>(rr.rdata().data())));
       }
     }
   }

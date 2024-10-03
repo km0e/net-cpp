@@ -66,12 +66,12 @@ constexpr void deserialized(std::span<const byte>& buf, uint32_t& value) {
 }
 
 template <typename... Args>
-constexpr void serialized(std::span<byte>& buf, Args&&... args) {
+constexpr void serialized_all(std::span<byte>& buf, Args&&... args) {
   (serialized(buf, args), ...);
 }
 
 template <typename... Args>
-constexpr void deserialized(std::span<const byte>& buf, Args&&... args) {
+constexpr void deserialized_all(std::span<const byte>& buf, Args&&... args) {
   (deserialized(buf, args), ...);
 }
 

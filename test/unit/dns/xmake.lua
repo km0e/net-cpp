@@ -5,6 +5,6 @@ for _, file in ipairs(os.files("*.cpp")) do
         set_default(false)
         add_files(name .. ".cpp")
         add_deps("xsl") -- TODO: change dp
-        add_tests(name,{group = "dns"})
+        add_tests("_",{group = "dns"})
         on_package(function(package) end)
 end

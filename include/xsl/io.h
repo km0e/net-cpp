@@ -26,10 +26,5 @@ using io::splice;
 using io::splice_once;
 using io::WriteFileHint;
 
-template <class Dev>
-struct IODynGetChain {
-  using type = typename Dev::io_dyn_chains;
-};
-
 XSL_NE
 #endif

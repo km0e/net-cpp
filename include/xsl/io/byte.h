@@ -51,7 +51,6 @@ public:
 class ByteBuffer {
 public:
   using value_type = byte;
-  using dynamic_type = ByteBuffer;
   using io_dyn_chains = _n<ByteBuffer, io::DynAsyncWriteBuffer<ByteBuffer>>;
 
   ByteBuffer() : _blocks() {}

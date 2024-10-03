@@ -151,7 +151,6 @@ class AsyncReadSocket : public AsyncSocketBase<Traits, RawAsyncReadDevice>, publ
 public:
   using Base = AsyncSocketBase<Traits, RawAsyncReadDevice>;
 
-  using dynamic_type = AsyncReadSocket;
   using io_dyn_chains = xsl::_n<AsyncReadSocket, io::DynAsyncReadDevice<AsyncReadSocket>>;
 
   using Base::Base;
@@ -161,9 +160,6 @@ template <class Traits>
 class AsyncWriteSocket : public AsyncSocketBase<Traits, RawAsyncWriteDevice>, public NetAsyncTx {
 public:
   using Base = AsyncSocketBase<Traits, RawAsyncWriteDevice>;
-
-  using dynamic_type = AsyncWriteSocket;
-  using io_dyn_chains = xsl::_n<AsyncWriteSocket, DynAsyncWriteDevice<AsyncWriteSocket>>;
 
   template <template <class> class InOut = InOut>
   using rebind = AsyncSocketCompose<InOut<Traits>>::type;

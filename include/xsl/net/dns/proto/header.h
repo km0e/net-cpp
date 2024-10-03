@@ -41,6 +41,11 @@ struct Flags {
         ra((u16 >> 7) & 0x1),
         z((u16 >> 4) & 0x7),
         _rcode(u16 & 0xf) {}
+  constexpr bool operator==(const Flags &rhs) const {
+    return qr == rhs.qr && opcode == rhs.opcode && aa == rhs.aa && tc == rhs.tc && rd == rhs.rd
+           && ra == rhs.ra && z == rhs.z && _rcode == rhs._rcode;
+  }
+
   /// @brief To u16
   constexpr std::uint16_t to_u16() const {
     return (qr << 15) | (opcode << 11) | (aa << 10) | (tc << 9) | (rd << 8) | (ra << 7) | (z << 4)
@@ -67,13 +72,13 @@ struct Header {
   constexpr RCode rcode() const { return flags.rcode(); }
   /// @brief Serialize the header, buf will be updated
   constexpr void serialize(std::span<byte> &buf) const {
-    xsl::serialized(buf, id, htons(flags.to_u16()), htons(qdcount), htons(ancount), htons(nscount),
+    xsl::serialized_all(buf, id, htons(flags.to_u16()), htons(qdcount), htons(ancount), htons(nscount),
                     htons(arcount));
   }
   /// @brief Deserialize the header, buf will be updated
   constexpr void deserialize(std::span<const byte> &buf) {
     std::uint16_t u16;
-    xsl::deserialized(buf, id, u16, qdcount, ancount, nscount, arcount);
+    xsl::deserialized_all(buf, id, u16, qdcount, ancount, nscount, arcount);
     this->flags = ntohs(u16);
     this->qdcount = ntohs(this->qdcount);
     this->ancount = ntohs(this->ancount);

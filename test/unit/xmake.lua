@@ -8,7 +8,7 @@ if is_mode("coverage") then
 end
 add_packages("gtest")
 
-includes("http", "feature", "coro", "convert", "regex", "wheel")
+includes("http", "feature", "coro", "regex", "wheel")
 includes("dns")
 includes("sys")
 includes("sync")

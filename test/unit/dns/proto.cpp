@@ -10,6 +10,7 @@
  */
 #include "xsl/def.h"
 #include "xsl/net.h"
+#include "xsl/net/dns/proto/def.h"
 
 #include <gtest/gtest.h>
 
@@ -21,14 +22,10 @@ TEST(dns_proto, type) {
   byte bytes[2];
   byte expected[2] = {0, 1};
   std::span<byte> buf(bytes, 2);
-
-  serialized(buf, type);
+  type.serialized(buf);
   EXPECT_EQ(std::memcmp(bytes, expected, 2), 0);
 
-  Type result = Type::ANY;
-
-  deserialize(bytes, result);
-  EXPECT_EQ(type, result);
+  EXPECT_EQ(Type::from_bytes(bytes), type);
 }
 
 TEST(dns_proto, class) {
@@ -37,13 +34,10 @@ TEST(dns_proto, class) {
   byte expected[2] = {0, 1};
   std::span<byte> buf(bytes, 2);
 
-  serialized(buf, class_);
+  class_.serialized(buf);
   EXPECT_EQ(std::memcmp(bytes, expected, 2), 0);
 
-  Class result = Class::ANY;
-
-  deserialize(bytes, result);
-  EXPECT_EQ(class_, result);
+  EXPECT_EQ(Class::from_bytes(bytes), class_);
 }
 
 TEST(dns_proto, header) {

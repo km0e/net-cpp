@@ -1,4 +1,3 @@
-#include "xsl/convert.h"
 #include "xsl/net.h"
 
 #include <gtest/gtest.h>
@@ -12,9 +11,9 @@ TEST(http_parse, complete) {
   auto [sz, res] = parser.parse(data, len);
   ASSERT_TRUE(res.has_value());
   auto view = std::move(*res);
-  ASSERT_EQ(xsl::from_string_view<Method>(view.method), Method::GET);
+  ASSERT_EQ(Method::from_string_view(view.method), Method::GET);
   ASSERT_EQ(view.path, "/");
-  ASSERT_EQ(xsl::from_string_view<Version>(view.version), Version::HTTP_1_1);
+  ASSERT_EQ(Version::from_string_view(view.version), Version::HTTP_1_1);
   ASSERT_EQ(view.headers.size(), 1);
   ASSERT_EQ(view.headers["Host"], "localhost:8080");
 }

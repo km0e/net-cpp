@@ -37,7 +37,7 @@ as_writable_bytes(std::span<_Type, _Extent> __sp) noexcept {
 template <class T, size_t _Extent = std::dynamic_extent>
 [[nodiscard]]
 constexpr std::span<byte, _Extent> as_writable_bytes(T* data, size_t size) noexcept {
-  return as_writable_bytes(std::span<T, _Extent>{data, size});
+  return xsl::as_writable_bytes(std::span<T, _Extent>{data, size});
 }
 
 template <typename _Type, size_t _Extent>
@@ -55,7 +55,7 @@ as_bytes(std::span<_Type, _Extent> __sp) noexcept {
 template <class T, size_t _Extent = std::dynamic_extent>
 [[nodiscard]]
 constexpr std::span<const byte, _Extent> as_bytes(T* data, size_t size) noexcept {
-  return as_bytes(std::span<T, _Extent>{data, size});
+  return xsl::as_bytes(std::span<T, _Extent>{data, size});
 }
 XSL_NE
 #endif

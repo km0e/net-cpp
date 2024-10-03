@@ -22,7 +22,6 @@ private:
 
 public:
   using value_type = typename Dev::value_type;
-  using dynamic_type = AsyncReadDevice<value_type>;
 
   DynAsyncReadDevice(auto &&...args) : dev(std::forward<decltype(args)>(args)...) {}
 
@@ -38,7 +37,6 @@ private:
 
 public:
   using value_type = typename Dev::value_type;
-  using dynamic_type = AsyncWriteDevice<value_type>;
 
   DynAsyncWriteDevice(auto &&...args) : dev(std::forward<decltype(args)>(args)...) {}
 
@@ -54,7 +52,6 @@ private:
 
 public:
   using value_type = typename Dev::value_type;
-  using dynamic_type = AsyncReadWriteDevice<value_type>;
 
   DynAsyncReadWriteDevice(auto &&...args) : dev(std::forward<decltype(args)>(args)...) {}
 
@@ -74,7 +71,6 @@ private:
 
 public:
   using value_type = typename Buf::value_type;
-  using dynamic_type = AsyncReadBuffer<value_type>;
 
   DynAsyncReadBuffer(auto &&...args) : buf(std::forward<decltype(args)>(args)...) {}
 
@@ -90,7 +86,6 @@ private:
 
 public:
   using value_type = typename Buf::value_type;
-  using dynamic_type = AsyncWriteBuffer<value_type>;
 
   DynAsyncWriteBuffer(auto &&...args) : buf(std::forward<decltype(args)>(args)...) {}
 

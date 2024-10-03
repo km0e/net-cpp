@@ -35,6 +35,12 @@ struct Version {
     HTTP_2_0,
     UNKNOWN = 0xff,
   } _version;
+  static constexpr Version from_string_view(std::string_view str) {
+    for (std::size_t i = 0; i < 4; i++) {
+      if (str == HTTP_VERSION_STR[i]) return Version(static_cast<decltype(_version)>(i));
+    }
+    return Version(UNKNOWN);
+  }
 
   Version() = default;
   Version(decltype(_version) version) : _version(version) {}
@@ -44,6 +50,10 @@ struct Version {
     return HTTP_VERSION_STR[_version];
   }
 };
+
+constexpr bool operator==(const Version& lhs, const decltype(Version::_version)& rhs) {
+  return lhs._version == rhs;
+}
 
 const std::size_t HTTP_METHOD_COUNT = 9;
 

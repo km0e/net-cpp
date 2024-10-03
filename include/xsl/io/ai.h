@@ -50,7 +50,6 @@ template <class T>
 class AsyncReadDevice {
 public:
   using value_type = T;
-  using dynamic_type = AsyncReadDevice;
   virtual ~AsyncReadDevice() = default;
   /// @brief Read from the device
   virtual Task<io::Result> read(std::span<value_type> buf [[maybe_unused]]) { std::unreachable(); }
@@ -60,7 +59,6 @@ template <class T>
 class AsyncWriteDevice {
 public:
   using value_type = T;
-  using dynamic_type = AsyncWriteDevice;
   virtual ~AsyncWriteDevice() = default;
   /// @brief Write to the device
   virtual Task<io::Result> write(std::span<const value_type> buf [[maybe_unused]]) {

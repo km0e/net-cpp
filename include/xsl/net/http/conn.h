@@ -13,9 +13,10 @@
 #  define XSL_NET_HTTP_CONN
 #  include "xsl/coro.h"
 #  include "xsl/coro/guard.h"
-#  include "xsl/dyn.h"
 #  include "xsl/io.h"
+#  include "xsl/io/ai.h"
 #  include "xsl/io/byte.h"
+#  include "xsl/io/dyn.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
@@ -76,21 +77,22 @@ decltype(auto) serve_connection(ABI&& _abr, ABO&& _abw, std::shared_ptr<Service>
   using l_out_dev_type = std::decay_t<ABO>;
   using r_in_dev_type = typename Service::in_dev_type;
   using r_out_dev_type = typename Service::out_dev_type;
-  static_assert(dyn_cast_v<IODynGetChain, l_in_dev_type, r_in_dev_type>,
+  static_assert(std::is_same_v<l_in_dev_type, r_in_dev_type>
+                    || std::is_same_v<r_in_dev_type, AsyncReadDevice<byte>>,
                 "Input device type mismatched with the service");
-  static_assert(dyn_cast_v<IODynGetChain, l_out_dev_type, r_out_dev_type>,
+  static_assert(std::is_same_v<l_out_dev_type, r_out_dev_type>
+                    || std::is_same_v<r_out_dev_type, AsyncWriteDevice<byte>>,
                 "Output device type mismatched with the service");
-  using final_in_dev_type
-      = std::conditional_t<std::is_same_v<l_in_dev_type, r_in_dev_type>, l_in_dev_type,
-                           dyn_cast_t<typename IODynGetChain<l_in_dev_type>::type, r_in_dev_type>>;
-  using final_out_dev_type = std::conditional_t<
-      std::is_same_v<l_out_dev_type, r_out_dev_type>, l_out_dev_type,
-      dyn_cast_t<typename IODynGetChain<l_out_dev_type>::type, r_out_dev_type>>;
+  using final_in_dev_type = std::conditional_t<std::is_same_v<l_in_dev_type, r_in_dev_type>,
+                                               r_in_dev_type, DynAsyncReadDevice<l_in_dev_type>>;
+  using final_out_dev_type
+      = std::conditional_t<std::is_same_v<l_out_dev_type, r_out_dev_type>, r_out_dev_type,
+                           DynAsyncWriteDevice<l_out_dev_type>>;
   auto fn = [](r_in_dev_type& _abr, r_out_dev_type& _abw, auto& _service, auto& _parser) {
     return imm_serve_connection(_abr, _abw, *_service, _parser);
   };
   return _coro::ArgGuard<decltype(fn), final_in_dev_type, final_out_dev_type,
-                                std::shared_ptr<Service>, Parser<ParserTraits>>{
+                         std::shared_ptr<Service>, Parser<ParserTraits>>{
       fn, std::forward<ABI>(_abr), std::forward<ABO>(_abw), std::move(service), std::move(parser)};
 }
 /**
@@ -112,9 +114,11 @@ decltype(auto) serve_connection(ABIO&& _ab, std::shared_ptr<Service>&& service,
   using l_out_dev_type = typename l_io_dev_type::out_dev_type;
   using r_in_dev_type = typename Service::in_dev_type;
   using r_out_dev_type = typename Service::out_dev_type;
-  static_assert(dyn_cast_v<IODynGetChain, l_in_dev_type, r_in_dev_type>,
+  static_assert(std::is_same_v<l_in_dev_type, r_in_dev_type>
+                    || std::is_same_v<r_in_dev_type, AsyncReadDevice<byte>>,
                 "Input device type mismatched with the service");
-  static_assert(dyn_cast_v<IODynGetChain, l_out_dev_type, r_out_dev_type>,
+  static_assert(std::is_same_v<l_out_dev_type, r_out_dev_type>
+                    || std::is_same_v<r_out_dev_type, AsyncWriteDevice<byte>>,
                 "Output device type mismatched with the service");
   if constexpr (std::is_same_v<l_io_dev_type, r_in_dev_type>
                 && std::is_same_v<l_io_dev_type, r_out_dev_type>) {
@@ -137,9 +141,11 @@ decltype(auto) serve_connection(std::unique_ptr<ABIO>&& _ab, std::shared_ptr<Ser
   using l_out_dev_type = AIOTraits<l_io_dev_type>::out_dev_type;
   using r_in_dev_type = typename Service::in_dev_type;
   using r_out_dev_type = typename Service::out_dev_type;
-  static_assert(dyn_cast_v<IODynGetChain, l_in_dev_type, r_in_dev_type>,
+  static_assert(std::is_same_v<l_in_dev_type, r_in_dev_type>
+                    || std::is_same_v<r_in_dev_type, AsyncReadDevice<byte>>,
                 "Input device type mismatched with the service");
-  static_assert(dyn_cast_v<IODynGetChain, l_out_dev_type, r_out_dev_type>,
+  static_assert(std::is_same_v<l_out_dev_type, r_out_dev_type>
+                    || std::is_same_v<r_out_dev_type, AsyncWriteDevice<byte>>,
                 "Output device type mismatched with the service");
   if constexpr (std::is_same_v<l_io_dev_type, r_in_dev_type>
                 && std::is_same_v<l_io_dev_type, r_out_dev_type>) {

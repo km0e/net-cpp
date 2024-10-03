@@ -143,7 +143,11 @@ struct Type {
   }
 };
 
-constexpr bool operator==(const Type &lhs, const decltype(Type::_type) &rhs) { return lhs._type == rhs; }
+constexpr bool operator==(const Type &lhs, const decltype(Type::_type) &rhs) {
+  return lhs._type == rhs;
+}
+
+constexpr bool operator==(const Type &lhs, const Type &rhs) { return lhs == rhs._type; }
 
 const std::string_view CLASS_STR[] = {"IN", "CS", "CH", "HS", "ANY"};
 const std::size_t MAX_CONSECUTIVE_CLASS_INDEX = 4;
@@ -188,5 +192,12 @@ struct Class {
     _class = static_cast<decltype(_class)>(ntohs(u16));
   }
 };
+
+constexpr bool operator==(const Class &lhs, const decltype(Class::_class) &rhs) {
+  return lhs._class == rhs;
+}
+
+constexpr bool operator==(const Class &lhs, const Class &rhs) { return lhs == rhs._class; }
+
 XSL_NET_DNS_NE
 #endif

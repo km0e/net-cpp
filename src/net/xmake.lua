@@ -1,8 +1,5 @@
 add_deps("xsl_log_ctl")
 
-includes("http")
-includes("dns")
-
 target("xsl_net")do
     set_kind("static")
     set_default(false)

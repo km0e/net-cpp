@@ -13,13 +13,11 @@
 #ifndef XSL_WHEEL
 #  define XSL_WHEEL
 #  include "xsl/def.h"
-#  include "xsl/wheel/ptr.h"
 #  include "xsl/wheel/utils.h"
 #  include "xsl/wheel/vec.h"
 XSL_NB
 using wheel::Defer;
 using wheel::FixedVector;
-using wheel::PtrLike;
 using wheel::rt_assert;
 using wheel::us_map;
 XSL_NE

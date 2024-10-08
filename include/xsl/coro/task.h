@@ -19,6 +19,7 @@
 #  include "xsl/coro/guard.h"
 #  include "xsl/coro/then.h"
 #  include "xsl/logctl.h"
+#  include "xsl/type_traits.h"
 
 #  include <cassert>
 #  include <concepts>
@@ -102,6 +103,9 @@ class Task;
 
 template <class ResultType>
 class TaskPromiseBase : public NextBase, public PromiseBase<ResultType> {
+protected:
+  using PromiseBase<ResultType>::_result;
+
 public:
   using coro_type = Task<ResultType>;
   using executor_type = ExecutorBase;
@@ -135,12 +139,16 @@ public:
     }
   }
 
-  constexpr Task operator co_await(this Task &&self) {
+  template <not_reference Self>
+  constexpr Self operator co_await(this Self &&self) {
     LOG7("move handle to Awaiter");
     return std::move(self);
   }
 
-  constexpr auto then(this Task &&self, std::invocable<result_type> auto &&f) {
+  template <class Func>
+    requires((std::same_as<void, result_type> && std::invocable<Func>)
+             || std::invocable<Func, result_type &&>)
+  constexpr auto then(this Task &&self, Func &&f) {
     return ThenAwaiter<Task>(std::move(self).move_handle()).then(std::forward<decltype(f)>(f));
   }
   /**
@@ -150,7 +158,8 @@ public:
    * @param self
    * @return result_type
    */
-  constexpr result_type block(this Task &&self) {
+  template <not_reference Self>
+  constexpr decltype(auto) block(this Self &&self) {
     LOG7("Task block");
     return _coro::block(std::move(self));
   }
@@ -167,12 +176,14 @@ public:
     return std::forward<decltype(self)>(self);
   }
   /// @brief Detach the task
-  constexpr void detach(this Task &&self) {
+  template <not_reference Self>
+  constexpr void detach(this Self &&self) {
     LOG6("task detach");
     _coro::detach(std::move(self));
   }
   /// @brief Detach the task with executor
-  constexpr void detach(this Task &&self,
+  template <not_reference Self>
+  constexpr void detach(this Self &&self,
                         std::convertible_to<std::shared_ptr<ExecutorBase>> auto &&executor) {
     _coro::detach(std::move(self), std::forward<decltype(executor)>(executor));
   }

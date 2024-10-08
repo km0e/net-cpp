@@ -29,6 +29,9 @@ class Detach;
 
 template <class ResultType>
 class DetachPromiseBase : public PromiseBase<ResultType> {
+protected:
+  using PromiseBase<ResultType>::_result;
+
 public:
   using executor_type = ExecutorBase;
   using coro_type = Detach<ResultType>;

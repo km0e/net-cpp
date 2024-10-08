@@ -234,5 +234,9 @@ namespace {
 template <class T, class U>
 using like_t = typename like<T, std::remove_cvref_t<U>>::type;
 
+/// @brief Require the type is not a reference
+template <class T>
+concept not_reference = !std::is_reference_v<T>;
+
 XSL_NE
 #endif

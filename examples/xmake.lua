@@ -8,13 +8,6 @@ target("tcp_echo")do
     add_deps("xsl")
 end
 
-target("http_server")do
-    set_kind("binary")
-    add_files("http_server.cpp")
-    add_deps("xsl")
-end
-
-
 target("udp_client")do
     set_kind("binary")
     add_files("udp_client.cpp")
@@ -25,12 +18,5 @@ end
 target("udp_echo")do
     set_kind("binary")
     add_files("udp_echo.cpp")
-    add_deps("xsl")
-end
-
-
-target("dns_lookup")do
-    set_kind("binary")
-    add_files("dns_lookup.cpp")
     add_deps("xsl")
 end

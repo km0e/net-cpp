@@ -57,7 +57,8 @@ add_packages("quill")
 -- set_policy("build.sanitizer.leak", true)
 -- set_policy("build.sanitizer.undefined", true)
 
-add_ldflags("-fuse-ld=mold")
+add_ldflags("-fuse-ld=mold", {force = true})
+add_ldflags("-static", {force = true})
 
 add_includedirs("$(projectdir)/include", { public = true })
 

@@ -10,4 +10,4 @@ target_sources(
     ${XSL_HTTP_SOURCE_FILES}
 )
 
-target_link_libraries(xsl_http xsl_tcp xsl_convert)
+target_link_libraries(xsl_http xsl_convert xsl_sys xsl_coro)

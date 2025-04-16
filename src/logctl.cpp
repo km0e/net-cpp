@@ -8,8 +8,9 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/def.h"
 #include "xsl/logctl.h"
+
+#include "xsl/def.h"
 
 #include <quill/Backend.h>
 #include <quill/Frontend.h>
@@ -27,7 +28,7 @@ LogCtl::LogCtl() : logger(nullptr) {
   logger = quill::Frontend::create_or_get_logger(
       "root", std::move(console_sink),
       quill::PatternFormatterOptions{
-          "[%(time)][%(thread_id)] %(short_source_location:<28) %(log_level:<8) "
+          "[%(time)][%(thread_id)] %(short_source_location:<20) %(log_level:<8) "
           "%(message)",
           "%H:%M:%S.%Qus"});
   auto env = std::getenv("CPP_LOG");

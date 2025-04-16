@@ -64,16 +64,16 @@ public:
     LOG6("response: {}", str);
     auto [sz, err] = co_await awd.write(xsl::as_bytes(std::span(str)));
     if (err) {
-      co_return std::make_tuple(sz, err);
+      co_return {sz};
     };
     if (!_body) {
-      co_return std::make_tuple(sz, std::nullopt);
+      co_return {sz};
     }
     auto [bodySize, bodyError] = co_await this->_body(awd);
     if (bodyError) {
-      co_return std::make_tuple(sz + bodySize, bodyError);
+      co_return {sz + bodySize, bodyError};
     }
-    co_return std::make_tuple(sz + bodySize, std::nullopt);
+    co_return {sz + bodySize};
   }
   ResponsePart _part;
   std::function<Task<Result>(out_dev_type&)> _body;

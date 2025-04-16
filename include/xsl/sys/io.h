@@ -34,7 +34,7 @@ Task<io::Result> read(RawHandle _raw, std::span<byte> buf, const Signal<1, Point
     ssize_t n = ::read(_raw, buf.data(), buf.size());
     if (n >= 0) {
       LOG6("{} recv {} bytes", _raw, n);
-      co_return {n, std::nullopt};
+      co_return {static_cast<std::size_t>(n)};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
       if (!co_await sig) {
         co_return {0, {errc::not_connected}};
@@ -65,7 +65,7 @@ Task<io::Result> write(RawHandle _raw, std::span<const byte> data, const Signal<
   do {
     ssize_t n = ::write(_raw, data.data(), data.size());
     if (n >= 0) {
-      co_return {n, std::nullopt};
+      co_return {static_cast<std::size_t>(n)};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
       if (!co_await sig) {
         co_return {0, {errc::not_connected}};
@@ -102,7 +102,7 @@ Task<io::Result> write_file(Dev &dev, io::WriteFileHint hint) {
   }
   Defer defer2{[src, pa_size] { munmap(src, pa_size); }};
   std::span<byte> data{reinterpret_cast<byte *>(src) + (offset - pa_offset), map_size};
-  DEBUG("ready to send {}", data.size());
+  Debug("ready to send {}", data.size());
   co_return co_await dev.write(data);
 }
 struct FileTxTraits {

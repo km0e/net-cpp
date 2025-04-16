@@ -27,8 +27,6 @@ if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
   )
 endif()
 
-Include(FetchContent)
-
 find_package(quill QUIET)
 if (NOT quill_FOUND)
   message(STATUS "quill not found, adding quill")
@@ -57,7 +55,7 @@ endif()
 
 # --- Logging ----
 # set(LOG_LEVEL "INFO" CACHE STRING "Set the log level (NONE, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL)")
-set(LOG_LEVEL "OFF")
+set(LOG_LEVEL "DEBUG")
 set(LOG_LEVEL CACHE STRING "Set the log level (OFF, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL)")
 
 set_property(CACHE LOG_LEVEL PROPERTY STRINGS OFF  TRACE  DEBUG  INFO  WARNING  ERROR  CRITICAL)

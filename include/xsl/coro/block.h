@@ -18,7 +18,6 @@
 #  include <cassert>
 #  include <coroutine>
 #  include <cstdio>
-#  include <expected>
 #  include <optional>
 #  include <semaphore>
 #  include <type_traits>
@@ -86,7 +85,7 @@ constexpr decltype(auto) block(Awaiter &&awaiter) {
         LOG6("block: resume");
       }(std::forward<Awaiter>(awaiter));
       sem.acquire();
-      DEBUG("block: final");
+      Debug("block: final");
     }(std::forward<Awaiter>(awaiter));
   }
 }

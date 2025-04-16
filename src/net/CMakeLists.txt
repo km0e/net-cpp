@@ -8,4 +8,4 @@ target_sources(
     ${CMAKE_CURRENT_SOURCE_DIR}/net.cpp
 )
 
-target_link_libraries(xsl_net PRIVATE xsl_coro xsl_sys)
+target_link_libraries(xsl_net PRIVATE xsl_coro xsl_sys xsl_http)

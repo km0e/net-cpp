@@ -33,4 +33,6 @@ target_sources(
     ${CMAKE_CURRENT_SOURCE_DIR}/xsl.cpp
 )
 
+target_include_directories(xsl PUBLIC ${PROJECT_SOURCE_DIR}/include)
+
 target_link_libraries(xsl xsl_net xsl_coro xsl_sys xsl_wheel xsl_convert)

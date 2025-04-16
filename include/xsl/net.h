@@ -41,10 +41,10 @@ namespace tcp {
 namespace udp {}  // namespace udp
 namespace dns {
   using xsl::_net::dns::Class;
-  using xsl::_net::dns::Resolver;
   using xsl::_net::dns::DnCompressor;
   using xsl::_net::dns::DnDecompressor;
   using xsl::_net::dns::Header;
+  using xsl::_net::dns::Resolver;
   using xsl::_net::dns::RR;
   using xsl::_net::dns::serialized;
   using xsl::_net::dns::skip_question;

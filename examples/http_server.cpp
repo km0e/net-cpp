@@ -42,6 +42,7 @@ int main(int argc, char* argv[]) {
   app.add_option("-i,--ip", ip, "IP address");
   app.add_option("-p,--port", port, "Port");
   CLI11_PARSE(app, argc, argv);
+  Info("start http server at {}:{}", ip, port);
 
   auto poller = std::make_shared<xsl::Poller>();
   auto executor = std::make_shared<NewThreadExecutor>();

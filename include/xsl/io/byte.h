@@ -69,11 +69,11 @@ public:
     for (auto &block : _blocks) {
       auto [size, err] = co_await awd.write(block.span());
       if (err) {
-        co_return std::make_tuple(total_size, err);
+        co_return {total_size, err};
       }
       total_size += size;
     }
-    co_return std::make_tuple(total_size, std::nullopt);
+    co_return total_size;
   };
 
   std::forward_list<Block> _blocks;

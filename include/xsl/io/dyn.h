@@ -74,9 +74,7 @@ public:
 
   DynAsyncReadBuffer(auto &&...args) : buf(std::forward<decltype(args)>(args)...) {}
 
-  Task<io::Result> write(AsyncWriteDevice<value_type> &awd) override {
-    return buf.write(awd);
-  }
+  Task<io::Result> write(AsyncWriteDevice<value_type> &awd) override { return buf.write(awd); }
 };
 /// @brief Dynamic AsyncWriteBuffer
 template <class Buf>
@@ -89,9 +87,7 @@ public:
 
   DynAsyncWriteBuffer(auto &&...args) : buf(std::forward<decltype(args)>(args)...) {}
 
-  Task<io::Result> read(AsyncReadDevice<value_type> &ard) override {
-    return buf.read(ard);
-  }
+  Task<io::Result> read(AsyncReadDevice<value_type> &ard) override { return buf.read(ard); }
 };
 
 XSL_IO_NE

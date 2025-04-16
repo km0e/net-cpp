@@ -9,6 +9,7 @@
  *
  */
 #pragma once
+#include "xsl/logctl.h"
 #ifndef XSL_SYS_SYNC
 #  define XSL_SYS_SYNC
 #  include "xsl/coro.h"
@@ -186,7 +187,7 @@ public:
     event.events = (uint32_t)events;
     event.data.fd = fd;
     if (epoll_ctl(this->fd, EPOLL_CTL_MOD, fd, &event) == -1) {
-      WARN("Failed to modify handler for fd: {}, {}:{}", fd, errno, strerror(errno));
+      Warning("Failed to modify handler for fd: {}, {}:{}", fd, errno, strerror(errno));
       return false;
     }
     if (handler.has_value()) {

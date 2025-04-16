@@ -25,7 +25,7 @@ using namespace xsl::io;
 template <ABILike ABI, ABOLike ABO>
 constexpr Handler<ABI, ABO> create_redirect_handler(std::string_view path) {
   return [path](HandleContext<ABI, ABO>& ctx) -> HandleResult {
-    DEBUG("redirect to {}", path);
+    Debug("redirect to {}", path);
     ResponsePart part{Status::MOVED_PERMANENTLY};
     part.headers.emplace("Location", std::string(path));
     ctx.resp(std::move(part));

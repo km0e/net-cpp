@@ -17,7 +17,7 @@
 #  include <quill/Logger.h>
 XSL_NB
 
-enum class LogLevel { NONE, LOG1, LOG2, LOG3, LOG4, LOG5, LOG6, LOG7, LOG8 };
+enum class LogLevel { NONE, Critical, Error, Warning, Info, Debug, TraceL1, LOG7, LOG8 };
 
 class LogCtl {
 private:
@@ -40,22 +40,22 @@ public:
       case LogLevel::NONE:
         instance.logger->set_log_level(quill::LogLevel::None);
         break;
-      case LogLevel::LOG1:
+      case LogLevel::Critical:
         instance.logger->set_log_level(quill::LogLevel::Critical);
         break;
-      case LogLevel::LOG2:
+      case LogLevel::Error:
         instance.logger->set_log_level(quill::LogLevel::Error);
         break;
-      case LogLevel::LOG3:
+      case LogLevel::Warning:
         instance.logger->set_log_level(quill::LogLevel::Warning);
         break;
-      case LogLevel::LOG4:
+      case LogLevel::Info:
         instance.logger->set_log_level(quill::LogLevel::Info);
         break;
-      case LogLevel::LOG5:
+      case LogLevel::Debug:
         instance.logger->set_log_level(quill::LogLevel::Debug);
         break;
-      case LogLevel::LOG6:
+      case LogLevel::TraceL1:
         instance.logger->set_log_level(quill::LogLevel::TraceL1);
         break;
       case LogLevel::LOG7:
@@ -91,17 +91,17 @@ public:
 
 #  define LOG8(fmt, ...) LOG_TRACE_L3(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define TRACE(fmt, ...) LOG_TRACE_L1(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define Trace(fmt, ...) LOG_TRACE_L1(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define DEBUG(fmt, ...) LOG_DEBUG(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define Debug(fmt, ...) LOG_DEBUG(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define INFO(fmt, ...) LOG_INFO(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define Info(fmt, ...) LOG_INFO(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define WARN(fmt, ...) LOG_WARNING(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define Warning(fmt, ...) LOG_WARNING(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define ERROR(fmt, ...) LOG_ERROR(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define Error(fmt, ...) LOG_ERROR(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define CRITICAL(fmt, ...) LOG_CRITICAL(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define Critical(fmt, ...) LOG_CRITICAL(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
 constexpr void set_log_level(LogLevel level) { xsl::LogCtl::set_log_level(level); }
 

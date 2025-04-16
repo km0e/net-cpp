@@ -44,7 +44,7 @@ Task<io::Result> recv(RawHandle _raw, std::span<byte> buf, AnySignal<SignalTrait
     ssize_t n = ::recv(_raw, buf.data(), buf.size(), 0);
     LOG5("{} recv {} bytes", _raw, n);
     if (n > 0) {
-      co_return {n, std::nullopt};
+      co_return {static_cast<std::size_t>(n)};
     } else if (n == 0) {
       co_return {0, {errc::not_connected}};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -204,7 +204,7 @@ Task<io::Result> send(RawHandle _raw, std::span<const byte> data,
   std::size_t total = 0;
   do {
     ssize_t n = ::send(_raw, data.data(), data.size(), 0);
-    DEBUG("send {} bytes", n);
+    Debug("send {} bytes", n);
     if (n > 0) {
       data = data.subspan(n);
       total += n;

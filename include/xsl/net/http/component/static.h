@@ -57,7 +57,7 @@ public:
             LOG6("accept media: {}", media.first.to_string_view());
             return media.first.type_includes(content_type);
           })) {
-        WARN("not acceptable: {}", content_type.to_string_view());
+        Warning("not acceptable: {}", content_type.to_string_view());
         return Status::NOT_ACCEPTABLE;
       }
     }
@@ -69,12 +69,12 @@ public:
       auto last_modified = std::filesystem::last_write_time(path);
       auto if_modified_since_time = from_date_string<std::chrono::file_clock>(*if_modified_since);
       if (if_modified_since_time && *if_modified_since_time >= last_modified) {
-        DEBUG("not modified: {}", path.native());
+        Debug("not modified: {}", path.native());
         return Status::NOT_MODIFIED;
       }
     }
 
-    DEBUG("check compress: {}", path.native());
+    Debug("check compress: {}", path.native());
     /// Check whether compressed file detection is enabled and find the corresponding files
     if (!this->cfg.compress_encodings.empty()) {
       if (auto accept_encoding = ctx.request.get_header("Accept-Encoding"); accept_encoding) {
@@ -101,13 +101,13 @@ public:
           }
           path += ext->second;
           auto try_sendfile_res = this->try_sendfile(ctx, path, content_type);
-          DEBUG("try_sendfile: path: {} encoding: {}", path.native(), encoding);
+          Debug("try_sendfile: path: {} encoding: {}", path.native(), encoding);
           path = path.replace_extension();
           if (!try_sendfile_res) {
             ctx._response->_part.headers.emplace("Content-Encoding", encoding);
             return std::nullopt;
           }
-          DEBUG("try_sendfile failed: path: {} error: {}", path.native(),
+          Debug("try_sendfile failed: path: {} error: {}", path.native(),
                 try_sendfile_res->to_reason_phrase());
         }
       }

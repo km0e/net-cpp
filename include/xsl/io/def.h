@@ -19,7 +19,6 @@
 #  include <cstddef>
 #  include <optional>
 #  include <span>
-#  include <tuple>
 XSL_IO_NB
 
 template <class Dev>
@@ -28,7 +27,16 @@ struct IOTraits;
 template <class Dev>
 struct AIOTraits;
 
-using Result = std::tuple<std::size_t, std::optional<errc>>;
+struct Result {
+  std::size_t size;
+  std::optional<errc> err;
+
+  Result(std::size_t sz, std::optional<errc> e) : size(sz), err(e) {}
+  Result(std::size_t sz) : size(sz), err(std::nullopt) {}
+
+  bool operator!() const { return err.has_value(); }
+  operator bool() const { return !err.has_value(); }
+};
 
 template <class Device, class T>
 concept ReadDeviceLike = requires(Device t, std::span<T> buf) {

@@ -13,6 +13,7 @@
 #  define XSL_NET_DNS_CLIENT
 #  include "xsl/coro.h"
 #  include "xsl/feature.h"
+#  include "xsl/logctl.h"
 #  include "xsl/net/dns/cache.h"
 #  include "xsl/net/dns/def.h"
 #  include "xsl/net/dns/proto/def.h"
@@ -52,6 +53,7 @@ struct Query {
 template <class LowerLayer>
 class ResolverImpl {
   using sockaddr_t = sys::net::SockAddrCompose<Udp<LowerLayer>>;
+
 public:
   ResolverImpl(Poller &poller,
                std::vector<sys::net::SockAddrCompose<Udp<LowerLayer>>> &&dns_servers)
@@ -70,7 +72,7 @@ public:
     }
 
     if (auto rrs = cache.get(dn); rrs) {
-      DEBUG("cache hit");
+      Debug("cache hit");
       co_return rrs;
     }
     for (auto &sa : init_dns_servers) {
@@ -81,8 +83,9 @@ public:
     }
   }
 
-  Task<std::expected<const std::forward_list<RR> *, errc>> query(sys::net::SockAddrCompose<Udp<LowerLayer>> &sa,
-                                                                 std::string_view dn, Type type, Class class_) {
+  Task<std::expected<const std::forward_list<RR> *, errc>> query(
+      sys::net::SockAddrCompose<Udp<LowerLayer>> &sa, std::string_view dn, Type type,
+      Class class_) {
     Query query{{512}, {}};
 
     auto ser_span = query.datagram.span();
@@ -177,7 +180,7 @@ public:
     co_yield [&] -> Task<void> {
       do {
         auto dgs = std::exchange(*this->send_wait_list.lock(), {});
-        for (auto [query,sa] : dgs) {
+        for (auto [query, sa] : dgs) {
           this->recv_wait_list.lock()->emplace(query->id(), query);
           // co_await this->socket.send(query->datagram.span(0));
           co_await this->socket.sendto(query->datagram.span(0), *sa);
@@ -215,7 +218,7 @@ public:
 private:
   std::vector<sockaddr_t> init_dns_servers;
 
-  ShardRes<std::forward_list<std::pair<Query *,sockaddr_t*>>> send_wait_list;
+  ShardRes<std::forward_list<std::pair<Query *, sockaddr_t *>>> send_wait_list;
   Signal<> send_signal;
 
   ShardRes<std::unordered_map<std::uint16_t, Query *>> recv_wait_list;

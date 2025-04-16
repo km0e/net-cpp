@@ -12,6 +12,7 @@
 #ifndef XSL_SYS_NET_CONN
 #  define XSL_SYS_NET_CONN
 #  include "xsl/coro.h"
+#  include "xsl/logctl.h"
 #  include "xsl/sys/def.h"
 #  include "xsl/sys/net/def.h"
 #  include "xsl/sys/net/sockaddr.h"
@@ -132,10 +133,9 @@ private:
       }
     }();
     if (tmp_fd < 0) {
-      INFO("Failed to accept: {}", strerror(errno));
       return std::unexpected{errc(errno)};
     }
-    LOG5("accept socket {}", tmp_fd);
+    Debug("accept socket {}", tmp_fd);
     // char ip[NI_MAXHOST], port[NI_MAXSERV];
     // if (getnameinfo(&addr, addrlen, ip, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST |
     // NI_NUMERICSERV)

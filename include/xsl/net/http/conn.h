@@ -59,10 +59,10 @@ Task<void> imm_serve_connection(ABI& ard, ABO& awd, Service& service,
 
     Request request{std::move(parse_data.buffer), std::move(parse_data.request),
                     parse_data.content_part, ard};
-    DEBUG("ready to serve request: {}", request.view.path);
+    Debug("ready to serve request: {}", request.view.path);
     Response<ABO> resp = co_await (service)(
         std::move(request));  // TODO: may be will also need to be a coroutine in the future
-    DEBUG("ready to send response: {}", resp._part.status_code.to_reason_phrase());
+    Debug("ready to send response: {}", resp._part.status_code.to_reason_phrase());
     auto [sz, err] = co_await resp.sendto(awd);
     if (err) {
       LOG3("send error: {}", std::make_error_code(*err).message());

@@ -58,7 +58,7 @@ namespace impl_service {
     constexpr Service(std::unique_ptr<details_type>&& details) : details(std::move(details)) {}
 
     Task<Response<out_dev_type>> operator()(Request<in_dev_type>&& request) {
-      INFO("New request: {} {}", request.view.method, request.view.path);
+      Info("New request: {} {}", request.view.method, request.view.path);
       auto route_ctx = RouteContext{request.method, request.view.path};
 
       auto route_res = this->details->router.route(route_ctx);

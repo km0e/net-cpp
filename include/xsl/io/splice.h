@@ -58,7 +58,7 @@ Task<Result> splice(ABR* from, ABW* to, std::string buffer) {
     }
     total += sz;
   }
-  DEBUG("Spliced {} bytes", total);
+  Debug("Spliced {} bytes", total);
 }
 
 // namespace impl_splice {

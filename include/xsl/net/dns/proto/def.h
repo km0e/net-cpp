@@ -23,6 +23,8 @@
 
 XSL_NET_DNS_NB
 
+const std::size_t DNS_UDP_MAX_SIZE = 512;  ///< max size of DNS UDP message
+
 const std::string_view RCODE_STR[]
     = {"No Error", "Format Error", "Server Failure", "Name Error", "Not Implemented", "Refused"};
 
@@ -41,6 +43,9 @@ struct RCode {
   } _code;
 
   static constexpr RCode from_u16(std::uint16_t u16) { return {static_cast<decltype(_code)>(u16)}; }
+
+  constexpr RCode() = default;
+  constexpr RCode(decltype(_code) code) : _code(code) {}
 
   /// @brief Map RCode to errc
   constexpr errc to_errc() const {
@@ -200,4 +205,34 @@ constexpr bool operator==(const Class &lhs, const decltype(Class::_class) &rhs) 
 constexpr bool operator==(const Class &lhs, const Class &rhs) { return lhs == rhs._class; }
 
 XSL_NET_DNS_NE
+
+#  include <format>
+
+namespace std {
+  using xsl::_net::dns::Class, xsl::_net::dns::Type, xsl::_net::dns::RCode;
+  template <typename CharT>
+  using basic_formatter = std::formatter<basic_string_view<CharT>, CharT>;
+  template <typename CharT>
+  struct formatter<Class, CharT> : basic_formatter<CharT> {
+    template <class FmtContext>
+    FmtContext::iterator format(Class s, FmtContext &ctx) const {
+      return static_cast<const basic_formatter<CharT> *>(this)->format(s.to_string_view(), ctx);
+    }
+  };
+  template <typename CharT>
+  struct formatter<Type, CharT> : basic_formatter<CharT> {
+    template <class FmtContext>
+    FmtContext::iterator format(Type s, FmtContext &ctx) const {
+      return static_cast<const basic_formatter<CharT> *>(this)->format(s.to_string_view(), ctx);
+    }
+  };
+  template <typename CharT>
+  struct formatter<RCode, CharT> : basic_formatter<CharT> {
+    template <class FmtContext>
+    FmtContext::iterator format(RCode s, FmtContext &ctx) const {
+      return static_cast<const basic_formatter<CharT> *>(this)->format(s.to_string_view(), ctx);
+    }
+  };
+
+}  // namespace std
 #endif

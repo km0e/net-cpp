@@ -11,8 +11,8 @@
 #pragma once
 #ifndef XSL_NET_IO_SPLICE
 #  define XSL_NET_IO_SPLICE
+#  include "xsl/byte.h"
 #  include "xsl/coro.h"
-#  include "xsl/io.h"
 #  include "xsl/net/io/def.h"
 XSL_NET_IO_NB
 /**
@@ -25,20 +25,18 @@ XSL_NET_IO_NB
  * @param buffer the buffer
  * @return Task<void>
  */
-template <class From, class To>
-Task<void> splice(From& from, To& to, std::string& buffer) {
-  while (true) {
-    auto [sz, err]
-        = co_await AIOTraits<From>::read(from, xsl::as_writable_bytes(std::span(buffer)));
-    if (err) {
-      co_return;
-    }
-    auto [s_sz, s_err]
-        = co_await AIOTraits<To>::write(to, xsl::as_bytes(std::span(buffer).subspan(0, sz)));
-    if (s_err) {
-      co_return;
-    }
-  }
-}
+// template <class From, class To>
+// Task<void> splice(From& from, To& to, std::string& buffer) {
+//   while (true) {
+//     auto res = co_await from.read(xsl::as_writable_bytes(std::span(buffer)));
+//     if (!res) {
+//       co_return;
+//     }
+//     res = co_await to.write(xsl::as_bytes(std::span(buffer).subspan(0, res.size)));
+//     if (!res) {
+//       co_return;
+//     }
+//   }
+// }
 XSL_NET_IO_NE
 #endif

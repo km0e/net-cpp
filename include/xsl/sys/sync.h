@@ -9,10 +9,10 @@
  *
  */
 #pragma once
-#include "xsl/logctl.h"
 #ifndef XSL_SYS_SYNC
 #  define XSL_SYS_SYNC
 #  include "xsl/coro.h"
+#  include "xsl/logctl.h"
 #  include "xsl/sync.h"
 #  include "xsl/sys/def.h"
 
@@ -187,7 +187,7 @@ public:
     event.events = (uint32_t)events;
     event.data.fd = fd;
     if (epoll_ctl(this->fd, EPOLL_CTL_MOD, fd, &event) == -1) {
-      Warning("Failed to modify handler for fd: {}, {}:{}", fd, errno, strerror(errno));
+      log_warning("Failed to modify handler for fd: {}, {}:{}", fd, errno, strerror(errno));
       return false;
     }
     if (handler.has_value()) {
@@ -205,7 +205,7 @@ public:
       sigaddset(&mask, SIGQUIT);
       int n = epoll_pwait(this->fd, events, 10, TIMEOUT, &mask);
       if (n == -1) {
-        LOG2("Failed to poll");
+        log_error("Failed to poll");
         continue;
       }
       // LOG6("Polling {} events", n);
@@ -213,9 +213,9 @@ public:
         auto handler = this->handlers.lock_shared()->at(events[i].data.fd);
         auto fd = events[i].data.fd;
         auto ev = static_cast<IOM_EVENTS>(events[i].events);
-        LOG5("Handling {} for fd: {}", to_string(ev), fd);
+        log_debug("Handling {} for fd: {}", to_string(ev), fd);
         PollHandleHint hint = (*this->proxy)(bind(std::ref(*handler), fd, ev));
-        LOG5("HandleRes {} for fd: {}", to_string_view(hint.tag), (int)events[i].data.fd);
+        log_debug("HandleRes {} for fd: {}", to_string_view(hint.tag), (int)events[i].data.fd);
         switch (hint.tag) {
           case PollHandleHintTag::DELETE:
             this->remove(events[i].data.fd);
@@ -235,11 +235,11 @@ public:
     if (!this->valid()) {
       return;
     }
-    LOG5("call all handlers with NONE");
+    log_debug("call all handlers with NONE");
     for (auto& [key, value] : *this->handlers.lock()) {
       (*value)(key, IOM_EVENTS::NONE);
     }
-    LOG5("close poller");
+    log_debug("close poller");
     close(this->fd);
     this->fd = -1;
   }

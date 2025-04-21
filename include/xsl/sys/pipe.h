@@ -9,6 +9,7 @@
  *
  */
 #pragma once
+#include "xsl/io/def.h"
 #ifndef XSL_SYS_PIPE
 #  define XSL_SYS_PIPE
 #  include "xsl/coro.h"
@@ -43,13 +44,13 @@ std::optional<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>> async_pipe(
  * @param to the destination device
  * @return Task<std::optional<errc>>
  */
-template <AsyncRawDeviceLike From, AsyncRawDeviceLike To>
+template <io::AsyncRead From, io::AsyncWrite To>
 Task<std::optional<errc>> splice_single(From from, To to) {
   std::size_t offset = 0;
   do {
     ssize_t n = ::splice(from.raw(), nullptr, to.raw(), nullptr, MAX_SINGLE_FWD_SIZE,
                          SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
-    LOG5("recv n: {}", n);
+    log_debug("recv n: {}", n);
     if (n > 0) {
       offset += n;
     } else if (n == 0) {
@@ -81,7 +82,7 @@ Task<std::optional<errc>> splice_single(From from, To to) {
  * @param pipe_out the pipe to write to
  * @return Task<void>
  */
-template <AsyncRawDeviceLike From, AsyncRawDeviceLike To>
+template <io::AsyncRead From, io::AsyncWrite To>
 Task<void> splice(From from, To to, AsyncPipeReadDevice pipe_in, AsyncPipeWriteDevice pipe_out) {
   co_yield splice_single(std::move(from), std::move(pipe_out));
   co_yield splice_single(std::move(pipe_in), std::move(to));
@@ -97,7 +98,7 @@ Task<void> splice(From from, To to, AsyncPipeReadDevice pipe_in, AsyncPipeWriteD
  * @param poller the poller
  * @return Task<void>
  */
-template <AsyncRawDeviceLike From, AsyncRawDeviceLike To>
+template <io::AsyncRead From, io::AsyncWrite To>
 Task<void> splice(From from, To to, std::shared_ptr<Poller>& poller) {
   auto pipe = async_pipe(poller);
   if (!pipe) {

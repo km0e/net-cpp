@@ -32,15 +32,15 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
     std::cin >> buffer;
     auto [n, err] = co_await rw.send(xsl::as_bytes(std::span(buffer)));
     if (err.has_value()) {
-      LOG2("Failed to send data, err : {}", std::make_error_code(err.value()).message());
+      log_error("Failed to send data, err : {}", std::make_error_code(err.value()).message());
       break;
     }
     auto [n_recv, err_recv] = co_await rw.recv(xsl::as_writable_bytes(std::span(buffer)));
     if (err_recv.has_value()) {
-      LOG2("Failed to recv data, err : {}", std::make_error_code(err_recv.value()).message());
+      log_error("Failed to recv data, err : {}", std::make_error_code(err_recv.value()).message());
       break;
     }
-    LOG4("Recv: {}", std::string_view{buffer.data(), n_recv});
+    log_info("Recv: {}", std::string_view{buffer.data(), n_recv});
   }
   poller->shutdown();
   co_return;

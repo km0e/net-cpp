@@ -72,7 +72,7 @@ public:
     }
 
     if (auto rrs = cache.get(dn); rrs) {
-      Debug("cache hit");
+      log_debug("cache hit");
       co_return rrs;
     }
     for (auto &sa : init_dns_servers) {

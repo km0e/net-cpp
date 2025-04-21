@@ -14,6 +14,7 @@
 #  include "xsl/feature.h"
 #  include "xsl/io/dyn.h"
 #  include "xsl/sys/dev.h"
+#  include "xsl/sys/io.h"
 #  include "xsl/sys/net/conn.h"
 #  include "xsl/sys/net/def.h"
 #  include "xsl/sys/net/io.h"
@@ -147,7 +148,8 @@ public:
 };
 /// @brief Async read-only socket device
 template <class Traits>
-class AsyncReadSocket : public AsyncSocketBase<Traits, RawAsyncReadDevice>, public NetAsyncRx {
+class AsyncReadSocket : public AsyncSocketBase<Traits, RawAsyncReadDevice>,
+                        public NetAsyncRx<FileRxTraits> {
 public:
   using Base = AsyncSocketBase<Traits, RawAsyncReadDevice>;
 
@@ -157,7 +159,8 @@ public:
 };
 /// @brief Async write-only socket device
 template <class Traits>
-class AsyncWriteSocket : public AsyncSocketBase<Traits, RawAsyncWriteDevice>, public NetAsyncTx {
+class AsyncWriteSocket : public AsyncSocketBase<Traits, RawAsyncWriteDevice>,
+                         public NetAsyncTx<FileTxTraits> {
 public:
   using Base = AsyncSocketBase<Traits, RawAsyncWriteDevice>;
 
@@ -169,8 +172,8 @@ public:
 /// @brief Async read-write socket device
 template <class Traits>
 class AsyncReadWriteSocket : public AsyncSocketBase<Traits, RawAsyncReadWriteDevice>,
-                             public NetAsyncRx,
-                             public NetAsyncTx,
+                             public NetAsyncRx<FileRxTraits>,
+                             public NetAsyncTx<FileTxTraits>,
                              public ConnectionUtils<Traits> {
   using Base = AsyncSocketBase<Traits, RawAsyncReadWriteDevice>;
 
@@ -234,71 +237,9 @@ constexpr std::expected<Socket, errc> make_socket(int sock_attr) {
 template <class... Flags>
 using AsyncSocket = AsyncSocketCompose<InOut<SocketTraits<Flags...>>>::type;
 
+static_assert(io::AsyncRead<AsyncSocket<TcpIp>> && "TcpIp is not async readable");
+static_assert(io::AsyncWrite<AsyncSocket<TcpIp>> && "TcpIp is not async writable");
+static_assert(io::AsyncReadWrite<AsyncSocket<TcpIp>> && "TcpIp is not async readable/writable");
+
 XSL_SYS_NET_NE
-
-XSL_IO_NB
-template <class Traits>
-struct IOTraits<_sys::net::ReadSocket<Traits>> {
-  using value_type = byte;
-  using device_type = _sys::net::ReadSocket<Traits>;
-
-  static io::Result read(device_type &, std::span<byte>) { std::unreachable(); }
-};
-
-template <class Traits>
-struct IOTraits<_sys::net::WriteSocket<Traits>> {
-  using value_type = byte;
-  using device_type = _sys::net::WriteSocket<Traits>;
-
-  static io::Result write(device_type &, std::span<const byte>) { std::unreachable(); }
-};
-
-template <class Traits>
-struct IOTraits<_sys::net::ReadWriteSocket<Traits>> {
-  using value_type = byte;
-  using device_type = _sys::net::ReadWriteSocket<Traits>;
-
-  static io::Result read(device_type &, std::span<byte>) { std::unreachable(); }
-
-  static io::Result write(device_type &, std::span<const byte>) { std::unreachable(); }
-};
-
-template <class Traits>
-struct AIOTraits<_sys::net::AsyncReadSocket<Traits>> {
-  using value_type = byte;
-  using in_dev_type = _sys::net::AsyncReadSocket<Traits>;
-
-  static constexpr Task<Result> read(in_dev_type &dev, std::span<byte> buf) {
-    return dev.recv(buf);
-  }
-};
-
-template <class Traits>
-struct AIOTraits<_sys::net::AsyncWriteSocket<Traits>> {
-  using value_type = byte;
-  using out_dev_type = _sys::net::AsyncWriteSocket<Traits>;
-
-  static Task<Result> write(out_dev_type &dev, std::span<const byte> buf) { return dev.send(buf); }
-
-  static constexpr Task<Result> write_file(out_dev_type &dev, io::WriteFileHint &&hint) {
-    return dev.send_file(std::move(hint));
-  }
-};
-
-template <class Traits>
-struct AIOTraits<_sys::net::AsyncReadWriteSocket<Traits>> {
-  using value_type = byte;
-  using io_dev_type = _sys::net::AsyncReadWriteSocket<Traits>;
-  using in_dev_type = io_dev_type::template rebind<In>;
-  using out_dev_type = io_dev_type::template rebind<Out>;
-
-  static constexpr Task<Result> read(io_dev_type &dev, std::span<byte> buf) {
-    return dev.recv(buf);
-  }
-
-  static constexpr Task<Result> write(io_dev_type &dev, std::span<const byte> buf) {
-    return dev.send(buf);
-  }
-};
-XSL_IO_NE
 #endif

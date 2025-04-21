@@ -11,14 +11,11 @@
 #pragma once
 #ifndef XSL_IO_BYTE
 #  define XSL_IO_BYTE
-#  include "xsl/feature.h"
 #  include "xsl/io/ai.h"
 #  include "xsl/io/def.h"
 #  include "xsl/io/dyn.h"
-#  include "xsl/sys/io.h"
 #  include "xsl/type_traits.h"
 
-#  include <concepts>
 #  include <forward_list>
 XSL_IO_NB
 
@@ -64,7 +61,7 @@ public:
   constexpr void clear() { _blocks.clear(); }
   constexpr Block &front() { return _blocks.front(); }
   /// @brief Write the buffer to the given AsyncWriteDevice
-  Task<io::Result> write(ABW &awd) {
+  Task<io::Result> write(AsyncWriteDevice &awd) {
     std::size_t total_size = 0;
     for (auto &block : _blocks) {
       auto [size, err] = co_await awd.write(block.span());
@@ -80,77 +77,6 @@ public:
 
 protected:
   ByteBuffer(std::forward_list<Block> &&blocks) : _blocks(std::move(blocks)) {}
-};
-
-template <>
-struct AIOTraits<AsyncReadDevice<byte>> {
-  using value_type = byte;
-  using in_dev_type = AsyncReadDevice<value_type>;
-  /// @brief Read from the device
-  static constexpr Task<Result> read(in_dev_type &dev, std::span<value_type> buf) {
-    return dev.read(buf);
-  }
-};
-
-template <>
-struct AIOTraits<AsyncWriteDevice<byte>> {
-  using value_type = byte;
-  using out_dev_type = AsyncWriteDevice<value_type>;
-  /// @brief Write to the device
-  static constexpr Task<Result> write(out_dev_type &dev, std::span<const value_type> buf) {
-    return dev.write(buf);
-  }
-  /// @brief Write to the device
-  static Task<Result> write_file(out_dev_type &dev, WriteFileHint &&hint) {
-    return _sys::write_file(dev, std::move(hint));
-  }
-};
-
-template <>
-struct AIOTraits<AsyncReadWriteDevice<byte>> {
-  using value_type = byte;
-  using io_dev_type = AsyncReadWriteDevice<value_type>;
-  using in_dev_type = io_dev_type::template rebind<In>;
-  using out_dev_type = io_dev_type::template rebind<Out>;
-  /// @brief Read from the device
-  static constexpr Task<Result> read(io_dev_type &dev, std::span<value_type> buf) {
-    return dev.read(buf);
-  }
-  /// @brief Write to the device
-  static constexpr Task<Result> write(io_dev_type &dev, std::span<const value_type> buf) {
-    return dev.write(buf);
-  }
-  /// @brief Write to the device
-  static constexpr Task<Result> write_file(io_dev_type &dev, WriteFileHint &&hint) {
-    return _sys::write_file(dev, std::move(hint));
-  }
-};
-
-template <class Device>
-concept BRL = ReadDeviceLike<Device, byte>;
-
-template <class Device>
-concept BWL = WriteDeviceLike<Device, byte>;
-
-template <class Device>
-concept BRWL = ReadWriteDeviceLike<Device, byte>;
-
-template <class Dev>
-concept ABIOLike = requires {
-  requires std::same_as<byte, typename AIOTraits<Dev>::value_type>;
-  typename AIOTraits<Dev>::io_dev_type;
-};
-
-template <class Dev>
-concept ABILike = requires {
-  requires std::same_as<byte, typename AIOTraits<Dev>::value_type>;
-  typename AIOTraits<Dev>::in_dev_type;
-};
-
-template <class Dev>
-concept ABOLike = requires {
-  requires std::same_as<byte, typename AIOTraits<Dev>::value_type>;
-  typename AIOTraits<Dev>::out_dev_type;
 };
 
 XSL_IO_NE

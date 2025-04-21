@@ -15,13 +15,10 @@
 #  include "xsl/feature.h"
 #  include "xsl/io/def.h"
 XSL_IO_NB
-template <class T>
 class AsyncReadDevice;
 
-template <class T>
 class AsyncWriteDevice;
 
-template <class T>
 class AsyncReadWriteDevice;
 
 template <class T, class... Flags>
@@ -29,73 +26,56 @@ struct AsyncDeviceSelector;
 
 template <class T, class... Flags>
 struct AsyncDeviceSelector<In<T>, Flags...> {
-  using type = AsyncReadDevice<T>;
+  using type = AsyncReadDevice;
 };
 
 template <class T, class... Flags>
 struct AsyncDeviceSelector<Out<T>, Flags...> {
-  using type = AsyncWriteDevice<T>;
+  using type = AsyncWriteDevice;
 };
 
 template <class T, class... Flags>
 struct AsyncDeviceSelector<InOut<T>, Flags...> {
-  using type = AsyncReadWriteDevice<T>;
+  using type = AsyncReadWriteDevice;
 };
 
 template <class... Flags>
 using AsyncDeviceCompose = organize_feature_flags_t<
     AsyncDeviceSelector<Item<is_same_pack, In<void>, Out<void>, InOut<void>>>, Flags...>;
 
-template <class T>
 class AsyncReadDevice {
 public:
-  using value_type = T;
   virtual ~AsyncReadDevice() = default;
   /// @brief Read from the device
-  virtual Task<io::Result> read(std::span<value_type> buf [[maybe_unused]]) { std::unreachable(); }
+  virtual Task<io::Result> read(std::span<byte> buf [[maybe_unused]]) { std::unreachable(); }
 };
 
-template <class T>
 class AsyncWriteDevice {
 public:
-  using value_type = T;
   virtual ~AsyncWriteDevice() = default;
   /// @brief Write to the device
-  virtual Task<io::Result> write(std::span<const value_type> buf [[maybe_unused]]) {
-    std::unreachable();
-  }
+  virtual Task<io::Result> write(std::span<const byte> buf [[maybe_unused]]) { std::unreachable(); }
 };
 
-template <class T>
-class AsyncReadWriteDevice : public AsyncReadDevice<T>, public AsyncWriteDevice<T> {
+class AsyncReadWriteDevice : public AsyncReadDevice, public AsyncWriteDevice {
 public:
   template <template <class> class InOut = InOut>
-  using rebind = AsyncDeviceCompose<InOut<T>>::type;
+  using rebind = AsyncDeviceCompose<InOut<void>>::type;
 };
 
-template <class T>
 class AsyncReadBuffer {
 public:
-  using value_type = T;
   constexpr virtual ~AsyncReadBuffer() {}
   /// @brief Read from the buffer
-  constexpr virtual Task<io::Result> write(AsyncWriteDevice<value_type> &awd) = 0;
+  constexpr virtual Task<io::Result> write(AsyncWriteDevice &awd) = 0;
 };
 
-template <class T>
 class AsyncWriteBuffer {
 public:
-  using value_type = T;
   virtual ~AsyncWriteBuffer() {}
   /// @brief Write to the buffer
-  virtual Task<io::Result> read(AsyncReadDevice<value_type> &ard) = 0;
+  virtual Task<io::Result> read(AsyncReadDevice &ard) = 0;
 };
-
-using ABR = AsyncReadDevice<byte>;
-
-using ABW = AsyncWriteDevice<byte>;
-
-using ABRW = AsyncReadWriteDevice<byte>;
 
 XSL_IO_NE
 #endif

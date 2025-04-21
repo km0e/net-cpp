@@ -261,7 +261,7 @@ Task<std::expected<AsyncSocket<Traits>, std::error_condition>> gai_async_connect
   if (!skt.is_valid()) {
     co_return std::unexpected{current_ec()};
   }
-  LOG5("Created fd: {}", skt.raw());
+  log_debug("Created fd: {}", skt.raw());
   errc ec;
   for (auto &ai : *res_resolved) {
     ec = skt.check_and_upgrade(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
@@ -297,12 +297,12 @@ std::expected<Socket<Traits>, std::error_condition> gai_bind(Args &&...args) {
   errc ec{};
   for (auto &ai : *res_resolved) {
     ec = skt.check_and_upgrade(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
-    LOG5("Set non-blocking to fd: {}", skt.raw());
+    log_debug("Set non-blocking to fd: {}", skt.raw());
     int opt = 1;
     if (setsockopt(skt.raw(), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
       continue;
     }
-    LOG5("Set reuse addr to fd: {}", skt.raw());
+    log_debug("Set reuse addr to fd: {}", skt.raw());
     if (::bind(skt.raw(), ai.ai_addr, ai.ai_addrlen) == 0) {
       return std::move(skt);
     }

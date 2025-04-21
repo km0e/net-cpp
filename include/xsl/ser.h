@@ -14,28 +14,28 @@
 #  include "xsl/byte.h"
 #  include "xsl/def.h"
 
+#  include <concepts>
 #  include <cstring>
 #  include <span>
 XSL_NB
 
-constexpr void serialize(byte* buf, int32_t value) {
+template <std::integral I>
+constexpr void serialize(byte* buf, I value) {
   auto raw = xsl::as_bytes(std::span(&value, 1));
   std::copy(raw.begin(), raw.end(), buf);
 }
 
-constexpr void serialized(std::span<byte>& buf, int32_t value) {
+template <std::integral T>
+constexpr void serialized(std::span<byte>& buf, T value) {
   serialize(buf.data(), value);
-  buf = buf.subspan(sizeof(int32_t));
+  buf = buf.subspan(sizeof(T));
 }
 
-constexpr void serialize(byte* buf, uint16_t value) {
-  auto raw = xsl::as_bytes(std::span(&value, 1));
-  std::copy(raw.begin(), raw.end(), buf);
-}
-
-constexpr void serialized(std::span<byte>& buf, uint16_t value) {
-  serialize(buf.data(), value);
-  buf = buf.subspan(sizeof(uint16_t));
+template <std::integral T>
+constexpr T* reserved(std::span<byte>& buf) {
+  auto ptr = reinterpret_cast<T*>(buf.data());
+  buf = buf.subspan(sizeof(T));
+  return ptr;
 }
 
 constexpr void deserialize(const byte* buf, int32_t& value) {

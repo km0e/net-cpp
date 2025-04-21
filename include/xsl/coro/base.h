@@ -29,13 +29,15 @@ public:
   constexpr PromiseBase() : _result(std::nullopt) {}
 
   constexpr auto get_return_object(this auto &&self) noexcept {
-    LOG7("get_return_object");
+    log_trace2("get_return_object");
     using promise_type = std::decay_t<decltype(self)>;
     using coro_type = promise_type::coro_type;
     return coro_type{std::coroutine_handle<promise_type>::from_promise(self)};
   }
 
-  constexpr void unhandled_exception() { this->_result = std::unexpected{std::current_exception()}; }
+  constexpr void unhandled_exception() {
+    this->_result = std::unexpected{std::current_exception()};
+  }
 
   /**
    * @brief Return a value
@@ -43,7 +45,7 @@ public:
    * @return result_type
    */
   constexpr result_type operator*() {
-    LOG7("PromiseBase operator*");
+    log_trace2("PromiseBase operator*");
     if (*_result) {
       if constexpr (std::is_same_v<result_type, void>) {
         return **_result;
@@ -66,7 +68,7 @@ protected:
 public:
   using typename Base::result_type;
   constexpr void return_value(result_type &&value) {
-    LOG7("Promise return_value");
+    log_trace2("Promise return_value");
     _result = Result<result_type>(std::move(value));
   }
 };

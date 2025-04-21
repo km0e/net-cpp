@@ -11,7 +11,7 @@
 #pragma once
 #ifndef XSL_NET_HTTP_CONTEXT
 #  define XSL_NET_HTTP_CONTEXT
-#  include "xsl/io/byte.h"
+#  include "xsl/io/def.h"
 #  include "xsl/net/http/def.h"
 #  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/proto.h"
@@ -20,13 +20,11 @@
 #  include <optional>
 XSL_HTTP_NB
 using namespace xsl::io;
-template <ABILike ABI, ABOLike ABO>
+template <AsyncRead R, AsyncWrite W>
 class HandleContext {
 public:
-  using abi_traits_type = AIOTraits<ABI>;
-  using abo_traits_type = AIOTraits<ABO>;
-  using in_dev_type = typename abi_traits_type::in_dev_type;
-  using out_dev_type = typename abo_traits_type::out_dev_type;
+  using in_dev_type = R;
+  using out_dev_type = W;
   using request_type = Request<in_dev_type>;
   using response_type = Response<out_dev_type>;
 
@@ -44,8 +42,9 @@ public:
   }
   /// @brief easy response with status code and body
   constexpr void easy_resp(Status status_code, std::invocable<out_dev_type&> auto&& body) {
-    this->_response = response_type{{Version::HTTP_1_1, status_code, status_code.to_reason_phrase()},
-                                    std::forward<decltype(body)>(body)};
+    this->_response
+        = response_type{{Version::HTTP_1_1, status_code, status_code.to_reason_phrase()},
+                        std::forward<decltype(body)>(body)};
   }
   /// @brief easy response with status code and some arguments to construct the body
   template <class... Args>
@@ -54,7 +53,7 @@ public:
     this->_response = response_type{
         {Version::HTTP_1_1, status_code, status_code.to_reason_phrase()},
         [body = std::string(std::forward<Args>(args)...)](out_dev_type& awd) -> Task<Result> {
-          return abo_traits_type::write(awd, xsl::as_bytes(std::span(body)));
+          return awd.write(xsl::as_bytes(std::span(body)));
         }};
   }
   /// @brief response with ResponsePart
@@ -70,7 +69,7 @@ public:
     this->_response = response_type{
         {std::move(part)},
         [body = std::string(std::forward<Args>(args)...)](out_dev_type& awd) -> Task<Result> {
-          return abo_traits_type::write(awd, xsl::as_bytes(std::span(body)));
+          return awd.write(xsl::as_bytes(std::span(body)));
         }};
   }
   /// @brief checkout the response
@@ -98,7 +97,7 @@ private:
 
 using HandleResult = Task<std::optional<Status>>;
 
-template <ABILike ABI, ABOLike ABO>
+template <AsyncRead ABI, AsyncWrite ABO>
 using Handler = std::function<HandleResult(HandleContext<ABI, ABO>& ctx)>;
 
 XSL_HTTP_NE

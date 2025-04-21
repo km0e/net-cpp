@@ -28,10 +28,12 @@ struct Flags {
   std::uint16_t tc : 1;  // truncated
   std::uint16_t rd : 1;  // recursion desired
   std::uint16_t ra : 1;  // recursion available
-  std::uint16_t z : 3;
+  std::uint16_t z : 1;
+  std::uint16_t ad : 1;      // authenticated data
+  std::uint16_t cd : 1;      // checking disabled
   std::uint16_t _rcode : 4;  // response code
 
-  constexpr Flags() : qr(0), opcode(0), aa(0), tc(0), rd(0), ra(0), z(0), _rcode(0) {}
+  constexpr Flags() : qr(0), opcode(0), aa(0), tc(0), rd(0), ra(0), z(0), ad(0), cd(0), _rcode(0) {}
   constexpr Flags(std::uint16_t u16)
       : qr((u16 >> 15) & 0x1),
         opcode((u16 >> 11) & 0xf),
@@ -39,17 +41,19 @@ struct Flags {
         tc((u16 >> 9) & 0x1),
         rd((u16 >> 8) & 0x1),
         ra((u16 >> 7) & 0x1),
-        z((u16 >> 4) & 0x7),
+        z((u16 >> 6) & 0x1),
+        ad((u16 >> 5) & 0x1),
+        cd((u16 >> 4) & 0x1),
         _rcode(u16 & 0xf) {}
   constexpr bool operator==(const Flags &rhs) const {
     return qr == rhs.qr && opcode == rhs.opcode && aa == rhs.aa && tc == rhs.tc && rd == rhs.rd
-           && ra == rhs.ra && z == rhs.z && _rcode == rhs._rcode;
+           && ra == rhs.ra && z == rhs.z && ad == rhs.ad && cd == rhs.cd && _rcode == rhs._rcode;
   }
 
   /// @brief To u16
   constexpr std::uint16_t to_u16() const {
-    return (qr << 15) | (opcode << 11) | (aa << 10) | (tc << 9) | (rd << 8) | (ra << 7) | (z << 4)
-           | _rcode;
+    return (qr << 15) | (opcode << 11) | (aa << 10) | (tc << 9) | (rd << 8) | (ra << 7) | (z << 6)
+           | (ad << 5) | (cd << 2) | _rcode;
   }
   /// @brief Get the RCode
   constexpr RCode rcode() const { return RCode::from_u16(this->_rcode); }
@@ -72,8 +76,8 @@ struct Header {
   constexpr RCode rcode() const { return flags.rcode(); }
   /// @brief Serialize the header, buf will be updated
   constexpr void serialize(std::span<byte> &buf) const {
-    xsl::serialized_all(buf, id, htons(flags.to_u16()), htons(qdcount), htons(ancount), htons(nscount),
-                    htons(arcount));
+    xsl::serialized_all(buf, id, htons(flags.to_u16()), htons(qdcount), htons(ancount),
+                        htons(nscount), htons(arcount));
   }
   /// @brief Deserialize the header, buf will be updated
   constexpr void deserialize(std::span<const byte> &buf) {

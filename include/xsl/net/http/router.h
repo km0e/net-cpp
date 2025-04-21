@@ -168,7 +168,7 @@ namespace router_details {
           return dr_res;
         }
       } while (false);
-      LOG5("Routing to default child");
+      log_debug("Routing to default child");
       auto iter = this->children.lock_shared()->find("");  // find default child
       if (iter != this->children.lock_shared()->end()) {
         return iter->second.direct_route(ctx);

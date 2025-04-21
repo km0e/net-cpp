@@ -45,13 +45,21 @@ XSL_NET_DNS_NB
  *  /                                               /
  *  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
  *  Don't content the NAME field
+ * @see https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.3
  */
+const std::size_t RR_HEADER_SIZE = 10;     ///< size of the resource record header
+const std::size_t RR_TYPE_OFFSET = 0;      ///< offset of the type field
+const std::size_t RR_CLASS_OFFSET = 2;     ///< offset of the class field
+const std::size_t RR_TTL_OFFSET = 4;       ///< offset of the ttl field
+const std::size_t RR_RDLENGTH_OFFSET = 8;  ///< offset of the rdata length field
+const std::size_t RR_RDATA_OFFSET = 10;    ///< offset of the rdata field
+
 class RR {
 public:
-  static RR from_bytes(std::span<const byte>&src) {
+  static RR from_bytes(std::span<const byte> &src) {
     uint16_t u16;
-    xsl::deserialize(src.data() + 8, u16);
-    std::size_t rest_length = 2 + 2 + 4 + 2 + ntohs(u16);
+    xsl::deserialize(src.data() + RR_RDLENGTH_OFFSET, u16);
+    std::size_t rest_length = RR_HEADER_SIZE + ntohs(u16);
     if (rest_length > src.size()) {  // not enough data
       return RR{nullptr};
     }
@@ -68,29 +76,57 @@ public:
   ~RR() = default;
   bool is_valid() { return this->data.get() != nullptr; }
   /// @brief get the type
-  Type type() const { return Type::from_bytes(data.get()); }
+  Type type() const { return Type::from_bytes(data.get() + RR_TYPE_OFFSET); }
   /// @brief get the class
-  Class class_() const { return Class::from_bytes(data.get() + 2); }
+  Class class_() const { return Class::from_bytes(data.get() + RR_CLASS_OFFSET); }
   /// @brief get the ttl
   std::uint32_t ttl() const {
     uint32_t u32;
-    xsl::deserialize(data.get() + 4, u32);
+    xsl::deserialize(data.get() + RR_TTL_OFFSET, u32);
     return ntohl(u32);
   }
   /// @brief get the rdata length
   std::uint16_t rdlength() const {
     uint16_t u16;
-    xsl::deserialize(data.get() + 8, u16);
+    xsl::deserialize(data.get() + RR_RDLENGTH_OFFSET, u16);
     return ntohs(u16);
   }
   /// @brief get the rdata
-  std::span<const byte> rdata() const { return {data.get() + 10, rdlength()}; }
+  std::span<const byte> rdata() const { return {data.get() + RR_RDATA_OFFSET, rdlength()}; }
 
 private:
   std::unique_ptr<byte[]> data;
 };
+
 /// @brief deserialize the resource record
 std::expected<std::pair<std::string, RR>, errc> deserialized(std::span<const byte> &src,
                                                              DnDecompressor &decompressor);
+
+class RRSerializer {
+private:
+  std::span<byte> &buf;
+
+public:
+  RRSerializer(std::span<byte> &buf) : buf(buf) {}
+  RRSerializer &type(Type type) {
+    type.serialized(buf);
+    return *this;
+  }
+  RRSerializer &class_(Class class_) {
+    class_.serialized(buf);
+    return *this;
+  }
+  RRSerializer &ttl(std::uint32_t ttl) {
+    xsl::serialized(buf, htonl(ttl));
+    return *this;
+  }
+  RRSerializer &rdata(std::span<const byte> rdata) {
+    xsl::serialized(buf, htons(rdata.size()));
+    memcpy(buf.data(), rdata.data(), rdata.size());
+    buf = buf.subspan(rdata.size());
+    return *this;
+  }
+};
+
 XSL_NET_DNS_NE
 #endif

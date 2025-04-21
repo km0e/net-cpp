@@ -100,12 +100,10 @@ public:
    * @param buf the buffer to store the parsed data
    * @return Task<errc>
    */
-  template <ABILike ABI>
-  Task<errc> read(ABI& reader, ParseData& buf) {
-    using abi_traits_type = AIOTraits<ABI>;
+  template <AsyncRead R>
+  Task<errc> read(R& reader, ParseData& buf) {
     while (true) {
-      auto [sz, err]
-          = co_await abi_traits_type::read(reader, this->buffer.front().span(this->used_size));
+      auto [sz, err] = co_await reader.read(this->buffer.front().span(this->used_size));
       if (err) {
         co_return std::move(*err);
       }
@@ -141,7 +139,7 @@ private:
           reinterpret_cast<const char*>(front.data.get() + this->parsed_size + len), sz - len);
       buf = ParseData{std::exchange(this->buffer, {}), std::move(*req), std::move(content_part)};
       this->reset();
-      LOG6("parsed request: {} {}", buf.request.method, buf.request.path);
+      log_trace1("parsed request: {} {}", buf.request.method, buf.request.path);
       return {};
     }
     if (req.error() == errc::resource_unavailable_try_again) {
@@ -158,21 +156,10 @@ private:
     } else {
       this->reset();
     }
-    LOG5("parse error: {}", std::make_error_code(req.error()).message());
+    log_debug("parse error: {}", std::make_error_code(req.error()).message());
     return req.error();
   }
 };
 
 XSL_HTTP_NE
-XSL_IO_NB
-template <class Traits>
-struct AIOTraits<_net::http::Parser<Traits>> {
-  using value_type = _net::http::ParseData;
-  using device_type = _net::http::Parser<Traits>;
-  template <ABILike ABI>
-  static constexpr Task<errc> read(device_type& dev, ABI& reader, value_type& buf) {
-    return dev.read(reader, buf);
-  }
-};
-XSL_IO_NE
 #endif

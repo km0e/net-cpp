@@ -28,8 +28,8 @@ XSL_NET_DNS_NB
  * @param compressor domain name compressor
  * @return errc
  */
-constexpr errc serialized(std::span<byte> &buf, const std::string_view &dn, Type type,
-                               Class class_, DnCompressor &compressor) {
+constexpr errc serialized(std::span<byte> &buf, const std::string_view &dn, Type type, Class class_,
+                          DnCompressor &compressor) {
   auto status = compressor.prepare(dn);
   if (!status) {
     return status.error();

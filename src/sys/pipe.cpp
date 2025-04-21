@@ -8,9 +8,10 @@
  * @copyright Copyright (c) 2024
  *
  */
+#include "xsl/sys/pipe.h"
+
 #include "xsl/logctl.h"
 #include "xsl/sys/def.h"
-#include "xsl/sys/pipe.h"
 #include "xsl/sys/sync.h"
 
 #include <fcntl.h>
@@ -22,7 +23,7 @@ XSL_SYS_NB
 std::optional<std::pair<PipeReadDevice, PipeWriteDevice>> pipe() {
   int fds[2];
   if (pipe2(fds, O_NONBLOCK) == -1) {
-    LOG2("Failed to create pipe, err: {}", strerror(errno));
+    log_error("Failed to create pipe, err: {}", strerror(errno));
     return std::nullopt;
   }
   return std::make_pair(PipeReadDevice{fds[0]}, PipeWriteDevice{fds[1]});
@@ -31,7 +32,7 @@ std::optional<std::pair<PipeReadDevice, PipeWriteDevice>> pipe() {
 std::optional<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>> async_pipe(Poller& poller) {
   int fds[2];
   if (pipe2(fds, O_NONBLOCK | O_CLOEXEC) == -1) {
-    LOG2("Failed to create pipe, err: {}", strerror(errno));
+    log_error("Failed to create pipe, err: {}", strerror(errno));
     return std::nullopt;
   }
   auto [read_signal] = poll_by_signal<DefaultPollTraits>(poller, fds[0], IOM_EVENTS::IN);

@@ -40,11 +40,11 @@ namespace {
           int opt;
           socklen_t len = sizeof(opt);
           if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &opt, &len) == -1) [[unlikely]] {
-            LOG2("Failed to getsockopt: {}", strerror(errno));
+            log_error("Failed to getsockopt: {}", strerror(errno));
             return errno;
           }
           if (opt != 0) [[unlikely]] {
-            LOG2("Failed to connect: {}", strerror(opt));
+            log_error("Failed to connect: {}", strerror(opt));
             return opt;
           }
           return 0;
@@ -54,7 +54,7 @@ namespace {
           skt = std::move(async_skt).sync(poller);
           co_return std::unexpected{errc{res}};
         }
-        LOG5("Connected to fd: {}", async_skt.raw());
+        log_debug("Connected to fd: {}", async_skt.raw());
         co_return std::move(async_skt);
       }
     }
@@ -135,7 +135,7 @@ private:
     if (tmp_fd < 0) {
       return std::unexpected{errc(errno)};
     }
-    Debug("accept socket {}", tmp_fd);
+    log_debug("accept socket {}", tmp_fd);
     // char ip[NI_MAXHOST], port[NI_MAXSERV];
     // if (getnameinfo(&addr, addrlen, ip, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST |
     // NI_NUMERICSERV)

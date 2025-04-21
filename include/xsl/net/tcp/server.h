@@ -35,7 +35,6 @@ class Server<Ip<Version>> {
 public:
   using lower_layer_type = Ip<Version>;
   using io_dev_type = sys::tcp::AsyncSocket<lower_layer_type>;
-  using io_traits_type = AIOTraits<io_dev_type>;
   using value_type = std::unique_ptr<io_dev_type>;
 
   constexpr Server(std::string_view host, std::string_view port, auto &&poller, auto &&...args)
@@ -91,7 +90,7 @@ private:
 template <class LowerLayer>
 constexpr std::expected<Server<LowerLayer>, std::error_condition> make_server(
     std::string_view host, std::string_view port, const std::shared_ptr<Poller> &poller) {
-  LOG5("Start listening on {}:{}", host, port);
+  log_debug("Start listening on {}:{}", host, port);
   auto copy_poller = poller;
   auto skt = _sys::net::gai_bind<Tcp<LowerLayer>>(host.data(), port.data());
   if (!skt) {

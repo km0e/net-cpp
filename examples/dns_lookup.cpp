@@ -18,12 +18,11 @@
 
 #include <forward_list>
 #include <iostream>
-#include <ostream>
 #include <string>
 
-std::string ip = "8.8.8.8";
+// std::string ip = "8.8.8.8";
 // std::string ip = "1.1.1.1";
-// std::string ip = "223.5.5.5";
+std::string ip = "223.5.5.5";
 
 std::string port = "53";
 
@@ -38,22 +37,27 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
     std::cin >> buffer;
     auto res = co_await cli.query(buffer);
     if (!res) {
-      LOG5("Error: {}", to_string(res.error()));
+      log_debug("Error: {}", to_string(res.error()));
       continue;
     }
     char ip[16];
     const std::forward_list<dns::RR> &rrs = **res;
     std::println(std::cout, "{:10}{:10}{:10}{:10}", "Type", "Class", "TTL", "RData");
     for (auto &rr : rrs) {
-      std::print(std::cout, "{:10}{:10}{:<10}", rr.type().to_string_view(),
-                 rr.class_().to_string_view(), rr.ttl());
+      std::print(std::cout, "{:10}{:10}{:<10}", rr.type(), rr.class_(), rr.ttl());
       if (rr.type() == dns::Type::A) {
         auto data = rr.rdata();
         std::sprintf(ip, "%d.%d.%d.%d", data[0], data[1], data[2], data[3]);
         std::println(std::cout, "{:10}", ip);
       } else if (rr.type() == dns::Type::CNAME) {
-        std::println(std::cout, "{}",
-                     std::string_view(reinterpret_cast<const char *>(rr.rdata().data())));
+        auto buf = std::make_unique<char[]>(512);
+        dns::DnDecompressor decompressor{nullptr};
+        auto rdata = rr.rdata();
+        if (decompressor.decompress(rdata) != errc{}) {
+          std::println(std::cout, "decompress failed");
+        } else {
+          std::println(std::cout, "{:10}", decompressor.dn());
+        }
       }
     }
   }

@@ -8,8 +8,9 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/def.h"
 #include "xsl/ser.h"
+
+#include "xsl/def.h"
 #include "xsl/wheel.h"
 
 #include <gtest/gtest.h>

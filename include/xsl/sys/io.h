@@ -13,6 +13,8 @@
 #  define XSL_SYS_IO
 #  include "xsl/byte.h"
 #  include "xsl/io/def.h"
+#  include "xsl/io/ext.h"
+#  include "xsl/logctl.h"
 #  include "xsl/sys/def.h"
 
 #  include <fcntl.h>
@@ -33,7 +35,7 @@ Task<io::Result> read(RawHandle _raw, std::span<byte> buf, const Signal<1, Point
   do {
     ssize_t n = ::read(_raw, buf.data(), buf.size());
     if (n >= 0) {
-      LOG6("{} recv {} bytes", _raw, n);
+      log_trace1("{} recv {} bytes", _raw, n);
       co_return {static_cast<std::size_t>(n)};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
       if (!co_await sig) {
@@ -87,7 +89,7 @@ template <class Dev>
 Task<io::Result> write_file(Dev &dev, io::WriteFileHint hint) {
   int ffd = open(hint.path.c_str(), O_RDONLY | O_CLOEXEC);
   if (ffd == -1) {
-    LOG2("open file failed");
+    log_error("open file failed");
     co_return io::Result{0, {errc(errno)}};
   }
   Defer defer{[ffd] { close(ffd); }};
@@ -97,14 +99,15 @@ Task<io::Result> write_file(Dev &dev, io::WriteFileHint hint) {
   auto pa_size = map_size + (offset - pa_offset);
   auto *src = mmap(nullptr, pa_size, PROT_READ, MAP_PRIVATE, ffd, pa_offset);
   if (src == MAP_FAILED) {
-    LOG2("mmap failed");
+    log_error("mmap failed");
     co_return io::Result{0, {errc(errno)}};
   }
   Defer defer2{[src, pa_size] { munmap(src, pa_size); }};
   std::span<byte> data{reinterpret_cast<byte *>(src) + (offset - pa_offset), map_size};
-  Debug("ready to send {}", data.size());
+  log_debug("ready to send {}", data.size());
   co_return co_await dev.write(data);
 }
+
 struct FileTxTraits {
   Task<io::Result> write(this auto &&self, std::span<const byte> data) {
     return _sys::write(self.raw(), data, self.write_signal());

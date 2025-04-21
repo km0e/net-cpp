@@ -8,7 +8,6 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "CLI/CLI.hpp"
 #include "xsl/coro.h"
 
 #include <gtest/gtest.h>
@@ -16,40 +15,40 @@
 #include <cassert>
 #include <cstddef>
 #include <memory>
-#include <string>
 using namespace xsl;
 
-std::size_t TEST_COUNT = 1;
+bool safe = false;
 
-Task<int> bar(std::unique_ptr<int>& ptr) {
-  int res = *ptr + 1;
-  co_return res;
+const size_t ALIVE_MAGIC = 0xdeadbeef;
+
+struct CheckDestructor {
+  std::unique_ptr<size_t> num = std::make_unique<size_t>(ALIVE_MAGIC);
+  CheckDestructor() = default;
+  CheckDestructor(CheckDestructor&&) = default;
+  CheckDestructor(const CheckDestructor&) = delete;
+  ~CheckDestructor() { this->num = 0; }
+};
+
+Task<size_t> bar(CheckDestructor& c) {
+  auto magic = *c.num;
+  co_return magic;
 }
 
 auto unsafe_bar() {
-  auto ptr = std::make_unique<int>(42);
-  return bar(ptr);
-}
-auto safe_bar() {
-  auto ptr = std::make_unique<int>(42);
-  return ArgGuard{bar, std::move(ptr)};
+  auto c = CheckDestructor{};
+  return bar(c);
 }
 
+auto safe_bar() { return ArgGuard{bar, CheckDestructor{}}; }
+
 TEST(ArgGuard, Basic) {
-  auto N = TEST_COUNT;
-  while (N--) {
-    auto unsafe = unsafe_bar();
-    auto safe = safe_bar();
-    ASSERT_NE(std::move(unsafe).block(), 43);
-    ASSERT_EQ(block(std::move(safe)), 43);
-  }
+  log_info("safe mode");
+  ASSERT_EQ(block(safe_bar()), ALIVE_MAGIC);
+  log_info("unsafe mode");
+  ASSERT_NE(unsafe_bar().block(), ALIVE_MAGIC);  /// will crash
 }
 
 int main(int argc, char** argv) {
-  CLI::App app{"Echo server"};
-  app.add_option("-c,--count", TEST_COUNT, "Test count");
-  CLI11_PARSE(app, argc, argv);
-
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

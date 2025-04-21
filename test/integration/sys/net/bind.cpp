@@ -8,13 +8,11 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "gtest/gtest.h"
-#include "xsl/feature.h"
-#include "xsl/logctl.h"
-#include "xsl/sys.h"
-
 #include <CLI/CLI.hpp>
 #include <gtest/gtest.h>
+#include <xsl/feature.h>
+#include <xsl/logctl.h>
+#include <xsl/sys.h>
 
 #include <cstdint>
 #include <string>
@@ -44,7 +42,7 @@ protected:
     poller = std::make_shared<Poller>();
     poller_thread = std::thread([this] {
       poller->run();
-      LOG5("Poller shutdown");
+      log_debug("Poller shutdown");
     });
   }
   template <class Traits>
@@ -76,7 +74,7 @@ protected:
   void stop_poller() {
     poller->shutdown();
     poller_thread.join();
-    LOG5("Poller joined");
+    log_debug("Poller joined");
   }
 
 public:
@@ -87,7 +85,7 @@ TEST_F(AsyncSocketIOFixture, tcp_bind) {
   using namespace xsl;
   auto res_skt = net::gai_bind<TcpIpv4>(port);
   if (!res_skt.has_value()) {
-    LOG5("Failed to bind: {}", res_skt.error().message());
+    log_debug("Failed to bind: {}", res_skt.error().message());
   }
   ASSERT_EQ(res_skt->listen(), errc{}) << "Failed to listen";
   ASSERT_TRUE(res_skt.has_value());

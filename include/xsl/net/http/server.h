@@ -17,7 +17,6 @@
 #  include "xsl/net/http/context.h"
 #  include "xsl/net/http/def.h"
 
-#  include <expected>
 #  include <memory>
 #  include <utility>
 
@@ -26,12 +25,10 @@ template <class LowerServer>
 class Server {
 public:
   using lower_type = LowerServer;
-  using aio_traits_type = AIOTraits<typename lower_type::io_dev_type>;
-  using io_dev_type = typename aio_traits_type::value_type;
-  using in_dev_type = typename aio_traits_type::in_dev_type;
-  using out_dev_type = typename aio_traits_type::out_dev_type;
-  using context_type = HandleContext<in_dev_type, out_dev_type>;
-  using handler_type = Handler<in_dev_type, out_dev_type>;
+
+  using io_dev_type = typename lower_type::io_dev_type;
+  using context_type = HandleContext<io_dev_type, io_dev_type>;
+  using handler_type = Handler<io_dev_type, io_dev_type>;
 
   constexpr Server(lower_type&& server) : server(std::move(server)) {}
 
@@ -46,7 +43,7 @@ public:
     while (true) {
       auto [sz, err] = co_await this->server.read(std::span{&conn, 1});
       if (sz != 1 || err) {
-        LOG2("accept error: {}", std::make_error_code(err.value()).message());
+        log_error("accept error: {}", std::make_error_code(err.value()).message());
         continue;
       }
       co_yield http::serve_connection(std::move(conn), service_ptr);

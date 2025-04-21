@@ -8,13 +8,12 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/feature.h"
-#include "xsl/logctl.h"
-#include "xsl/sys.h"
-#include "xsl/wheel.h"
-
 #include <CLI/CLI.hpp>
 #include <gtest/gtest.h>
+#include <xsl/feature.h>
+#include <xsl/logctl.h>
+#include <xsl/sys.h>
+#include <xsl/wheel.h>
 
 #include <cstdlib>
 #include <string>
@@ -47,7 +46,7 @@ protected:
     poller = std::make_shared<Poller>();
     poller_thread = std::thread([this] {
       poller->run();
-      LOG5("Poller shutdown");
+      log_debug("Poller shutdown");
     });
   }
 
@@ -82,7 +81,7 @@ protected:
   void stop_poller() {
     poller->shutdown();
     poller_thread.join();
-    LOG5("Poller joined");
+    log_debug("Poller joined");
   }
 
 public:

@@ -8,8 +8,9 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/sys/def.h"
 #include "xsl/sys/sync.h"
+
+#include "xsl/sys/def.h"
 
 #include <csignal>
 XSL_SYS_NB
@@ -25,13 +26,12 @@ constexpr IOM_EVENTS operator~(IOM_EVENTS a) {
   return static_cast<IOM_EVENTS>(~static_cast<uint32_t>(a));
 }
 
-
 Poller::Poller()
     : Poller(
           std::make_shared<HandleProxy>([](std::function<PollHandleHint()>&& f) { return f(); })) {}
 Poller::Poller(std::shared_ptr<HandleProxy>&& proxy) : fd(-1), handlers(), proxy(std::move(proxy)) {
   this->fd = epoll_create(1);
-  LOG5("Poller fd: {}", this->fd.load());
+  log_debug("Poller fd: {}", this->fd.load());
 }
 Poller::~Poller() { this->shutdown(); }
 
@@ -45,7 +45,7 @@ bool Poller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
   if (epoll_ctl(this->fd, EPOLL_CTL_ADD, fd, &event) == -1) {
     return false;
   }
-  LOG5("Register {} for fd: {}", to_string(events), fd);
+  log_debug("Register {} for fd: {}", to_string(events), fd);
   guard->insert_or_assign(fd, make_shared<PollHandler>(std::move(handler)));
   return true;
 }

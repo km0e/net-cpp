@@ -12,6 +12,7 @@
 #ifndef XSL_NET_HTTP_SERVICE
 #  define XSL_NET_HTTP_SERVICE
 #  include "xsl/coro.h"
+#  include "xsl/io/ai.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/component/redirect.h"
 #  include "xsl/net/http/component/static.h"
@@ -25,12 +26,10 @@ XSL_HTTP_NB
 using namespace xsl::io;
 
 namespace impl_service {
-  template <ABILike ABI, ABOLike ABO, RouterLike<std::size_t> R>
+  template <AsyncRead ABI, AsyncWrite ABO, RouterLike<std::size_t> R>
   struct InnerDetails {
-    using abi_traits_type = AIOTraits<ABI>;
-    using abo_traits_type = AIOTraits<ABO>;
-    using in_dev_type = typename abi_traits_type::in_dev_type;
-    using out_dev_type = typename abo_traits_type::out_dev_type;
+    using in_dev_type = ABI;
+    using out_dev_type = ABO;
 
     constexpr InnerDetails() : router{}, handlers{}, status_handlers{} {}
     R router;
@@ -38,13 +37,13 @@ namespace impl_service {
     std::unordered_map<Status, Handler<in_dev_type, out_dev_type>> status_handlers;
   };
 
-  template <ABILike ABI, ABOLike ABO, RouterLike<std::size_t> R>
+  template <AsyncRead ABI, AsyncWrite ABO, RouterLike<std::size_t> R>
   class Service {
   public:
-    //<async byte reader
+    //<async reader
     using in_dev_type = ABI;
 
-    //<async byte writer
+    //<async writer
     using out_dev_type = ABO;
 
     using router_type = R;
@@ -58,7 +57,7 @@ namespace impl_service {
     constexpr Service(std::unique_ptr<details_type>&& details) : details(std::move(details)) {}
 
     Task<Response<out_dev_type>> operator()(Request<in_dev_type>&& request) {
-      Info("New request: {} {}", request.view.method, request.view.path);
+      log_info("New request: {} {}", request.view.method, request.view.path);
       auto route_ctx = RouteContext{request.method, request.view.path};
 
       auto route_res = this->details->router.route(route_ctx);
@@ -96,15 +95,13 @@ namespace impl_service {
  * @tparam LowerLayer the lower layer type, such as Tcp<Ip<4>>
  * @tparam R the router type, such as Router
  */
-template <ABILike ABI, ABOLike ABO, RouterLike<std::size_t> R = Router>
+template <AsyncRead R, AsyncWrite W, RouterLike<std::size_t> Rt = Router>
 class Service {
 public:
-  using abi_traits_type = AIOTraits<ABI>;
-  using abo_traits_type = AIOTraits<ABO>;
-  using in_dev_type = typename abi_traits_type::in_dev_type;
-  using out_dev_type = typename abo_traits_type::out_dev_type;
+  using in_dev_type = R;
+  using out_dev_type = W;
   using handler_type = Handler<in_dev_type, out_dev_type>;
-  using router_type = R;
+  using router_type = Rt;
   using details_type = impl_service::InnerDetails<in_dev_type, out_dev_type, router_type>;
 
   constexpr Service() : tag(1), details{std::make_unique<details_type>()} {}
@@ -124,14 +121,14 @@ public:
   }
 
   constexpr void add_route(Method method, std::string_view path, handler_type&& handler) {
-    LOG4("Adding route: {}", path);
+    log_info("Adding route: {}", path);
     auto tag = this->tag++;
     this->details->handlers.try_emplace(tag, std::move(handler));
     this->details->router.add_route(method, path, std::move(tag));
   }
 
   constexpr void add_fallback(Method method, std::string_view path, handler_type&& handler) {
-    LOG4("Adding fallback: {}", path);
+    log_info("Adding fallback: {}", path);
     auto tag = this->tag++;
     this->details->handlers.try_emplace(tag, std::move(handler));
     this->details->router.add_fallback(method, path, std::move(tag));
@@ -145,7 +142,7 @@ public:
    * @return void
    */
   constexpr void redirect(Method method, std::string_view path, std::string_view target) {
-    LOG4("Redirecting: {} -> {}", path, target);
+    log_info("Redirecting: {} -> {}", path, target);
     auto tag = this->tag++;
     this->details->handlers.try_emplace(tag,
                                         create_redirect_handler<in_dev_type, out_dev_type>(target));
@@ -178,13 +175,13 @@ private:
   std::size_t tag;
   std::unique_ptr<details_type> details;
 };
-template <ABIOLike ABIO, RouterLike<std::size_t> R = Router>
-constexpr Service<typename ABIO::template rebind<In>, typename ABIO::template rebind<Out>, R>
-make_service() {
+template <AsyncReadWrite RW, RouterLike<std::size_t> R = Router>
+constexpr Service<RW, RW, R> make_service() {
   return {};
 }
+
 template <RouterLike<std::size_t> R = Router>
-constexpr Service<ABR, ABW> make_service() {
+constexpr Service<AsyncReadDevice, AsyncWriteDevice> make_service() {
   return {};
 }
 

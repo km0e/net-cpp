@@ -13,10 +13,8 @@
 #  define XSL_SYS_RAW_DEV
 #  include "xsl/coro.h"
 #  include "xsl/feature.h"
-#  include "xsl/io.h"
 #  include "xsl/io/def.h"
 #  include "xsl/sys/def.h"
-#  include "xsl/sys/io.h"
 #  include "xsl/sys/sync.h"
 
 #  include <type_traits>
@@ -78,10 +76,9 @@ struct RawReadDevice : public RawOwner {
   template <class _Self>
     requires(!std::is_reference_v<_Self>)
   constexpr decltype(auto) async(this _Self &&self, Poller &poller) noexcept {
-    using io_traits_type = IOTraits<_Self>;
     using poll_traits_type = typename _Self::poll_traits_type;
     auto signal = poll_by_signal<poll_traits_type>(poller, self.raw(), IOM_EVENTS::IN);
-    return typename io_traits_type::async_type{std::move(self).into_raw(), std::move(signal)};
+    return typename _Self::async_type{std::move(self).into_raw(), std::move(signal)};
   }
 };
 /// @brief RawWriteDevice is a wrapper for write-only file descriptor
@@ -90,10 +87,9 @@ struct RawWriteDevice : public RawOwner {
   template <class _Self>
     requires(!std::is_reference_v<_Self>)
   constexpr decltype(auto) async(this _Self &&self, Poller &poller) noexcept {
-    using io_traits_type = IOTraits<_Self>;
     using poll_traits_type = typename _Self::poll_traits_type;
     auto signal = poll_by_signal<poll_traits_type>(poller, self.raw(), IOM_EVENTS::OUT);
-    return typename io_traits_type::async_type{std::move(self).into_raw(), std::move(signal)};
+    return typename _Self::async_type{std::move(self).into_raw(), std::move(signal)};
   }
 };
 /// @brief RawReadWriteDevice is a wrapper for read-write file descriptor
@@ -111,7 +107,7 @@ struct RawReadWriteDevice : public RawOwner {
   }
 };
 /// @brief RawAsyncReadDevice is a wrapper for read-only file descriptor with async support
-struct RawAsyncReadDevice : public RawReadDevice, public FileRxTraits {
+struct RawAsyncReadDevice : public RawReadDevice {
   using Base = RawReadDevice;
 
   Signal _read_signal;
@@ -127,7 +123,7 @@ struct RawAsyncReadDevice : public RawReadDevice, public FileRxTraits {
   constexpr Signal &read_signal() noexcept { return _read_signal; }
 };
 /// @brief RawAsyncWriteDevice is a wrapper for write-only file descriptor with async support
-struct RawAsyncWriteDevice : public RawWriteDevice, public FileTxTraits {
+struct RawAsyncWriteDevice : public RawWriteDevice {
   using Base = RawWriteDevice;
 
   Signal _write_signal;
@@ -143,9 +139,7 @@ struct RawAsyncWriteDevice : public RawWriteDevice, public FileTxTraits {
   constexpr Signal &write_signal() noexcept { return _write_signal; }
 };
 /// @brief RawAsyncReadWriteDevice is a wrapper for read-write file descriptor with async support
-struct RawAsyncReadWriteDevice : public RawReadWriteDevice,
-                                 public FileRxTraits,
-                                 public FileTxTraits {
+struct RawAsyncReadWriteDevice : public RawReadWriteDevice {
 private:
   template <class SignalSet>
   constexpr RawAsyncReadWriteDevice(int fd, SignalSet &&signals) noexcept
@@ -233,77 +227,5 @@ using RawDevice = RawDeviceCompose<Flags...>::type;
 /// @brief RawReadDevice is a wrapper for read-only file descriptor
 template <class... Flags>
 using RawAsyncDevice = RawAsyncDeviceCompose<Flags...>::type;
-
-XSL_SYS_NE
-XSL_IO_NB
-
-template <>
-struct IOTraits<_sys::RawReadDevice> {
-  using value_type = byte;
-  using device_type = _sys::RawReadDevice;
-  using async_type = _sys::RawAsyncDeviceCompose<In<byte>>::type;
-
-  static io::Result read(device_type &, std::span<byte>) { std::unreachable(); }
-};
-
-template <>
-struct IOTraits<_sys::RawWriteDevice> {
-  using value_type = byte;
-  using device_type = _sys::RawWriteDevice;
-  using async_type = _sys::RawAsyncDeviceCompose<Out<byte>>::type;
-
-  static io::Result write(device_type &, std::span<const byte>) { std::unreachable(); }
-};
-
-template <>
-struct IOTraits<_sys::RawReadWriteDevice> {
-  using value_type = byte;
-  using device_type = _sys::RawReadWriteDevice;
-  using async_type = _sys::RawAsyncDeviceCompose<InOut<byte>>::type;
-
-  static io::Result read(device_type &, std::span<byte>) { std::unreachable(); }
-
-  static io::Result write(device_type &, std::span<const byte>) { std::unreachable(); }
-};
-
-template <>
-struct AIOTraits<_sys::RawAsyncReadDevice> {
-  using value_type = byte;
-  using in_dev_type = _sys::RawAsyncReadDevice;
-
-  static constexpr Task<Result> read(in_dev_type &dev, std::span<byte> buf) {
-    return dev.read(buf);
-  }
-};
-
-template <>
-struct AIOTraits<_sys::RawAsyncWriteDevice> {
-  using value_type = byte;
-  using out_dev_type = _sys::RawAsyncWriteDevice;
-
-  static constexpr Task<Result> write(out_dev_type &dev, std::span<const byte> buf) {
-    return dev.write(buf);
-  }
-
-  static constexpr Task<Result> write_file(out_dev_type &dev, io::WriteFileHint &&hint) {
-    return _sys::write_file(dev, std::move(hint));
-  }
-};
-
-template <>
-struct AIOTraits<_sys::RawAsyncReadWriteDevice> {
-  using value_type = byte;
-  using io_dev_type = _sys::RawAsyncReadWriteDevice;
-  using in_dev_type = io_dev_type::template rebind<In>;
-  using out_dev_type = io_dev_type::template rebind<Out>;
-
-  static constexpr Task<Result> read(io_dev_type &dev, std::span<byte> buf) {
-    return dev.read(buf);
-  }
-
-  static constexpr Task<Result> write(io_dev_type &dev, std::span<const byte> buf) {
-    return dev.write(buf);
-  }
-};
 XSL_IO_NE
 #endif

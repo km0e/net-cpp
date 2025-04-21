@@ -1,4 +1,5 @@
-target("xsl_dns")do
+target("xsl_dns")
+do
     set_kind("static")
     set_default(false)
     add_files("**.cpp")

@@ -9,8 +9,9 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/net/dns/def.h"
 #include "xsl/net/dns/utils.h"
+
+#include "xsl/net/dns/def.h"
 
 #include <cassert>
 #include <cstddef>
@@ -124,31 +125,6 @@ std::expected<std::size_t, errc> DnCompressor::prepare(std::string_view src) {
  *
  * @param dst
  */
-// void DnCompressor::compress(std::span<byte> dst) {
-//   if (_src.empty()) {
-//     *dst.data() = 0;
-//     return;
-//   }
-//   assert(dst.size() > 0
-//          && dst.size()
-//                 >= _src.size() - suffix_len + 2 + (0 < suffix_len && suffix_len < _src.size()));
-//   memcpy(dst.data() + 1, _src.data(), _src.size() - suffix_len);
-//   std::size_t i = 0;
-//   for (std::size_t j = 0; i < _src.size() - suffix_len; j++) {
-//     dst[i] = lens[j];
-//     i += lens[j] + 1;  // jump to the next label length field
-//   }
-//   if (suffix_len) {
-//     dst[i++] = 0xc0 | suffix_off >> 8;  // high 2 bits should be 11
-//   }
-//   dst[i++] = suffix_off;  // low 8 bits or 0 if suffix_len is 0
-
-//   if (i > 2) {
-//     dnptrs[dnptrs_cnt] = dst.data();  // store the pointer
-//     dnptrs_cnt++;                     // increase the pointer count
-//   }
-//   this->reset();
-// }
 void DnCompressor::compress(std::span<byte> &dst) {
   if (_src.empty()) {
     *dst.data() = 0;
@@ -183,7 +159,7 @@ constexpr void DnCompressor::reset() {
 }
 
 errc DnDecompressor::decompress(std::span<const byte> &src) {
-  this->buf_end = 0;/// reset the buffer
+  this->buf_end = 0;  /// reset the buffer
   const byte *ptr = src.data();
   for (;;) {
     src = src.subspan(1);

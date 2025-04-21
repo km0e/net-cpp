@@ -13,13 +13,11 @@
 #  define XSL_IO
 #  include "xsl/def.h"
 #  include "xsl/io/byte.h"
-#  include "xsl/io/def.h"
+#  include "xsl/io/ext.h"
 #  include "xsl/io/splice.h"
 
 #  include <fcntl.h>
 XSL_NB
-using io::AIOTraits;
-using io::IOTraits;
 
 using io::Block;
 using io::splice;

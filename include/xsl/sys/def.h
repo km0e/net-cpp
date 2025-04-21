@@ -24,8 +24,8 @@ enum class DeviceAttribute {
   CloseOnExec = O_CLOEXEC,
 };
 
-template <class Dev>
-concept AsyncRawDeviceLike = requires { typename io::AIOTraits<Dev>::value_type; };
+// template <class Dev>
+// concept AsyncRawDeviceLike = requires { typename io::AIOTraits<Dev>::value_type; };
 
 XSL_SYS_NE
 #endif

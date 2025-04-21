@@ -12,7 +12,7 @@
 
 #ifndef XSL_NET_HTTP_COMPONENT_STATIC
 #  define XSL_NET_HTTP_COMPONENT_STATIC
-#  include "xsl/io/def.h"
+#  include "xsl/io.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/component/compress.h"
 #  include "xsl/net/http/context.h"
@@ -38,13 +38,12 @@ struct StaticFileConfig {
   FixedVector<std::string_view> compress_encodings = {};
   bool compress = false;
 };
-template <ABILike ABI, ABOLike ABO>
+
+template <AsyncRead R, AsyncWrite W>
 class StaticFileServer {
 public:
-  using abi_traits_type = AIOTraits<ABI>;
-  using abo_traits_type = AIOTraits<ABO>;
-  using in_dev_type = typename abi_traits_type::in_dev_type;
-  using out_dev_type = typename abo_traits_type::out_dev_type;
+  using in_dev_type = R;
+  using out_dev_type = W;
 
   constexpr StaticFileServer(StaticFileConfig&& cfg) : cfg(std::move(cfg)) {}
   constexpr std::optional<Status> sendfile(HandleContext<in_dev_type, out_dev_type>& ctx,
@@ -54,10 +53,10 @@ public:
         ok_media_type) {  // check if the media type is acceptable
       auto media_types = parse_accept(*ok_media_type);
       if (!std::ranges::any_of(media_types, [content_type](const auto& media) {
-            LOG6("accept media: {}", media.first.to_string_view());
+            log_trace1("accept media: {}", media.first.to_string_view());
             return media.first.type_includes(content_type);
           })) {
-        Warning("not acceptable: {}", content_type.to_string_view());
+        log_warning("not acceptable: {}", content_type.to_string_view());
         return Status::NOT_ACCEPTABLE;
       }
     }
@@ -69,12 +68,12 @@ public:
       auto last_modified = std::filesystem::last_write_time(path);
       auto if_modified_since_time = from_date_string<std::chrono::file_clock>(*if_modified_since);
       if (if_modified_since_time && *if_modified_since_time >= last_modified) {
-        Debug("not modified: {}", path.native());
+        log_debug("not modified: {}", path.native());
         return Status::NOT_MODIFIED;
       }
     }
 
-    Debug("check compress: {}", path.native());
+    log_debug("check compress: {}", path.native());
     /// Check whether compressed file detection is enabled and find the corresponding files
     if (!this->cfg.compress_encodings.empty()) {
       if (auto accept_encoding = ctx.request.get_header("Accept-Encoding"); accept_encoding) {
@@ -101,14 +100,14 @@ public:
           }
           path += ext->second;
           auto try_sendfile_res = this->try_sendfile(ctx, path, content_type);
-          Debug("try_sendfile: path: {} encoding: {}", path.native(), encoding);
+          log_debug("try_sendfile: path: {} encoding: {}", path.native(), encoding);
           path = path.replace_extension();
           if (!try_sendfile_res) {
             ctx._response->_part.headers.emplace("Content-Encoding", encoding);
             return std::nullopt;
           }
-          Debug("try_sendfile failed: path: {} error: {}", path.native(),
-                try_sendfile_res->to_reason_phrase());
+          log_debug("try_sendfile failed: path: {} error: {}", path.native(),
+                    try_sendfile_res->to_reason_phrase());
         }
       }
     }
@@ -132,12 +131,12 @@ protected:
 
     auto file_size = std::filesystem::file_size(path, ec);  /// get the file size
     if (ec) {
-      LOG2("file_size failed: path: {} error: {}", path.native(), ec.message());
+      log_error("file_size failed: path: {} error: {}", path.native(), ec.message());
       return Status::INTERNAL_SERVER_ERROR;
     }
     auto last_modified = std::filesystem::last_write_time(path, ec);
     if (ec) {
-      LOG2("last_write_time failed: path: {} error: {}", path.native(), ec.message());
+      log_error("last_write_time failed: path: {} error: {}", path.native(), ec.message());
       return Status::INTERNAL_SERVER_ERROR;
     }
     ResponsePart part{Status::OK};
@@ -145,24 +144,20 @@ protected:
     part.headers.emplace("Last-Modified", to_date_string(last_modified));
     part.headers.emplace("Content-Type", content_type.to_string_view());
 
-    auto send_file
-        = [hint = WriteFileHint{path.native(), 0, file_size}](out_dev_type& awd) mutable {
-            return abo_traits_type::write_file(awd, std::move(hint));
-          };
+    auto send_file = [hint = WriteFileHint{path.native(), 0, file_size}](
+                         out_dev_type& awd) mutable { return awd.write_file(std::move(hint)); };
     ctx.resp(std::move(part), std::move(send_file));
     return std::nullopt;
   }
 };
 
-template <ABILike ABI, ABOLike ABO>
+template <AsyncRead ABI, AsyncWrite ABO>
 class FileRouteHandler : public StaticFileServer<ABI, ABO> {
   using Base = StaticFileServer<ABI, ABO>;
 
 public:
-  using abi_traits_type = AIOTraits<ABI>;
-  using abo_traits_type = AIOTraits<ABO>;
-  using in_dev_type = typename abi_traits_type::in_dev_type;
-  using out_dev_type = typename abo_traits_type::out_dev_type;
+  using in_dev_type = ABI;
+  using out_dev_type = ABO;
 
   constexpr FileRouteHandler(StaticFileConfig&& cfg) : Base(std::move(cfg)), content_type{} {
     this->content_type = MediaTypeView::from_extension(this->cfg.path.extension().native());
@@ -178,43 +173,41 @@ public:
   MediaTypeView content_type;
 };
 
-template <ABILike ABI, ABOLike ABO>
+template <AsyncRead ABI, AsyncWrite ABO>
 class FolderRouteHandler : public StaticFileServer<ABI, ABO> {
   using Base = StaticFileServer<ABI, ABO>;
 
 public:
-  using abi_traits_type = AIOTraits<ABI>;
-  using abo_traits_type = AIOTraits<ABO>;
-  using in_dev_type = typename abi_traits_type::in_dev_type;
-  using out_dev_type = typename abo_traits_type::out_dev_type;
+  using in_dev_type = ABI;
+  using out_dev_type = ABO;
 
   constexpr FolderRouteHandler(StaticFileConfig&& cfg) : Base(std::move(cfg)) {}
   constexpr ~FolderRouteHandler() {}
   HandleResult operator()(HandleContext<in_dev_type, out_dev_type>& ctx) {
-    LOG5("FolderRouteHandler: {}", ctx.current_path);
+    log_debug("FolderRouteHandler: {}", ctx.current_path);
     if (ctx.current_path.empty()) {
-      LOG5("FolderRouteHandler: empty path");
+      log_debug("FolderRouteHandler: empty path");
       co_return Status::NOT_FOUND;
     }
     auto full_path = this->cfg.path;
     full_path /= (ctx.current_path.substr(1));
     auto content_type = MediaTypeView::from_extension(full_path.extension().native());
-    LOG5("FolderRouteHandler: full path: {}", full_path.native());
+    log_debug("FolderRouteHandler: full path: {}", full_path.native());
     co_return this->sendfile(ctx, full_path, content_type);
   }
 };
 /// @brief create a static handler from the config
-template <ABILike ABI, ABOLike ABO>
-constexpr Handler<ABI, ABO> create_static_handler(StaticFileConfig&& cfg) {
-  using handler_type = Handler<ABI, ABO>;
+template <AsyncRead R, AsyncWrite W>
+constexpr Handler<R, W> create_static_handler(StaticFileConfig&& cfg) {
+  using handler_type = Handler<R, W>;
   rt_assert(!cfg.path.empty(), "path is empty");
   std::error_code ec;
   auto status = std::filesystem::status(cfg.path, ec);
   rt_assert(!ec, std::format("stat failed: {}", ec.message()));
   if (status.type() == std::filesystem::file_type::directory) {
-    return handler_type{FolderRouteHandler<ABI, ABO>{std::move(cfg)}};
+    return handler_type{FolderRouteHandler<R, W>{std::move(cfg)}};
   } else if (status.type() == std::filesystem::file_type::regular) {
-    auto frh = FileRouteHandler<ABI, ABO>(std::move(cfg));
+    auto frh = FileRouteHandler<R, W>(std::move(cfg));
     return handler_type{std::move(frh)};
   }
   rt_assert(false, "path is not a file or directory");

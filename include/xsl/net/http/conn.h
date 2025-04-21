@@ -13,9 +13,8 @@
 #  define XSL_NET_HTTP_CONN
 #  include "xsl/coro.h"
 #  include "xsl/coro/guard.h"
-#  include "xsl/io.h"
 #  include "xsl/io/ai.h"
-#  include "xsl/io/byte.h"
+#  include "xsl/io/def.h"
 #  include "xsl/io/dyn.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net/http/def.h"
@@ -31,8 +30,8 @@ using namespace xsl::io;
 /**
  * @brief serve the connection
  *
- * @tparam ABr the async byte reader
- * @tparam ABO the async byte writer
+ * @tparam AsyncRead the async reader
+ * @tparam AsyncWrite the async writer
  * @tparam Service the service type
  * @tparam ParserTraits the parser traits
  * @param ard
@@ -42,46 +41,45 @@ using namespace xsl::io;
  * @return Task<void>
  * @note this function would not save the state of the arguments, do not directly call it
  */
-template <ABILike ABI, ABOLike ABO, class Service, class ParserTraits = HttpParseTraits>
-Task<void> imm_serve_connection(ABI& ard, ABO& awd, Service& service,
-                                Parser<ParserTraits>& parser) {
+template <AsyncRead R, AsyncWrite W, class Service, class ParserTraits = HttpParseTraits>
+Task<void> imm_serve_connection(R& ard, W& awd, Service& service, Parser<ParserTraits>& parser) {
   ParseData parse_data{};
   while (true) {
     {
-      LOG5("Start to read request");
+      log_debug("Start to read request");
       auto res = co_await parser.read(ard, parse_data);
       if (res != errc{}) {
-        LOG3("recv error: {}", std::make_error_code(res).message());
+        log_warning("recv error: {}", std::make_error_code(res).message());
         break;
       }
-      LOG5("New request: {} {}", parse_data.request.method, parse_data.request.path);
+      log_debug("New request: {} {}", parse_data.request.method, parse_data.request.path);
     }
 
     Request request{std::move(parse_data.buffer), std::move(parse_data.request),
                     parse_data.content_part, ard};
-    Debug("ready to serve request: {}", request.view.path);
-    Response<ABO> resp = co_await (service)(
+    log_debug("ready to serve request: {}", request.view.path);
+    Response<W> resp = co_await (service)(
         std::move(request));  // TODO: may be will also need to be a coroutine in the future
-    Debug("ready to send response: {}", resp._part.status_code.to_reason_phrase());
+    log_debug("ready to send response: {}", resp._part.status_code.to_reason_phrase());
     auto [sz, err] = co_await resp.sendto(awd);
     if (err) {
-      LOG3("send error: {}", std::make_error_code(*err).message());
+      log_warning("send error: {}", std::make_error_code(*err).message());
     }
   }
 }
 
-template <ABILike ABI, ABOLike ABO, class Service, class ParserTraits = HttpParseTraits>
-decltype(auto) serve_connection(ABI&& _abr, ABO&& _abw, std::shared_ptr<Service>&& service,
+template <AsyncRead R, AsyncWrite W, class Service, class ParserTraits = HttpParseTraits>
+decltype(auto) serve_connection(R&& _abr, W&& _abw, std::shared_ptr<Service>&& service,
                                 Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
-  using l_in_dev_type = std::decay_t<ABI>;
-  using l_out_dev_type = std::decay_t<ABO>;
+  using l_in_dev_type = std::decay_t<R>;
+  using l_out_dev_type = std::decay_t<W>;
   using r_in_dev_type = typename Service::in_dev_type;
   using r_out_dev_type = typename Service::out_dev_type;
   static_assert(std::is_same_v<l_in_dev_type, r_in_dev_type>
-                    || std::is_same_v<r_in_dev_type, AsyncReadDevice<byte>>,
+                    || std::is_same_v<r_in_dev_type, AsyncReadDevice>,
                 "Input device type mismatched with the service");
   static_assert(std::is_same_v<l_out_dev_type, r_out_dev_type>
-                    || std::is_same_v<r_out_dev_type, AsyncWriteDevice<byte>>,
+                    || std::is_same_v<r_out_dev_type, AsyncWriteDevice>,
                 "Output device type mismatched with the service");
   using final_in_dev_type = std::conditional_t<std::is_same_v<l_in_dev_type, r_in_dev_type>,
                                                r_in_dev_type, DynAsyncReadDevice<l_in_dev_type>>;
@@ -93,7 +91,7 @@ decltype(auto) serve_connection(ABI&& _abr, ABO&& _abw, std::shared_ptr<Service>
   };
   return _coro::ArgGuard<decltype(fn), final_in_dev_type, final_out_dev_type,
                          std::shared_ptr<Service>, Parser<ParserTraits>>{
-      fn, std::forward<ABI>(_abr), std::forward<ABO>(_abw), std::move(service), std::move(parser)};
+      fn, std::forward<R>(_abr), std::forward<W>(_abw), std::move(service), std::move(parser)};
 }
 /**
  * @brief serve the connection
@@ -106,19 +104,19 @@ decltype(auto) serve_connection(ABI&& _abr, ABO&& _abw, std::shared_ptr<Service>
  * @param parser
  * @return Task<void>
  */
-template <ABIOLike ABIO, class Service, class ParserTraits = HttpParseTraits>
-decltype(auto) serve_connection(ABIO&& _ab, std::shared_ptr<Service>&& service,
+template <AsyncReadWrite RW, class Service, class ParserTraits = HttpParseTraits>
+decltype(auto) serve_connection(RW&& _ab, std::shared_ptr<Service>&& service,
                                 Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
-  using l_io_dev_type = std::decay_t<ABIO>;
+  using l_io_dev_type = std::decay_t<RW>;
   using l_in_dev_type = typename l_io_dev_type::in_dev_type;
   using l_out_dev_type = typename l_io_dev_type::out_dev_type;
   using r_in_dev_type = typename Service::in_dev_type;
   using r_out_dev_type = typename Service::out_dev_type;
   static_assert(std::is_same_v<l_in_dev_type, r_in_dev_type>
-                    || std::is_same_v<r_in_dev_type, AsyncReadDevice<byte>>,
+                    || std::is_same_v<r_in_dev_type, AsyncReadDevice>,
                 "Input device type mismatched with the service");
   static_assert(std::is_same_v<l_out_dev_type, r_out_dev_type>
-                    || std::is_same_v<r_out_dev_type, AsyncWriteDevice<byte>>,
+                    || std::is_same_v<r_out_dev_type, AsyncWriteDevice>,
                 "Output device type mismatched with the service");
   if constexpr (std::is_same_v<l_io_dev_type, r_in_dev_type>
                 && std::is_same_v<l_io_dev_type, r_out_dev_type>) {
@@ -133,22 +131,20 @@ decltype(auto) serve_connection(ABIO&& _ab, std::shared_ptr<Service>&& service,
   }
 }
 
-template <ABIOLike ABIO, class Service, class ParserTraits = HttpParseTraits>
+template <AsyncReadWrite ABIO, class Service, class ParserTraits = HttpParseTraits>
 decltype(auto) serve_connection(std::unique_ptr<ABIO>&& _ab, std::shared_ptr<Service> service,
                                 Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
-  using l_io_dev_type = std::decay_t<ABIO>;
-  using l_in_dev_type = AIOTraits<l_io_dev_type>::in_dev_type;
-  using l_out_dev_type = AIOTraits<l_io_dev_type>::out_dev_type;
+  using io_dev_type = std::decay_t<ABIO>;
   using r_in_dev_type = typename Service::in_dev_type;
   using r_out_dev_type = typename Service::out_dev_type;
-  static_assert(std::is_same_v<l_in_dev_type, r_in_dev_type>
-                    || std::is_same_v<r_in_dev_type, AsyncReadDevice<byte>>,
-                "Input device type mismatched with the service");
-  static_assert(std::is_same_v<l_out_dev_type, r_out_dev_type>
-                    || std::is_same_v<r_out_dev_type, AsyncWriteDevice<byte>>,
+  static_assert(
+      std::is_same_v<io_dev_type, r_in_dev_type> || std::is_same_v<r_in_dev_type, AsyncReadDevice>,
+      "Input device type mismatched with the service");
+  static_assert(std::is_same_v<io_dev_type, r_out_dev_type>
+                    || std::is_same_v<r_out_dev_type, AsyncWriteDevice>,
                 "Output device type mismatched with the service");
-  if constexpr (std::is_same_v<l_io_dev_type, r_in_dev_type>
-                && std::is_same_v<l_io_dev_type, r_out_dev_type>) {
+  if constexpr (std::is_same_v<io_dev_type, r_in_dev_type>
+                && std::is_same_v<io_dev_type, r_out_dev_type>) {
     return _coro::ArgGuard(
         [](auto& _ab, auto& _service, auto& _parser) {
           return imm_serve_connection(*_ab, *_ab, *_service, _parser);
@@ -176,7 +172,7 @@ public:
           }
           co_return Result{i, res.error()};
         }
-        LOG4("New request: {} {}", parse_data.request.method, parse_data.request.path);
+        log_info("New request: {} {}", parse_data.request.method, parse_data.request.path);
       }
       req = Request<typename _Conn::in_dev_type>{std::move(parse_data.buffer),
                                                  std::move(parse_data.request),
@@ -206,13 +202,12 @@ protected:
 template <class... IO>
 class Connection;
 
-template <ABIOLike ABIO>
-class Connection<ABIO> : public ConnectionBase {
+template <AsyncReadWrite RW>
+class Connection<RW> : public ConnectionBase {
   using Base = ConnectionBase;
-  using io_dev_type = ABIO;
-  using abio_traits_type = AIOTraits<io_dev_type>;
-  using in_dev_type = typename abio_traits_type::in_dev_type;
-  using out_dev_type = typename abio_traits_type::out_dev_type;
+  using io_dev_type = RW;
+  using in_dev_type = RW;
+  using out_dev_type = RW;
 
 public:
   constexpr Connection(io_dev_type&& ab) : Base{}, _ab(std::move(ab)) {}
@@ -234,13 +229,11 @@ private:
 };
 
 /// @brief the connection class
-template <ABILike ABI, ABOLike ABO>
+template <AsyncRead ABI, AsyncWrite ABO>
 class Connection<ABI, ABO> : public ConnectionBase {
   using Base = ConnectionBase;
   using in_dev_type = ABI;
   using out_dev_type = ABO;
-  using abi_traits_type = AIOTraits<in_dev_type>;
-  using abo_traits_type = AIOTraits<out_dev_type>;
 
 public:
   constexpr Connection(in_dev_type&& in_dev, out_dev_type&& out_dev)
@@ -264,7 +257,7 @@ private:
   out_dev_type _awd;
 };
 
-template <ABILike ABI, ABOLike ABO>
+template <AsyncRead ABI, AsyncWrite ABO>
 Connection(ABI&&, ABO&&) -> Connection<ABI, ABO>;
 
 XSL_HTTP_NE

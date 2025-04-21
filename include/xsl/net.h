@@ -24,14 +24,13 @@
 #  include "xsl/net/http/router.h"
 #  include "xsl/net/http/server.h"
 #  include "xsl/net/http/service.h"
-#  include "xsl/net/io/splice.h"
 #  include "xsl/net/tcp/server.h"
 XSL_NB
 namespace net {
   using sys::net::gai_async_connect;
   using sys::net::gai_bind;
   using sys::net::gai_connect;
-  using xsl::_net::io::splice;
+  // using xsl::_net::io::splice;
 }  // namespace net
 namespace tcp {
   using xsl::_net::tcp::make_server;
@@ -44,8 +43,10 @@ namespace dns {
   using xsl::_net::dns::DnCompressor;
   using xsl::_net::dns::DnDecompressor;
   using xsl::_net::dns::Header;
+  using xsl::_net::dns::RCode;
   using xsl::_net::dns::Resolver;
   using xsl::_net::dns::RR;
+  using xsl::_net::dns::RRSerializer;
   using xsl::_net::dns::serialized;
   using xsl::_net::dns::skip_question;
   using xsl::_net::dns::Type;

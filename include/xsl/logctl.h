@@ -75,33 +75,31 @@ public:
 #  endif
 };
 
-#  define LOG1(fmt, ...) LOG_CRITICAL(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+// #  define LOG1(fmt, ...) LOG_CRITICAL(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+//
+// #  define LOG2(fmt, ...) LOG_ERROR(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+//
+// #  define LOG3(fmt, ...) LOG_WARNING(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+//
+// #  define LOG4(fmt, ...) LOG_INFO(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+//
+#  define log_trace1(fmt, ...) LOG_TRACE_L1(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+//
+#  define log_trace2(fmt, ...) LOG_TRACE_L2(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+//
+// #  define LOG8(fmt, ...) LOG_TRACE_L3(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+//
+// #  define Trace(fmt, ...) LOG_TRACE_L1(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+//
+#  define log_debug(fmt, ...) LOG_DEBUG(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define LOG2(fmt, ...) LOG_ERROR(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define log_info(fmt, ...) LOG_INFO(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define LOG3(fmt, ...) LOG_WARNING(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define log_warning(fmt, ...) LOG_WARNING(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define LOG4(fmt, ...) LOG_INFO(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+#  define log_error(fmt, ...) LOG_ERROR(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
-#  define LOG5(fmt, ...) LOG_DEBUG(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define LOG6(fmt, ...) LOG_TRACE_L1(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define LOG7(fmt, ...) LOG_TRACE_L2(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define LOG8(fmt, ...) LOG_TRACE_L3(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define Trace(fmt, ...) LOG_TRACE_L1(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define Debug(fmt, ...) LOG_DEBUG(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define Info(fmt, ...) LOG_INFO(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define Warning(fmt, ...) LOG_WARNING(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define Error(fmt, ...) LOG_ERROR(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define Critical(fmt, ...) LOG_CRITICAL(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
+// #  define Critical(fmt, ...) LOG_CRITICAL(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
 
 constexpr void set_log_level(LogLevel level) { xsl::LogCtl::set_log_level(level); }
 

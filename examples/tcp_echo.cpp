@@ -10,6 +10,7 @@
  */
 #include <CLI/CLI.hpp>
 #include <xsl/coro.h>
+#include <xsl/io.h>
 #include <xsl/logctl.h>
 #include <xsl/net.h>
 
@@ -28,12 +29,12 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
   while (true) {
     auto [sz, err] = co_await server.read(std::span<Server::value_type>(&skt, 1));
     if (err) {
-      LOG3("accept error: {}", std::make_error_code(*err).message());
+      log_warning("accept error: {}", std::make_error_code(*err).message());
       break;
     }
     co_yield [](auto rw) mutable -> Task<void> {
       std::string buffer(4096, '\0');
-      co_await net::splice(rw, rw, buffer);//TODO: update splice to use the new API
+      co_await xsl::splice(&rw, &rw, buffer);  // TODO: update splice to use the new API
     }(std::move(*skt));
   }
   poller->shutdown();

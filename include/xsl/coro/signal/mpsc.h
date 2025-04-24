@@ -53,7 +53,7 @@ struct SignalRxTraits<SignalStorage> {
   static constexpr void suspend(storage_type &storage, std::coroutine_handle<Promise> handle) {
     unsafe_traits::suspend(storage._unsafe, handle);
     storage.mtx.unlock();
-    log_trace1("Signal suspended");
+    log_trace("Signal suspended");
   }
   /**
    * @brief Resume the signal

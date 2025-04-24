@@ -50,12 +50,12 @@ Task<io::Result> recv(RawHandle _raw, std::span<byte> buf, AnySignal<SignalTrait
     } else if (n == 0) {
       co_return {0, {errc::not_connected}};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      log_trace1("no more data to read, waiting for signal");
+      log_trace("no more data to read, waiting for signal");
       if (!co_await sig) {
         co_return {0, {errc::not_connected}};
       }
     } else {
-      log_trace1("rh {} recv error: {}", _raw, std::make_error_code(errc(errno)).message());
+      log_trace("rh {} recv error: {}", _raw, std::make_error_code(errc(errno)).message());
       co_return {0, {errc(errno)}};
     }
   } while (true);
@@ -86,7 +86,7 @@ Task<io::Result> imm_recv(RawHandle _raw, std::span<byte> buf,
                           AnySignal<SignalTraits, Pointer> &sig) {
   do {
     ssize_t n = ::recv(_raw, buf.data(), buf.size(), 0);
-    log_trace1("{} recv {} bytes", _raw, n);
+    log_trace("{} recv {} bytes", _raw, n);
     if (n >= 0) {
       co_return {static_cast<size_t>(n)};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -94,7 +94,7 @@ Task<io::Result> imm_recv(RawHandle _raw, std::span<byte> buf,
         co_return {0, {errc::not_connected}};
       }
     } else {
-      log_trace1("recv error: {}", std::make_error_code(errc(errno)).message());
+      log_trace("recv error: {}", std::make_error_code(errc(errno)).message());
       co_return {0, {errc(errno)}};
     }
   } while (true);
@@ -308,7 +308,7 @@ Task<io::Result> send_file(RawHandle _raw, io::WriteFileHint hint,
       log_debug("[sendfile] send {} bytes", n);
       offset += n;
     } else if (n == 0) {
-      log_trace1("{} send {} bytes file", _raw, n);
+      log_trace("{} send {} bytes file", _raw, n);
       if (static_cast<std::size_t>(offset) != hint.size) {
         break;
       }

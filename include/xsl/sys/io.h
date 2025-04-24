@@ -35,7 +35,7 @@ Task<io::Result> read(RawHandle _raw, std::span<byte> buf, const Signal<1, Point
   do {
     ssize_t n = ::read(_raw, buf.data(), buf.size());
     if (n >= 0) {
-      log_trace1("{} recv {} bytes", _raw, n);
+      log_trace("{} recv {} bytes", _raw, n);
       co_return {static_cast<std::size_t>(n)};
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
       if (!co_await sig) {

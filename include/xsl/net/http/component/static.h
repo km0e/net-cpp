@@ -53,7 +53,7 @@ public:
         ok_media_type) {  // check if the media type is acceptable
       auto media_types = parse_accept(*ok_media_type);
       if (!std::ranges::any_of(media_types, [content_type](const auto& media) {
-            log_trace1("accept media: {}", media.first.to_string_view());
+            log_trace("accept media: {}", media.first.to_string_view());
             return media.first.type_includes(content_type);
           })) {
         log_warning("not acceptable: {}", content_type.to_string_view());

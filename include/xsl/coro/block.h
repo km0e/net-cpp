@@ -82,7 +82,7 @@ constexpr decltype(auto) block(Awaiter &&awaiter) {
       auto _ = [&sem](Awaiter &&awaiter) -> Block {
         co_await std::forward<Awaiter>(awaiter);
         sem.release();
-        log_trace1("block: resume");
+        log_trace("block: resume");
       }(std::forward<Awaiter>(awaiter));
       sem.acquire();
       log_debug("block: final");

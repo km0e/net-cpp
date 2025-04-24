@@ -66,15 +66,14 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
 }
 
 int main(int argc, char *argv[]) {
-  CLI::App app{"Echo server"};
+  CLI::App app{"DNS Lookup"};
   app.add_option("-i,--ip", ip, "IP address");
   app.add_option("-p,--port", port, "Port");
   CLI11_PARSE(app, argc, argv);
 
   auto poller = std::make_shared<xsl::Poller>();
-  // auto executor = std::make_shared<NewThreadExecutor>();
-  // talk(ip, port, poller).detach(std::move(executor));
-  talk(ip, port, poller).detach();
+  auto executor = std::make_shared<NewThreadExecutor>();
+  talk(ip, port, poller).detach(std::move(executor));
   poller->run();
   return 0;
 }

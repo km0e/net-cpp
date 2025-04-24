@@ -8,6 +8,7 @@
  * @copyright Copyright (c) 2024
  *
  */
+
 #include "xsl/logctl.h"
 
 #include "xsl/def.h"
@@ -34,13 +35,12 @@ LogCtl::LogCtl() : logger(nullptr) {
   auto env = std::getenv("CPP_LOG");
   if (env) {
     std::string env_str(env);
-    if (env_str == "trace") {
-      env_str += "l3";
-    }
     instance.logger->set_log_level(quill::loglevel_from_string(env_str));
   } else {
-    set_log_level(LogLevel::LOG8);
+    set_log_level(LogLevel::Error);
   }
+  log_info("Compile active log level: {}", LogCtl::log_level_to_string(compile_active_log_level()));
+  log_info("Log level: {}", LogCtl::log_level_to_string(instance.get_log_level()));
 }
 LogCtl::~LogCtl() {
   quill::Frontend::remove_logger(logger);

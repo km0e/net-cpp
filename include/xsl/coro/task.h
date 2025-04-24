@@ -68,11 +68,11 @@ public:
 
   template <class Promise>
   constexpr void next(std::coroutine_handle<Promise> handle) {
-    log_trace2("Promise next");
+    log_trace("Promise next");
     this->_next = handle;
     if constexpr (!std::is_same_v<typename Promise::executor_type, void>) {
       if (!this->executor()) {
-        log_trace1("set executor");
+        log_trace("set executor");
         this->_executor = handle.promise().executor();
       }
     }
@@ -82,7 +82,7 @@ public:
   constexpr void resume(std::coroutine_handle<Promise> handle) {
     if (this->executor()) {
       this->_executor->schedule([handle] mutable {
-        log_trace2("task resume {}", (uint64_t)handle.address());
+        log_trace("task resume {}", (uint64_t)handle.address());
         handle();
       });
     } else {
@@ -135,7 +135,7 @@ public:
   }
 
   constexpr Task operator co_await(this Task &&self) {
-    log_trace2("move handle to Awaiter");
+    log_trace("move handle to Awaiter");
     return std::move(self);
   }
 
@@ -150,7 +150,7 @@ public:
    * @return result_type
    */
   constexpr result_type block(this Task &&self) {
-    log_trace2("Task block");
+    log_trace("Task block");
     return _coro::block(std::move(self));
   }
   /**
@@ -167,7 +167,7 @@ public:
   }
   /// @brief Detach the task
   constexpr void detach(this Task &&self) {
-    log_trace1("task detach");
+    log_trace("task detach");
     _coro::detach(std::move(self));
   }
   /// @brief Detach the task with executor
@@ -182,13 +182,13 @@ public:
   template <class _Promise>
   constexpr std::coroutine_handle<promise_type> await_suspend(
       std::coroutine_handle<_Promise> handle) {
-    log_trace2("await_suspend: {} -> {}", (uint64_t)_handle.address(), (uint64_t)handle.address());
+    log_trace("await_suspend: {} -> {}", (uint64_t)_handle.address(), (uint64_t)handle.address());
     this->_handle.promise().next(handle);
     return this->_handle;
   }
 
   constexpr result_type await_resume() {
-    log_trace2("task await_resume for {}", (uint64_t)_handle.address());
+    log_trace("task await_resume for {}", (uint64_t)_handle.address());
     return *_handle.promise();
   }
 };

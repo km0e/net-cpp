@@ -1,11 +1,7 @@
-add_executable(tcp_echo
-    ${CMAKE_CURRENT_SOURCE_DIR}/tcp_echo.cpp
-)
-
-target_link_libraries(tcp_echo clilib xsl_net)
-
-add_executable(http_server
-    ${CMAKE_CURRENT_SOURCE_DIR}/http_server.cpp
-)
-
-target_link_libraries(http_server clilib xsl_net)
+file(GLOB SRC_FILES "*.cpp")
+foreach(SRC_FILE ${SRC_FILES})
+  get_filename_component(SRC_NAME_WE ${SRC_FILE} NAME_WE)
+  message(STATUS "Add example ${SRC_NAME_WE} (${SRC_FILE})")
+  add_executable(${SRC_NAME_WE} ${SRC_FILE})
+  target_link_libraries(${SRC_NAME_WE} clilib xsl_net)
+endforeach()

@@ -57,7 +57,7 @@ public:
 
   Task<Result> sendto(W& awd) {
     auto str = this->_part.to_string();
-    log_trace1("response: {}", str);
+    log_trace("response: {}", str);
     auto [sz, err] = co_await awd.write(xsl::as_bytes(std::span(str)));
     if (err) {
       co_return {sz};

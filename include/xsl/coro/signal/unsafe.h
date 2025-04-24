@@ -53,7 +53,7 @@ struct SignalRxTraits<UnsafeSignalStorage> {
   template <class Promise>
   static constexpr void suspend(storage_type &storage, std::coroutine_handle<Promise> handle) {
     storage.state = [handle] { handle.promise().resume(handle); };
-    log_trace1("Signal suspended");
+    log_trace("Signal suspended");
   }
   /**
    * @brief Resume the signal
@@ -67,7 +67,7 @@ struct SignalRxTraits<UnsafeSignalStorage> {
     auto &state = std::get<std::ptrdiff_t>(storage.state);
     if (state > 0) {
       state--;
-      log_trace1("Signal resumed {}", state);
+      log_trace("Signal resumed {}", state);
       return true;
     }
     return false;
@@ -94,11 +94,11 @@ struct SignalTxTraits<UnsafeSignalStorage, MaxSignals> {
           return 1;
         }
       }(*state);
-      log_trace1("Signal released {}", *state);
+      log_trace("Signal released {}", *state);
       return false;
     } else {
       std::get<std::function<void()>>(std::exchange(storage.state, std::ptrdiff_t{1}))();
-      log_trace1("Signal Callback");
+      log_trace("Signal Callback");
       return true;
     }
   }

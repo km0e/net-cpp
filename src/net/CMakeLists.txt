@@ -1,4 +1,5 @@
 add_subdirectory(http)
+add_subdirectory(dns)
 
 add_library(xsl_net STATIC)
 
@@ -8,4 +9,4 @@ target_sources(
     ${CMAKE_CURRENT_SOURCE_DIR}/net.cpp
 )
 
-target_link_libraries(xsl_net PRIVATE xsl_coro xsl_sys xsl_http)
+target_link_libraries(xsl_net PRIVATE xsl_coro xsl_sys xsl_http xsl_dns)

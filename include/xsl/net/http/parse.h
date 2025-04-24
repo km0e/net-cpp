@@ -139,7 +139,7 @@ private:
           reinterpret_cast<const char*>(front.data.get() + this->parsed_size + len), sz - len);
       buf = ParseData{std::exchange(this->buffer, {}), std::move(*req), std::move(content_part)};
       this->reset();
-      log_trace1("parsed request: {} {}", buf.request.method, buf.request.path);
+      log_trace("parsed request: {} {}", buf.request.method, buf.request.path);
       return {};
     }
     if (req.error() == errc::resource_unavailable_try_again) {

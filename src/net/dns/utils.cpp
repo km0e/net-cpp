@@ -125,7 +125,8 @@ std::expected<std::size_t, errc> DnCompressor::prepare(std::string_view src) {
  *
  * @param dst
  */
-void DnCompressor::compress(std::span<byte> &dst) {
+void DnCompressor::compress(std::span<byte> &_dst) {
+  std::span<uint8_t> dst(reinterpret_cast<uint8_t *>(_dst.data()), _dst.size());
   if (_src.empty()) {
     *dst.data() = 0;
     dst = dst.subspan(1);
@@ -158,9 +159,10 @@ constexpr void DnCompressor::reset() {
   suffix_off = 0;
 }
 
-errc DnDecompressor::decompress(std::span<const byte> &src) {
+errc DnDecompressor::decompress(std::span<const byte> &src_) {
+  std::span<const uint8_t> src(reinterpret_cast<const uint8_t *>(src_.data()), src_.size());
   this->buf_end = 0;  /// reset the buffer
-  const byte *ptr = src.data();
+  const std::uint8_t *ptr = src.data();
   for (;;) {
     src = src.subspan(1);
     if (*ptr == 0) return {};
@@ -185,7 +187,7 @@ std::string_view DnDecompressor::dn() const {
 
 std::size_t DnDecompressor::needed() const { return buf_end; }
 
-errc DnDecompressor::prepare_rest(const byte *ptr) {
+errc DnDecompressor::prepare_rest(const uint8_t *ptr) {
   for (;;) {
     if (*ptr == 0) return {};
     while (*ptr & 0xc0) {  // jump to the label if it is a pointer

@@ -25,8 +25,14 @@ XSL_NET_DNS_NB
 /// @brief compress the domain name
 class DnCompressor {
 public:
-  constexpr DnCompressor(const std::uint8_t *base)
-      : _src(), lens(), base(base), dnptrs(), dnptrs_cnt(0), suffix_len(0), suffix_off(0) {}
+  constexpr DnCompressor(const byte *base)
+      : _src(),
+        lens(),
+        base(reinterpret_cast<const uint8_t *>(base)),
+        dnptrs(),
+        dnptrs_cnt(0),
+        suffix_len(0),
+        suffix_off(0) {}
   /**
    * @brief prepare the domain name for compression
    *
@@ -60,7 +66,8 @@ private:
 
 class DnDecompressor {
 public:
-  constexpr DnDecompressor(const byte *base) : base(base), buf(), buf_end{} {}
+  constexpr DnDecompressor(const byte *base)
+      : base(reinterpret_cast<const uint8_t *>(base)), buf(), buf_end{} {}
   /// @brief prepare the domain name for decompression
   errc decompress(std::span<const byte> &src);
   /// @brief get the decompressed domain name
@@ -70,15 +77,16 @@ public:
   /// @brief decompress the domain name
 
 private:
-  const byte *base;
+  const uint8_t *base;
 
-  byte buf[size_limits::name];
+  uint8_t buf[size_limits::name];
   std::size_t buf_end;
 
-  errc prepare_rest(const byte *ptr);
+  errc prepare_rest(const uint8_t *ptr);
 };
 /// @brief skip the domain name, update the src
-constexpr errc skip_dn(std::span<const byte> &src) {
+constexpr errc skip_dn(std::span<const byte> &src_) {
+  std::span<const uint8_t> src(reinterpret_cast<const uint8_t *>(src_.data()), src_.size());
   std::size_t offset = 0;
   while (src[offset] != 0) {
     if (src[offset] & 0xc0) {

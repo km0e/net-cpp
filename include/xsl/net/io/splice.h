@@ -28,11 +28,11 @@ XSL_NET_IO_NB
 // template <class From, class To>
 // Task<void> splice(From& from, To& to, std::string& buffer) {
 //   while (true) {
-//     auto res = co_await from.read(xsl::as_writable_bytes(std::span(buffer)));
+//     auto res = co_await from.read(std::as_writable_bytes(std::span(buffer)));
 //     if (!res) {
 //       co_return;
 //     }
-//     res = co_await to.write(xsl::as_bytes(std::span(buffer).subspan(0, res.size)));
+//     res = co_await to.write(std::as_bytes(std::span(buffer).subspan(0, res.size)));
 //     if (!res) {
 //       co_return;
 //     }

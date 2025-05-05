@@ -31,7 +31,7 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
   std::string dst(128, '\0');
   std::uint16_t port_num;
   while (true) {
-    auto [rc_n, rc_err] = co_await rw.recvfrom(xsl::as_writable_bytes(std::span(buffer)), addr);
+    auto [rc_n, rc_err] = co_await rw.recvfrom(std::as_writable_bytes(std::span(buffer)), addr);
     if (rc_err) {
       log_debug("Error: {}", std::make_error_code(rc_err.value()).message());
       break;
@@ -42,7 +42,7 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
     }
     log_info("Received: {} from {}:{}", std::string_view{buffer.data(), rc_n}, dst, port_num);
     auto [sd_n, sd_err]
-        = co_await rw.sendto(xsl::as_bytes(std::span(buffer).subspan(0, rc_n)), addr);
+        = co_await rw.sendto(std::as_bytes(std::span(buffer).subspan(0, rc_n)), addr);
     if (sd_err) {
       log_debug("Error: {}", std::make_error_code(sd_err.value()).message());
       break;

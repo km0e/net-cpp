@@ -21,12 +21,12 @@ XSL_NB
 
 template <std::integral I>
 constexpr void serialize(byte* buf, I value) {
-  auto raw = xsl::as_bytes(std::span(&value, 1));
+  auto raw = std::as_bytes(std::span(&value, 1));
   std::copy(raw.begin(), raw.end(), buf);
 }
 
-template <std::integral T>
-constexpr void serialized(std::span<byte>& buf, T value) {
+template <std::integral T, size_t _Extent = std::dynamic_extent>
+constexpr void serialized(std::span<byte, _Extent>& buf, T value) {
   serialize(buf.data(), value);
   buf = buf.subspan(sizeof(T));
 }
@@ -38,31 +38,15 @@ constexpr T* reserved(std::span<byte>& buf) {
   return ptr;
 }
 
-constexpr void deserialize(const byte* buf, int32_t& value) {
-  std::copy(buf, buf + sizeof(int32_t), xsl::as_writable_bytes(std::span(&value, 1)).begin());
+template <typename T>
+constexpr void deserialize(const byte* buf, T& value) {
+  std::copy(buf, buf + sizeof(T), std::as_writable_bytes(std::span(&value, 1)).begin());
 }
 
-constexpr void deserialized(std::span<const byte>& buf, int32_t& value) {
+template <typename T, size_t _Extent = std::dynamic_extent>
+constexpr void deserialized(std::span<const byte, _Extent>& buf, T& value) {
   deserialize(buf.data(), value);
-  buf = buf.subspan(sizeof(int32_t));
-}
-
-constexpr void deserialize(const byte* buf, uint16_t& value) {
-  std::copy(buf, buf + sizeof(uint16_t), xsl::as_writable_bytes(std::span(&value, 1)).begin());
-}
-
-constexpr void deserialized(std::span<const byte>& buf, uint16_t& value) {
-  deserialize(buf.data(), value);
-  buf = buf.subspan(sizeof(uint16_t));
-}
-
-constexpr void deserialize(const byte* buf, uint32_t& value) {
-  std::copy(buf, buf + sizeof(uint32_t), xsl::as_writable_bytes(std::span(&value, 1)).begin());
-}
-
-constexpr void deserialized(std::span<const byte>& buf, uint32_t& value) {
-  deserialize(buf.data(), value);
-  buf = buf.subspan(sizeof(uint32_t));
+  buf = buf.subspan(sizeof(T));
 }
 
 template <typename... Args>

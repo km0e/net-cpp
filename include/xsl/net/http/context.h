@@ -53,7 +53,7 @@ public:
     this->_response = response_type{
         {Version::HTTP_1_1, status_code, status_code.to_reason_phrase()},
         [body = std::string(std::forward<Args>(args)...)](out_dev_type& awd) -> Task<Result> {
-          return awd.write(xsl::as_bytes(std::span(body)));
+          return awd.write(std::as_bytes(std::span(body)));
         }};
   }
   /// @brief response with ResponsePart
@@ -69,7 +69,7 @@ public:
     this->_response = response_type{
         {std::move(part)},
         [body = std::string(std::forward<Args>(args)...)](out_dev_type& awd) -> Task<Result> {
-          return awd.write(xsl::as_bytes(std::span(body)));
+          return awd.write(std::as_bytes(std::span(body)));
         }};
   }
   /// @brief checkout the response

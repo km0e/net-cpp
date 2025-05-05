@@ -56,12 +56,12 @@ protected:
       co_yield [](auto skt) -> Task<void> {
         auto buf = std::make_unique<char[]>(1024);
         while (true) {
-          auto recv_bytes = xsl::as_writable_bytes(buf.get(), 1024);
+          auto recv_bytes = std::as_writable_bytes(buf.get(), 1024);
           auto [m, r_err] = co_await skt.recv(recv_bytes);
           if (r_err) {
             break;
           }
-          auto send_bytes = xsl::as_bytes(buf.get(), m);
+          auto send_bytes = std::as_bytes(buf.get(), m);
           auto [n, s_err] = co_await skt.send(send_bytes);
           if (s_err) {
             break;
@@ -99,10 +99,10 @@ TEST_F(AsyncSocketIOFixture, tcp_bind) {
     auto client = std::move(*res_client);
     auto buf = std::make_unique<char[]>(1024);
     for (auto &msg : echo_msg) {
-      auto send_bytes = xsl::as_bytes(msg.data(), msg.size());
+      auto send_bytes = std::as_bytes(msg.data(), msg.size());
       auto [n, s_err] = client.send(send_bytes).block();
       ASSERT_FALSE(s_err);
-      auto recv_bytes = xsl::as_writable_bytes(buf.get(), 1024);
+      auto recv_bytes = std::as_writable_bytes(buf.get(), 1024);
       auto [m, r_err] = client.recv(recv_bytes).block();
       ASSERT_FALSE(r_err);
       ASSERT_EQ(std::string_view(buf.get(), m), msg);

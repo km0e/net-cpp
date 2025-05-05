@@ -39,7 +39,7 @@ TEST(ser, i32) {
 
   result = 0;
 
-  auto c_bytes = xsl::as_bytes(bytes, 4);
+  auto c_bytes = std::as_bytes(bytes, 4);
   deserialized(c_bytes, result);
   EXPECT_EQ(value, result);
 }
@@ -64,7 +64,7 @@ TEST(str, u16) {
 
   result = 0;
 
-  auto c_bytes = xsl::as_bytes(bytes, 2);
+  auto c_bytes = std::as_bytes(bytes, 2);
   deserialized(c_bytes, result);
   EXPECT_EQ(value, result);
 }

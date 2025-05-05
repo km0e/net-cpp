@@ -114,7 +114,7 @@ public:
       co_return std::unexpected{errc::operation_canceled};
     }
 
-    auto des_span = xsl::as_bytes(query.datagram.span());
+    auto des_span = std::as_bytes(query.datagram.span());
     header.deserialize(des_span);  // this will consume the header part
     if (header.rcode() != RCode::NO_ERROR) {
       co_return std::unexpected{header.rcode().to_errc()};

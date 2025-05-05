@@ -47,7 +47,9 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
       std::print(std::cout, "{:10}{:10}{:<10}", rr.type(), rr.class_(), rr.ttl());
       if (rr.type() == dns::Type::A) {
         auto data = rr.rdata();
-        std::sprintf(ip, "%d.%d.%d.%d", data[0], data[1], data[2], data[3]);
+        std::sprintf(ip, "%d.%d.%d.%d", std::to_integer<uint8_t>(data[0]),
+                     std::to_integer<uint8_t>(data[1]), std::to_integer<uint8_t>(data[2]),
+                     std::to_integer<uint8_t>(data[3]));
         std::println(std::cout, "{:10}", ip);
       } else if (rr.type() == dns::Type::CNAME) {
         auto buf = std::make_unique<char[]>(512);

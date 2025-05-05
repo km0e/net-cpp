@@ -30,12 +30,12 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
   auto rw = net::gai_connect<UdpIpv4>(ip.data(), port.data()).value().async(*poller);
   while (true) {
     std::cin >> buffer;
-    auto [n, err] = co_await rw.send(xsl::as_bytes(std::span(buffer)));
+    auto [n, err] = co_await rw.send(std::as_bytes(std::span(buffer)));
     if (err.has_value()) {
       log_error("Failed to send data, err : {}", std::make_error_code(err.value()).message());
       break;
     }
-    auto [n_recv, err_recv] = co_await rw.recv(xsl::as_writable_bytes(std::span(buffer)));
+    auto [n_recv, err_recv] = co_await rw.recv(std::as_writable_bytes(std::span(buffer)));
     if (err_recv.has_value()) {
       log_error("Failed to recv data, err : {}", std::make_error_code(err_recv.value()).message());
       break;

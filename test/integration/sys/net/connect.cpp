@@ -54,10 +54,10 @@ protected:
   void echo(net::AsyncReadWriteSocket<Traits> &skt) {
     auto buf = std::make_unique<char[]>(1024);
     for (auto &msg : echo_msg) {
-      auto send_bytes = xsl::as_bytes(msg.data(), msg.size());
+      auto send_bytes = std::as_bytes(msg.data(), msg.size());
       auto [n, s_err] = skt.send(send_bytes).block();
       ASSERT_FALSE(s_err);
-      auto recv_bytes = xsl::as_writable_bytes(buf.get(), 1024);
+      auto recv_bytes = std::as_writable_bytes(buf.get(), 1024);
       auto [m, r_err] = skt.recv(recv_bytes).block();
       ASSERT_FALSE(r_err);
       ASSERT_EQ(std::string_view(buf.get(), m), msg);
@@ -68,10 +68,10 @@ protected:
   void echo_to(net::AsyncReadWriteSocket<Traits> &skt, net::SockAddr<Traits> &addr) {
     auto buf = std::make_unique<char[]>(1024);
     for (auto &msg : echo_msg) {
-      auto send_bytes = xsl::as_bytes(msg.data(), msg.size());
+      auto send_bytes = std::as_bytes(msg.data(), msg.size());
       auto [n, s_err] = skt.sendto(send_bytes, addr).block();
       ASSERT_FALSE(s_err);
-      auto recv_bytes = xsl::as_writable_bytes(buf.get(), 1024);
+      auto recv_bytes = std::as_writable_bytes(buf.get(), 1024);
       auto [m, r_err] = skt.recvfrom(recv_bytes, addr).block();
       ASSERT_FALSE(r_err);
       ASSERT_EQ(std::string_view(buf.get(), m), msg);

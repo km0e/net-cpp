@@ -20,14 +20,14 @@ XSL_IO_NB
 namespace {
   template <AsyncRead R, AsyncWrite W>
   Task<Result> splice_once(R& from, W& to, std::string& buffer) {
-    Result res = co_await from.read(xsl::as_writable_bytes(std::span(buffer)));
+    Result res = co_await from.read(std::as_writable_bytes(std::span(buffer)));
     if (!res) {
       log_warning("Failed to read data from the device, err: {}",
                   std::make_error_code(res.err.value()).message());
       co_return std::move(res);
     }
     log_debug("Read {} bytes from the device", res.size);
-    res = co_await to.write(xsl::as_bytes(std::span(buffer).subspan(0, res.size)));
+    res = co_await to.write(std::as_bytes(std::span(buffer).subspan(0, res.size)));
     if (!res) {
       log_warning("Failed to write data to the device, err: {}",
                   std::make_error_code(res.err.value()).message());

@@ -9,12 +9,13 @@
  *
  */
 #pragma once
-#include <cstddef>
-#ifndef XSL_NET_HTTP_PROTO_
-#  define XSL_NET_HTTP_PROTO_
+#ifndef XSL_NET_HTTP_PROTO
+#  define XSL_NET_HTTP_PROTO
+
 #  include "xsl/net/http/def.h"
 
 #  include <chrono>
+#  include <cstddef>
 #  include <optional>
 #  include <string_view>
 

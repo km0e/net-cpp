@@ -2,40 +2,35 @@
  * @file tcp_echo.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief A simple echo server
- * @version 0.11
+ * @version 0.2
  * @date 2024-08-20
  *
  * @copyright Copyright (c) 2024
  *
  */
 #include <CLI/CLI.hpp>
+#include <xsl/asio.h>
 #include <xsl/coro.h>
 #include <xsl/io.h>
 #include <xsl/logctl.h>
-#include <xsl/net.h>
-
-#include <span>
 
 std::string ip = "127.0.0.1";
 std::string port = "8080";
 
-using namespace xsl::coro;
 using namespace xsl;
+using namespace xsl::coro;
+using namespace xsl::asio;
 
-Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
-  using Server = tcp::Server<Ip<4>>;
+Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<Poller> poller) {
   auto server = tcp::make_server<Ip<4>>(ip, port, poller).value();
-  Server::value_type skt;
   while (true) {
-    auto [sz, err] = co_await server.read(std::span<Server::value_type>(&skt, 1));
-    if (err) {
-      log_warning("accept error: {}", std::make_error_code(*err).message());
+    auto task = co_await server.accept().and_then(
+        [&](auto &&skt) { return splice_bidirectional(skt, skt, *poller); });
+    if (!task) {
+      log_warning("splice error: {}", std::make_error_code(task.error()).message());
       break;
     }
-    co_yield [](auto rw) mutable -> Task<void> {
-      std::string buffer(4096, '\0');
-      co_await xsl::splice(&rw, &rw, buffer);  // TODO: update splice to use the new API
-    }(std::move(*skt));
+    co_yield std::move(*task);
   }
   poller->shutdown();
   co_return;
@@ -46,11 +41,11 @@ int main(int argc, char *argv[]) {
   app.add_option("-i,--ip", ip, "IP address");
   app.add_option("-p,--port", port, "Port");
   CLI11_PARSE(app, argc, argv);
+  log_info("Starting echo server at {}:{}", ip, port);
 
   auto poller = std::make_shared<xsl::Poller>();
   auto executor = std::make_shared<NewThreadExecutor>();
   talk(ip, port, poller).detach(std::move(executor));
-  // talk(ip, port, poller).detach();
   poller->run();
   return 0;
 }

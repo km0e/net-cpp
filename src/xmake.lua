@@ -10,7 +10,7 @@ do
     on_package(function(package) end)
 end
 
-includes("net", "wheel", "coro", "sys")
+includes("net", "wheel", "coro", "sys", "asio", "io")
 
 target("xsl_convert")
 do

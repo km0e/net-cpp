@@ -8,34 +8,31 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/feature.h"
 
 #include <CLI/CLI.hpp>
+#include <xsl/asio.h>
 #include <xsl/coro.h>
 #include <xsl/logctl.h>
-#include <xsl/net.h>
-#include <xsl/sys.h>
-#include <xsl/wheel.h>
-
-#include <span>
 
 std::string ip = "127.0.0.1";
 std::string port = "8080";
 
 using namespace xsl::coro;
+using namespace xsl::asio;
+using namespace xsl::net;
 using namespace xsl;
 
 Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
   std::string buffer(4096, '\0');
-  auto rw = net::gai_connect<UdpIpv4>(ip.data(), port.data()).value().async(*poller);
+  auto rw = AsyncSocket(gai_connect<UdpIpv4>(ip.data(), port.data()).value(), *poller);
   while (true) {
     std::cin >> buffer;
-    auto [n, err] = co_await rw.send(std::as_bytes(std::span(buffer)));
+    auto [n, err] = co_await rw.write(std::as_bytes(std::span(buffer)));
     if (err.has_value()) {
       log_error("Failed to send data, err : {}", std::make_error_code(err.value()).message());
       break;
     }
-    auto [n_recv, err_recv] = co_await rw.recv(std::as_writable_bytes(std::span(buffer)));
+    auto [n_recv, err_recv] = co_await rw.read(std::as_writable_bytes(std::span(buffer)));
     if (err_recv.has_value()) {
       log_error("Failed to recv data, err : {}", std::make_error_code(err_recv.value()).message());
       break;

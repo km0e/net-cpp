@@ -9,10 +9,10 @@
  *
  */
 #include <CLI/CLI.hpp>
+#include <xsl/asio.h>
 #include <xsl/coro.h>
 #include <xsl/feature.h>
 #include <xsl/logctl.h>
-#include <xsl/net.h>
 #include <xsl/sys.h>
 #include <xsl/wheel.h>
 
@@ -22,11 +22,13 @@ std::string ip = "127.0.0.1";
 std::string port = "8080";
 
 using namespace xsl::coro;
+using namespace xsl::net;
+using namespace xsl::asio;
 using namespace xsl;
 
 Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
   std::string buffer(4096, '\0');
-  auto rw = net::gai_bind<UdpIpv4>(ip.data(), port.data()).value().async(*poller);
+  auto rw = AsyncSocket(gai_bind<UdpIpv4>(ip.data(), port.data()).value(), *poller);
   sys::net::SockAddrCompose<UdpIpv4> addr{};
   std::string dst(128, '\0');
   std::uint16_t port_num;

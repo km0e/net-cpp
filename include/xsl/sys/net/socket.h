@@ -2,7 +2,7 @@
  * @file socket.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Socket type
- * @version 0.13
+ * @version 0.2
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -11,24 +11,37 @@
 #pragma once
 #ifndef XSL_SYS_NET_SOCKET
 #  define XSL_SYS_NET_SOCKET
-#  include "xsl/feature.h"
-#  include "xsl/io/dyn.h"
 #  include "xsl/sys/dev.h"
-#  include "xsl/sys/io.h"
-#  include "xsl/sys/net/conn.h"
 #  include "xsl/sys/net/def.h"
-#  include "xsl/sys/net/io.h"
-#  include "xsl/type_traits.h"
+#  include "xsl/sys/net/sockaddr.h"
 
 #  include <sys/socket.h>
 
-#  include <expected>
 XSL_SYS_NET_NB
 using namespace xsl::io;
+template <class Traits>
+class Socket;
 
-template <class Traits, class Base>
-class SocketBase : public Traits, public Base {
+template <class Traits>
+struct ConnectionUtils {
+  /// @brief Connect to a address
+  errc connect(this Socket<Traits> &self, const SockAddr<Traits> &sa) {
+    auto [addr, addrlen] = sa.raw();
+    return check_ec(filter_interrupt(::connect, self.raw(), &addr, addrlen));
+  }
+  /// @brief Bind to a address
+  constexpr errc bind(this Socket<Traits> &self, const SockAddr<Traits> &sa) {
+    auto [addr, addrlen] = sa.raw();
+    return check_ec(::bind(self.raw(), &addr, addrlen));
+  }
+};
+
+/// @brief Socket
+/// @tparam Traits Socket traits
+template <class Traits>
+class Socket : public Traits, public RawDevice, public ConnectionUtils<Traits> {
 public:
+  using Base = RawDevice;
   using Base::Base;
 
   using traits_type = Traits;
@@ -36,98 +49,15 @@ public:
 
   using value_type = byte;
 
-  SocketBase(int family, int type, int protocol,
-             SocketAttribute attr = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)
+  Socket(int family, int type, int protocol,
+         SocketAttribute attr = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)
       : Traits(family, type, protocol),
         Base(::socket(family, type | static_cast<int>(attr), protocol)) {}
 
-  explicit SocketBase(SocketAttribute attr
-                      = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)
+  explicit Socket(SocketAttribute attr
+                  = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)
       : Traits(),
         Base(::socket(this->family(), this->type() | static_cast<int>(attr), this->protocol())) {}
-};
-
-template <class Traits, class Base>
-class AsyncSocketBase : public Traits, public Base {
-public:
-  using Base::Base;
-
-  using traits_type = Traits;
-  using poll_traits_type = typename traits_type::poll_traits_type;
-
-  using value_type = byte;
-  AsyncSocketBase(Poller &poller, int family, int type, int protocol,
-                  SocketAttribute attr
-                  = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)
-      : Traits(family, type, protocol),
-        Base(::socket(family, type | static_cast<int>(attr), protocol), poller,
-             typename Traits::poll_traits_type{}) {}
-
-  explicit AsyncSocketBase(Poller &poller, SocketAttribute attr = SocketAttribute::NonBlocking
-                                                                  | SocketAttribute::CloseOnExec)
-      : Traits(),
-        Base(::socket(this->family(), this->type() | static_cast<int>(attr), this->protocol()),
-             poller, typename Traits::poll_traits_type{}) {}
-};
-
-template <class Traits>
-class AsyncReadSocket;
-
-template <class Traits>
-class AsyncWriteSocket;
-
-template <class Traits>
-class AsyncReadWriteSocket;
-
-template <class... Flags>
-struct SocketSelector;
-
-template <class... Flags>
-struct AsyncSocketSelector;
-
-template <class Traits>
-struct AsyncSocketSelector<In<Traits>> {
-  using type = AsyncReadSocket<Traits>;
-};
-
-template <class Traits>
-struct AsyncSocketSelector<Out<Traits>> {
-  using type = AsyncWriteSocket<Traits>;
-};
-
-template <class Traits>
-struct AsyncSocketSelector<InOut<Traits>> {
-  using type = AsyncReadWriteSocket<Traits>;
-};
-
-template <class... Flags>
-using AsyncSocketCompose = organize_feature_flags_t<
-    AsyncSocketSelector<Item<is_same_pack, In<void>, Out<void>, InOut<void>>>, Flags...>;
-
-/// @brief Read-only socket device
-template <class Traits>
-class ReadSocket : public SocketBase<Traits, RawReadDevice> {
-public:
-  using Base = SocketBase<Traits, RawReadDevice>;
-  using async_type = AsyncReadSocket<Traits>;
-  using Base::Base;
-};
-/// @brief Write-only socket device
-template <class Traits>
-class WriteSocket : public SocketBase<Traits, RawWriteDevice> {
-public:
-  using Base = SocketBase<Traits, RawWriteDevice>;
-  using async_type = AsyncWriteSocket<Traits>;
-  using Base::Base;
-};
-/// @brief Read-write socket device
-template <class Traits>
-class ReadWriteSocket : public SocketBase<Traits, RawReadWriteDevice>,
-                        public ConnectionUtils<Traits> {
-public:
-  using Base = SocketBase<Traits, RawReadWriteDevice>;
-  using async_type = AsyncReadWriteSocket<Traits>;
-  using Base::Base;
   /**
    * @brief check and upgrade socket
    *
@@ -146,100 +76,58 @@ public:
     return {};
   }
 };
-/// @brief Async read-only socket device
-template <class Traits>
-class AsyncReadSocket : public AsyncSocketBase<Traits, RawAsyncReadDevice>,
-                        public NetAsyncRx<FileRxTraits> {
-public:
-  using Base = AsyncSocketBase<Traits, RawAsyncReadDevice>;
 
-  using io_dyn_chains = xsl::_n<AsyncReadSocket, io::DynAsyncReadDevice<AsyncReadSocket>>;
-
-  using Base::Base;
-};
-/// @brief Async write-only socket device
-template <class Traits>
-class AsyncWriteSocket : public AsyncSocketBase<Traits, RawAsyncWriteDevice>,
-                         public NetAsyncTx<FileTxTraits> {
-public:
-  using Base = AsyncSocketBase<Traits, RawAsyncWriteDevice>;
-
-  template <template <class> class InOut = InOut>
-  using rebind = AsyncSocketCompose<InOut<Traits>>::type;
-
-  using Base::Base;
-};
-/// @brief Async read-write socket device
-template <class Traits>
-class AsyncReadWriteSocket : public AsyncSocketBase<Traits, RawAsyncReadWriteDevice>,
-                             public NetAsyncRx<FileRxTraits>,
-                             public NetAsyncTx<FileTxTraits>,
-                             public ConnectionUtils<Traits> {
-  using Base = AsyncSocketBase<Traits, RawAsyncReadWriteDevice>;
-
-public:
-  using Base::Base;
-
-  template <template <class> class InOut = InOut>
-  using rebind = AsyncSocketCompose<InOut<Traits>>::type;
-
-  using sync_type = ReadWriteSocket<Traits>;
-};
-
-template <class... Flags>
-struct SocketSelector;
-
-template <class Traits>
-struct SocketSelector<In<Traits>> {
-  using type = ReadSocket<Traits>;
-};
-
-template <class Traits>
-struct SocketSelector<Out<Traits>> {
-  using type = WriteSocket<Traits>;
-};
-
-template <class Traits>
-struct SocketSelector<InOut<Traits>> {
-  using type = ReadWriteSocket<Traits>;
-};
-
-template <class... Flags>
-using SocketCompose
-    = organize_feature_flags_t<SocketSelector<Item<is_same_pack, In<void>, Out<void>, InOut<void>>>,
-                               Flags...>;
-
-/**
- * @brief determine the socket type
- *
- * @tparam Flags, can be Tcp<Ip<4>>, Tcp<Ip<6>>, tag::TcpIpv4
- * ...
- */
-template <class... Flags>
-using Socket = SocketCompose<InOut<SocketTraits<Flags...>>>::type;
-
-template <class Socket>
-constexpr std::expected<Socket, errc> make_socket(int sock_attr) {
-  typename Socket::traits_type socket_traits;
-  int fd = ::socket(socket_traits.family(), socket_traits.type() | sock_attr,
-                    socket_traits.protocol());
-  if (fd < 0) {
-    return std::unexpected{errc(errno)};
+template <ConnectionBasedSocketTraits Traits>
+struct ConnectionUtils<Traits> {
+  /// @brief Connect to a address
+  errc connect(this Socket<Traits> &self,
+               const SockAddr<Traits>
+                   &sa) {  // @NOTE:This may return INPROGRESS, because the socket is non-blocking
+    auto [addr, addrlen] = sa.raw();
+    return check_ec(filter_interrupt(::connect, self.raw(), &addr, addrlen));
   }
-  return Socket{fd};
-}
-/**
- * @brief determine the socket type asynchronously
- *
- * @tparam Flags, can be Tcp<Ip<4>>, Tcp<Ip<6>>, tag::TcpIpv4
- * ...
- */
+  /// @brief Bind to a address
+  constexpr errc bind(this auto &&self, const SockAddr<Traits> &sa) {
+    auto [addr, addrlen] = sa.raw();
+    return check_ec(::bind(self.raw(), &addr, addrlen));
+  }
+  /// @brief Accept a connection
+  constexpr std::expected<Socket<Traits>, errc> accept(this auto &&self,
+                                                       SockAddr<Traits> *addr = nullptr) {
+    return ConnectionUtils::accept(self.raw(), addr);
+  }
+  /// @brief Start listening
+  constexpr errc listen(this auto &&self, int max_connections = 128) {
+    return check_ec(::listen(self.raw(), max_connections));
+  }
+
+protected:
+  static constexpr std::expected<Socket<Traits>, errc> accept(RawHandle _raw,
+                                                              SockAddr<Traits> *addr) {
+    auto tmp_fd = [_raw, addr] {
+      if (addr == nullptr) {
+        return ::accept4(_raw, nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC);
+      } else {
+        auto [sockaddr, addrlen] = addr->raw();
+        return ::accept4(_raw, &sockaddr, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
+      }
+    }();
+    if (tmp_fd < 0) {
+      return std::unexpected{errc(errno)};
+    }
+    log_debug("accept socket {}", tmp_fd);
+    // char ip[NI_MAXHOST], port[NI_MAXSERV];
+    // if (getnameinfo(&addr, addrlen, ip, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST |
+    // NI_NUMERICSERV)
+    //     != 0) {
+    //   return std::unexpected{errc(errno)};
+    // }
+    return Socket<Traits>(tmp_fd);
+  }
+};
+// @brief Compose a socket with multiple flags
+// @note This is a convenience type alias for Socket with multiple flags.
 template <class... Flags>
-using AsyncSocket = AsyncSocketCompose<InOut<SocketTraits<Flags...>>>::type;
-
-static_assert(io::AsyncRead<AsyncSocket<TcpIp>> && "TcpIp is not async readable");
-static_assert(io::AsyncWrite<AsyncSocket<TcpIp>> && "TcpIp is not async writable");
-static_assert(io::AsyncReadWrite<AsyncSocket<TcpIp>> && "TcpIp is not async readable/writable");
-
+using SocketCompose = Socket<SocketTraits<Flags...>>;
 XSL_SYS_NET_NE
 #endif

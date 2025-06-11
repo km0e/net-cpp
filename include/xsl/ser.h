@@ -19,14 +19,14 @@
 #  include <span>
 XSL_NB
 
-template <std::integral I>
-constexpr void serialize(byte* buf, I value) {
+template <typename I>
+constexpr void serialize(byte* buf, const I& value) {
   auto raw = std::as_bytes(std::span(&value, 1));
   std::copy(raw.begin(), raw.end(), buf);
 }
 
-template <std::integral T, size_t _Extent = std::dynamic_extent>
-constexpr void serialized(std::span<byte, _Extent>& buf, T value) {
+template <typename T, size_t _Extent = std::dynamic_extent>
+constexpr void serialized(std::span<byte, _Extent>& buf, const T& value) {
   serialize(buf.data(), value);
   buf = buf.subspan(sizeof(T));
 }

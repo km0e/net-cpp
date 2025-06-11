@@ -16,6 +16,7 @@
 #  include <string>
 #  include <string_view>
 #  include <vector>
+
 XSL_HTTP_NB
 using Token = std::string;
 struct Parameter {
@@ -31,5 +32,6 @@ using Parameters = std::vector<Parameter>;
 using ParametersView = std::vector<ParameterView>;
 // using Weight = double;
 using WeightView = std::string_view;
+
 XSL_HTTP_NE
 #endif

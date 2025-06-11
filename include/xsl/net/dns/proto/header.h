@@ -1,8 +1,8 @@
 /**
  * @file header.h
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
- * @version 0.1
+ * @brief DNS protocol header
+ * @version 0.11
  * @date 2024-08-19
  *
  * @copyright Copyright (c) 2024
@@ -53,7 +53,7 @@ struct Flags {
   /// @brief To u16
   constexpr std::uint16_t to_u16() const {
     return (qr << 15) | (opcode << 11) | (aa << 10) | (tc << 9) | (rd << 8) | (ra << 7) | (z << 6)
-           | (ad << 5) | (cd << 2) | _rcode;
+           | (ad << 5) | (cd << 4) | _rcode;
   }
   /// @brief Get the RCode
   constexpr RCode rcode() const { return RCode::from_u16(this->_rcode); }

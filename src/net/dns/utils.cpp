@@ -120,49 +120,10 @@ std::expected<std::size_t, errc> DnCompressor::prepare(std::string_view src) {
   this->_src = src;
   return {src.size() - suffix_len + 2 + (0 < suffix_len && suffix_len < src.size())};
 }
-/**
- * @brief Compress the domain name
- *
- * @param dst
- */
-void DnCompressor::compress(std::span<byte> &_dst) {
-  std::span<uint8_t> dst(reinterpret_cast<uint8_t *>(_dst.data()), _dst.size());
-  if (_src.empty()) {
-    *dst.data() = 0;
-    dst = dst.subspan(1);
-    return;
-  }
-  assert(dst.size() > 0
-         && dst.size()
-                >= _src.size() - suffix_len + 2 + (0 < suffix_len && suffix_len < _src.size()));
-  memcpy(dst.data() + 1, _src.data(), _src.size() - suffix_len);
-  std::size_t i = 0;
-  for (std::size_t j = 0; i < _src.size() - suffix_len; j++) {
-    dst[i] = lens[j];
-    i += lens[j] + 1;  // jump to the next label length field
-  }
-  if (suffix_len) {
-    dst[i++] = 0xc0 | suffix_off >> 8;  // high 2 bits should be 11
-  }
-  dst[i++] = suffix_off;  // low 8 bits or 0 if suffix_len is 0
 
-  if (i > 2) {
-    dnptrs[dnptrs_cnt] = dst.data();  // store the pointer
-    dnptrs_cnt++;                     // increase the pointer count
-  }
-  dst = dst.subspan(i);  // i is the size of the compressed domain name
-  this->reset();
-}
-constexpr void DnCompressor::reset() {
-  _src = {};
-  suffix_len = 0;
-  suffix_off = 0;
-}
-
-errc DnDecompressor::decompress(std::span<const byte> &src_) {
-  std::span<const uint8_t> src(reinterpret_cast<const uint8_t *>(src_.data()), src_.size());
+errc DnDecompressor::decompress(std::span<const byte> &src) {
   this->buf_end = 0;  /// reset the buffer
-  const std::uint8_t *ptr = src.data();
+  const std::uint8_t *ptr = reinterpret_cast<const uint8_t *>(src.data());
   for (;;) {
     src = src.subspan(1);
     if (*ptr == 0) return {};

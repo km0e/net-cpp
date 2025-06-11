@@ -16,15 +16,15 @@
 using namespace xsl::dns;
 using namespace xsl;
 TEST(dns, decompress) {
-  xsl::byte base[512]
+  char base[512]
       = {"\3www\6google\3com\0"
          "\3abc\xc0\4"};
   auto name_span = std::as_bytes(std::span{base + 0, 512});
-  DnDecompressor decompressor(base);
+  DnDecompressor decompressor(reinterpret_cast<byte *>(base));
   ASSERT_EQ(decompressor.decompress(name_span), errc{});
   ASSERT_EQ(decompressor.dn(), "www.google.com.");
   ASSERT_EQ(decompressor.decompress(name_span), errc{});
-  ASSERT_EQ(decompressor.dn(),  "abc.google.com.");
+  ASSERT_EQ(decompressor.dn(), "abc.google.com.");
 }
 
 int main(int argc, char **argv) {

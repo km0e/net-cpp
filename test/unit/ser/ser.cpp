@@ -22,7 +22,7 @@ using namespace xsl;
 TEST(ser, i32) {
   int32_t value = 0x12345678, result;
   byte bytes[4];
-  byte expected[4] = {0x78, 0x56, 0x34, 0x12};
+  byte expected[4] = {byte{0x78}, byte{0x56}, byte{0x34}, byte{0x12}};
 
   serialize(bytes, value);
   EXPECT_EQ(std::memcmp(bytes, expected, 4), 0);
@@ -39,7 +39,7 @@ TEST(ser, i32) {
 
   result = 0;
 
-  auto c_bytes = std::as_bytes(bytes, 4);
+  auto c_bytes = std::as_bytes(std::span(bytes, 4));
   deserialized(c_bytes, result);
   EXPECT_EQ(value, result);
 }
@@ -47,7 +47,7 @@ TEST(ser, i32) {
 TEST(str, u16) {
   uint16_t value = 0x1234, result;
   byte bytes[2];
-  byte expected[2] = {0x34, 0x12};
+  byte expected[2] = {byte{0x34}, byte{0x12}};
 
   serialize(bytes, value);
   EXPECT_EQ(std::memcmp(bytes, expected, 2), 0);
@@ -64,7 +64,7 @@ TEST(str, u16) {
 
   result = 0;
 
-  auto c_bytes = std::as_bytes(bytes, 2);
+  auto c_bytes = std::as_bytes(std::span(bytes, 2));
   deserialized(c_bytes, result);
   EXPECT_EQ(value, result);
 }

@@ -9,14 +9,14 @@
  *
  */
 #include <CLI/CLI.hpp>
+#include <xsl/asio.h>
 #include <xsl/coro.h>
 #include <xsl/logctl.h>
-#include <xsl/net.h>
 
 std::string ip = "0.0.0.0";
 std::string port = "8080";
 
-using namespace xsl::coro;
+using namespace xsl::asio;
 using namespace xsl;
 /**
  * @brief run http server
@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
   log_info("start http server at {}:{}", ip, port);
 
   auto poller = std::make_shared<xsl::Poller>();
-  auto executor = std::make_shared<NewThreadExecutor>();
+  auto executor = std::make_shared<coro::NewThreadExecutor>();
   run(ip, port, poller).detach(std::move(executor));
   // run(ip, port, poller).detach();
   poller->run();

@@ -1,0 +1,264 @@
+/**
+ * @file conn.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief Connection class for HTTP server
+ * @version 0.11
+ * @date 2024-08-16
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
+#pragma once
+#ifndef XSL_ASIO_HTTP_CONN
+#  define XSL_ASIO_HTTP_CONN
+#  include "xsl/asio/http/def.h"
+#  include "xsl/asio/http/msg.h"
+#  include "xsl/asio/http/parse.h"
+#  include "xsl/coro.h"
+#  include "xsl/coro/guard.h"
+#  include "xsl/io/ai.h"
+#  include "xsl/io/def.h"
+#  include "xsl/io/dyn.h"
+#  include "xsl/logctl.h"
+
+#  include <memory>
+#  include <span>
+#  include <type_traits>
+#  include <utility>
+XSL_ASIO_HTTP_NB
+using namespace xsl::io;
+/**
+ * @brief serve the connection
+ *
+ * @tparam AsyncRead the async reader
+ * @tparam AsyncWrite the async writer
+ * @tparam Service the service type
+ * @tparam ParserTraits the parser traits
+ * @param ard
+ * @param awd
+ * @param service the service
+ * @param parser the parser
+ * @return Task<void>
+ * @note this function would not save the state of the arguments, do not directly call it
+ */
+template <AsyncRead R, AsyncWrite W, class Service, class ParserTraits = HttpParseTraits>
+Task<void> imm_serve_connection(R& ard, W& awd, Service& service, Parser<ParserTraits>& parser) {
+  ParseData parse_data{};
+  while (true) {
+    {
+      log_debug("Start to read request");
+      auto res = co_await parser.read(ard, parse_data);
+      if (res != errc{}) {
+        log_warning("recv error: {}", std::make_error_code(res).message());
+        break;
+      }
+      log_debug("New request: {} {}", parse_data.request.method, parse_data.request.path);
+    }
+
+    Request request{std::move(parse_data.buffer), std::move(parse_data.request),
+                    parse_data.content_part, ard};
+    log_debug("ready to serve request: {}", request.view.path);
+    Response<W> resp = co_await (service)(
+        std::move(request));  // TODO: may be will also need to be a coroutine in the future
+    log_debug("ready to send response: {}", resp._part.status_code.to_reason_phrase());
+    auto [sz, err] = co_await resp.sendto(awd);
+    if (err) {
+      log_warning("send error: {}", std::make_error_code(*err).message());
+    }
+  }
+}
+
+template <AsyncRead R, AsyncWrite W, class Service, class ParserTraits = HttpParseTraits>
+decltype(auto) serve_connection(R&& _abr, W&& _abw, std::shared_ptr<Service>&& service,
+                                Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
+  using l_in_dev_type = std::decay_t<R>;
+  using l_out_dev_type = std::decay_t<W>;
+  using r_in_dev_type = typename Service::in_dev_type;
+  using r_out_dev_type = typename Service::out_dev_type;
+  static_assert(std::is_same_v<l_in_dev_type, r_in_dev_type>
+                    || std::is_same_v<r_in_dev_type, AsyncReadDevice>,
+                "Input device type mismatched with the service");
+  static_assert(std::is_same_v<l_out_dev_type, r_out_dev_type>
+                    || std::is_same_v<r_out_dev_type, AsyncWriteDevice>,
+                "Output device type mismatched with the service");
+  using final_in_dev_type = std::conditional_t<std::is_same_v<l_in_dev_type, r_in_dev_type>,
+                                               r_in_dev_type, DynAsyncReadDevice<l_in_dev_type>>;
+  using final_out_dev_type
+      = std::conditional_t<std::is_same_v<l_out_dev_type, r_out_dev_type>, r_out_dev_type,
+                           DynAsyncWriteDevice<l_out_dev_type>>;
+  auto fn = [](r_in_dev_type& _abr, r_out_dev_type& _abw, auto& _service, auto& _parser) {
+    return imm_serve_connection(_abr, _abw, *_service, _parser);
+  };
+  return _coro::ArgGuard<decltype(fn), final_in_dev_type, final_out_dev_type,
+                         std::shared_ptr<Service>, Parser<ParserTraits>>{
+      fn, std::forward<R>(_abr), std::forward<W>(_abw), std::move(service), std::move(parser)};
+}
+/**
+ * @brief serve the connection
+ *
+ * @tparam ABIO the async byte reader and writer
+ * @tparam Service the service type
+ * @tparam ParserTraits the parser traits
+ * @param ard
+ * @param service
+ * @param parser
+ * @return Task<void>
+ */
+template <AsyncReadWrite RW, class Service, class ParserTraits = HttpParseTraits>
+decltype(auto) serve_connection(RW&& _ab, std::shared_ptr<Service>&& service,
+                                Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
+  using l_io_dev_type = std::decay_t<RW>;
+  using l_in_dev_type = typename l_io_dev_type::in_dev_type;
+  using l_out_dev_type = typename l_io_dev_type::out_dev_type;
+  using r_in_dev_type = typename Service::in_dev_type;
+  using r_out_dev_type = typename Service::out_dev_type;
+  static_assert(std::is_same_v<l_in_dev_type, r_in_dev_type>
+                    || std::is_same_v<r_in_dev_type, AsyncReadDevice>,
+                "Input device type mismatched with the service");
+  static_assert(std::is_same_v<l_out_dev_type, r_out_dev_type>
+                    || std::is_same_v<r_out_dev_type, AsyncWriteDevice>,
+                "Output device type mismatched with the service");
+  if constexpr (std::is_same_v<l_io_dev_type, r_in_dev_type>
+                && std::is_same_v<l_io_dev_type, r_out_dev_type>) {
+    return _coro::ArgGuard(
+        [](auto& _ab, auto& _service, auto& _parser) {
+          return imm_serve_connection(_ab, _ab, *_service, _parser);
+        },
+        std::move(_ab), std::move(service), std::move(parser));
+  } else if constexpr (requires { _ab.split(); }) {
+    auto [r, w] = std::move(_ab).split();
+    return serve_connection(std::move(r), std::move(w), std::move(service), std::move(parser));
+  }
+}
+
+template <AsyncReadWrite ABIO, class Service, class ParserTraits = HttpParseTraits>
+decltype(auto) serve_connection(ABIO&& _ab, std::shared_ptr<Service> service,
+                                Parser<ParserTraits> parser = Parser<ParserTraits>{}) {
+  using io_dev_type = std::decay_t<ABIO>;
+  using r_in_dev_type = typename Service::in_dev_type;
+  using r_out_dev_type = typename Service::out_dev_type;
+  static_assert(
+      std::is_same_v<io_dev_type, r_in_dev_type> || std::is_same_v<r_in_dev_type, AsyncReadDevice>,
+      "Input device type mismatched with the service");
+  static_assert(std::is_same_v<io_dev_type, r_out_dev_type>
+                    || std::is_same_v<r_out_dev_type, AsyncWriteDevice>,
+                "Output device type mismatched with the service");
+  if constexpr (std::is_same_v<io_dev_type, r_in_dev_type>
+                && std::is_same_v<io_dev_type, r_out_dev_type>) {
+    return _coro::ArgGuard(
+        [](auto& _ab, auto& _service, auto& _parser) {
+          return imm_serve_connection(_ab, _ab, *_service, _parser);
+        },
+        std::move(_ab), std::move(service), std::move(parser));
+  } else if constexpr (requires { std::move(*_ab).split(); }) {
+    auto [r, w] = std::move(*_ab).split();
+    return serve_connection(std::move(r), std::move(w), std::move(service), std::move(parser));
+  }
+}
+
+class ConnectionBase {
+public:
+  ConnectionBase() : _parser{} {}
+  template <class _Conn>
+  Task<Result> read(this _Conn& self, std::span<Request<typename _Conn::in_dev_type>> reqs) {
+    std::size_t i = 0;
+    ParseData parse_data;
+    for (auto& req : reqs) {
+      {
+        auto res = co_await self._parser.read(self.read_dev(), parse_data);
+        if (!res) {
+          if (res.error() != errc::no_message) {
+            LOG3("recv error: {}", std::make_error_code(res.error()).message());
+          }
+          co_return Result{i, res.error()};
+        }
+        log_info("New request: {} {}", parse_data.request.method, parse_data.request.path);
+      }
+      req = Request<typename _Conn::in_dev_type>{std::move(parse_data.buffer),
+                                                 std::move(parse_data.request),
+                                                 parse_data.content_part, self.read_dev()};
+      ++i;
+    }
+    co_return Result{i, std::nullopt};
+  }
+
+  template <class _Conn>
+  Task<Result> write(this _Conn& self,
+                     std::span<const Response<typename _Conn::out_dev_type>> resps) {
+    for (auto& resp : resps) {
+      auto [sz, err] = co_await resp.sendto(self.write_dev());
+      if (err) {
+        LOG3("send error: {}", std::make_error_code(*err).message());
+        co_return Result{0, *err};
+      }
+    }
+    co_return Result{0, std::nullopt};
+  }
+
+protected:
+  Parser<HttpParseTraits> _parser;
+};
+
+template <class... IO>
+class Connection;
+
+template <AsyncReadWrite RW>
+class Connection<RW> : public ConnectionBase {
+  using Base = ConnectionBase;
+  using io_dev_type = RW;
+  using in_dev_type = RW;
+  using out_dev_type = RW;
+
+public:
+  constexpr Connection(io_dev_type&& ab) : Base{}, _ab(std::move(ab)) {}
+
+  constexpr Connection(Connection&&) = default;
+  constexpr Connection& operator=(Connection&&) = default;
+  ~Connection() {}
+
+  io_dev_type& read_dev() { return this->_ab; }
+  io_dev_type& write_dev() { return this->_ab; }
+
+  template <class Service>
+  decltype(auto) serve_connection(this Connection&& self, std::shared_ptr<Service> service) {
+    return http::serve_connection(std::move(self._ab), std::move(service), std::move(self._parser));
+  }
+
+private:
+  io_dev_type _ab;
+};
+
+/// @brief the connection class
+template <AsyncRead ABI, AsyncWrite ABO>
+class Connection<ABI, ABO> : public ConnectionBase {
+  using Base = ConnectionBase;
+  using in_dev_type = ABI;
+  using out_dev_type = ABO;
+
+public:
+  constexpr Connection(in_dev_type&& in_dev, out_dev_type&& out_dev)
+      : Base{}, _ard(std::move(in_dev)), _awd(std::move(out_dev)) {}
+
+  constexpr Connection(Connection&&) = default;
+  constexpr Connection& operator=(Connection&&) = default;
+  ~Connection() {}
+
+  in_dev_type& read_dev() { return this->_ard; }
+  out_dev_type& write_dev() { return this->_awd; }
+
+  template <class Service>
+  decltype(auto) serve_connection(this Connection&& self, std::shared_ptr<Service> service) {
+    return http::serve_connection(std::move(self._ard), std::move(self._awd), std::move(service),
+                                  std::move(self._parser));
+  }
+
+private:
+  in_dev_type _ard;
+  out_dev_type _awd;
+};
+
+template <AsyncRead ABI, AsyncWrite ABO>
+Connection(ABI&&, ABO&&) -> Connection<ABI, ABO>;
+
+XSL_ASIO_HTTP_NE
+#endif

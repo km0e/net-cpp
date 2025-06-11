@@ -13,7 +13,10 @@
 #  define XSL_CORO_SIGNAL_COMMON
 #  include "xsl/coro/def.h"
 
+#  include <cassert>
 #  include <memory>
+#  include <optional>
+
 XSL_CORO_NB
 
 template <class Storage>
@@ -60,7 +63,7 @@ public:
   using storage_type = typename traits_type::storage_type;
   using awaiter_type = typename traits_type::awaiter_type;
   using max_signals = traits_type::max_signals;
-  using pointer_traits = std::pointer_traits<Pointer>;
+  // using pointer_traits = std::pointer_traits<Pointer>;
 
 private:
   Pointer _storage;

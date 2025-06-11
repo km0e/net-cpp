@@ -1,12 +1,13 @@
-add_subdirectory(http)
-add_subdirectory(dns)
-
 add_library(xsl_net STATIC)
+
+file(GLOB_RECURSE XSL_NET_SOURCE_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+)
 
 target_sources(
     xsl_net
     PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/net.cpp
+    ${XSL_NET_SOURCE_FILES}
 )
 
-target_link_libraries(xsl_net PRIVATE xsl_coro xsl_sys xsl_http xsl_dns)
+target_link_libraries(xsl_net PRIVATE xsl_sys)

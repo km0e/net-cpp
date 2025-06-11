@@ -10,9 +10,10 @@
  */
 #include "xsl/def.h"
 #include "xsl/net.h"
-#include "xsl/net/dns/proto/def.h"
 
 #include <gtest/gtest.h>
+
+#include <cstdint>
 
 using namespace xsl;
 using namespace xsl::dns;
@@ -20,7 +21,7 @@ using namespace xsl::dns;
 TEST(dns_proto, type) {
   Type type = Type::A;
   byte bytes[2];
-  byte expected[2] = {0, 1};
+  uint8_t expected[2] = {0, 1};
   std::span<byte> buf(bytes, 2);
   type.serialized(buf);
   EXPECT_EQ(std::memcmp(bytes, expected, 2), 0);
@@ -31,7 +32,7 @@ TEST(dns_proto, type) {
 TEST(dns_proto, class) {
   Class class_ = Class::IN;
   byte bytes[2];
-  byte expected[2] = {0, 1};
+  uint8_t expected[2] = {0, 1};
   std::span<byte> buf(bytes, 2);
 
   class_.serialized(buf);
@@ -49,7 +50,7 @@ TEST(dns_proto, header) {
                    .arcount = 0x1234};
 
   byte bytes[12];
-  byte expected[12] = {0x34, 0x12, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34};
+  uint8_t expected[12] = {0x34, 0x12, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34};
   std::span<byte> buf(bytes, 12);
 
   header.serialize(buf);
@@ -70,7 +71,7 @@ TEST(dns_proto, header) {
 
 TEST(dns_proto, question) {
   std::string_view dns[] = {"www.google.com", "mail.google.com.", "google.com"};
-  byte expected[256]
+  uint8_t expected[256]
       = {3, 'w', 'w', 'w', 6,   'g', 'o',  'o',  'g', 'l', 'e', 3, 'c',  'o',  'm', 0, 0, 1, 0,
          1, 4,   'm', 'a', 'i', 'l', 0xc0, 0x04, 0,   1,   0,   1, 0xc0, 0x04, 0,   1, 0, 1};
 

@@ -2,7 +2,7 @@
  * @file task.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Task coroutine
- * @version 0.21
+ * @version 0.22
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -16,14 +16,13 @@
 #  include "xsl/coro/def.h"
 #  include "xsl/coro/detach.h"
 #  include "xsl/coro/executor.h"
-#  include "xsl/coro/guard.h"
 #  include "xsl/coro/then.h"
 #  include "xsl/logctl.h"
+#  include "xsl/type_traits.h"
 
 #  include <cassert>
 #  include <concepts>
 #  include <coroutine>
-#  include <tuple>
 #  include <type_traits>
 #  include <utility>
 
@@ -50,14 +49,8 @@ public:
 
   template <class Awaiter, class... _Args>
     requires(!std::is_reference_v<Awaiter>)
-  constexpr std::suspend_never yield_value(Awaiter &&awaiter, _Args &&...args) {
-    if constexpr (sizeof...(args) == 0) {
-      _coro::detach(std::forward<Awaiter>(awaiter), this->executor());
-    } else {
-      ArgGuard creator(
-          std::forward_as_tuple(std::forward<Awaiter>(awaiter), std::forward<_Args>(args)...));
-      _coro::detach(std::move(creator), this->executor());
-    }
+  constexpr std::suspend_never yield_value(Awaiter &&awaiter) {
+    _coro::detach(std::forward<Awaiter>(awaiter), this->executor());
     return {};
   }
 
@@ -134,13 +127,20 @@ public:
     }
   }
 
-  constexpr Task operator co_await(this Task &&self) {
+  constexpr auto operator co_await(this auto &&self) {
     log_trace("move handle to Awaiter");
     return std::move(self);
   }
 
   constexpr auto then(this Task &&self, std::invocable<result_type> auto &&f) {
     return ThenAwaiter<Task>(std::move(self).move_handle()).then(std::forward<decltype(f)>(f));
+  }
+
+  constexpr auto and_then(this Task &&self,
+                          std::invocable<typename result_type::value_type> auto &&f)
+    requires is_same_pack_v<result_type, std::expected<void, void>>
+  {
+    return ThenAwaiter<Task>(std::move(self).move_handle()).and_then(std::forward<decltype(f)>(f));
   }
   /**
    * @brief Block the task

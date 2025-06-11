@@ -14,7 +14,7 @@
 #  define XSL_SYS_NET_NB namespace xsl::_sys::net {
 #  define XSL_SYS_NET_NE }
 #  include "xsl/feature.h"
-#  include "xsl/sys/sync.h"
+#  include "xsl/io/context.h"
 
 #  include <arpa/inet.h>
 #  include <netinet/in.h>
@@ -116,7 +116,7 @@ concept SocketTraitsCompatible
 
 template <int Family, int Type, int Protocol>
 struct SocketTraitsBase : FamilyTraits<Family>, TypeTraits<Type>, ProtocolTraits<Protocol> {
-  using poll_traits_type = DefaultPollTraits;  ///< poll traits
+  using poll_traits_type = io::DefaultPollTraits;  ///< poll traits
   SocketTraitsBase() = default;
   SocketTraitsBase(int family, int type, int protocol)
       : FamilyTraits<Family>(family), TypeTraits<Type>(type), ProtocolTraits<Protocol>(protocol) {}
@@ -206,10 +206,5 @@ namespace impl_sock {
 template <class... Flags>
 using SocketTraits = impl_sock::SocketTraitsTagCompose<Flags...>::type;
 
-template <class Traits>
-class ReadWriteSocket;
-
-template <class Traits>
-class AsyncReadWriteSocket;
 XSL_SYS_NET_NE
 #endif

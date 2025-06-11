@@ -26,22 +26,20 @@ namespace coro {
   using _coro::NewThreadExecutor;
   using _coro::NoopExecutor;
 }  // namespace coro
-// using _coro::BinarySignal;
 using _coro::AnySignal;
 using _coro::block;
 using _coro::detach;
 
 using _coro::Signal;
 using _coro::SignalAwaiter;
-using _coro::UnsafeSignal;
-// using _coro::UnsafeBinarySignal;
 using _coro::SPSCSignal;
-// using _coro::UnsafeBinarySignal;
+using _coro::SPSCSignal2;
+using _coro::UnsafeSignal;
 
-using _coro::ExactPubSub;
-using _coro::make_exact_pub_sub;
+using _coro::StaticExactPubSubStorage;
+
+using _coro::make_pub_sub;
 using _coro::PubSub;
-// using _coro::Subscriber;
 
 using _coro::ArgGuard;
 using _coro::Task;

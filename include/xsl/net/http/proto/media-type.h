@@ -11,6 +11,8 @@
 #pragma once
 #ifndef XSL_NET_HTTP_PROTO_MEDIA_TYPE
 #  define XSL_NET_HTTP_PROTO_MEDIA_TYPE
+
+#  include "xsl/net/http/def.h"
 #  include "xsl/net/http/proto/base.h"
 #  include "xsl/wheel.h"
 
@@ -19,6 +21,7 @@
 #  include <cstdint>
 #  include <string_view>
 XSL_HTTP_NB
+
 enum class MediaMainType : uint8_t {
   ANY,
   TEXT,
@@ -233,7 +236,7 @@ namespace common_media_type {
   const std::string_view video_x_ms_wmv = "video/x-ms-wmv";
   const std::string_view video_x_msvideo = "video/x-msvideo";
 
-  static const us_map<std::string_view> extension_to_media_type = {
+  static const xsl::us_map<std::string_view> extension_to_media_type = {
       {".html", text_html},
       {".shtml", text_html},
       {".htm", text_html},
@@ -473,6 +476,5 @@ struct MediaTypeView : MediaTypeBase {
     return {start, parameters.empty() ? end : parameters.back().value.data()};
   }
 };
-
 XSL_HTTP_NE
 #endif

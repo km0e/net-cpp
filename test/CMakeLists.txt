@@ -14,6 +14,7 @@ link_libraries(GTest::gtest_main)
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 # ---- Add Subdirectories ----
+add_subdirectory(unit)
 # add_subdirectory(coro)
 # add_subdirectory(http)
 # add_subdirectory(transport)

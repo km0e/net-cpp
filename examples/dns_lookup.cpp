@@ -9,12 +9,10 @@
  *
  */
 #include <CLI/CLI.hpp>
+#include <xsl/asio.h>
 #include <xsl/coro.h>
 #include <xsl/feature.h>
 #include <xsl/logctl.h>
-#include <xsl/net.h>
-#include <xsl/sys.h>
-#include <xsl/wheel.h>
 
 #include <forward_list>
 #include <iostream>
@@ -27,10 +25,12 @@ std::string ip = "223.5.5.5";
 std::string port = "53";
 
 using namespace xsl::coro;
+using namespace xsl::asio;
 using namespace xsl;
+using namespace xsl::dns;
 
 Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
-  auto cli = dns::Resolver(*poller, {ip.data(), port.data()});
+  auto cli = Resolver(*poller, {ip.data(), port.data()});
   co_yield cli.run();
   std::string buffer(4096, '\0');
   while (true) {
@@ -41,21 +41,21 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
       continue;
     }
     char ip[16];
-    const std::forward_list<dns::RR> &rrs = **res;
+    const std::forward_list<RR> &rrs = **res;
     std::println(std::cout, "{:10}{:10}{:10}{:10}", "Type", "Class", "TTL", "RData");
     for (auto &rr : rrs) {
       std::print(std::cout, "{:10}{:10}{:<10}", rr.type(), rr.class_(), rr.ttl());
-      if (rr.type() == dns::Type::A) {
+      if (rr.type() == Type::A) {
         auto data = rr.rdata();
         std::sprintf(ip, "%d.%d.%d.%d", std::to_integer<uint8_t>(data[0]),
                      std::to_integer<uint8_t>(data[1]), std::to_integer<uint8_t>(data[2]),
                      std::to_integer<uint8_t>(data[3]));
         std::println(std::cout, "{:10}", ip);
-      } else if (rr.type() == dns::Type::CNAME) {
+      } else if (rr.type() == Type::CNAME) {
         auto buf = std::make_unique<char[]>(512);
-        dns::DnDecompressor decompressor{nullptr};
+        DnDecompressor decompressor{nullptr};
         auto rdata = rr.rdata();
-        if (decompressor.decompress(rdata) != errc{}) {
+        if (decompressor.decompress(rdata) != std::errc{}) {
           std::println(std::cout, "decompress failed");
         } else {
           std::println(std::cout, "{:10}", decompressor.dn());

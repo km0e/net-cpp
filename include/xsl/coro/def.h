@@ -2,7 +2,7 @@
  * @file def.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Definition of coroutines
- * @version 0.11
+ * @version 0.12
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -15,8 +15,8 @@
 #  define XSL_CORO_NE }
 #  include <coroutine>
 #  include <exception>
-#  include <expected>
 #  include <utility>
+#  include <variant>
 XSL_CORO_NB
 
 struct noop_coroutine {
@@ -43,8 +43,31 @@ public:
   using result_type = typename Awaiter::result_type;
 };
 
+namespace {
+  template <class ResultType>
+  using ResultTypeOrVoid
+      = std::conditional_t<std::is_void_v<ResultType>,
+                           std::variant<std::monostate, std::exception_ptr>,
+                           std::variant<std::monostate, ResultType, std::exception_ptr>>;
+}
+
 template <class ResultType>
-using Result = std::expected<ResultType, std::exception_ptr>;
+class Result2 : public ResultTypeOrVoid<ResultType> {
+public:
+  using base_type = ResultTypeOrVoid<ResultType>;
+  using base_type::base_type;
+
+  constexpr decltype(auto) unwrap(this Result2&& self) {
+    if (std::holds_alternative<std::exception_ptr>(self)) [[unlikely]] {
+      std::rethrow_exception(std::get<std::exception_ptr>(std::move(self)));
+    }
+    if constexpr (std::is_same_v<ResultType, void>) {
+      return;
+    } else {
+      return std::get<ResultType>(std::move(self));
+    }
+  }
+};
 
 XSL_CORO_NE
 

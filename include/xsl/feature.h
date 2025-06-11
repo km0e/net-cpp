@@ -2,7 +2,7 @@
  * @file feature.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Feature flags
- * @version 0.11
+ * @version 0.12
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -41,7 +41,9 @@ struct UdpIpv4 {};
 struct UdpIpv6 {};
 struct UdpIp {};
 
+struct Static {};
 struct Exact {};
+struct Shared {};
 struct Raw {};
 template <class T>
 struct In {};
@@ -100,6 +102,9 @@ namespace impl {
   static_assert(std::is_same_v<off_fmt<type_list<int, set<int, float>>>::type,
                                type_list<Item<std::is_same, int>, Item<std::is_same, int, float>>>);
 
+  static_assert(
+      std::is_same_v<off_fmt<type_list<Item<always_true>>>::type, type_list<Item<always_true>>>);
+
   template <class FlagSet, class FullFeatureFlagItemSet, class... CompleteFlags>
   struct off_fill;
 
@@ -132,6 +137,12 @@ namespace impl {
                                type_list<int>>);
   static_assert(std::is_same_v<off_fill<type_list<int>, type_list<Item<std::is_same, float>>>::type,
                                type_list<Placeholder>>);
+  static_assert(std::is_same_v<off_fill<type_list<int>, type_list<Item<always_true, void>>>::type,
+                               type_list<int>>);
+  static_assert(
+      std::is_same_v<off_fill<type_list<int, char>,
+                              type_list<Item<always_true, void>, Item<always_true, void>>>::type,
+                     type_list<int, char>>);
 
   template <class FullFlag, class... Flags>
   using off_compose_t

@@ -16,6 +16,8 @@ add_subdirectory(sys)
 add_subdirectory(net)
 add_subdirectory(coro)
 add_subdirectory(wheel)
+add_subdirectory(io)
+add_subdirectory(asio)
 
 add_library(xsl_convert STATIC)
 
@@ -35,4 +37,4 @@ target_sources(
 
 target_include_directories(xsl PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
-target_link_libraries(xsl xsl_net xsl_coro xsl_sys xsl_wheel xsl_convert)
+target_link_libraries(xsl xsl_net xsl_coro xsl_sys xsl_wheel xsl_convert xsl_asio xsl_io)

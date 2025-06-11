@@ -2,7 +2,7 @@
  * @file raw.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Raw device
- * @version 0.2
+ * @version 0.21
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -21,6 +21,31 @@
 #  include <system_error>
 #  include <utility>
 XSL_SYS_NB
+using RawHandle = int;  ///< RawHandle is a file descriptor type
+
+/// @brief RawOwner is a wrapper for file descriptor
+struct RawOwner {
+  int fd;
+
+  constexpr RawOwner() noexcept : fd(-1) {}
+  explicit constexpr RawOwner(int fd) noexcept : fd(fd) {}
+  constexpr RawOwner(RawOwner &&rhs) noexcept : fd(std::exchange(rhs.fd, -1)) {}
+  constexpr RawOwner &operator=(RawOwner &&rhs) noexcept {
+    fd = std::exchange(rhs.fd, -1);
+    return *this;
+  }
+  constexpr ~RawOwner() noexcept {
+    if (fd >= 0) {
+      ::close(fd);
+    }
+  }
+  /// @brief get raw file descriptor
+  constexpr auto &&raw(this auto &&self) noexcept { return std::forward<decltype(self)>(self).fd; }
+  /// @brief into owner
+  constexpr RawOwner into_owner() && noexcept { return RawOwner{std::exchange(fd, -1)}; }
+  /// @brief check if the file descriptor is valid
+  constexpr bool is_valid() const noexcept { return fd >= 0; }
+};
 /**
  * @brief Set the blocking object
  *

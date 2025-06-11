@@ -2,7 +2,7 @@
  * @file signal.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Signal for coroutines
- * @version 0.3
+ * @version 0.4
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -14,6 +14,7 @@
 #  include "xsl/coro/def.h"
 #  include "xsl/coro/signal/mpsc.h"
 #  include "xsl/coro/signal/spsc.h"
+#  include "xsl/coro/signal/spsc2.h"
 #  include "xsl/coro/signal/unsafe.h"
 
 #  include <cassert>
@@ -35,6 +36,9 @@ template <std::ptrdiff_t MaxSignals = spsc_max_signals::value,
           class TxTraits = SignalTxTraits<SPSCSignalStorage, MaxSignals>,
           class Pointer = std::shared_ptr<typename TxTraits::storage_type>>
 using SPSCSignal = AnySignal<TxTraits, Pointer>;
+
+template <std::ptrdiff_t MaxSignals = spsc_max_signals::value>
+using SPSCSignal2 = Signal2<MaxSignals>;
 
 XSL_CORO_NE
 #endif

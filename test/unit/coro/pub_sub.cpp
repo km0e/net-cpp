@@ -2,7 +2,7 @@
  * @file test_pub_sub.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Test for Publish-Subscribe pattern for coroutines
- * @version 0.2
+ * @version 0.21
  * @date 2024-08-28
  *
  * @copyright Copyright (c) 2024
@@ -18,76 +18,69 @@
 
 using namespace xsl;
 TEST(ExactPubSub, Exit) {
-  auto sig = [] -> auto {
-    auto [pubsub, rx] = _coro::make_exact_pub_sub<int>(1);
-    pubsub.publish(1);
-    return std::move(rx);
-  }();
+  auto pubsub = _coro::make_pub_sub<_value_pack<1>, SPSCSignal2<1>, Shared>();
+  pubsub->publish<1>();
   int count = 0;
   [](auto sub, int &count) -> Task<void> {
-    while (co_await sub) {
+    while (co_await *sub->template signal<1>()) {
       count++;
     }
-  }(std::move(sig), count)
+  }(std::move(pubsub), count)
                                   .detach();
   ASSERT_EQ(count, 1);
 }
 
 TEST(ExactPubSub, UnSafeExit) {
-  auto sig = [] -> auto {
-    auto [pubsub, rx] = _coro::make_exact_pub_sub<int, UnsafeSignal<1>>(1);
-    pubsub.publish(1);
-    return std::move(rx);
-  }();
+  auto pubsub = _coro::make_pub_sub<_value_pack<1>, UnsafeSignal<1>, Shared>();
+  pubsub->publish<1>();
   int count = 0;
   [](auto sub, int &count) -> Task<void> {
-    while (co_await sub) {
+    while (co_await *sub->template signal<1>()) {
       count++;
     }
-  }(std::move(sig), count)
+  }(std::move(pubsub), count)
                                   .detach();
   ASSERT_EQ(count, 1);
 }
 
 TEST(ExactPubSub, PubByPred) {
-  auto [pubsub, sig1, sig2] = _coro::make_exact_pub_sub<int>(1, 2);
-  pubsub.publish([](int v) { return v == 1; });
+  auto pubsub = _coro::make_pub_sub<_value_pack<1>, SPSCSignal2<1>, Shared>();
+  pubsub->publish([](int v) { return v == 1; });
   int count = 0;
   [](auto sub, int &count) -> Task<void> {
-    while (co_await sub) {
+    while (co_await *sub->template signal<1>()) {
       count++;
     }
-  }(std::move(sig1), count)
+  }(std::move(pubsub), count)
                                   .detach();
   ASSERT_EQ(count, 1);
 }
 
 TEST(PubSub, SafeExit) {
-  auto sig = [] -> auto {
-    PubSub<int, 100> pubsub{};
-    auto sub_res = pubsub.subscribe(1);
-    pubsub.publish(1);
-    return std::move(*sub_res);
+  auto pubsub = [] -> auto {
+    auto pubsub = _coro::make_pub_sub<int, SPSCSignal2<100>>();
+    pubsub.subscribe(1);
+    pubsub.template publish<1>();
+    return pubsub;
   }();
   int count = 0;
   [](auto sub, int &count) -> Task<void> {
-    while (co_await sub) {
+    while (co_await *sub.template signal<1>()) {
       count++;
     }
-  }(std::move(sig), count)
+  }(std::move(pubsub), count)
                                   .detach();
   ASSERT_EQ(count, 1);
 }
 
 TEST(PubSub, PubByPred) {
-  PubSub<int, 100> pubsub{};
-  auto sub_res = pubsub.subscribe(1);
+  auto pubsub = _coro::make_pub_sub<int, SPSCSignal2<100>>();
+  auto [sig, _] = pubsub.subscribe(1);
   pubsub.subscribe(2);
   pubsub.publish([](const int &v) { return v == 1; });
-  auto sig = std::move(*sub_res);
   int count = 0;
   [](auto sub, int &count) -> Task<void> {
-    while (co_await sub) {
+    while (co_await *sub) {
       count++;
     }
   }(std::move(sig), count)
@@ -100,7 +93,8 @@ TEST(PubSub, HeavyConcurrent) {
   auto executor = std::make_shared<coro::NewThreadExecutor>();
   auto rand_pub = gen.generate(100000, 1, 100);
   auto rand_sub = gen.generate(10, 1, 100);
-  PubSub<int, 100> pubsub{};
+
+  auto pubsub = _coro::make_pub_sub<int, SPSCSignal2<100000>>();
 
   std::unordered_map<int, int> counter{};
   for (auto i : rand_sub) {
@@ -109,12 +103,11 @@ TEST(PubSub, HeavyConcurrent) {
   std::counting_semaphore<> sem{0};
   for (auto i : rand_sub) {
     [](int v, auto &pubsub, auto &sem, auto &counter) -> Task<void> {
-      auto sub_res = pubsub.subscribe(v);
-      if (!sub_res) {
+      auto [sig, ok] = pubsub.subscribe(v);
+      if (!ok) {
         co_return;
       }
-      auto sig = std::move(*sub_res);
-      while (co_await sig) {
+      while (co_await *sig) {
         counter[v]++;
       }
       sem.release();

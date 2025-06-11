@@ -19,16 +19,16 @@
 #  include <forward_list>
 XSL_IO_NB
 
-class Block {
+class Blk {
 public:
   /// @brief Construct a new Block object
-  constexpr Block(std::size_t size) : data(std::make_unique<byte[]>(size)), valid_size(size) {}
+  constexpr Blk(std::size_t size) : data(std::make_unique<byte[]>(size)), valid_size(size) {}
   /// @brief Construct a new Block object
-  constexpr Block(std::unique_ptr<byte[]> data, std::size_t size)
+  constexpr Blk(std::unique_ptr<byte[]> data, std::size_t size)
       : data(std::move(data)), valid_size(size) {}
-  constexpr Block(Block &&) = default;
-  constexpr Block &operator=(Block &&) = default;
-  constexpr ~Block() = default;
+  constexpr Blk(Blk &&) = default;
+  constexpr Blk &operator=(Blk &&) = default;
+  constexpr ~Blk() = default;
   /// @brief Get the span of the data
   constexpr std::span<byte> span(std::size_t offset = 0) {
     return {data.get() + offset, valid_size - offset};
@@ -54,12 +54,12 @@ public:
   ByteBuffer(ByteBuffer &&) = default;
   ByteBuffer &operator=(ByteBuffer &&) = default;
   ~ByteBuffer() = default;
-  constexpr void append(Block &&block) { _blocks.push_front(std::move(block)); }
+  constexpr void append(Blk &&block) { _blocks.push_front(std::move(block)); }
   constexpr void append(std::size_t size) {
-    _blocks.push_front(Block{std::make_unique<value_type[]>(size), size});
+    _blocks.push_front(Blk{std::make_unique<value_type[]>(size), size});
   }
   constexpr void clear() { _blocks.clear(); }
-  constexpr Block &front() { return _blocks.front(); }
+  constexpr Blk &front() { return _blocks.front(); }
   /// @brief Write the buffer to the given AsyncWriteDevice
   Task<io::Result> write(AsyncWriteDevice &awd) {
     std::size_t total_size = 0;
@@ -73,10 +73,10 @@ public:
     co_return total_size;
   };
 
-  std::forward_list<Block> _blocks;
+  std::forward_list<Blk> _blocks;
 
 protected:
-  ByteBuffer(std::forward_list<Block> &&blocks) : _blocks(std::move(blocks)) {}
+  ByteBuffer(std::forward_list<Blk> &&blocks) : _blocks(std::move(blocks)) {}
 };
 
 XSL_IO_NE

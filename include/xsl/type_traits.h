@@ -2,7 +2,7 @@
  * @file type_traits.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Type traits
- * @version 0.13
+ * @version 0.14
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -38,6 +38,10 @@ template <class... Ts>
 struct _n {
   typedef _n self;  ///< self type
 };
+
+template <auto... Values>
+struct _value_pack {};
+
 namespace impl_size {
   template <class Pack>
   struct size;
@@ -68,6 +72,22 @@ namespace impl_find {
 
 template <template <class L, class R> class Pred, class T, class Pack>
 inline constexpr std::size_t find_if_v = impl_find::find_if<Pred, T, Pack>::value;
+
+namespace impl_find_value {
+  template <auto Target, typename Pack, std::size_t Index = 0>
+  struct find;
+
+  template <auto Target, template <auto...> class Pack, auto Head, auto... Rest, std::size_t Index>
+  struct find<Target, Pack<Head, Rest...>, Index>
+      : std::conditional_t<Head == Target, std::integral_constant<std::size_t, Index>,
+                           find<Target, Pack<Rest...>, Index + 1>> {};
+
+  template <auto Target, template <auto...> class Pack, std::size_t Index>
+  struct find<Target, Pack<>, Index> : std::integral_constant<std::size_t, Index> {};
+}  // namespace impl_find_value
+
+template <auto Target, typename Pack>
+inline constexpr std::size_t find_value_v = impl_find_value::find<Target, Pack>::value;
 
 template <class T, class Pack>
 inline constexpr bool existing_v = find_if_v<std::is_same, T, Pack> != size_v<Pack>;
@@ -112,6 +132,9 @@ struct always_true : std::true_type {};
 
 template <class Pack, template <class L, class R> class Pred = always_true, class T = void>
 using remove_first_if = typename impl_remove::remove_first_if<Pred, T, Pack>::self;
+
+static_assert(
+    std::is_same_v<remove_first_if<_n<int, float>, always_true, int>, _2<_n<float>, int>>);
 
 template <template <class L, class R> class Pred, class Opts, class Pack>
 using remove_first_of_if = typename impl_remove::remove_first_of_if<Pred, Opts, Pack>::self;

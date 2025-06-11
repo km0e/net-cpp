@@ -8,13 +8,13 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/sys/def.h"
 #include "xsl/sys/raw.h"
+
+#include "xsl/sys/def.h"
 
 #include <fcntl.h>
 
 #include <expected>
-#include <system_error>
 XSL_SYS_NB
 std::expected<void, errc> set_blocking(int fd, bool blocking) {
   int flags = fcntl(fd, F_GETFL, 0);

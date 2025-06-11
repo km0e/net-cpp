@@ -12,15 +12,12 @@ set_warnings("everything")
 
 set_languages("cxxlatest")
 
--- for support <expected>
--- add_defines("__cpp_concepts=202002")
-
 -- dependency
 add_requires("toml++", { configs = { header_only = true } })
 
--- add_requires("thread-pool", "cli11", "gtest", "quill")
-
 add_requires("thread-pool", "cli11", "quill")
+
+set_policy("build.optimization.lto", true)
 
 target("w_cli")
 do
@@ -54,7 +51,6 @@ function set_log_level(target)
 end
 
 -- flags
--- set_policy("build.optimization.lto", true)
 
 -- set_policy("build.sanitizer.thread", true)
 -- set_policy("build.sanitizer.address", true)
@@ -63,7 +59,6 @@ end
 -- set_policy("build.sanitizer.undefined", true)
 
 add_ldflags("-fuse-ld=mold", { force = true })
-add_ldflags("-static", { force = true })
 
 includes("src")
 includes("test")

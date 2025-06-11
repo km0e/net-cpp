@@ -18,7 +18,6 @@
 #  include <unistd.h>
 
 #  include <cstring>
-#  include <expected>
 #  include <utility>
 
 XSL_SYS_NET_NB

@@ -28,6 +28,16 @@ TEST(Task, just_return) {
   EXPECT_EQ(value, 2);
 }
 
+TEST(Task, just_yield) {
+  int value = 0;
+  [&value]() -> Task<void> {
+    co_yield no_return_task(value);
+    co_return;
+  }()
+                    .block();
+  ASSERT_EQ(value, 1);
+}
+
 TEST(Task, just_throw) {
   ASSERT_THROW(no_return_exception_task().block(), std::runtime_error);
 

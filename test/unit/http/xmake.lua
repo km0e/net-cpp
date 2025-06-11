@@ -9,7 +9,7 @@ for _, file in ipairs(os.files("test_*.cpp")) do
         set_default(false)
         add_files(name .. ".cpp")
         add_deps("w_xtest")
-        add_deps("xsl_http")
+        add_deps("xsl_asio")
         add_tests("http" .. name, { group = "http" })
     end
 end

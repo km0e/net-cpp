@@ -1,9 +1,10 @@
-#include "xsl/net.h"
+#include "xsl/asio.h"
 
 #include <gtest/gtest.h>
 
 using namespace xsl::http;
 using namespace xsl;
+using namespace xsl::asio;
 TEST(http_parse, complete) {
   ParseUnit parser;
   const char* data = "GET / HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";

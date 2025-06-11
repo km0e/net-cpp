@@ -18,17 +18,20 @@
 #  include <coroutine>
 #  include <cstddef>
 #  include <functional>
+#  include <limits>
 #  include <optional>
 #  include <utility>
-XSL_CORO_NB
-const std::size_t BASE_SHIFT = 1;
-static_assert(BASE_SHIFT > 0, "BASE_SHIFT must be greater than 0");
 
-const std::ptrdiff_t STOP_MASK = 1 << (BASE_SHIFT - 1);
+XSL_CORO_NB
+
+const std::size_t BASE_SHIFT2 = 1;
+static_assert(BASE_SHIFT2 > 0, "BASE_SHIFT must be greater than 0");
+
+const std::ptrdiff_t STOP_MASK2 = 1 << (BASE_SHIFT2 - 1);
 
 using spsc_max_signals
     = std::integral_constant<std::ptrdiff_t,
-                             (std::numeric_limits<std::ptrdiff_t>::max() >> BASE_SHIFT) - 1>;
+                             (std::numeric_limits<std::ptrdiff_t>::max() >> BASE_SHIFT2) - 1>;
 
 struct SPSCSignalStorage {
   SPSCSignalStorage() : count(0), wait(false), local_count(0), callback([]() {}) {}
@@ -49,7 +52,7 @@ struct SignalRxTraits<SPSCSignalStorage> {
    * @return false if the signal is not ready
    */
   static bool ready(storage_type &storage) {
-    storage.local_count = storage.count.fetch_sub(1 << BASE_SHIFT, std::memory_order_acq_rel);
+    storage.local_count = storage.count.fetch_sub(1 << BASE_SHIFT2, std::memory_order_acq_rel);
     return storage.local_count > 0;
   }
   /**
@@ -74,7 +77,7 @@ struct SignalRxTraits<SPSCSignalStorage> {
    */
   [[nodiscard("must use the result of await_resume to confirm the signal is still alive")]]
   static constexpr bool resume(storage_type &storage) {
-    return storage.local_count > (1 << (BASE_SHIFT - 1));
+    return storage.local_count > STOP_MASK2;
   }
 };
 
@@ -91,21 +94,21 @@ struct SignalTxTraits<SPSCSignalStorage, MaxSignals> {
    */
   static constexpr bool release(storage_type &storage) {
     auto local_count = storage.count.load(std::memory_order_relaxed);
-    if ((local_count >> BASE_SHIFT) == max_signals::value) {
+    if ((local_count >> BASE_SHIFT2) == max_signals::value) {
       return false;
     }
     if (local_count < 0) {
       storage.count.store(0, std::memory_order_relaxed);
       goto wait_callback;
     }
-    if (storage.count.fetch_add(1 << BASE_SHIFT, std::memory_order_acq_rel) < 0) {
+    if (storage.count.fetch_add(1 << BASE_SHIFT2, std::memory_order_acq_rel) < 0) {
       goto wait_callback;
     }
     return false;
 
   wait_callback:  /// obviously, goto is better than if-else here
     storage.local_count
-        = 1 << BASE_SHIFT;  /// set local count to 2 to indicate the signal not stopped
+        = 1 << BASE_SHIFT2;  /// set local count to 2 to indicate the signal not stopped
     wait_and_callback(storage);
 
     return true;
@@ -118,20 +121,20 @@ struct SignalTxTraits<SPSCSignalStorage, MaxSignals> {
    * @return std::size_t the count of signals released
    */
   static constexpr bool stop(storage_type &storage) {
-    auto cnt = storage.count.fetch_or(STOP_MASK, std::memory_order_acq_rel);
-    if ((!(cnt & STOP_MASK)) && cnt < 0) {  /// if stop flag has been set, return false
+    auto cnt = storage.count.fetch_or(STOP_MASK2, std::memory_order_acq_rel);
+    if ((!(cnt & STOP_MASK2)) && cnt < 0) {  /// if stop flag has been set, return false
       wait_and_callback(storage);
       return true;
     }
     return false;
   }
   static constexpr std::optional<std::ptrdiff_t> force_stop(storage_type &storage) {
-    auto cnt = storage.count.exchange(STOP_MASK, std::memory_order_acq_rel);
+    auto cnt = storage.count.exchange(STOP_MASK2, std::memory_order_acq_rel);
     if (cnt < 0) {
       wait_and_callback(storage);
       return std::nullopt;
     }
-    return cnt >> BASE_SHIFT;
+    return cnt >> BASE_SHIFT2;
   }
 
 private:

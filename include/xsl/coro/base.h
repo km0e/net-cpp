@@ -14,7 +14,6 @@
 #  include "xsl/coro/def.h"
 #  include "xsl/logctl.h"
 
-#  include <optional>
 XSL_CORO_NB
 /**
  * @brief Base class for coroutine promise
@@ -26,7 +25,7 @@ class PromiseBase {
 public:
   using result_type = ResultType;
 
-  constexpr PromiseBase() : _result(std::nullopt) {}
+  constexpr PromiseBase() : _result() {}
 
   constexpr auto get_return_object(this auto &&self) noexcept {
     log_trace("get_return_object");
@@ -35,9 +34,7 @@ public:
     return coro_type{std::coroutine_handle<promise_type>::from_promise(self)};
   }
 
-  constexpr void unhandled_exception() {
-    this->_result = std::unexpected{std::current_exception()};
-  }
+  constexpr void unhandled_exception() { this->_result = std::current_exception(); }
 
   /**
    * @brief Return a value
@@ -46,18 +43,11 @@ public:
    */
   constexpr result_type operator*() {
     log_trace("PromiseBase operator*");
-    if (*_result) {
-      if constexpr (std::is_same_v<result_type, void>) {
-        return **_result;
-      } else {
-        return std::move(**_result);
-      }
-    }
-    std::rethrow_exception(_result->error());
+    return std::move(_result).unwrap();
   }
 
 protected:
-  std::optional<Result<result_type>> _result;
+  Result2<result_type> _result;
 };
 
 template <class Base>
@@ -69,7 +59,7 @@ public:
   using typename Base::result_type;
   constexpr void return_value(result_type &&value) {
     log_trace("Promise return_value");
-    _result = Result<result_type>(std::move(value));
+    _result.template emplace<result_type>(std::move(value));
   }
 };
 
@@ -81,7 +71,7 @@ protected:
 
 public:
   using typename Base::result_type;
-  constexpr void return_void() { _result = Result<void>(); }
+  constexpr void return_void() {}
 };
 XSL_CORO_NE
 #endif

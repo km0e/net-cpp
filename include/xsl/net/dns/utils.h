@@ -2,7 +2,7 @@
  * @file utils.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.11
+ * @version 0.12
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -15,6 +15,7 @@
 #  include "xsl/net/dns/def.h"
 #  include "xsl/net/dns/proto/def.h"
 
+#  include <cassert>
 #  include <cstddef>
 #  include <cstdint>
 #  include <expected>
@@ -47,9 +48,39 @@ public:
    * @param dst memory to store the compressed domain name
    * @note the memory size must be greater than or equal to the size returned by the prepare method
    */
-  // void compress(std::span<byte> dst);
-  void compress(std::span<byte> &dst);
-  constexpr void reset();
+  void compress(std::span<byte> &_dst) {
+    std::span<uint8_t> dst(reinterpret_cast<uint8_t *>(_dst.data()), _dst.size());
+    if (_src.empty()) {
+      *dst.data() = 0;
+      _dst = _dst.subspan(1);
+      return;
+    }
+    assert(dst.size() > 0
+           && dst.size()
+                  >= _src.size() - suffix_len + 2 + (0 < suffix_len && suffix_len < _src.size()));
+    memcpy(dst.data() + 1, _src.data(), _src.size() - suffix_len);
+    std::size_t i = 0;
+    for (std::size_t j = 0; i < _src.size() - suffix_len; j++) {
+      dst[i] = lens[j];
+      i += lens[j] + 1;  // jump to the next label length field
+    }
+    if (suffix_len) {
+      dst[i++] = 0xc0 | suffix_off >> 8;  // high 2 bits should be 11
+    }
+    dst[i++] = suffix_off;  // low 8 bits or 0 if suffix_len is 0
+
+    if (i > 2) {
+      dnptrs[dnptrs_cnt] = dst.data();  // store the pointer
+      dnptrs_cnt++;                     // increase the pointer count
+    }
+    _dst = _dst.subspan(i);  // i is the size of the compressed domain name
+    this->reset();
+  }
+  constexpr void reset() {
+    _src = {};
+    suffix_len = 0;
+    suffix_off = 0;
+  }
 
 private:
   std::string_view _src;
@@ -96,7 +127,7 @@ constexpr errc skip_dn(std::span<const byte> &src_) {
     }
     offset += src[offset] + 1;
   }
-  src = src.subspan(offset + 1);
+  src_ = src_.subspan(offset + 1);
   return {};
 }
 

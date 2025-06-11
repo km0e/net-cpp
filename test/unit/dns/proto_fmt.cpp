@@ -9,14 +9,12 @@
  *
  */
 #include "xsl/def.h"
-#include "xsl/io/byte.h"
 #include "xsl/net.h"
-#include "xsl/net/dns/proto/def.h"
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <format>
-#include <utility>
 
 using namespace xsl;
 using namespace xsl::dns;
@@ -62,16 +60,18 @@ TEST(dns_proto, header) {
                    .nscount = 0x1234,
                    .arcount = 0x1234};
 
-  byte bytes[12];
-  byte expected[12] = {0x34, 0x12, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34};
-  std::span<byte> buf(bytes, 12);
+  uint8_t bytes[12];
+  uint8_t expected[12] = {0x34, 0x12, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34};
+  std::span<byte> buf = std::as_writable_bytes(std::span(bytes, 12));
 
   header.serialize(buf);
-  EXPECT_EQ(std::memcmp(bytes, expected, 12), 0);
+  for (std::size_t i = 0; i < 12; ++i) {
+    EXPECT_EQ(bytes[i], expected[i]) << "Byte " << i << " mismatch";
+  }
 
   Header result = {.id = 0, .flags = 0, .qdcount = 0, .ancount = 0, .nscount = 0, .arcount = 0};
 
-  std::span<const byte> bytes_span(bytes, 12);
+  std::span<const byte> bytes_span = std::as_bytes(std::span(bytes, 12));
   result.deserialize(bytes_span);
   ASSERT_EQ(bytes_span.size(), 0);
   EXPECT_EQ(header.id, result.id);
@@ -84,7 +84,7 @@ TEST(dns_proto, header) {
 
 TEST(dns_proto, question) {
   std::string_view dns[] = {"www.google.com", "mail.google.com.", "google.com"};
-  byte expected[256]
+  uint8_t expected[256]
       = {3, 'w', 'w', 'w', 6,   'g', 'o',  'o',  'g', 'l', 'e', 3, 'c',  'o',  'm', 0, 0, 1, 0,
          1, 4,   'm', 'a', 'i', 'l', 0xc0, 0x04, 0,   1,   0,   1, 0xc0, 0x04, 0,   1, 0, 1};
 

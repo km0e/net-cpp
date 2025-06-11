@@ -35,6 +35,9 @@ LogCtl::LogCtl() : logger(nullptr) {
   auto env = std::getenv("CPP_LOG");
   if (env) {
     std::string env_str(env);
+    if (env_str == "trace") {
+      env_str += "l1";
+    }
     instance.logger->set_log_level(quill::loglevel_from_string(env_str));
   } else {
     set_log_level(LogLevel::Error);

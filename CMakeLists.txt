@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14...3.22)
+cmake_minimum_required(VERSION 3.14)
 
 # ---- Project ----
 
@@ -51,12 +51,10 @@ if(NOT googletest_FOUND)
   # set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 endif()
 
-# add_link_options(-fuse-ld=mold)
+add_link_options(-fuse-ld=mold)
 
 # --- Logging ----
-# set(LOG_LEVEL "INFO" CACHE STRING "Set the log level (NONE, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL)")
-set(LOG_LEVEL "DEBUG")
-set(LOG_LEVEL CACHE STRING "Set the log level (OFF, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL)")
+set(LOG_LEVEL "INFO" CACHE STRING "Set the log level (NONE, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL)")
 
 set_property(CACHE LOG_LEVEL PROPERTY STRINGS OFF  TRACE  DEBUG  INFO  WARNING  ERROR  CRITICAL)
 # 打印选项值

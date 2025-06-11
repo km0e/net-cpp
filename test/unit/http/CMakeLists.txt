@@ -1,6 +1,6 @@
-link_libraries(xsl_http)
+link_libraries(xsl_asio)
 
-add_subdirectory(component)
+# add_subdirectory(component)
 
 file(GLOB TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 foreach(TEST_SOURCE ${TEST_SOURCES})

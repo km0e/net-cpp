@@ -2,72 +2,47 @@
  * @file pub_sub.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Publish-Subscribe pattern for coroutines
- * @version 0.3
+ * @version 0.4
  * @date 2024-08-28
  *
  * @copyright Copyright (c) 2024
  *
  */
 #pragma once
+
 #ifndef XSL_CORO_PUB_SUB
 #  define XSL_CORO_PUB_SUB
 #  include "xsl/coro/def.h"
 #  include "xsl/coro/signal.h"
-#  include "xsl/coro/signal/mpsc.h"
-#  include "xsl/sync.h"
+#  include "xsl/feature.h"
+#  include "xsl/type_traits.h"
 
 #  include <concepts>
 #  include <cstddef>
-#  include <memory>
-#  include <optional>
-#  include <ranges>
 #  include <unordered_map>
+#  include <utility>
 
 XSL_CORO_NB
 
 template <class Storage>
-class PubSubBase {
-public:
-  using key_type = std::decay_t<std::tuple_element_t<0, typename Storage::value_type>>;
-  using storage_type = Storage;
+struct PubSubTraits;
 
-protected:
-  std::shared_ptr<ShardRes<storage_type>> _storage;
+template <class Storage>
+class PubSub : public PubSubTraits<Storage> {
+  using traits_type = PubSubTraits<Storage>;
+  using key_type = typename traits_type::key_type;
+  using signal_type = typename traits_type::signal_type;
 
 public:
-  constexpr PubSubBase(ShardRes<storage_type> *storage) : _storage(storage) {}
-  constexpr PubSubBase(PubSubBase &&) = default;
-  constexpr PubSubBase(const PubSubBase &) = default;
-  constexpr PubSubBase &operator=(PubSubBase &&) = default;
-  constexpr PubSubBase &operator=(const PubSubBase &) = default;
-  constexpr ~PubSubBase() {
-    if (this->_storage) {
-      this->stop();
+  using traits_type::traits_type;
+
+  template <key_type key>
+  constexpr signal_type *signal() {
+    if constexpr (requires { this->traits_type::template signal<key>(); }) {
+      return this->traits_type::template signal<key>();
+    } else {
+      return this->traits_type::signal(key_type{key});
     }
-  }
-  /**
-   * @brief Get the immediate signal
-   *
-   * @param key
-   * @return decltype(auto)
-   * @note The signal's lifetime is managed by the pubsub
-   */
-  constexpr decltype(auto) imm_signal(const key_type &key) {
-    auto guard = this->_storage->lock_shared();
-    auto iter = std::ranges::find_if(*guard, [&key](auto &pair) { return pair.first == key; });
-    return iter != guard->end() ? iter->second.pin() : nullptr;
-  }
-  /**
-   * @brief Get the signal
-   *
-   * @param key
-   * @return decltype(auto)
-   * @note The signal's lifetime is managed by the pubsub, but the signal can be safely released
-   */
-  constexpr decltype(auto) signal(const key_type &key) {
-    auto guard = this->_storage->lock_shared();
-    auto iter = std::ranges::find_if(*guard, [&key](auto &pair) { return pair.first == key; });
-    return iter != guard->end() ? std::make_optional(iter->second) : std::nullopt;
   }
   /**
    * @brief Publish to the receiver
@@ -78,20 +53,33 @@ public:
    * @return false if the publisher is not successful
    * @note This function just traverses the storage and finds the receiver with the key
    */
-  template <class... _Args>
-    requires std::constructible_from<key_type, _Args...>
+  template <key_type key>
+  constexpr bool publish() {
+    if (signal_type *tx = this->PubSub::signal<key>()) {
+      tx->release();
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * @brief Publish to the receiver
+   *
+   * @tparam _Args
+   * @param args
+   * @return true if the publisher is successful
+   * @return false if the publisher is not successful
+   * @note This function just traverses the storage and finds the receiver with the key
+   */
+  template <typename... _Args>
   constexpr bool publish(_Args &&...args) {
     key_type key{std::forward<_Args>(args)...};
-    auto tx = [this, &key]() {
-      auto guard = this->_storage->lock_shared();
-      auto iter = std::ranges::find_if(*guard, [&key](auto &pair) { return pair.first == key; });
-      return iter != guard->end() ? iter->second.pin() : nullptr;
-    }();
-    if (tx) {
-      tx.release();
+    if (signal_type *tx = this->traits_type::signal(key)) {
+      tx->release();
       return true;
+    } else {
+      return false;
     }
-    return false;
   }
   /**
    * @brief Publish to the receiver with a predicate
@@ -104,105 +92,180 @@ public:
   template <std::predicate<const key_type &> Pred>
   constexpr bool publish(Pred &&pred) {
     bool empty = true;
-    auto tx_set = *this->_storage->lock_shared()
-                  | std::views::filter([&pred](auto &pair) { return pred(pair.first); })
-                  | std::views::transform([](auto &pair) { return pair.second.pin(); });
-    for (auto &&tx : tx_set) {
-      tx.release();
-      empty = false;
-    }
+    auto f = [&empty, &pred](const key_type &key, auto &tx) {
+      if (pred(key)) {
+        tx.release();
+        empty = false;
+      }
+    };
+    this->for_each(f);
     return !empty;
   }
   /// @brief Stop the pubsub
   constexpr void stop() {
-    auto storage = this->_storage->lock();
-    for (auto &[_, tx] : *storage) {
-      tx.stop();
+    auto f = [](const key_type &, auto &tx) { tx.stop(); };
+    this->for_each(f);
+  }
+};
+
+template <typename K, typename S, K... keys>
+struct StaticExactPubSubStorage : public std::array<S, sizeof...(keys)> {};
+
+template <typename K, typename S, K... keys>
+struct PubSubTraits<StaticExactPubSubStorage<K, S, keys...>>
+    : public StaticExactPubSubStorage<K, S, keys...> {
+  using key_type = K;
+  using signal_type = S;
+  using storage_type = StaticExactPubSubStorage<K, S, keys...>;
+
+  using storage_type::storage_type;
+
+protected:
+  template <std::invocable<K, S &> F>
+  constexpr void for_each(F &&_f) {
+    [this]<std::size_t... I>(std::index_sequence<I...>, F &&_f) {
+      ((std::invoke(_f, keys, (*this)[I])), ...);
+    }(std::make_index_sequence<(sizeof...(keys))>{}, std::forward<F>(_f));
+  }
+
+public:
+  template <K key>
+  constexpr auto signal() {
+    const std::size_t index = find_value_v<key, _value_pack<keys...>>;
+    if constexpr (index < sizeof...(keys)) {
+      return &(*this)[index];
+    } else {
+      return nullptr;
     }
   }
 };
 
-template <class T, std::size_t N, class Signal = Signal<>>
-using ExactPubSubStorage = std::array<std::pair<T, Signal>, N>;
+template <class K, std::size_t N, class Signal = SPSCSignal2<>>
+using ExactPubSubStorage = std::array<std::pair<K, Signal>, N>;
 
-/**
- * @brief Make a pubsub with exact keys
- *
- * @tparam T the key type
- * @tparam MaxSignals the maximum number of signals
- * @param keys
- * @return decltype(auto)
- * @code {.cpp}
- * auto [pubsub, signal1, signal2] = make_exact_pub_sub<int>(1, 2);
- * auto [pubsub1, signal3, signal4] = make_exact_pub_sub<int, 2>(3, 4);
- * @endcode
- */
-template <class T, class Signal = Signal<>>
-constexpr decltype(auto) make_exact_pub_sub(auto &&...keys) {
-  const std::size_t N = sizeof...(keys);
-  return []<std::size_t... I>(std::index_sequence<I...>, auto &&..._keys) {
-    auto signals = std::make_tuple((static_cast<void>(I), Signal())...);
-    auto copy = signals;
-    return std::make_tuple(
-        PubSubBase(new ShardRes<ExactPubSubStorage<T, N, Signal>>{
-            {std::pair{std::forward<decltype(_keys)>(_keys), std::move(std::get<I>(signals))}...}}),
-        std::move(std::get<I>(copy))...);
-  }(std::make_index_sequence<N>{}, std::forward<decltype(keys)>(keys)...);
-}
+template <typename K, std::size_t N, typename S>
+struct PubSubTraits<ExactPubSubStorage<K, N, S>> : public ExactPubSubStorage<K, N, S> {
+  using key_type = K;
+  using signal_type = S;
+  using storage_type = ExactPubSubStorage<K, N, S>;
 
-template <class T, std::ptrdiff_t N, class Signal = Signal<>>
-using ExactPubSub = PubSubBase<ExactPubSubStorage<T, N, Signal>>;
+  using storage_type::storage_type;
 
-template <class T, std::ptrdiff_t MaxSignals = mpsc_max_signals::value>
-class PubSub : public PubSubBase<std::unordered_map<T, Signal<MaxSignals>>> {
-private:
-  using signal_type = Signal<MaxSignals>;
-  using Base = PubSubBase<std::unordered_map<T, signal_type>>;
-  using typename Base::key_type;
-  using typename Base::storage_type;
+  constexpr PubSubTraits(std::same_as<K> auto... keys)
+      : storage_type{{std::pair{std::forward<decltype(keys)>(keys), S()}...}} {}
+
+protected:
+  template <std::invocable<K, S &> F>
+  constexpr void for_each(F &&_f) {
+    for (auto &[keys, s] : *this) {
+      std::invoke(_f, keys, s);
+    }
+  }
 
 public:
-  constexpr PubSub() : Base(new ShardRes<storage_type>()) {}
-  constexpr PubSub(PubSub &&) = default;
-  constexpr PubSub &operator=(PubSub &&) = default;
-  constexpr ~PubSub() {}
+  template <K key>
+  constexpr auto signal() {
+    auto iter = std::find_if(this->begin(), this->end(),
+                             [](const auto &pair) { return pair.first == key; });
+    if (iter != this->end()) {
+      return &iter->second;
+    } else {
+      return nullptr;
+    }
+  }
+};
+
+template <typename K, typename S>
+struct PubSubTraits<std::unordered_map<K, S>> : public std::unordered_map<K, S> {
+  using key_type = K;
+  using signal_type = S;
+  using storage_type = std::unordered_map<K, S>;
+
+  constexpr PubSubTraits(std::same_as<K> auto... keys)
+      : storage_type{{std::forward<decltype(keys)>(keys), S()}...} {}
+
+protected:
+  template <std::invocable<K, S &> F>
+  constexpr void for_each(F &&_f) {
+    for (auto &[keys, s] : *this) {
+      std::invoke(_f, keys, s);
+    }
+  }
+
+public:
   /**
    * @brief Subscribe to the receiver
    *
    * @param args
    * @return std::optional<SignalReceiver<>>
    */
-  constexpr std::optional<signal_type> subscribe(auto &&...args) {
-    signal_type sig{};
-    auto [iter, ok]
-        = this->_storage->lock()->try_emplace({std::forward<decltype(args)>(args)...}, sig);
-    return ok ? std::make_optional(std::move(sig)) : std::nullopt;
+  constexpr std::pair<S *, bool> subscribe(auto &&...args) {
+    auto [iter, ok] = this->try_emplace({std::forward<decltype(args)>(args)...});
+    return {&iter->second, ok};
   }
-  /**
-   * @brief Publish to the receiver
-   *
-   * @tparam _Args
-   * @param args
-   * @return
-   */
-  template <class... _Args>
-    requires std::constructible_from<key_type, _Args...>
-  constexpr bool publish(_Args &&...args) {
-    auto tx = [this](auto &&...args) -> auto {
-      auto storage = this->_storage->lock_shared();
-      auto iter = storage->find({std::forward<decltype(args)>(args)...});
-      return iter != storage->end() ? iter->second.pin() : nullptr;
-    }(std::forward<_Args>(args)...);
-    if (tx) {
-      tx.release();
-      return true;
+
+  constexpr S *signal(key_type key) {
+    auto iter = this->find(key);
+    if (iter != this->end()) {
+      return &iter->second;
+    } else {
+      return nullptr;
     }
-    return false;
-  }
-  /// @brief Publish to the receiver with a predicate
-  constexpr bool publish(std::predicate<const key_type &> auto &&pred) {
-    return Base::publish(std::forward<decltype(pred)>(pred));
   }
 };
+
+namespace _pub_sub {
+  template <class...>
+  struct Create;
+
+  template <class K, class S, class _Shared, K... keys>
+  struct Create<_value_pack<keys...>, S, _Shared, Placeholder> {
+    constexpr decltype(auto) operator()(auto...) {
+      using PubSub = PubSub<StaticExactPubSubStorage<K, S, keys...>>;
+      if constexpr (std::is_same_v<_Shared, Shared>) {
+        return std::make_shared<PubSub>();
+      } else {
+        return PubSub{};
+      }
+    }
+  };
+
+  template <class K, class S, class _Shared>
+  struct Create<K, S, _Shared, Placeholder> {
+    constexpr decltype(auto) operator()(std::same_as<K> auto... keys) {
+      using PubSub = PubSub<std::unordered_map<K, S>>;
+      if constexpr (std::is_same_v<_Shared, Shared>) {
+        return std::make_shared<PubSub>(keys...);
+      } else {
+        return PubSub{keys...};
+      }
+    }
+  };
+
+  template <class K, class S, class _Shared>
+  struct Create<K, S, Placeholder, _Shared, Exact> {
+    constexpr decltype(auto) operator()(std::same_as<K> auto... keys) {
+      using PubSub = PubSub<ExactPubSubStorage<K, sizeof...(keys), S>>;
+      if constexpr (std::is_same_v<_Shared, Shared>) {
+        return std::make_shared<PubSub>(keys...);
+      } else {
+        return PubSub{keys...};
+      }
+    }
+  };
+}  // namespace _pub_sub
+
+template <class K, class S, class... Features>
+constexpr decltype(auto) make_pub_sub(std::same_as<K> auto... keys) {
+  using F = organize_feature_flags_t<
+      _pub_sub::Create<Item<always_true, void>, Item<always_true, void>, Shared, Exact>, K, S,
+      Features...>;
+
+  return F{}(keys...);
+}
+
+static_assert(std::is_same_v<decltype(make_pub_sub<_value_pack<(int)1, 2>, SPSCSignal2<1>>()),
+                             PubSub<StaticExactPubSubStorage<int, SPSCSignal2<1>, 1, 2>>>);
+
 XSL_CORO_NE
 #endif

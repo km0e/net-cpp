@@ -17,10 +17,10 @@
 using namespace xsl::dns;
 TEST(dns, compress) {
   std::string_view src_dns[] = {"www.google.com.", "mail.google.com", "com", "."};
-  unsigned char dst_dns[256];
-  auto data_span = std::span{dst_dns, 256};
+  uint8_t dst_dns[256];
+  auto data_span = std::as_writable_bytes(std::span{dst_dns, 256});
   memset(dst_dns, 0, 256);
-  DnCompressor dc(dst_dns);
+  DnCompressor dc(reinterpret_cast<std::byte *>(dst_dns));
   auto res_n = dc.prepare(src_dns[0]);
   ASSERT_EQ(*res_n, 16);
   dc.compress(data_span);

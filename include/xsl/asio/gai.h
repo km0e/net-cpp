@@ -31,7 +31,7 @@ namespace {
       if (errno != EINPROGRESS) [[unlikely]] {
         ec = errc{errno};
       } else {
-        auto async_skt = AsyncSocket(std::move(skt), poller);
+        auto async_skt = AsyncSocket(poller, std::move(skt));
         if (!co_await async_skt.write_signal()) {
           // skt = std::move(async_skt).sync(poller);
           co_return std::unexpected{errc::not_connected};
@@ -79,15 +79,11 @@ Task<std::expected<AsyncSocket<Traits>, std::error_condition>> gai_async_connect
   if (!res_resolved) {
     co_return std::unexpected{res_resolved.error()};
   }
-  sys::net::Socket<Traits> skt{};
-  if (!skt.is_valid()) {
-    co_return std::unexpected{sys::current_ec()};
-  }
-  log_debug("Created fd: {}", skt.raw());
+  using Skt = sys::net::Socket<Traits>;
   errc ec;
   for (auto &ai : *res_resolved) {
-    ec = skt.check_and_upgrade(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
-    if (ec != errc{}) {
+    Skt skt(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
+    if (!skt.is_valid()) {
       continue;
     }
     auto res_skt = co_await raw_connect(std::move(skt), *ai.ai_addr, ai.ai_addrlen, poller);

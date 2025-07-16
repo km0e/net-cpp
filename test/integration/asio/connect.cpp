@@ -18,8 +18,8 @@
 #include <span>
 #include <string>
 #include <string_view>
-#include <system_error>
 #include <thread>
+
 using namespace xsl::asio;
 using namespace xsl;
 // there should have a echo server
@@ -53,15 +53,14 @@ protected:
 
   template <class Traits>
   void echo(AsyncSocket<Traits> &skt) {
-    auto buf = std::make_unique<char[]>(1024);
+    auto buf = std::make_unique<byte[]>(1024);
     for (auto &msg : echo_msg) {
       auto send_bytes = std::as_bytes(std::span(msg.data(), msg.size()));
-      auto [n, s_err] = skt.write(send_bytes).block();
-      ASSERT_FALSE(s_err);
-      auto recv_bytes = std::as_writable_bytes(std::span(buf.get(), 1024));
-      auto [m, r_err] = skt.read(recv_bytes).block();
-      ASSERT_FALSE(r_err) << "Read error: " << std::make_error_code(*r_err).message();
-      ASSERT_EQ(std::string_view(buf.get(), m), msg);
+      auto res = skt.write(send_bytes).block();
+      ASSERT_TRUE(res);
+      res = skt.read(buf.get(), 1024).block();
+      ASSERT_TRUE(res) << "Read error: " << res.message();
+      ASSERT_EQ(std::string_view(reinterpret_cast<char *>(buf.get()), res.size), msg);
     }
   }
 
@@ -70,12 +69,12 @@ protected:
     auto buf = std::make_unique<char[]>(1024);
     for (auto &msg : echo_msg) {
       auto send_bytes = std::as_bytes(std::span(msg.data(), msg.size()));
-      auto [n, s_err] = skt.sendto(send_bytes, addr).block();
-      ASSERT_FALSE(s_err);
+      auto res = skt.sendto(addr, send_bytes).block();
+      ASSERT_TRUE(res);
       auto recv_bytes = std::as_writable_bytes(std::span(buf.get(), 1024));
-      auto [m, r_err] = skt.recvfrom(recv_bytes, addr).block();
-      ASSERT_FALSE(r_err);
-      ASSERT_EQ(std::string_view(buf.get(), m), msg);
+      res = skt.recvfrom(addr, recv_bytes).block();
+      ASSERT_TRUE(res);
+      ASSERT_EQ(std::string_view(buf.get(), res.size), msg);
     }
   }
 
@@ -111,7 +110,7 @@ TEST_F(AsyncSocketIOFixture, tcp_connect_with_ais) {
 TEST_F(AsyncSocketIOFixture, udp_connect_with_ais) {
   auto res = gai_connect<Udp<Ip<4>>>(ip.c_str(), port.c_str());
   ASSERT_TRUE(res.has_value());
-  auto skt = AsyncSocket(std::move(*res), *poller);
+  auto skt = AsyncSocket(*poller, std::move(*res));
   echo(skt);
   SockAddrCompose<Udp<Ip<4>>> addr{ip, port};
   echo_to(skt, addr);
@@ -121,7 +120,7 @@ TEST_F(AsyncSocketIOFixture, udp_connect_with_ip_port) {
   auto skt = SocketCompose<Udp<Ip<4>>>();
   ASSERT_TRUE(skt.is_valid());
   ASSERT_EQ(skt.connect({ip, port}), errc{});
-  auto async_skt = AsyncSocket(std::move(skt), *poller);
+  auto async_skt = AsyncSocket(*poller, std::move(skt));
   echo(async_skt);
   SockAddrCompose<Udp<Ip<4>>> addr{ip, port};
   echo_to(async_skt, addr);

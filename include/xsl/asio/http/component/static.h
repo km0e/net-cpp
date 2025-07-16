@@ -15,7 +15,6 @@
 #  include "xsl/asio/http/component/compress.h"
 #  include "xsl/asio/http/context.h"
 #  include "xsl/asio/http/def.h"
-#  include "xsl/asio/http/msg.h"
 #  include "xsl/io.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net.h"

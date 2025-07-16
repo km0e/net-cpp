@@ -2,7 +2,7 @@
  * @file resolver.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief DNS resolver
- * @version 0.11
+ * @version 0.12
  * @date 2024-09-09
  *
  * @copyright Copyright (c) 2024
@@ -35,14 +35,17 @@ using namespace xsl::io;
 using namespace xsl::dns;
 
 struct Query {
-  Blk datagram;
-  Signal<1> over;
+  std::unique_ptr<byte[]> ptr;
+  std::size_t size = 0;
+  Signal<1> over = {};
 
   std::uint16_t id() const {
     uint16_t u16;
-    xsl::deserialize(datagram.data.get(), u16);
+    xsl::deserialize(ptr.get(), u16);
     return u16;
   }
+
+  constexpr std::span<const byte> data() const { return std::as_bytes(std::span(ptr.get(), size)); }
 };
 
 template <class LowerLayer>
@@ -81,9 +84,9 @@ public:
   Task<std::expected<const std::forward_list<RR> *, errc>> query(
       sys::net::SockAddrCompose<Udp<LowerLayer>> &sa, std::string_view dn, Type type,
       Class class_) {
-    Query query{{512}, {}};
+    Query query{std::make_unique<byte[]>(_net::dns::MAX_SIZE_DNS_UDP), {}};
 
-    auto ser_span = query.datagram.span();
+    auto ser_span = std::as_writable_bytes(std::span(query.ptr.get(), MAX_SIZE_DNS_UDP));
 
     Header header{};
     header.id = this->id.fetch_add(1);
@@ -92,7 +95,7 @@ public:
     header.serialize(ser_span);
     // offset += 12;/
     {
-      DnCompressor compressor{query.datagram.data.get()};
+      DnCompressor compressor{query.ptr.get()};
 
       auto ec = serialized(ser_span, dn, type, class_, compressor);
       if (ec != errc{}) {
@@ -100,7 +103,7 @@ public:
       }
     }
 
-    query.datagram.valid_size = 512 - ser_span.size_bytes();
+    query.size = MAX_SIZE_DNS_UDP - ser_span.size_bytes();
 
     this->send_wait_list.lock()->emplace_front(&query, &sa);
     this->send_signal.release();
@@ -109,7 +112,7 @@ public:
       co_return std::unexpected{errc::operation_canceled};
     }
 
-    auto des_span = std::as_bytes(query.datagram.span());
+    auto des_span = query.data();
     header.deserialize(des_span);  // this will consume the header part
     if (header.rcode() != RCode::NO_ERROR) {
       co_return std::unexpected{header.rcode().to_errc()};
@@ -127,13 +130,11 @@ public:
     std::forward_list<RR> rrs;
 
     {
-      DnDecompressor decompressor{query.datagram.data.get()};
+      DnDecompressor decompressor{query.ptr.get()};
       for (std::size_t i = 0; i < header.ancount; i++) {
         ec = decompressor.decompress(des_span);
-        // auto res_rr = deserialized(des_span, decompressor);
-        if (ec != errc{}) {
-          co_return std::unexpected{ec};
-        }
+        if (ec != errc{}) co_return std::unexpected{ec};
+
         auto dn_sv = decompressor.dn();
         if (*dn_sv.rbegin() == '.') {
           dn_sv = dn_sv.substr(0, dn_sv.size() - 1);
@@ -143,30 +144,13 @@ public:
         }
 
         RR rr = RR::from_bytes(des_span);
-        if (!rr.is_valid()) {
-          co_return std::unexpected{errc::result_out_of_range};
-        }
+        if (!rr.is_valid()) co_return std::unexpected{errc::result_out_of_range};
+
         rrs.emplace_front(std::move(rr));
       }
       if (!rrs.empty()) {
         co_return cache.insert(dn, std::move(rrs));
       }
-      // std::forward_list<std::string> ns{};
-      // for (std::size_t i = 0; i < header.nscount; i++) {
-      //   auto res_rr = deserialized(des_span, decompressor);
-      //   if (!res_rr) {
-      //     co_return std::unexpected{res_rr.error()};
-      //   }
-      //   auto [rr_name, rr] = std::move(*res_rr);
-      //   auto ans_sv = std::string_view{rr_name};
-      //   if (*ans_sv.rbegin() == '.') {
-      //     ans_sv = ans_sv.substr(0, ans_sv.size() - 1);
-      //   }
-      //   if (ans_sv != dn) {
-      //     continue;
-      //   }
-      //   rrs.emplace_front(std::move(rr));
-      // }
     }
     co_return cache.insert(dn, std::move(rrs));
   }
@@ -177,20 +161,19 @@ public:
         auto dgs = std::exchange(*this->send_wait_list.lock(), {});
         for (auto [query, sa] : dgs) {
           this->recv_wait_list.lock()->emplace(query->id(), query);
-          // co_await this->socket.send(query->datagram.span(0));
-          co_await this->socket.sendto(query->datagram.span(0), *sa);
+          co_await this->socket.sendto(*sa, query->data());
         }
       } while (co_await this->send_signal);
     }();
     co_yield [&] -> Task<void> {
-      Blk block{512};
+      auto blk = std::make_unique<byte[]>(MAX_SIZE_DNS_UDP);
       while (true) {
-        auto [r_sz, r_err] = co_await this->socket.read(block.span(0));
-        if (r_err) {
+        auto res = co_await this->socket.read(blk.get(), MAX_SIZE_DNS_UDP);
+        if (!res) {
           continue;
         }
         uint16_t id;
-        xsl::deserialize(block.data.get(), id);
+        xsl::deserialize(blk.get(), id);
         Query *query = nullptr;
         {
           auto lock = this->recv_wait_list.lock();
@@ -201,10 +184,9 @@ public:
           }
         }
         if (query) {
-          block.valid_size = r_sz;
-          std::swap(query->datagram, block);
+          query->size = res.size;
+          std::swap(query->ptr, blk);
           query->over.release();
-          block.valid_size = 512;  // reset the block
         }
       }
     }();

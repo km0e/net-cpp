@@ -40,12 +40,12 @@ public:
   using poll_traits_type = typename traits_type::poll_traits_type;
 
   using value_type = byte;
-  AsyncSocket(sys::net::Socket<Traits> &&sock, Poller &poller)
+  AsyncSocket(Poller &poller, sys::net::Socket<Traits> &&sock)
       : Base(std::move(sock).into_owner(), poller, typename Traits::poll_traits_type{}) {}
 
   explicit AsyncSocket(Poller &poller, SocketAttribute attr = SocketAttribute::NonBlocking
                                                               | SocketAttribute::CloseOnExec)
-      : AsyncSocket(sys::net::Socket<Traits>(attr), poller) {}
+      : AsyncSocket(poller, sys::net::Socket<Traits>(attr)) {}
 };
 
 template <class... Flags>
@@ -74,5 +74,6 @@ struct AsyncConnectionUtils<Traits> : public sys::net::ConnectionUtils<Traits> {
     }
   }
 };
+
 XSL_ASIO_NE
 #endif

@@ -1,8 +1,8 @@
 /**
  * @file proto.h
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
- * @version 0.1
+ * @brief HTTP protocol definitions
+ * @version 0.11
  * @date 2024-08-25
  *
  * @copyright Copyright (c) 2024
@@ -82,10 +82,13 @@ struct Method {
     return Method(UNKNOWN);
   }
 
+  constexpr Method() : _method(UNKNOWN) {}
+
   constexpr Method(decltype(_method) method) : _method(method) {}
 
   constexpr Method(std::uint8_t method) : _method(static_cast<decltype(_method)>(method)) {}
 
+  constexpr bool is_valid() const { return _method < HTTP_METHOD_COUNT && _method != UNKNOWN; }
   constexpr std::string_view to_string_view() const {
     if (_method == UNKNOWN) return "Unknown";
     return HTTP_METHOD_STR[_method];
@@ -220,6 +223,18 @@ struct Status {
     HTTP_VERSION_NOT_SUPPORTED = 505,
     UNKNOWN = 0xffff,
   } _status;
+
+  static constexpr Status from_string_view(std::string_view str) {
+    if (str.size() != 3) {
+      return Status(Status::UNKNOWN);
+    }
+    if (str[0] < '1' || str[0] > '5' || str[1] < '0' || str[1] > '9' || str[2] < '0'
+        || str[2] > '9') {
+      return Status(Status::UNKNOWN);
+    }
+    uint16_t status = (str[0] - '0') * 100 + (str[1] - '0') * 10 + (str[2] - '0');
+    return Status(status);
+  }
 
   constexpr Status() : _status(UNKNOWN) {}
   constexpr Status(decltype(_status) status) : _status(status) {}
@@ -364,4 +379,22 @@ namespace std {
     }
   };
 }  // namespace std
+#  include <quill/DeferredFormatCodec.h>
+
+#  define QUILL_FMT_FOR_IMPL_TO_STRING_VIEW(type)                                 \
+    template <>                                                                   \
+    struct fmtquill::formatter<xsl::_net::http::type> {                           \
+      constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }     \
+      auto format(xsl::_net::http::type const& user, format_context& ctx) const { \
+        return fmtquill::format_to(ctx.out(), "{}", user.to_string_view());       \
+      }                                                                           \
+    };                                                                            \
+    template <>                                                                   \
+    struct quill::Codec<xsl::_net::http::type>                                    \
+        : quill::DeferredFormatCodec<xsl::_net::http::type> {};
+
+QUILL_FMT_FOR_IMPL_TO_STRING_VIEW(Version)
+QUILL_FMT_FOR_IMPL_TO_STRING_VIEW(Method)
+QUILL_FMT_FOR_IMPL_TO_STRING_VIEW(Charset)
+#  undef QUILL_FMT_FOR_IMPL_TO_STRING_VIEW
 #endif

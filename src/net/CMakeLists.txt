@@ -1,7 +1,7 @@
 add_library(xsl_net STATIC)
 
 file(GLOB_RECURSE XSL_NET_SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
 )
 
 target_sources(

@@ -16,13 +16,18 @@
 #  include "xsl/net/dns/proto/question.h"
 #  include "xsl/net/dns/proto/rr.h"
 #  include "xsl/net/dns/utils.h"
+#  include "xsl/net/http/msg.h"
 #  include "xsl/net/http/proto.h"
 #  include "xsl/net/http/proto/accept.h"
+#  include "xsl/net/http/request/line.h"
+#  include "xsl/net/http/request/target.h"
 #  include "xsl/net/http/router.h"
+#  include "xsl/net/uri.h"
 #  include "xsl/sys.h"
 
 XSL_NB
 namespace net {
+  using _net::AbsoluteUri;
   using sys::net::gai_bind;
   using sys::net::gai_connect;
   using sys::net::Socket;
@@ -36,6 +41,7 @@ namespace dns {
   using xsl::_net::dns::DnCompressor;
   using xsl::_net::dns::DnDecompressor;
   using xsl::_net::dns::Header;
+  using xsl::_net::dns::MAX_SIZE_DNS_UDP;
   using xsl::_net::dns::MemoryCache;
   using xsl::_net::dns::RCode;
   using xsl::_net::dns::RR;
@@ -47,11 +53,19 @@ namespace dns {
 }  // namespace dns
 
 namespace http {
+  using xsl::_net::http::AbsoluteForm;
+  using xsl::_net::http::AsteriskForm;
+  using xsl::_net::http::AuthorityForm;
   using xsl::_net::http::from_date_string;
+  using xsl::_net::http::HTTP_DEFAULT_PORT;
   using xsl::_net::http::MediaTypeView;
+  using xsl::_net::http::MessageRestView;
   using xsl::_net::http::Method;
+  using xsl::_net::http::OriginForm;
   using xsl::_net::http::parse_accept;
   using xsl::_net::http::parse_accept_encoding;
+  using xsl::_net::http::RequestLineView;
+  using xsl::_net::http::RequestTarget;
   using xsl::_net::http::RouteContext;
   using xsl::_net::http::Router;
   using xsl::_net::http::RouterLike;

@@ -1,8 +1,8 @@
 /**
  * @file http_server.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
- * @version 0.11
+ * @brief A simple HTTP server that serves static files
+ * @version 0.2
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -21,19 +21,19 @@ using namespace xsl;
 /**
  * @brief run http server
  *
+ * @param poller
  * @param ip
  * @param port
- * @param poller
  * @return Task<void>
  * @note this example all use static call
  */
-Task<void> run(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
-  auto http_server = http1::Server{tcp::make_server<Ip<4>>(ip, port, poller).value()};
-  using io_dev_type = decltype(http_server)::io_dev_type;
-  auto service = http1::make_service<io_dev_type>();
+Task<void> run(std::shared_ptr<xsl::Poller> poller, std::string_view ip, std::string_view port) {
+  auto util = HttpUtil(make_socket_io_utils<Tcp<Ip<4>>>());
+  auto service = util.make_service();
   service.redirect(http::Method::GET, "/", "/index.html");
   service.add_static("/", {"./build/html/", {"br"}});
-  co_await http_server.serve_connection(std::move(service).build());
+  auto creator = *util.make_creator(poller, ip, port);
+  co_await creator.serve_connection(std::move(service).build());
   poller->shutdown();
   co_return;
 }
@@ -47,8 +47,7 @@ int main(int argc, char* argv[]) {
 
   auto poller = std::make_shared<xsl::Poller>();
   auto executor = std::make_shared<coro::NewThreadExecutor>();
-  run(ip, port, poller).detach(std::move(executor));
-  // run(ip, port, poller).detach();
+  run(poller, ip, port).detach(std::move(executor));
   poller->run();
   return 0;
 }

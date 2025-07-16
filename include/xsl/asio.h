@@ -2,7 +2,7 @@
  * @file net.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Network utilities
- * @version 0.11
+ * @version 0.2
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -13,14 +13,13 @@
 #  define XSL_CORO_NET_H
 #  include "xsl/asio/dns/resolver.h"
 #  include "xsl/asio/gai.h"
-#  include "xsl/asio/http/conn.h"
-#  include "xsl/asio/http/parse.h"
+#  include "xsl/asio/http.h"
+#  include "xsl/asio/http/request.h"
 #  include "xsl/asio/http/server.h"
 #  include "xsl/asio/http/service.h"
 #  include "xsl/asio/pipe.h"
 #  include "xsl/asio/socket.h"
 #  include "xsl/asio/tcp/server.h"
-#  include "xsl/sys.h"
 
 namespace xsl::asio {
   using _asio::AsyncSocket;
@@ -33,27 +32,23 @@ namespace xsl::asio {
   using sys::net::SockAddrCompose;
   using sys::net::Socket;
   using sys::net::SocketCompose;
-  // using xsl::_net::io::splice;
+  //
+
+  using _asio::Buffer;
   namespace tcp {
-    using _asio::tcp::make_server;
     using _asio::tcp::Server;
   }  // namespace tcp
 
   namespace udp {}  // namespace udp
   using _asio::Resolver;
-  // using xsl::_net::dns::Server;
   using _asio::ResolverImpl;
 
-  using _asio::http::Connection;
   using _asio::http::HandleContext;
   using _asio::http::HandleResult;
   using _asio::http::Method;
-  using _asio::http::ParseData;
-  using _asio::http::Parser;
-  using _asio::http::ParseUnit;
   using _asio::http::Request;
-  using _asio::http::RequestView;
-  using _asio::http::Response;
+  using _asio::http::RequestLineView;
+  using _asio::http::ResponseBuilder;
   using _asio::http::ResponsePart;
   using _asio::http::RouteContext;
   using _asio::http::Router;
@@ -61,11 +56,65 @@ namespace xsl::asio {
   using _asio::http::Status;
   using _asio::http::to_string_view;
 
+  using _asio::get;
+  using _asio::RequestPartBuilder;
+
   namespace http1 {
-    using _asio::http::Connection;
-    using _asio::http::make_service;
+    using _asio::http::RequestLineView;
     using _asio::http::Server;
     using _asio::http::Service;
   }  // namespace http1
+  using _asio::HttpUtil;
+
+  template <class Traits>
+  struct SocketIOUtils;
+
+  template <sys::net::SocketTraitsCompatible<sys::net::SocketTraits<TcpIp>> Traits>
+  struct SocketIOUtils<Traits> : public Traits {
+    using io_dev_type = AsyncSocket<Traits>;
+
+    template <class Poller>
+    std::expected<tcp::Server<Traits>, std::error_condition> make_creator(
+        const std::shared_ptr<Poller> &poller, std::string_view host,
+        std::string_view port)  /// TODO: add attr opt for socket
+    {
+      log_debug("Start listening on {}:{}", host, port);
+      auto copy_poller = poller;
+      auto skt = net::gai_bind<Traits>(host.data(), port.data());
+      if (!skt) return std::unexpected(skt.error());
+      auto ec = skt->listen();
+      if (ec != errc{}) return std::unexpected(ec);
+      return {{host, port, std::move(copy_poller), *poller, std::move(*skt)}};
+    }
+  };
+
+  template <sys::net::SocketTraitsCompatible<sys::net::SocketTraits<UdpIp>> Traits>
+  struct SocketIOUtils<Traits> : public Traits {
+    using io_dev_type = AsyncSocket<Traits>;
+
+    template <class Poller>
+    std::expected<AsyncSocket<Traits>, std::error_condition> make_io(
+        Poller &poller, std::string_view host,
+        std::string_view port)  /// TODO: add attr opt for socket
+    {
+      auto skt = net::gai_bind<Traits>(host.data(), port.data());
+      if (!skt) return std::unexpected(skt.error());
+      return {{poller, std::move(*skt)}};
+    }
+    template <class Poller>
+    std::expected<AsyncSocket<Traits>, std::error_condition> make_io_to(
+        Poller &poller, std::string_view host,
+        std::string_view port)  /// TODO: add attr opt for socket
+    {
+      auto skt = net::gai_connect<Traits>(host.data(), port.data());
+      if (!skt) return std::unexpected(skt.error());
+      return {{poller, std::move(*skt)}};
+    }
+  };
+  template <class... Flags>
+  consteval auto make_socket_io_utils() {
+    return SocketIOUtils<_sys::net::SocketTraits<Flags...>>();
+  }
+
 }  // namespace xsl::asio
 #endif

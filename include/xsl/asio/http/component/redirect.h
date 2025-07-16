@@ -13,8 +13,6 @@
 #  define XSL_ASIO_HTTP_COMPONENT_REDIRECT
 #  include "xsl/asio/http/context.h"
 #  include "xsl/asio/http/def.h"
-#  include "xsl/asio/http/msg.h"
-#  include "xsl/io/def.h"
 #  include "xsl/logctl.h"
 
 #  include <optional>

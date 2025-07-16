@@ -17,6 +17,8 @@ add_requires("toml++", { configs = { header_only = true } })
 
 add_requires("thread-pool", "cli11", "quill")
 
+add_requires("openssl3")
+
 set_policy("build.optimization.lto", true)
 
 target("w_cli")

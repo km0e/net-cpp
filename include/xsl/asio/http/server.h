@@ -21,10 +21,10 @@
 #  include <utility>
 
 XSL_ASIO_HTTP_NB
-template <class LowerServer>
+template <class LowerCreator>
 class Server {
 public:
-  using lower_type = LowerServer;
+  using lower_type = LowerCreator;
 
   using io_dev_type = typename lower_type::io_dev_type;
   using context_type = HandleContext<io_dev_type, io_dev_type>;

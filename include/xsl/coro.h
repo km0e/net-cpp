@@ -22,6 +22,7 @@
 #  include "xsl/def.h"
 XSL_NB
 namespace coro {
+  using _coro::Awaitable;
   using _coro::ExecutorBase;
   using _coro::NewThreadExecutor;
   using _coro::NoopExecutor;

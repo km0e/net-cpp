@@ -60,17 +60,17 @@ protected:
         auto buf = std::make_unique<char[]>(1024);
         while (true) {
           auto recv_bytes = std::as_writable_bytes(std::span(buf.get(), 1024));
-          auto [m, r_err] = co_await skt.read(recv_bytes);
-          if (r_err) {
+          auto res = co_await skt.read(recv_bytes);
+          if (!res) {
             break;
           }
-          auto send_bytes = std::as_bytes(std::span(buf.get(), m));
-          auto [n, s_err] = co_await skt.write(send_bytes);
-          if (s_err) {
+          auto send_bytes = std::as_bytes(std::span(buf.get(), res.size));
+          res = co_await skt.write(send_bytes);
+          if (!res) {
             break;
           }
         }
-      }(AsyncSocket(std::move(*res_skt), *poller));
+      }(AsyncSocket(*poller, std::move(*res_skt)));
     }
   }
 
@@ -92,7 +92,7 @@ TEST_F(AsyncSocketIOFixture, tcp_bind) {
   }
   ASSERT_EQ(res_skt->listen(), errc{}) << "Failed to listen";
   ASSERT_TRUE(res_skt.has_value());
-  auto skt = AsyncSocket(std::move(*res_skt), *poller);
+  auto skt = AsyncSocket(*poller, std::move(*res_skt));
   echo(skt).detach();
   xsl::flush_log();
   auto N = TEST_COUNT;
@@ -104,12 +104,12 @@ TEST_F(AsyncSocketIOFixture, tcp_bind) {
     auto buf = std::make_unique<char[]>(1024);
     for (auto &msg : echo_msg) {
       auto send_bytes = std::as_bytes(std::span(msg.data(), msg.size()));
-      auto [n, s_err] = client.write(send_bytes).block();
-      ASSERT_FALSE(s_err);
+      auto res = client.write(send_bytes).block();
+      ASSERT_TRUE(res);
       auto recv_bytes = std::as_writable_bytes(std::span(buf.get(), 1024));
-      auto [m, r_err] = client.read(recv_bytes).block();
-      ASSERT_FALSE(r_err);
-      ASSERT_EQ(std::string_view(buf.get(), m), msg);
+      res = client.read(recv_bytes).block();
+      ASSERT_TRUE(res);
+      ASSERT_EQ(std::string_view(buf.get(), res.size), msg);
     }
   }
 }

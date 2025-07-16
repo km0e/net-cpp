@@ -9,7 +9,7 @@ end
 
 add_requires("gtest")
 
-includes("http", "feature", "coro", "regex", "wheel")
+includes("http", "feature", "coro", "regex", "wheel", "net")
 includes("dns")
 includes("sys")
 includes("sync")

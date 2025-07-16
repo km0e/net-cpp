@@ -2,7 +2,7 @@
  * @file service.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Service class for HTTP server
- * @version 0.11
+ * @version 0.12
  * @date 2024-08-16
  *
  * @copyright Copyright (c) 2024
@@ -15,9 +15,7 @@
 #  include "xsl/asio/http/component/static.h"
 #  include "xsl/asio/http/context.h"
 #  include "xsl/asio/http/def.h"
-#  include "xsl/asio/http/msg.h"
 #  include "xsl/coro.h"
-#  include "xsl/io/ai.h"
 #  include "xsl/logctl.h"
 #  include "xsl/net.h"
 
@@ -57,14 +55,15 @@ namespace impl_service {
 
     constexpr Service(std::unique_ptr<details_type>&& details) : details(std::move(details)) {}
 
-    Task<Response<out_dev_type>> operator()(Request<in_dev_type>&& request) {
-      log_info("New request: {} {}", request.view.method, request.view.path);
-      auto route_ctx = RouteContext{request.method, request.view.path};
+    Task<ResponseBuilder<out_dev_type>> operator()(Request& request, in_dev_type& in_dev) {
+      log_info("New request: {} {}", request.line.method, request.line.path);
+      auto route_ctx = RouteContext{request.line.method, request.line.path};
 
       auto route_res = this->details->router.route(route_ctx);
-      auto ctx = context_type{route_ctx.current_path, std::move(request)};
+      auto ctx = context_type(route_ctx.current_path, request, in_dev);
       handler_type* handler = nullptr;
       if (!route_res) {
+        log_debug("Routing failed: {}", route_res.error().to_string_view());
         auto iter = this->details->status_handlers.find(route_res.error());
         if (iter != this->details->status_handlers.end()) {
           co_await iter->second(ctx);
@@ -176,15 +175,6 @@ private:
   std::size_t tag;
   std::unique_ptr<details_type> details;
 };
-template <AsyncReadWrite RW, RouterLike<std::size_t> R = Router>
-constexpr Service<RW, RW, R> make_service() {
-  return {};
-}
-
-template <RouterLike<std::size_t> R = Router>
-constexpr Service<AsyncReadDevice, AsyncWriteDevice> make_service() {
-  return {};
-}
 
 XSL_ASIO_HTTP_NE
 #endif

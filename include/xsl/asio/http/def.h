@@ -2,7 +2,7 @@
  * @file def.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.11
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -16,10 +16,6 @@
 #  define XSL_ASIO_HTTP_NB namespace xsl::_asio::http {
 #  define XSL_ASIO_HTTP_NE }
 XSL_ASIO_HTTP_NB
-const std::string_view SERVER_VERSION = "XSL/0.1";
-namespace tag {
-  struct skt;
-  struct dev;
-}  // namespace tag
+const std::string_view API_VERSION = "XSL/0.1";
 XSL_ASIO_HTTP_NE
 #endif

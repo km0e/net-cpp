@@ -8,6 +8,14 @@ do
     add_deps("xsl")
 end
 
+target("http_client")
+do
+    set_kind("binary")
+    add_files("http_client.cpp")
+    add_packages("cli11")
+    add_deps("xsl_asio")
+end
+
 target("http_server")
 do
     set_kind("binary")

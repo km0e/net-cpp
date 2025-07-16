@@ -2,7 +2,7 @@
  * @file context.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief HTTP context
- * @version 0.1
+ * @version 0.11
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -12,7 +12,8 @@
 #ifndef XSL_ASIO_HTTP_CONTEXT
 #  define XSL_ASIO_HTTP_CONTEXT
 #  include "xsl/asio/http/def.h"
-#  include "xsl/asio/http/msg.h"
+#  include "xsl/asio/http/request.h"
+#  include "xsl/asio/http/response.h"
 #  include "xsl/io/def.h"
 #  include "xsl/net.h"
 
@@ -25,12 +26,12 @@ class HandleContext {
 public:
   using in_dev_type = R;
   using out_dev_type = W;
-  using request_type = Request<in_dev_type>;
-  using response_type = Response<out_dev_type>;
+  using request_type = Request;
+  using response_type = ResponseBuilder<out_dev_type>;
 
   using response_body_type = Task<Result>(out_dev_type&);
-  constexpr HandleContext(std::string_view current_path, request_type&& request)
-      : current_path(current_path), request(std::move(request)), _response(std::nullopt) {}
+  constexpr HandleContext(std::string_view current_path, request_type& request, in_dev_type& in_dev)
+      : current_path(current_path), request(request), in_dev(in_dev), _response(std::nullopt) {}
   constexpr HandleContext(HandleContext&&) = default;
   constexpr HandleContext& operator=(HandleContext&&) = default;
   constexpr ~HandleContext() {}
@@ -83,7 +84,8 @@ public:
 
   std::string_view current_path;
 
-  request_type request;
+  request_type& request;
+  in_dev_type& in_dev;
 
   std::optional<response_type> _response;
 

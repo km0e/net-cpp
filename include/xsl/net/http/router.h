@@ -125,6 +125,7 @@ namespace router_details {
      * @return RouteResult the result of the routing
      */
     constexpr RouteResult route(RouteContext& ctx) {
+      log_trace("Routing: {}", ctx.current_path);
       if (ctx.current_path[0] != '/') {
         return std::unexpected{Status::NOT_FOUND};
       }
@@ -147,8 +148,10 @@ namespace router_details {
           }
           break;
         }
+        // if there is no sub path, we need to handle the current path
         auto sub_path = ctx.current_path.substr(1);
         if (sub_path.empty()) {  // if the path is empty
+          log_debug("Routing to fallback handler");
           auto& handler = fallbacks[ctx.method._method];
           if (handler != tag_type{}) {
             return &handler;

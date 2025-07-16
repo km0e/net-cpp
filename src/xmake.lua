@@ -26,4 +26,5 @@ do
     set_kind("static")
     add_files("**.cpp")
     add_deps("xsl_log_ctl")
+    add_packages("openssl3", { public = true })
 end

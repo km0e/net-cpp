@@ -1,8 +1,8 @@
 /**
  * @file udp_client.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
- * @version 0.12
+ * @brief UDP echo client example
+ * @version 0.2
  * @date 2024-08-20
  *
  * @copyright Copyright (c) 2024
@@ -17,27 +17,27 @@
 std::string ip = "127.0.0.1";
 std::string port = "8080";
 
-using namespace xsl::coro;
 using namespace xsl::asio;
-using namespace xsl::net;
 using namespace xsl;
 
 Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
-  std::string buffer(4096, '\0');
-  auto rw = AsyncSocket(gai_connect<UdpIpv4>(ip.data(), port.data()).value(), *poller);
+  byte buffer[4096]{};
+  auto util = make_socket_io_utils<UdpIpv4>();
+  auto rw = *util.make_io_to(*poller, ip.data(), port.data());
   while (true) {
-    std::cin >> buffer;
-    auto [n, err] = co_await rw.write(std::as_bytes(std::span(buffer)));
-    if (err.has_value()) {
-      log_error("Failed to send data, err : {}", std::make_error_code(err.value()).message());
+    std::cin.read(reinterpret_cast<char *>(buffer), sizeof(buffer));
+    auto res = co_await rw.write(buffer, std::cin.gcount());
+    if (!res) {
+      log_error("Failed to send data, err : {}", res.message());
       break;
     }
-    auto [n_recv, err_recv] = co_await rw.read(std::as_writable_bytes(std::span(buffer)));
-    if (err_recv.has_value()) {
-      log_error("Failed to recv data, err : {}", std::make_error_code(err_recv.value()).message());
+    res = co_await rw.read(buffer, 4096);
+    if (!res) {
+      log_error("Failed to recv data, err : {}", res.message());
       break;
     }
-    log_info("Recv: {}", std::string_view{buffer.data(), n_recv});
+    std::println(std::cout, "{}\n",
+                 std::string_view(reinterpret_cast<const char *>(buffer), res.size));
   }
   poller->shutdown();
   co_return;
@@ -50,9 +50,8 @@ int main(int argc, char *argv[]) {
   CLI11_PARSE(app, argc, argv);
 
   auto poller = std::make_shared<xsl::Poller>();
-  auto executor = std::make_shared<NewThreadExecutor>();
+  auto executor = std::make_shared<coro::NewThreadExecutor>();
   talk(ip, port, poller).detach(std::move(executor));
-  // echo(ip, port, poller).detach();
   poller->run();
   return 0;
 }

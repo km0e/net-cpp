@@ -15,4 +15,4 @@
 
 #  define XSL_WHEEL_NB namespace xsl::wheel {
 #  define XSL_WHEEL_NE }
-#endif  // XSL_UTILS_WHEEL
+#endif  // XSL_WHEEL_DEF

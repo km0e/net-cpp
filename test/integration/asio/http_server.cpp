@@ -15,7 +15,7 @@
 void sigterm_init() {
   struct sigaction act;
   act.sa_handler = [](int sig) -> void {
-    INFO("Received signal {}", sig);
+    log_info("Received signal {}", sig);
     exit(0);
   };
   sigaction(SIGTERM, &act, nullptr);

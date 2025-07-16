@@ -23,7 +23,7 @@
 
 XSL_NET_DNS_NB
 
-const std::size_t DNS_UDP_MAX_SIZE = 512;  ///< max size of DNS UDP message
+const std::size_t MAX_SIZE_DNS_UDP = 512;  ///< max size of DNS UDP message
 
 const std::string_view RCODE_STR[]
     = {"No Error", "Format Error", "Server Failure", "Name Error", "Not Implemented", "Refused"};

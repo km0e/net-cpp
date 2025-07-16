@@ -1,21 +1,18 @@
 /**
- * @file msg.cpp
+ * @file response.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
  * @version 0.1
- * @date 2024-09-01
+ * @date 2025-07-11
  *
- * @copyright Copyright (c) 2024
+ * @copyright Copyright (c) 2025
  *
  */
-#include "xsl/asio/http/msg.h"
+#include "xsl/asio/http/response.h"
+
+#include "xsl/net.h"
 
 XSL_ASIO_HTTP_NB
-
-RequestView::RequestView()
-    : method(), scheme(), authority(), path(), query(), version(), headers() {}
-
-RequestView::~RequestView() {}
 
 ResponsePart::ResponsePart()
     : ResponsePart(Version::HTTP_1_1, Status::OK, Status{Status::OK}.to_reason_phrase()) {}
@@ -41,19 +38,19 @@ std::string ResponsePart::to_string() {
   res += status_code.to_string_view();
   res += " ";
   res += status_message;
-  res += "\r\n";
+  res += CRLF;
   for (const auto& [key, value] : headers) {
     res += key;
     res += ": ";
     res += value;
-    res += "\r\n";
+    res += CRLF;
   }
   if (!headers.contains("Server")) {
     res += "Server: ";
-    res += SERVER_VERSION;
-    res += "\r\n";
+    res += API_VERSION;
+    res += CRLF;
   }
-  res += "\r\n";
+  res += CRLF;
   return res;
 }
 XSL_ASIO_HTTP_NE

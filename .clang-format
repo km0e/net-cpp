@@ -1,24 +1,23 @@
 ---
-  BasedOnStyle: Google
-  AccessModifierOffset: '-2'
-  AlignTrailingComments: 'true'
-  AllowAllParametersOfDeclarationOnNextLine: 'false'
-  AlwaysBreakTemplateDeclarations: 'Yes'
-  BreakBeforeBraces: Attach
-  ColumnLimit: '100'
-  ConstructorInitializerAllOnOneLineOrOnePerLine: 'true'
-  IndentRequiresClause: 'true'
-  IncludeBlocks: Regroup
-  IndentPPDirectives: AfterHash
-  IndentWidth: '2'
-  NamespaceIndentation: All
-  BreakBeforeBinaryOperators: All
-  BreakBeforeTernaryOperators: 'true'
-  IncludeCategories:
-  - Regex:	'^".*'
-    Priority:	1
-  - Regex:	'.*\.h'
-    Priority:	2
-  - Regex:	'.*'
-    Priority:	3
-...
+BasedOnStyle: Google
+AccessModifierOffset: -2
+AlignTrailingComments: true
+AllowAllParametersOfDeclarationOnNextLine: false
+AlwaysBreakTemplateDeclarations: "Yes"
+BreakBeforeBraces: Attach
+ColumnLimit: 100
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+IndentRequiresClause: true
+IncludeBlocks: Regroup
+IndentPPDirectives: AfterHash
+IndentWidth: 2
+NamespaceIndentation: All
+BreakBeforeBinaryOperators: All
+BreakBeforeTernaryOperators: true
+IncludeCategories:
+  - Regex: '^".*'
+    Priority: 1
+  - Regex: '.*\.h'
+    Priority: 2
+  - Regex: ".*"
+    Priority: 3

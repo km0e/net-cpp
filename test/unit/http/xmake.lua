@@ -1,15 +1,14 @@
-includes("http_server", "proto")
--- includes("component")
-
-for _, file in ipairs(os.files("test_*.cpp")) do
-    local name = path.basename(file)
-    target(name)
+for _, file in ipairs(os.files("**.cpp")) do
+    -- eg: request/target.cpp -> request_target
+    local name = file:gsub("\\", "_"):gsub("/", "_"):gsub("%.cpp$", "")
+    local test_name = "test_http_" .. name
+    target(test_name)
     do
         set_kind("binary")
         set_default(false)
-        add_files(name .. ".cpp")
+        add_files(file)
         add_deps("w_xtest")
         add_deps("xsl_asio")
-        add_tests("http" .. name, { group = "http" })
+        add_tests("_", { group = "http" })
     end
 end

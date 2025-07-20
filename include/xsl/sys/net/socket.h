@@ -58,23 +58,7 @@ public:
                   = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)
       : Traits(),
         Base(::socket(this->family(), this->type() | static_cast<int>(attr), this->protocol())) {}
-  /**
-   * @brief check and upgrade socket
-   *
-   * @param family
-   * @param type
-   * @param protocol
-   * @return errc
-   */
-  constexpr errc check_and_upgrade(int family, int type, int protocol) {
-    if (this->family() != family || this->type() != type || this->protocol() != protocol) {
-      /// change socket attributes to arguments
-      ::close(this->raw());
-      this->raw() = ::socket(family, type, protocol);
-      return check_ec(this->raw());
-    }
-    return {};
-  }
+  constexpr RawOwner into_raw() && { return std::move(*this); }
 };
 
 template <ConnectionBasedSocketTraits Traits>

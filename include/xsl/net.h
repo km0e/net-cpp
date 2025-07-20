@@ -58,13 +58,14 @@ namespace http {
   using xsl::_net::http::AuthorityForm;
   using xsl::_net::http::from_date_string;
   using xsl::_net::http::HTTP_DEFAULT_PORT;
+  using xsl::_net::http::HTTP_METHOD_COUNT;
   using xsl::_net::http::MediaTypeView;
   using xsl::_net::http::MessageRestView;
   using xsl::_net::http::Method;
   using xsl::_net::http::OriginForm;
   using xsl::_net::http::parse_accept;
   using xsl::_net::http::parse_accept_encoding;
-  using xsl::_net::http::RequestLineView;
+  using xsl::_net::http::RequestLine;
   using xsl::_net::http::RequestTarget;
   using xsl::_net::http::RouteContext;
   using xsl::_net::http::Router;

@@ -2,7 +2,7 @@
  * @file conn.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Connection class for HTTP server
- * @version 0.2
+ * @version 0.2.1
  * @date 2024-08-16
  *
  * @copyright Copyright (c) 2024
@@ -54,9 +54,18 @@ Task<void> imm_serve_connection(R& ard, W& awd, Service& service) {
     ResponseBuilder<W> resp = co_await (service)(
         req, ard);  // TODO: may be will also need to be a coroutine in the future
     log_debug("ready to send response: {}", resp._part.status_code.to_reason_phrase());
+    //@see https://datatracker.ietf.org/doc/html/rfc9112#name-tear-down
+    bool is_close = req.get_header("Connection") == "close";
+    if (is_close) {
+      resp.set_header("Connection", "close");
+    }
     auto res = co_await resp.sendto(awd);
     if (!res) {
       log_warning("send error: {}", res.message());
+    }
+    if (is_close) {
+      log_debug("Connection closed by client");
+      break;  // if the client requested to close the connection, break the loop
     }
   }
 }

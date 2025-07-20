@@ -2,7 +2,7 @@
  * @file context.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief HTTP context
- * @version 0.11
+ * @version 0.1.2
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -51,11 +51,8 @@ public:
   template <class... Args>
     requires std::constructible_from<std::string, Args...>
   constexpr void easy_resp(Status status_code, Args&&... args) {
-    this->_response = response_type{
-        {Version::HTTP_1_1, status_code, status_code.to_reason_phrase()},
-        [body = std::string(std::forward<Args>(args)...)](out_dev_type& awd) -> Task<Result> {
-          return awd.write(std::as_bytes(std::span(body)));
-        }};
+    this->resp({Version::HTTP_1_1, status_code, status_code.to_reason_phrase()},
+               std::forward<Args>(args)...);
   }
   /// @brief response with ResponsePart
   constexpr void resp(ResponsePart&& part) { this->_response = response_type{std::move(part)}; }
@@ -67,11 +64,12 @@ public:
   template <class... Args>
     requires std::constructible_from<std::string, Args...>
   constexpr void resp(ResponsePart&& part, Args&&... args) {
-    this->_response = response_type{
-        {std::move(part)},
-        [body = std::string(std::forward<Args>(args)...)](out_dev_type& awd) -> Task<Result> {
-          return awd.write(std::as_bytes(std::span(body)));
-        }};
+    auto body = std::string(std::forward<Args>(args)...);
+    part.headers.emplace("Content-Length", std::to_string(body.size()));
+    this->_response = response_type{{std::move(part)},
+                                    [body = std::move(body)](out_dev_type& awd) -> Task<Result> {
+                                      return awd.write(std::as_bytes(std::span(body)));
+                                    }};
   }
   /// @brief checkout the response
   constexpr response_type checkout(this HandleContext&& self) {

@@ -2,7 +2,7 @@
  * @file line.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief HTTP request line definitions
- * @version 0.1
+ * @version 0.2.0
  * @date 2025-07-12
  *
  * @copyright Copyright (c) 2025
@@ -23,7 +23,8 @@
 
 XSL_HTTP_NB
 
-struct RequestLineView {
+struct RequestLine {
+  std::string _raw = {};            ///< the raw request line if percent-encoded
   Method method = Method::UNKNOWN;  ///< the request method
   std::string_view scheme = {};     ///< the request scheme, default is http
 
@@ -52,18 +53,28 @@ struct RequestLineView {
 
     std::cmatch match;
     if (std::regex_match(target.begin(), target.end(), match, RequestTarget::regex_re)) {
+#  define PERCENT_DECODE(field)              \
+    {                                        \
+      res = percent_decode(_raw, f.field);   \
+      if (!res) return {0, res.error()};     \
+      field = res->empty() ? f.field : *res; \
+    }
+
       if (match[1].matched) {
         OriginForm f(std::ranges::subrange(match.begin() + 1, match.begin() + 3, 2));
-        path = f.path;
-        query = f.query;
+        decltype(percent_decode(_raw, f.path)) res;
+        PERCENT_DECODE(path);
+        PERCENT_DECODE(query);
         log_debug("OriginForm: path={}, query={}", path, query);
       } else if (match[3].matched) {  /// absolute_form
         AbsoluteForm f(std::ranges::subrange(match.begin() + 3, match.begin() + 7, 4));
+        decltype(percent_decode(_raw, f.path)) res;
         scheme = f.scheme;
         host = f.host;
         port = f.port;
-        path = f.path == "" ? "/" : f.path;
-        query = f.query;
+        PERCENT_DECODE(path);
+        path = path.empty() ? "/" : path;
+        PERCENT_DECODE(query);
       } else if (match[8].matched) {
         AuthorityForm f(std::ranges::subrange(match.begin() + 8, match.begin() + 10, 2));
         host = f.host;
@@ -71,6 +82,7 @@ struct RequestLineView {
       } else if (match[10].matched) {
         path = "*";
       }
+#  undef PERCENT_DECODE
     }
 
     auto tmp_version = line.substr(_2sp + 1);

@@ -14,12 +14,16 @@
 #  define XSL_NET_URI
 #  include "xsl/net/def.h"
 
+#  include <expected>
 #  include <ranges>
 #  include <regex>
 #  include <string_view>
 #  include <unordered_map>
 
 XSL_NET_NB
+
+std::expected<std::string_view, std::errc> percent_decode(std::string& buffer,
+                                                          std::string_view sv) noexcept;
 
 struct KVQuery {
   static constexpr std::string_view regex_str = R"(([^&=]+)=([^&=]+))";

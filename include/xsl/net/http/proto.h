@@ -89,6 +89,7 @@ struct Method {
   constexpr Method(std::uint8_t method) : _method(static_cast<decltype(_method)>(method)) {}
 
   constexpr bool is_valid() const { return _method < HTTP_METHOD_COUNT && _method != UNKNOWN; }
+
   constexpr std::string_view to_string_view() const {
     if (_method == UNKNOWN) return "Unknown";
     return HTTP_METHOD_STR[_method];
@@ -98,6 +99,7 @@ struct Method {
 constexpr bool operator==(const Method& lhs, const decltype(Method::_method)& rhs) {
   return lhs._method == rhs;
 }
+constexpr bool operator==(const Method& lhs, const Method& rhs) { return lhs == rhs._method; }
 
 const std::string_view CHARSET_STR[] = {
     "UTF-8",

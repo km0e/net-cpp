@@ -8,6 +8,8 @@
  * @copyright Copyright (c) 2024
  *
  */
+#include "xsl/wheel.h"
+
 #include <CLI/CLI.hpp>
 #include <xsl/asio.h>
 #include <xsl/coro.h>
@@ -15,6 +17,8 @@
 
 std::string ip = "0.0.0.0";
 std::string port = "8080";
+// std::string doc_root = ".";
+std::string doc_root = "../../../build/html";
 
 using namespace xsl::asio;
 using namespace xsl;
@@ -29,19 +33,28 @@ using namespace xsl;
  */
 Task<void> run(std::shared_ptr<xsl::Poller> poller, std::string_view ip, std::string_view port) {
   auto util = HttpUtil(make_socket_io_utils<Tcp<Ip<4>>>());
-  auto service = util.make_service();
-  service.redirect(http::Method::GET, "/", "/index.html");
-  service.add_static("/", {"./build/html/", {"br"}});
-  auto creator = *util.make_creator(poller, ip, port);
-  co_await creator.serve_connection(std::move(service).build());
-  poller->shutdown();
+  auto service = util.make_service2();
+  service.add_static("/", {doc_root, {}});
+  auto creator = util.make_creator(poller, ip, port);
+  Defer defer([&]() {
+    log_info("Server stopped");
+    poller->shutdown();
+  });
+  if (creator) {
+    co_await creator->serve_connection(std::move(service).build());
+  } else {
+    log_error("Failed to create server: {}", creator.error().message());
+  }
   co_return;
 }
 
 int main(int argc, char* argv[]) {
   CLI::App app{"Http static server"};
-  app.add_option("-i,--ip", ip, "IP address");
-  app.add_option("-p,--port", port, "Port");
+  app.add_option("-i,--ip", ip, "IP address")->capture_default_str();
+  app.add_option("-p,--port", port, "Port")->check(CLI::Range(1, 65535))->capture_default_str();
+  app.add_option("-d,--doc-root", doc_root, "Document root directory")
+      ->check(CLI::ExistingDirectory)
+      ->capture_default_str();
   CLI11_PARSE(app, argc, argv);
   log_info("start http server at {}:{}", ip, port);
 

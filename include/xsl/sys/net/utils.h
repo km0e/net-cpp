@@ -2,7 +2,7 @@
  * @file utils.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief socket utilities
- * @version 0.1
+ * @version 0.1.1
  * @date 2025-06-07
  *
  * @copyright Copyright (c) 2025
@@ -67,13 +67,14 @@ std::expected<Socket<Traits>, std::error_condition> gai_bind(Args &&...args) {
   if (!res_resolved) {
     return std::unexpected{res_resolved.error()};
   }
-  auto skt = Socket<Traits>();
-  if (!skt.is_valid()) {
-    return std::unexpected{current_ec()};
-  }
+  using Skt = Socket<Traits>;
   errc ec{};
   for (auto &ai : *res_resolved) {
-    ec = skt.check_and_upgrade(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
+    Skt skt(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
+    if (!skt.is_valid()) {
+      log_warning("Failed to create socket, err: {}", current_ec().message());
+      continue;
+    }
     log_debug("Set non-blocking to fd: {}", skt.raw());
     int opt = 1;
     if (setsockopt(skt.raw(), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {

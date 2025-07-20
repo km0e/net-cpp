@@ -47,7 +47,7 @@ public:
   }
 
 protected:
-  Result2<result_type> _result;
+  Result<result_type> _result;
 };
 
 template <class Base>

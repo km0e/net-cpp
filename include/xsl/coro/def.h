@@ -52,12 +52,12 @@ namespace {
 }
 
 template <class ResultType>
-class Result2 : public ResultTypeOrVoid<ResultType> {
+class Result : public ResultTypeOrVoid<ResultType> {
 public:
   using base_type = ResultTypeOrVoid<ResultType>;
   using base_type::base_type;
 
-  constexpr decltype(auto) unwrap(this Result2&& self) {
+  constexpr decltype(auto) unwrap(this Result&& self) {
     if (std::holds_alternative<std::exception_ptr>(self)) [[unlikely]] {
       std::rethrow_exception(std::get<std::exception_ptr>(std::move(self)));
     }

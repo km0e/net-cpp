@@ -28,8 +28,7 @@ using io::IOM_EVENTS;
 
 template <IOM_EVENTS... Events>
 using AsyncOwnerStorage
-    = std::tuple<RawOwner,
-                 PubSub<StaticExactPubSubStorage<IOM_EVENTS, SPSCSignal2<1>, Events...>>>;
+    = std::tuple<RawOwner, PubSub<StaticExactPubSubStorage<IOM_EVENTS, SPSCSignal2<1>, Events...>>>;
 
 template <IOM_EVENTS... Events>
 struct AsyncOwner {

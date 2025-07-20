@@ -47,7 +47,7 @@ namespace xsl::asio {
   using _asio::http::HandleResult;
   using _asio::http::Method;
   using _asio::http::Request;
-  using _asio::http::RequestLineView;
+  using _asio::http::RequestLine;
   using _asio::http::ResponseBuilder;
   using _asio::http::ResponsePart;
   using _asio::http::RouteContext;
@@ -60,9 +60,9 @@ namespace xsl::asio {
   using _asio::RequestPartBuilder;
 
   namespace http1 {
-    using _asio::http::RequestLineView;
+    using _asio::http::RequestLine;
     using _asio::http::Server;
-    using _asio::http::Service;
+    using _asio::http::ServiceBuilder;
   }  // namespace http1
   using _asio::HttpUtil;
 

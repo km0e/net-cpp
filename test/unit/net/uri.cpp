@@ -13,6 +13,14 @@
 #include <gtest/gtest.h>
 using namespace xsl::_net;
 
+TEST(URI, PercentDecode) {
+  std::string buffer;
+  auto result = percent_decode(buffer, "hello%20world%21");
+  EXPECT_TRUE(result.has_value());
+  EXPECT_EQ(result.value(), "hello world!");
+  EXPECT_EQ(buffer, "hello world!");
+}
+
 TEST(URI, AbsoluteUri) {
   std::string_view uri_str = "http://example.com/path?query=1&another=2";
   AbsoluteUri uri(uri_str);

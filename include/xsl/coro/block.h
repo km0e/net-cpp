@@ -67,7 +67,7 @@ constexpr decltype(auto) block(Awaiter &&awaiter) {
   std::binary_semaphore sem{0};
   if constexpr (!std::is_same_v<result_type, void>) {
     return [&sem](Awaiter &&awaiter) -> result_type {
-      Result2<result_type> result{};
+      Result<result_type> result{};
       auto _ = [&result, &sem](Awaiter &&awaiter) -> Block {
         try {
           result = co_await std::forward<Awaiter>(awaiter);

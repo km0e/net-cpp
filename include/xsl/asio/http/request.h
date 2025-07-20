@@ -2,7 +2,7 @@
  * @file request.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief HTTP request definitions
- * @version 0.1
+ * @version 0.1.1
  * @date 2025-07-10
  *
  * @copyright Copyright (c) 2025
@@ -23,7 +23,16 @@ class Request : public Message {  // TODO: abstract the ard
 public:
   constexpr Request() : Message(), line() {}
 
-  RequestLineView line;
+  RequestLine line;
+
+  /**
+   * @brief Get the request method
+   *
+   * @return Method
+   */
+  constexpr Method method() const noexcept {
+    return this->line.method;
+  }  ///< Get the HTTP method of the request
 };
 
 /**

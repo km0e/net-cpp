@@ -53,7 +53,7 @@ struct MessageRestView {
       }
       auto value = view.substr(vstart, vend - vstart);
       headers[key] = value;
-      log_trace("header: {}={}", key, value);
+      log_trace("Header: {}={}", key, value);
       pos = vend + 2;
     }
     return {pos, res};

@@ -83,6 +83,18 @@ public:
   constexpr ResponseBuilder& operator=(ResponseBuilder&&) = default;
   ~ResponseBuilder() {}
 
+  /**
+   * @brief Insert a header into the response part.
+   *
+   * @param key, the header key
+   * @param value, the header value
+   * @return ResponseBuilder&, a reference to the current ResponseBuilder instance
+   */
+  constexpr ResponseBuilder& set_header(std::string key, std::string value) {
+    this->_part.headers.emplace(std::move(key), std::move(value));
+    return *this;
+  }
+
   Task<io::Result> sendto(W& awd) {
     auto str = this->_part.to_string();
     log_trace("response: {}", str);

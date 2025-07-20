@@ -32,8 +32,8 @@ struct HttpUtil : public IOUtils {
     });
   }
 
-  template <RouterLike<std::size_t> R = Router>
-  constexpr Service<io_dev_type, io_dev_type, R> make_service() {
+  template <RouterLike<_impl_service::Id> R = Router<_impl_service::Id>>
+  constexpr ServiceBuilder<io_dev_type, io_dev_type, R> make_service2() {
     return {};
   }
 };

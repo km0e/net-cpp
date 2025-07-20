@@ -18,7 +18,7 @@ using namespace xsl::asio;
 TEST(http_parse, complete) {
   Request parser;
   std::string_view data = "GET / HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
-  RequestLineView line;
+  RequestLine line;
   auto [sz, res] = line.parse(data);
   ASSERT_EQ(res, errc{});
   ASSERT_EQ(line.method, Method::GET);
@@ -33,14 +33,14 @@ TEST(http_parse, complete) {
 }
 TEST(http_parse, empty) {
   std::string_view data = "";
-  RequestLineView line;
+  RequestLine line;
   auto [sz, res] = line.parse(data);
   ASSERT_NE(res, errc{});
   ASSERT_EQ(res, errc::resource_unavailable_try_again);
 }
 TEST(http_parse, partial) {
   std::string_view data = "GET / HTTP/1.1\r\nHost: localhost:8080";
-  RequestLineView line;
+  RequestLine line;
   auto [sz, res] = line.parse(data);
   ASSERT_EQ(res, errc{});
   MessageRestView rest;
@@ -49,13 +49,13 @@ TEST(http_parse, partial) {
 }
 TEST(http_parse, invalid_format) {
   std::string_view data = "GET / HTTP/1.1\rHost: localhost:8080\r\n\r\n";
-  RequestLineView line;
+  RequestLine line;
   auto [sz, res] = line.parse(data);
   ASSERT_EQ(res, errc::illegal_byte_sequence);
 }
 TEST(http_parse, test_version) {
   std::string_view data = "GET / HTTP/1.0\r\nHost: localhost:8080\r\n\r\n";
-  RequestLineView line;
+  RequestLine line;
   auto [sz, res] = line.parse(data);
   ASSERT_EQ(res, errc{});
   ASSERT_EQ(line.method, Method::GET);
@@ -64,7 +64,7 @@ TEST(http_parse, test_version) {
 }
 TEST(http_parse, test_query) {
   std::string_view data = "GET /?a=1&b=2 HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
-  RequestLineView line;
+  RequestLine line;
   auto [sz, res] = line.parse(data);
   ASSERT_EQ(res, errc{});
   ASSERT_EQ(line.method, Method::GET);
@@ -73,7 +73,7 @@ TEST(http_parse, test_query) {
 }
 TEST(http_parse, test_query_empty) {
   std::string_view data = "GET /?a=1&b=2 HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
-  RequestLineView line;
+  RequestLine line;
   auto [sz, res] = line.parse(data);
   ASSERT_EQ(res, errc{});
   ASSERT_EQ(line.method, Method::GET);

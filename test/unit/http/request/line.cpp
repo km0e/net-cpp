@@ -14,7 +14,7 @@
 using namespace xsl::_net::http;
 
 TEST(RequestLineTest, ParseValidLine) {
-  RequestLineView line;
+  RequestLine line;
   std::string_view input = "GET /index.html HTTP/1.1\r\n";
   auto [pos, err] = line.parse(input);
   EXPECT_EQ(pos, input.size());

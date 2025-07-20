@@ -41,7 +41,7 @@ public:
 
   using value_type = byte;
   AsyncSocket(Poller &poller, sys::net::Socket<Traits> &&sock)
-      : Base(std::move(sock).into_owner(), poller, typename Traits::poll_traits_type{}) {}
+      : Base(std::move(sock).into_raw(), poller, typename Traits::poll_traits_type{}) {}
 
   explicit AsyncSocket(Poller &poller, SocketAttribute attr = SocketAttribute::NonBlocking
                                                               | SocketAttribute::CloseOnExec)

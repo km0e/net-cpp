@@ -2,7 +2,7 @@
  * @file static.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Static file server component
- * @version 0.1
+ * @version 0.1.1
  * @date 2024-08-25
  *
  * @copyright Copyright (c) 2024
@@ -35,6 +35,18 @@ struct StaticFileConfig {
   std::filesystem::path path;
   FixedVector<std::string_view> compress_encodings = {};
   bool compress = false;
+  std::string directory_index_ = "index.html";
+
+  /**
+   * @brief set auto redirect to directory index
+   *
+   * @param index the index file name, default is "index.html"
+   * @return StaticFileConfig&
+   */
+  auto& directory_index(std::string_view index) {
+    this->directory_index_ = index;
+    return *this;
+  }  // set the directory index file
 };
 
 template <AsyncRead R, AsyncWrite W>
@@ -100,7 +112,7 @@ public:
           auto try_sendfile_res = this->try_sendfile(ctx, path, content_type);
           log_debug("try_sendfile: path: {} encoding: {}", path.native(), encoding);
           path = path.replace_extension();
-          if (!try_sendfile_res) {
+          if (!try_sendfile_res) {  // if the try_sendfile is successful, return
             ctx._response->_part.headers.emplace("Content-Encoding", encoding);
             return std::nullopt;
           }
@@ -116,13 +128,59 @@ protected:
   StaticFileConfig cfg;
 
   constexpr std::optional<Status> try_sendfile(HandleContext<in_dev_type, out_dev_type>& ctx,
-                                               const std::filesystem::path& path,
+                                               const std::filesystem::path& _path,
                                                const MediaTypeView& content_type) {
+    using namespace std::filesystem;
     std::error_code ec;
-    auto status = std::filesystem::status(path, ec);  // check the status of the file
-    if (ec || status.type() != std::filesystem::file_type::regular) {
-      if (status.type() == std::filesystem::file_type::not_found) {
-        return Status::NOT_FOUND;
+    auto path = weakly_canonical(_path, ec);  // check if the path is canonical
+    if (ec) {
+      log_error("weakly_canonical failed: path: {} error: {}", _path.native(), ec.message());
+      return Status::INTERNAL_SERVER_ERROR;
+    }
+    if (auto rel = relative(path, this->cfg.path, ec);
+        ec || rel.empty() || rel.native().starts_with(std::string_view{".."})) {
+      log_error("relative path failed: path: {} error: {}", _path.native(), ec.message());
+      ctx.easy_resp(Status::FORBIDDEN, "Path is not allowed");
+      return std::nullopt;  // if the path is not relative to the root path, return forbidden
+    }
+    file_status s = status(path, ec);  // check the status of the file
+    if (ec == std::errc::no_such_file_or_directory) {
+      log_debug("File not found: {}", path.native());
+      ctx.easy_resp(Status::NOT_FOUND, "File not found");
+      return std::nullopt;  // if the file is not found, return not found
+    } else if (ec == std::errc::not_a_directory) {
+      log_debug("Path is not a directory: {}", path.native());
+      ctx.easy_resp(Status::NOT_FOUND, "Path is not a directory");
+      return std::nullopt;  // if the path is not a directory, return forbidden
+    }
+    if (ec) {
+      log_error("status failed: path: {} error: {}", path.native(), ec.message());
+      return Status::INTERNAL_SERVER_ERROR;
+    }
+
+    if (s.type() == file_type::directory) {
+      if (ctx.current_path.back() != '/' || this->cfg.directory_index_.empty()) {
+        log_debug("Directory requested: {}, but auto index is disabled", path.native());
+        return Status::FORBIDDEN;  // directory requested, but auto index is disabled
+      }
+      log_debug("Directory requested: {}, auto index enabled", path.native());
+      // if the path is a directory, we should return the index file or auto index
+      path /= this->cfg.directory_index_;  // try to find index.html in the directory
+      s = status(path, ec);                // check the status of the index file
+      if (ec == std::errc::no_such_file_or_directory) {
+        log_debug("Index file not found: {}", path.native());
+        ctx.easy_resp(Status::FORBIDDEN, "Index file not found");
+        return std::nullopt;  // if the index file is not found, return not found
+      }
+      if (ec) {
+        log_error("status failed: path: {} error: {}", path.native(), ec.message());
+        return Status::INTERNAL_SERVER_ERROR;
+      }
+    }
+    if (s.type() != std::filesystem::file_type::regular) {
+      if (s.type() == std::filesystem::file_type::not_found) {
+        ctx.easy_resp(Status::NOT_FOUND, "File not found");
+        return std::nullopt;  // if the file is not found, return not found
       }
       return Status::INTERNAL_SERVER_ERROR;
     }
@@ -142,9 +200,14 @@ protected:
     part.headers.emplace("Last-Modified", to_date_string(last_modified));
     part.headers.emplace("Content-Type", content_type.to_string_view());
 
-    auto send_file = [hint = WriteFileHint{path.native(), 0, file_size}](
-                         out_dev_type& awd) mutable { return awd.write_file(std::move(hint)); };
-    ctx.resp(std::move(part), std::move(send_file));
+    if (ctx.request.method() == http::Method::HEAD) {
+      log_debug("HEAD request for file: {}", path.native());
+      ctx.resp(std::move(part));
+    } else {
+      auto send_file = [hint = WriteFileHint{path.native(), 0, file_size}](
+                           out_dev_type& awd) mutable { return awd.write_file(std::move(hint)); };
+      ctx.resp(std::move(part), std::move(send_file));
+    }
     return std::nullopt;
   }
 };

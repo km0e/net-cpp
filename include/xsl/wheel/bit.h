@@ -2,7 +2,7 @@
  * @file bit.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Some bit manipulation functions.
- * @version 0.1
+ * @version 0.1.0
  * @date 2024-08-21
  *
  * @copyright Copyright (c) 2024
@@ -11,7 +11,7 @@
 #pragma once
 #ifndef XSL_WHEEL_BIT
 #  define XSL_WHEEL_BIT
-#  include "xsl/wheel/def.h"
+#  include <xsl/wheel/def.h>
 
 #  include <concepts>
 XSL_WHEEL_NB

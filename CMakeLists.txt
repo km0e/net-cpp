@@ -27,14 +27,6 @@ if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
   )
 endif()
 
-find_package(quill QUIET)
-if (NOT quill_FOUND)
-  message(STATUS "quill not found, adding quill")
-  add_subdirectory(third_party/quill)
-endif()
-
-add_library(loglib ALIAS quill)
-
 find_package(cli11 QUIET)
 if (NOT cli11_FOUND)
   message(STATUS "cli11 not found, adding cli11")
@@ -94,6 +86,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
+
+add_subdirectory(third_party)
+
+add_library(xsl_prepare ALIAS log)
+
+set_log_level(xsl_prepare)
 
 add_subdirectory(src)
 

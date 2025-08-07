@@ -2,7 +2,7 @@
  * @file utils.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Utilities
- * @version 0.11
+ * @version 0.1.1
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -11,8 +11,8 @@
 #pragma once
 #ifndef XSL_WHEEL_UTILS
 #  define XSL_WHEEL_UTILS
-#  include "xsl/wheel/def.h"
-#  include "xsl/str.h"
+#  include <xsl/str.h>
+#  include <xsl/wheel/def.h>
 
 #  include <exception>
 #  include <functional>

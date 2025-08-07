@@ -1,9 +1,17 @@
-#include "xsl/net/http/router.h"
-
-#include "xsl/logctl.h"
-#include "xsl/net.h"
-
+/**
+ * @file router.cpp
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief
+ * @version 0.1.0
+ * @date 2024-08-27
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #include <gtest/gtest.h>
+#include <xsl/log.h>
+#include <xsl/net.h>
+#include <xsl/net/http/router.h>
 
 using namespace xsl;
 

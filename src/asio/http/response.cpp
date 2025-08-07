@@ -2,15 +2,14 @@
  * @file response.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.1.0
  * @date 2025-07-11
  *
  * @copyright Copyright (c) 2025
  *
  */
-#include "xsl/asio/http/response.h"
-
-#include "xsl/net.h"
+#include <xsl/asio/http/response.h>
+#include <xsl/net.h>
 
 XSL_ASIO_HTTP_NB
 

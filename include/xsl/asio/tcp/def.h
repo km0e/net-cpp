@@ -2,7 +2,7 @@
  * @file def.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief just define the namespace for tcp
- * @version 0.1
+ * @version 0.1.0
  * @date 2024-08-18
  *
  * @copyright Copyright (c) 2024

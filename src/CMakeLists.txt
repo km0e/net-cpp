@@ -1,16 +1,5 @@
-add_library(xsl_log_ctl STATIC)
 
-target_sources(
-    xsl_log_ctl
-    PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/logctl.cpp
-)
-
-target_link_libraries(xsl_log_ctl loglib)
-
-set_log_level(xsl_log_ctl)
-
-link_libraries(xsl_log_ctl)
+link_libraries(xsl_prepare)
 
 add_subdirectory(sys)
 add_subdirectory(net)
@@ -19,13 +8,6 @@ add_subdirectory(wheel)
 add_subdirectory(io)
 add_subdirectory(asio)
 
-add_library(xsl_convert STATIC)
-
-target_sources(
-    xsl_convert
-    PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/convert.cpp
-)
 
 add_library(xsl STATIC)
 
@@ -37,4 +19,4 @@ target_sources(
 
 target_include_directories(xsl PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
-target_link_libraries(xsl xsl_net xsl_coro xsl_sys xsl_wheel xsl_convert xsl_asio xsl_io)
+target_link_libraries(xsl xsl_net xsl_coro xsl_sys xsl_wheel xsl_asio xsl_io)

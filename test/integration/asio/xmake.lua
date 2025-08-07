@@ -5,7 +5,6 @@ do
     set_kind("binary")
     set_default(false)
     add_files("connect.cpp")
-    add_deps("w_cli_test")
     on_test(function(target)
         local test_file = target:targetfile()
         local script = get_config("test_scripts_dir") .. "/with_echo_server.py"
@@ -35,6 +34,5 @@ do
     set_kind("binary")
     set_default(false)
     add_files("bind.cpp")
-    add_deps("w_cli_test")
     add_tests("_", { run_timeout = 1000, group = "asio" })
 end

@@ -2,15 +2,14 @@
  * @file uri.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.1.1
  * @date 2025-06-14
  *
  * @copyright Copyright (c) 2025
  *
  */
-#include "xsl/net/uri.h"
-
-#include "xsl/net/def.h"
+#include <xsl/net/def.h>
+#include <xsl/net/uri.h>
 XSL_NET_NB
 std::expected<std::string_view, std::errc> percent_decode(std::string& buffer,
                                                           std::string_view sv) noexcept {

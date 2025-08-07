@@ -2,7 +2,7 @@
  * @file tcp_echo.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief A simple echo server
- * @version 0.3
+ * @version 0.3.0
  * @date 2024-08-20
  *
  * @copyright Copyright (c) 2024
@@ -12,7 +12,7 @@
 #include <xsl/asio.h>
 #include <xsl/coro.h>
 #include <xsl/io.h>
-#include <xsl/logctl.h>
+#include <xsl/log.h>
 
 std::string ip = "127.0.0.1";
 std::string port = "8080";
@@ -20,7 +20,7 @@ std::string port = "8080";
 using namespace xsl;
 using namespace xsl::asio;
 
-Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<Poller> poller) {
+Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<Context> poller) {
   auto util = make_socket_io_utils<Tcp<Ip<4>>>();
   auto creator = *util.make_creator(poller, ip, port);
   while (true) {
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
   CLI11_PARSE(app, argc, argv);
   log_info("Starting echo server at {}:{}", ip, port);
 
-  auto poller = std::make_shared<xsl::Poller>();
+  auto poller = std::make_shared<xsl::Context>();
   auto executor = std::make_shared<coro::NewThreadExecutor>();
   talk(ip, port, poller).detach(std::move(executor));
   poller->run();

@@ -2,7 +2,7 @@
  * @file socket.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Socket type
- * @version 0.2
+ * @version 0.2.0
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -11,11 +11,13 @@
 #pragma once
 #ifndef XSL_SYS_NET_SOCKET
 #  define XSL_SYS_NET_SOCKET
-#  include "xsl/sys/dev.h"
-#  include "xsl/sys/net/def.h"
-#  include "xsl/sys/net/sockaddr.h"
-
 #  include <sys/socket.h>
+#  include <xsl/def.h>
+#  include <xsl/sys/dev.h>
+#  include <xsl/sys/net/def.h>
+#  include <xsl/sys/net/sockaddr.h>
+
+#  include <expected>
 
 XSL_SYS_NET_NB
 using namespace xsl::io;
@@ -25,12 +27,12 @@ class Socket;
 template <class Traits>
 struct ConnectionUtils {
   /// @brief Connect to a address
-  errc connect(this Socket<Traits> &self, const SockAddr<Traits> &sa) {
+  expected<void, errc> connect(this Socket<Traits> &self, const SockAddr<Traits> &sa) {
     auto [addr, addrlen] = sa.raw();
     return check_ec(filter_interrupt(::connect, self.raw(), &addr, addrlen));
   }
   /// @brief Bind to a address
-  constexpr errc bind(this Socket<Traits> &self, const SockAddr<Traits> &sa) {
+  constexpr std::expected<void, errc> bind(this auto &self, const SockAddr<Traits> &sa) {
     auto [addr, addrlen] = sa.raw();
     return check_ec(::bind(self.raw(), &addr, addrlen));
   }
@@ -56,6 +58,7 @@ public:
 
   explicit Socket(SocketAttribute attr
                   = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)
+    requires requires { Traits::StaticFamily; }
       : Traits(),
         Base(::socket(this->family(), this->type() | static_cast<int>(attr), this->protocol())) {}
   constexpr RawOwner into_raw() && { return std::move(*this); }
@@ -81,7 +84,7 @@ struct ConnectionUtils<Traits> {
     return ConnectionUtils::accept(self.raw(), addr);
   }
   /// @brief Start listening
-  constexpr errc listen(this auto &&self, int max_connections = 128) {
+  constexpr std::expected<void, errc> listen(this auto &&self, int max_connections = 128) {
     return check_ec(::listen(self.raw(), max_connections));
   }
 

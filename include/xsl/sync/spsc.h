@@ -2,7 +2,7 @@
  * @file spsc.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Single producer single consumer queue.
- * @version 0.2
+ * @version 0.2.0
  * @date 2024-08-23
  *
  * @copyright Copyright (c) 2024
@@ -11,8 +11,8 @@
 #pragma once
 #ifndef XSL_WHEEL_SPSC
 #  define XSL_WHEEL_SPSC
-#  include "xsl/sync/def.h"
-#  include "xsl/wheel/bit.h"
+#  include <xsl/sync/def.h>
+#  include <xsl/wheel/bit.h>
 
 #  include <atomic>
 #  include <cassert>

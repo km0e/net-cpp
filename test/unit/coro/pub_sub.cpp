@@ -2,23 +2,23 @@
  * @file test_pub_sub.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Test for Publish-Subscribe pattern for coroutines
- * @version 0.21
+ * @version 0.2.1
  * @date 2024-08-28
  *
  * @copyright Copyright (c) 2024
  *
  */
 #include "random.h"
-#include "xsl/coro.h"
 
 #include <gtest/gtest.h>
+#include <xsl/coro.h>
 
 #include <semaphore>
 #include <unordered_map>
 
 using namespace xsl;
 TEST(ExactPubSub, Exit) {
-  auto pubsub = _coro::make_pub_sub<_value_pack<1>, SPSCSignal2<1>, Shared>();
+  auto pubsub = coro::make_pub_sub<_value_pack<1>, SPSCSignal2<1>, Shared>();
   pubsub->publish<1>();
   int count = 0;
   [](auto sub, int &count) -> Task<void> {
@@ -31,7 +31,7 @@ TEST(ExactPubSub, Exit) {
 }
 
 TEST(ExactPubSub, UnSafeExit) {
-  auto pubsub = _coro::make_pub_sub<_value_pack<1>, UnsafeSignal<1>, Shared>();
+  auto pubsub = coro::make_pub_sub<_value_pack<1>, UnsafeSignal<1>, Shared>();
   pubsub->publish<1>();
   int count = 0;
   [](auto sub, int &count) -> Task<void> {
@@ -44,7 +44,7 @@ TEST(ExactPubSub, UnSafeExit) {
 }
 
 TEST(ExactPubSub, PubByPred) {
-  auto pubsub = _coro::make_pub_sub<_value_pack<1>, SPSCSignal2<1>, Shared>();
+  auto pubsub = coro::make_pub_sub<_value_pack<1>, SPSCSignal2<1>, Shared>();
   pubsub->publish([](int v) { return v == 1; });
   int count = 0;
   [](auto sub, int &count) -> Task<void> {
@@ -58,7 +58,7 @@ TEST(ExactPubSub, PubByPred) {
 
 TEST(PubSub, SafeExit) {
   auto pubsub = [] -> auto {
-    auto pubsub = _coro::make_pub_sub<int, SPSCSignal2<100>>();
+    auto pubsub = coro::make_pub_sub<int, SPSCSignal2<100>>();
     pubsub.subscribe(1);
     pubsub.template publish<1>();
     return pubsub;
@@ -74,7 +74,7 @@ TEST(PubSub, SafeExit) {
 }
 
 TEST(PubSub, PubByPred) {
-  auto pubsub = _coro::make_pub_sub<int, SPSCSignal2<100>>();
+  auto pubsub = coro::make_pub_sub<int, SPSCSignal2<100>>();
   auto [sig, _] = pubsub.subscribe(1);
   pubsub.subscribe(2);
   pubsub.publish([](const int &v) { return v == 1; });
@@ -94,7 +94,7 @@ TEST(PubSub, HeavyConcurrent) {
   auto rand_pub = gen.generate(100000, 1, 100);
   auto rand_sub = gen.generate(10, 1, 100);
 
-  auto pubsub = _coro::make_pub_sub<int, SPSCSignal2<100000>>();
+  auto pubsub = coro::make_pub_sub<int, SPSCSignal2<100000>>();
 
   std::unordered_map<int, int> counter{};
   for (auto i : rand_sub) {

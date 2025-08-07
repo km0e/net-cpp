@@ -1,6 +1,5 @@
-add_deps("xsl_log_ctl")
-
-target("xsl_wheel")do
+target("xsl_wheel")
+do
     set_kind("static")
     set_default(false)
     add_files("**.cpp")

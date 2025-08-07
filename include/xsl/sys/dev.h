@@ -11,8 +11,8 @@
 #pragma once
 #ifndef XSL_SYS_DEV
 #  define XSL_SYS_DEV
-#  include "xsl/sys/def.h"
-#  include "xsl/sys/raw.h"
+#  include <xsl/sys/def.h>
+#  include <xsl/sys/raw.h>
 
 XSL_SYS_NB
 

@@ -2,8 +2,8 @@
 This example shows how to use the `pub_sub` simply.
 
 ```cpp
-#include "xsl/coro.h"
-#include "xsl/wheel.h"
+#include <xsl/coro.h>
+#include <xsl/wheel.h>
 
 #include <memory>
 

@@ -2,15 +2,14 @@
  * @file request.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief HTTP request parsing tests
- * @version 0.1
+ * @version 0.1.0
  * @date 2025-07-12
  *
  * @copyright Copyright (c) 2025
  *
  */
-#include "xsl/asio.h"
-
 #include <gtest/gtest.h>
+#include <xsl/asio.h>
 
 using namespace xsl::http;
 using namespace xsl;

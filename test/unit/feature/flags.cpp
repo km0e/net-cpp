@@ -1,16 +1,15 @@
 /**
- * @file test_flags.cpp
+ * @file flags.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.1.0
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/feature.h"
-
 #include <gtest/gtest.h>
+#include <xsl/feature.h>
 using namespace xsl;
 template <class... Flags>
 struct Test;

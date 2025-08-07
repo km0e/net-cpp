@@ -1,8 +1,8 @@
 /**
  * @file buf.h
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
- * @version 0.1
+ * @brief Some buffer classes for I/O operations
+ * @version 0.1.0
  * @date 2025-07-12
  *
  * @copyright Copyright (c) 2025
@@ -12,10 +12,74 @@
 
 #ifndef XSL_IO_BUF
 #  define XSL_IO_BUF
-#  include "xsl/io/def.h"
+#  include <xsl/io/def.h>
 
 #  include <memory>
 XSL_IO_NB
+
+template <std::size_t BlockSize>
+class FixedBuffer {
+public:
+  FixedBuffer() : _data(std::make_unique<byte[]>(BlockSize)), _size(0) {}
+  FixedBuffer(std::unique_ptr<byte[]>&& data, std::size_t size = 0)
+      : _data(std::move(data)), _size(size) {
+    assert(_data && "Data pointer cannot be null");
+    assert(_size <= BlockSize && "Size exceeds block size");
+  }
+  FixedBuffer(const FixedBuffer&) = delete;
+  FixedBuffer(FixedBuffer&&) = default;
+  FixedBuffer& operator=(const FixedBuffer&) = delete;
+  FixedBuffer& operator=(FixedBuffer&&) = default;
+
+  /**
+   * @brief Get the data pointer of the buffer.
+   *
+   * @param self The FixedBuffer instance.
+   * @return A pointer to the data of the buffer.
+   */
+  constexpr auto data(this auto&& self) { return self._data.get(); }
+  /**
+   * @brief Get the internal data of the buffer.
+   *
+   * @param self The FixedBuffer instance.
+   * @return A reference to the internal data of the buffer.
+   */
+  constexpr auto&& underlying(this auto&& self) { return std::forward<decltype(self)>(self)._data; }
+  /**
+   * @brief Get the data pointer of the unfilled part of the buffer.
+   *
+   * @return A pointer to the unfilled part of the buffer.
+   */
+  constexpr byte* unfilled() { return _data.get() + _size; }
+  /**
+   * @brief update the valid size of the buffer.
+   *
+   * @param size The size just filled in the buffer.
+   */
+  constexpr void fill(std::size_t size) {
+    assert(size <= BlockSize - _size && "Buffer overflow");
+    _size += size;
+  }
+  /**
+   * @brief Set the size of the valid data in the buffer.
+   *
+   * @param size The new size of the valid data in the buffer.
+   */
+  constexpr void resize(std::size_t size = 0) {
+    assert(size <= BlockSize && "Buffer size exceeds block size");
+    _size = size;
+  }
+  /**
+   * @brief Get the current valid size of the buffer.
+   *
+   * @return The current valid size of the buffer.
+   */
+  constexpr std::size_t size() const { return _size; }
+
+private:
+  std::unique_ptr<byte[]> _data;  ///< Pointer to the buffer data
+  std::size_t _size = 0;          ///< Current size of the buffer
+};
 
 template <std::size_t BlockSize>
 class Buffer {

@@ -2,7 +2,7 @@
  * @file header.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief DNS protocol header
- * @version 0.11
+ * @version 0.2.0
  * @date 2024-08-19
  *
  * @copyright Copyright (c) 2024
@@ -11,10 +11,9 @@
 #pragma once
 #ifndef XSL_NET_DNS_PROTO_HEADER
 #  define XSL_NET_DNS_PROTO_HEADER
-#  include "xsl/net/dns/proto/def.h"
-#  include "xsl/ser.h"
-
 #  include <netinet/in.h>
+#  include <xsl/net/dns/proto/def.h>
+#  include <xsl/ser.h>
 
 #  include <cstddef>
 #  include <cstdint>
@@ -57,6 +56,13 @@ struct Flags {
   }
   /// @brief Get the RCode
   constexpr RCode rcode() const { return RCode::from_u16(this->_rcode); }
+  /// @brief Deserialize the flags from a buffer
+  constexpr std::size_t deserialize(const byte *&buf) {
+    std::uint16_t u16;
+    xsl::deserialize(buf, u16);
+    *this = ntohs(u16);
+    return sizeof(std::uint16_t);
+  }
 };
 
 /**
@@ -64,30 +70,77 @@ struct Flags {
  * @see https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
  */
 struct Header {
-  std::uint16_t id;       // transaction ID
-  Flags flags;            // flags
-  std::uint16_t qdcount;  // number of question entries
-  std::uint16_t ancount;  // number of answer entries
-  std::uint16_t nscount;  // number of authority entries
-  std::uint16_t arcount;  // number of resource entries
+  static constexpr std::size_t SIZE = 12;  ///< size of the header in bytes
+  std::uint16_t id;                        // transaction ID
+  Flags flags;                             // flags
+  std::uint16_t qdcount;                   // number of question entries
+  std::uint16_t ancount;                   // number of answer entries
+  std::uint16_t nscount;                   // number of authority entries
+  std::uint16_t arcount;                   // number of resource entries
   /// @brief Size of the header in bytes
   consteval std::size_t size_bytes() const { return 12; }
   /// @brief Get the RCode
   constexpr RCode rcode() const { return flags.rcode(); }
   /// @brief Serialize the header, buf will be updated
   constexpr void serialize(std::span<byte> &buf) const {
-    xsl::serialized_all(buf, id, htons(flags.to_u16()), htons(qdcount), htons(ancount),
-                        htons(nscount), htons(arcount));
+    xsl::serialized(buf, id, htons(flags.to_u16()), htons(qdcount), htons(ancount), htons(nscount),
+                    htons(arcount));
+  }
+  /// @brief Serialize the heade,
+  constexpr std::size_t serialize(byte *buf) const {
+    return xsl::serialize_all(buf, id, htons(flags.to_u16()), htons(qdcount), htons(ancount),
+                              htons(nscount), htons(arcount));
   }
   /// @brief Deserialize the header, buf will be updated
   constexpr void deserialize(std::span<const byte> &buf) {
+    xsl::deserialized(buf, id, flags, qdcount, ancount, nscount, arcount);
+    this->qdcount = ntohs(this->qdcount);
+    this->ancount = ntohs(this->ancount);
+    this->nscount = ntohs(this->nscount);
+    this->arcount = ntohs(this->arcount);
+  }
+  /// @brief Deserialize the header
+  constexpr std::size_t deserialize(const byte *buf) {
     std::uint16_t u16;
-    xsl::deserialized_all(buf, id, u16, qdcount, ancount, nscount, arcount);
+    std::size_t sz = xsl::deserialize_all(buf, id, u16, qdcount, ancount, nscount, arcount);
     this->flags = ntohs(u16);
     this->qdcount = ntohs(this->qdcount);
     this->ancount = ntohs(this->ancount);
     this->nscount = ntohs(this->nscount);
     this->arcount = ntohs(this->arcount);
+    return sz;
+  }
+};
+
+struct HeaderView {
+  byte *data;  ///< pointer to the header data
+  constexpr HeaderView(byte *data) : data(data) {}
+
+  /// @brief Get the question count
+  constexpr std::uint16_t qdcount() const {
+    std::uint16_t count;
+    xsl::deserialize(data + 4, count);
+    return ntohs(count);
+  }
+  /// @brief Set the answer Count
+  constexpr void ancount(std::uint16_t count) { xsl::serialize(data + 6, htons(count)); }
+  /// @brief Get the arcount
+  constexpr void arcount(std::uint16_t count) { xsl::serialize(data + 10, htons(count)); }
+  /// @brief Set as response
+  constexpr void response() {
+    Flags flags;
+    xsl::deserialize(data + 2, flags);
+    flags.qr = 1;  // set as response
+    xsl::serialize(data + 2, htons(flags.to_u16()));
+  }
+  /// @brief Basic response flags set
+  constexpr void basic_response() {
+    Flags flags;
+    xsl::deserialize(data + 2, flags);
+    flags.qr = 1;  // set as response
+    flags.ra = 1;  // recursion available
+    flags.ad = 0;  // authenticated data
+    xsl::serialize(data + 2, htons(flags.to_u16()));
   }
 };
 XSL_NET_DNS_NE

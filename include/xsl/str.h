@@ -2,7 +2,7 @@
  * @file str.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.1.0
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -11,7 +11,7 @@
 #pragma once
 #ifndef XSL_STR
 #  define XSL_STR
-#  include "xsl/def.h"
+#  include <xsl/def.h>
 
 #  include <algorithm>
 #  include <compare>

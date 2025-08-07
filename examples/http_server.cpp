@@ -2,23 +2,21 @@
  * @file http_server.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief A simple HTTP server that serves static files
- * @version 0.2
+ * @version 0.2.0
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/wheel.h"
 
 #include <CLI/CLI.hpp>
 #include <xsl/asio.h>
 #include <xsl/coro.h>
-#include <xsl/logctl.h>
+#include <xsl/log.h>
 
 std::string ip = "0.0.0.0";
 std::string port = "8080";
-// std::string doc_root = ".";
-std::string doc_root = "../../../build/html";
+std::string doc_root = ".";
 
 using namespace xsl::asio;
 using namespace xsl;
@@ -31,7 +29,7 @@ using namespace xsl;
  * @return Task<void>
  * @note this example all use static call
  */
-Task<void> run(std::shared_ptr<xsl::Poller> poller, std::string_view ip, std::string_view port) {
+Task<void> run(std::shared_ptr<Context> poller, std::string_view ip, std::string_view port) {
   auto util = HttpUtil(make_socket_io_utils<Tcp<Ip<4>>>());
   auto service = util.make_service2();
   service.add_static("/", {doc_root, {}});
@@ -56,9 +54,9 @@ int main(int argc, char* argv[]) {
       ->check(CLI::ExistingDirectory)
       ->capture_default_str();
   CLI11_PARSE(app, argc, argv);
-  log_info("start http server at {}:{}", ip, port);
+  log_info("Start http server at {}:{}", ip, port);
 
-  auto poller = std::make_shared<xsl::Poller>();
+  auto poller = std::make_shared<Context>();
   auto executor = std::make_shared<coro::NewThreadExecutor>();
   run(poller, ip, port).detach(std::move(executor));
   poller->run();

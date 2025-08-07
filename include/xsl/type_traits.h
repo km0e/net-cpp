@@ -2,7 +2,7 @@
  * @file type_traits.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Type traits
- * @version 0.14
+ * @version 0.1.4
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -11,7 +11,7 @@
 #pragma once
 #ifndef XSL_WHEEL_TYPE_TRAITS
 #  define XSL_WHEEL_TYPE_TRAITS
-#  include "xsl/def.h"
+#  include <xsl/def.h>
 
 #  include <concepts>
 #  include <cstddef>

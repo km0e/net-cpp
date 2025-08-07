@@ -2,7 +2,7 @@
  * @file msg.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief HTTP message rest view
- * @version 0.1
+ * @version 0.1.0
  * @date 2025-07-12
  *
  * @copyright Copyright (c) 2025
@@ -12,9 +12,9 @@
 
 #ifndef XSL_NET_HTTP_MSG
 #  define XSL_NET_HTTP_MSG
-#  include "xsl/def.h"
-#  include "xsl/logctl.h"
-#  include "xsl/net/http/def.h"
+#  include <xsl/def.h>
+#  include <xsl/log.h>
+#  include <xsl/net/http/def.h>
 
 #  include <unordered_map>
 XSL_HTTP_NB

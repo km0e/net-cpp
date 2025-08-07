@@ -1,19 +1,18 @@
 /**
  * @file http_client.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
- * @version 0.1
+ * @brief A simple HTTP client example using xsl::asio
+ * @version 0.1.1
  * @date 2025-06-13
  *
  * @copyright Copyright (c) 2025
  *
  */
-#include "xsl/io.h"
-
 #include <CLI/CLI.hpp>
 #include <xsl/asio.h>
 #include <xsl/coro.h>
-#include <xsl/logctl.h>
+#include <xsl/io.h>
+#include <xsl/log.h>
 
 using namespace xsl::asio;
 using namespace xsl;
@@ -21,8 +20,8 @@ using namespace xsl;
 std::string url = "http://www.baidu.com";
 std::string output_file = "";
 
-Task<void> run(std::string_view url, Poller& poller) {
-  auto res = co_await get(poller, url);
+Task<void> run(std::string_view url, io::Context& ctx) {
+  auto res = co_await get(ctx, url);
   if (!res) {
     log_error("Failed to get response: {}", std::make_error_code(res.error()).message());
     co_return;
@@ -72,7 +71,7 @@ Task<void> run(std::string_view url, Poller& poller) {
       std::cout.write(reinterpret_cast<const char*>(buffer), res.size);
     }
   }
-  poller.shutdown();
+  ctx.shutdown();
 }
 
 int main(int argc, char* argv[]) {
@@ -82,7 +81,7 @@ int main(int argc, char* argv[]) {
       ->check(CLI::ExistingFile | CLI::NonexistentPath);
   CLI11_PARSE(app, argc, argv);
 
-  auto poller = std::make_shared<xsl::Poller>();
+  auto poller = std::make_shared<xsl::Context>();
   auto executor = std::make_shared<coro::NewThreadExecutor>();
   run(url, *poller).detach(std::move(executor));
   poller->run();

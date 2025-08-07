@@ -1,8 +1,8 @@
 /**
  * @file media-type.h
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
- * @version 0.1
+ * @brief Media Type definitions for HTTP protocol
+ * @version 0.1.0
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -12,9 +12,9 @@
 #ifndef XSL_NET_HTTP_PROTO_MEDIA_TYPE
 #  define XSL_NET_HTTP_PROTO_MEDIA_TYPE
 
-#  include "xsl/net/http/def.h"
-#  include "xsl/net/http/proto/base.h"
-#  include "xsl/wheel.h"
+#  include <xsl/net/http/def.h>
+#  include <xsl/net/http/proto/base.h>
+#  include <xsl/wheel.h>
 
 #  include <array>
 #  include <cstddef>

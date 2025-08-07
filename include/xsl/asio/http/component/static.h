@@ -2,7 +2,7 @@
  * @file static.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Static file server component
- * @version 0.1.1
+ * @version 0.1.2
  * @date 2024-08-25
  *
  * @copyright Copyright (c) 2024
@@ -12,13 +12,13 @@
 
 #ifndef XSL_ASIO_HTTP_COMPONENT_STATIC
 #  define XSL_ASIO_HTTP_COMPONENT_STATIC
-#  include "xsl/asio/http/component/compress.h"
-#  include "xsl/asio/http/context.h"
-#  include "xsl/asio/http/def.h"
-#  include "xsl/io.h"
-#  include "xsl/logctl.h"
-#  include "xsl/net.h"
-#  include "xsl/wheel.h"
+#  include <xsl/asio/http/component/compress.h>
+#  include <xsl/asio/http/context.h>
+#  include <xsl/asio/http/def.h>
+#  include <xsl/io.h>
+#  include <xsl/log.h>
+#  include <xsl/net.h>
+#  include <xsl/wheel.h>
 
 #  include <algorithm>
 #  include <charconv>
@@ -139,7 +139,7 @@ protected:
     }
     if (auto rel = relative(path, this->cfg.path, ec);
         ec || rel.empty() || rel.native().starts_with(std::string_view{".."})) {
-      log_error("relative path failed: path: {} error: {}", _path.native(), ec.message());
+      log_warning("relative path failed: path: {} error: {}", _path.native(), ec.message());
       ctx.easy_resp(Status::FORBIDDEN, "Path is not allowed");
       return std::nullopt;  // if the path is not relative to the root path, return forbidden
     }
@@ -249,6 +249,13 @@ public:
     if (ctx.current_path.empty()) {
       log_debug("FolderRouteHandler: empty path");
       co_return Status::NOT_FOUND;
+    }
+    if (ctx.request.method() != http::Method::GET && ctx.request.method() != http::Method::HEAD) {
+      log_debug("FolderRouteHandler: method not allowed: {}", ctx.request.method());
+      ResponsePart part{Status::METHOD_NOT_ALLOWED};
+      part.headers.emplace("Allow", "GET, HEAD");
+      ctx.resp(std::move(part), "Supported methods: GET, HEAD");
+      co_return std::nullopt;  // only GET and HEAD are allowed
     }
     auto full_path = this->cfg.path;
     full_path /= (ctx.current_path.substr(1));

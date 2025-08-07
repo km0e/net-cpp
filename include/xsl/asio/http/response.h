@@ -2,7 +2,7 @@
  * @file response.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief HTTP response definitions
- * @version 0.1
+ * @version 0.1.0
  * @date 2025-07-11
  *
  * @copyright Copyright (c) 2025
@@ -11,10 +11,10 @@
 #pragma once
 #ifndef XSL_ASIO_HTTP_RESPONSE
 #  define XSL_ASIO_HTTP_RESPONSE
-#  include "xsl/asio/http/common.h"
-#  include "xsl/asio/http/def.h"
-#  include "xsl/net.h"
-#  include "xsl/regex.h"
+#  include <xsl/asio/http/common.h>
+#  include <xsl/asio/http/def.h>
+#  include <xsl/net.h>
+#  include <xsl/regex.h>
 
 #  include <cstdint>
 XSL_ASIO_HTTP_NB

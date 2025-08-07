@@ -2,17 +2,18 @@
  * @file test_task.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.11
+ * @version 0.1.1
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
  *
  */
 #include "coro/tool.h"
-#include "xsl/coro/executor.h"
 
 #include <gtest/gtest.h>
-using namespace xsl::_coro;
+#include <xsl/coro/core/executor.h>
+
+using namespace xsl::coro;
 
 TEST(Task, just_return) {
   int value = 0;

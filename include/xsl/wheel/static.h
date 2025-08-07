@@ -2,7 +2,7 @@
  * @file static.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.1.0
  * @date 2025-06-15
  *
  * @copyright Copyright (c) 2025
@@ -11,7 +11,7 @@
 #pragma once
 #ifndef XSL_WHEEL_STATIC
 #  define XSL_WHEEL_STATIC
-#  include "xsl/wheel/def.h"
+#  include <xsl/wheel/def.h>
 
 #  include <span>
 XSL_WHEEL_NB

@@ -2,7 +2,7 @@
  * @file socket.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Socket type
- * @version 0.13
+ * @version 0.1.3
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -11,13 +11,13 @@
 #pragma once
 #ifndef XSL_ASIO_SOCKET
 #  define XSL_ASIO_SOCKET
-#  include "xsl/asio/def.h"
-#  include "xsl/asio/dev.h"
-#  include "xsl/asio/io.h"
-#  include "xsl/net.h"
-#  include "xsl/sys.h"
-
 #  include <sys/socket.h>
+#  include <xsl/asio/def.h>
+#  include <xsl/asio/dev.h>
+#  include <xsl/asio/io.h>
+#  include <xsl/io.h>
+#  include <xsl/net.h>
+#  include <xsl/sys.h>
 
 XSL_ASIO_NB
 using namespace xsl::net;
@@ -40,12 +40,15 @@ public:
   using poll_traits_type = typename traits_type::poll_traits_type;
 
   using value_type = byte;
-  AsyncSocket(Poller &poller, sys::net::Socket<Traits> &&sock)
-      : Base(std::move(sock).into_raw(), poller, typename Traits::poll_traits_type{}) {}
+  AsyncSocket(Context &ctx, sys::net::Socket<Traits> &&sock)
+      : Base(std::move(sock).into_raw(), ctx, typename Traits::poll_traits_type{}) {}
+  AsyncSocket(Context &ctx, const sys::net::SockAddr<Traits> &addr)
+      : Base(sys::net::Socket<Traits>(addr.family(), addr.type(), addr.protocol()).into_raw(), ctx,
+             typename Traits::poll_traits_type{}) {}
 
-  explicit AsyncSocket(Poller &poller, SocketAttribute attr = SocketAttribute::NonBlocking
-                                                              | SocketAttribute::CloseOnExec)
-      : AsyncSocket(poller, sys::net::Socket<Traits>(attr)) {}
+  explicit AsyncSocket(Context &ctx, SocketAttribute attr
+                                     = SocketAttribute::NonBlocking | SocketAttribute::CloseOnExec)
+      : AsyncSocket(ctx, sys::net::Socket<Traits>(attr)) {}
 };
 
 template <class... Flags>

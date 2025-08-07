@@ -6,7 +6,6 @@ for _, file in ipairs(os.files("*.cpp")) do
         set_default(false)
         add_files(name .. ".cpp")
         add_deps("xsl_sys")
-        add_deps("w_xtest")
         add_tests("_", { group = "sys" })
     end
 end

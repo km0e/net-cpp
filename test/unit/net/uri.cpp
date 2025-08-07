@@ -2,15 +2,14 @@
  * @file uri.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief URI parsing
- * @version 0.1
+ * @version 0.1.0
  * @date 2025-06-14
  *
  * @copyright Copyright (c) 2025
  *
  */
-#include "xsl/net/uri.h"
-
 #include <gtest/gtest.h>
+#include <xsl/net/uri.h>
 using namespace xsl::_net;
 
 TEST(URI, PercentDecode) {

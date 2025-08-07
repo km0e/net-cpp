@@ -11,9 +11,9 @@
 #pragma once
 #ifndef XSL_ASIO_HTTP_REQUEST
 #  define XSL_ASIO_HTTP_REQUEST
-#  include "xsl/asio/http/common.h"
-#  include "xsl/asio/http/def.h"
-#  include "xsl/net.h"
+#  include <xsl/asio/http/common.h>
+#  include <xsl/asio/http/def.h>
+#  include <xsl/net.h>
 
 XSL_ASIO_HTTP_NB
 using namespace xsl::http;

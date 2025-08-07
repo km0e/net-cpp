@@ -2,17 +2,15 @@
  * @file raw.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.1.0
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/sys/raw.h"
-
-#include "xsl/sys/def.h"
-
 #include <fcntl.h>
+#include <xsl/sys/def.h>
+#include <xsl/sys/raw.h>
 
 #include <expected>
 XSL_SYS_NB

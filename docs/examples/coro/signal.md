@@ -3,8 +3,8 @@ This example shows how to use the `signal` simply.
 
 ```cpp
 
-#include "xsl/coro.h"
-#include "xsl/wheel.h"
+#include <xsl/coro.h>
+#include <xsl/wheel.h>
 const int N = 100000;
 /**
  * @brief Simple producer

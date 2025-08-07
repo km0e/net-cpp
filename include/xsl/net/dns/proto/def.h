@@ -2,7 +2,7 @@
  * @file def.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief DNS protocol definitions
- * @version 0.1
+ * @version 0.1.1
  * @date 2024-09-09
  *
  * @copyright Copyright (c) 2024
@@ -11,11 +11,11 @@
 #pragma once
 #ifndef XSL_NET_DNS_PROTO_DEF
 #  define XSL_NET_DNS_PROTO_DEF
-#  include "xsl/def.h"
-#  include "xsl/net/dns/def.h"
-#  include "xsl/ser.h"
-
 #  include <netinet/in.h>
+#  include <xsl/def.h>
+#  include <xsl/log.h>
+#  include <xsl/net/dns/def.h>
+#  include <xsl/ser.h>
 
 #  include <cstddef>
 #  include <cstdint>
@@ -91,6 +91,7 @@ const std::string_view TYPE_STR[]
 const std::size_t MAX_CONSECUTIVE_TYPE_INDEX = 16;
 
 struct Type {
+  static constexpr std::size_t SIZE = 2;  ///< size of the Type field in bytes
   enum : std::uint16_t {
     A = 1,                  // a host address
     NS = 2,                 // an authoritative name server
@@ -140,11 +141,14 @@ struct Type {
   }
   /// @brief Serialize Type to network byte order
   constexpr void serialized(std::span<byte> &buf) const { xsl::serialized(buf, htons(_type)); }
+  /// @brief Serialize Type to network byte order
+  constexpr std::size_t serialize(byte *buf) const { return xsl::serialize(buf, htons(_type)); }
   /// @brief Deserialize Type
-  constexpr void deserialize(const byte *buf) {
+  constexpr std::size_t deserialize(const byte *buf) {
     std::uint16_t u16;
     xsl::deserialize(buf, u16);
     _type = static_cast<decltype(_type)>(ntohs(u16));
+    return 2;
   }
 };
 
@@ -190,11 +194,14 @@ struct Class {
 
   /// @brief Serialize Class to network byte order
   constexpr void serialized(std::span<byte> &buf) const { xsl::serialized(buf, htons(_class)); }
+  /// @brief Serialize Class to network byte order
+  constexpr std::size_t serialize(byte *buf) const { return xsl::serialize(buf, htons(_class)); }
   /// @brief Deserialize Class
-  constexpr void deserialize(const byte *buf) {
+  constexpr std::size_t deserialize(const byte *buf) {
     std::uint16_t u16;
     xsl::deserialize(buf, u16);
     _class = static_cast<decltype(_class)>(ntohs(u16));
+    return 2;
   }
 };
 
@@ -233,6 +240,8 @@ namespace std {
       return static_cast<const basic_formatter<CharT> *>(this)->format(s.to_string_view(), ctx);
     }
   };
-
 }  // namespace std
+
+LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::_net::dns::Type);
+LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::_net::dns::Class);
 #endif

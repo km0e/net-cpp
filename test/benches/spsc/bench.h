@@ -81,7 +81,6 @@ public:
           }
         }
       });
-      benchmark::DoNotOptimize(p_spsc);
       benchmark::ClobberMemory();
     }
     state.SetItemsProcessed(state.iterations() * data.size() + count);
@@ -113,7 +112,6 @@ public:
           benchmark::DoNotOptimize(t);
         }
       });
-      benchmark::DoNotOptimize(p_spsc);
       benchmark::ClobberMemory();
     }
     state.SetItemsProcessed(state.iterations() * data.size() + count);
@@ -141,7 +139,6 @@ public:
           benchmark::DoNotOptimize(t);
         }
       });
-      benchmark::DoNotOptimize(p_spsc);
       benchmark::ClobberMemory();
     }
     state.SetItemsProcessed(state.iterations() * data.size() * 2);
@@ -176,7 +173,6 @@ public:
           }
         }
       });
-      benchmark::DoNotOptimize(p_spsc);
       benchmark::ClobberMemory();
     }
     state.SetItemsProcessed(read_count + write_count);

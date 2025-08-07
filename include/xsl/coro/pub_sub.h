@@ -2,7 +2,7 @@
  * @file pub_sub.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Publish-Subscribe pattern for coroutines
- * @version 0.4
+ * @version 0.4.0
  * @date 2024-08-28
  *
  * @copyright Copyright (c) 2024
@@ -12,10 +12,10 @@
 
 #ifndef XSL_CORO_PUB_SUB
 #  define XSL_CORO_PUB_SUB
-#  include "xsl/coro/def.h"
-#  include "xsl/coro/signal.h"
-#  include "xsl/feature.h"
-#  include "xsl/type_traits.h"
+#  include <xsl/coro/def.h>
+#  include <xsl/coro/signal.h>
+#  include <xsl/feature.h>
+#  include <xsl/type_traits.h>
 
 #  include <concepts>
 #  include <cstddef>

@@ -7,7 +7,6 @@ for _, file in ipairs(os.files("**.cpp")) do
         set_kind("binary")
         set_default(false)
         add_files(file)
-        add_deps("w_xtest")
         add_deps("xsl_net")
         add_tests(test_name, { group = "net" })
     end

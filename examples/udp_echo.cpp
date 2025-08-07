@@ -12,7 +12,7 @@
 #include <xsl/asio.h>
 #include <xsl/coro.h>
 #include <xsl/feature.h>
-#include <xsl/logctl.h>
+#include <xsl/log.h>
 #include <xsl/sys.h>
 #include <xsl/wheel.h>
 
@@ -22,7 +22,7 @@ std::string port = "8080";
 using namespace xsl::asio;
 using namespace xsl;
 
-Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Poller> poller) {
+Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Context> poller) {
   byte buffer[4096]{};
   auto util = make_socket_io_utils<UdpIpv4>();
   auto rw = *util.make_io(*poller, ip.data(), port.data());
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
   app.add_option("-p,--port", port, "Port");
   CLI11_PARSE(app, argc, argv);
 
-  auto poller = std::make_shared<xsl::Poller>();
+  auto poller = std::make_shared<xsl::Context>();
   auto executor = std::make_shared<coro::NewThreadExecutor>();
   talk(ip, port, poller).detach(std::move(executor));
   poller->run();

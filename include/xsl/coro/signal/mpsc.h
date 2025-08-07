@@ -2,7 +2,7 @@
  * @file mpsc.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief MPSC signal for coroutines
- * @version 0.1
+ * @version 0.2
  * @date 2024-09-14
  *
  * @copyright Copyright (c) 2024
@@ -11,109 +11,120 @@
 #pragma once
 #ifndef XSL_CORO_SIGNAL_MPSC
 #  define XSL_CORO_SIGNAL_MPSC
-#  include "xsl/coro/def.h"
-#  include "xsl/coro/signal/common.h"
-#  include "xsl/coro/signal/unsafe.h"
-#  include "xsl/wheel.h"
+#  include <xsl/coro/def.h>
+#  include <xsl/coro/signal/def.h>
+#  include <xsl/coro/signal/unsafe.h>
+#  include <xsl/wheel.h>
 XSL_CORO_NB
 
-using mpsc_max_signals = unsafe_max_signals;
-
 struct SignalStorage {
-  using unsafe_storage_type = UnsafeSignalStorage;
+  using max_signals = UnsafeSignalStorage::max_signals;
   SignalStorage() : mtx(), _unsafe() {}
   std::mutex mtx;
   UnsafeSignalStorage _unsafe;
 };
-
 template <>
-struct SignalRxTraits<SignalStorage> {
+struct SignalAwaiterTraits<SignalStorage> {
   using storage_type = SignalStorage;
-  using unsafe_traits = SignalRxTraits<UnsafeSignalStorage>;
-
+  using unsafe_awaiter_type = SignalAwaiter<UnsafeSignalStorage>;
   /**
    * @brief Check if the signal is ready
    *
-   * @param storage the signal storage
    * @return true if the signal is ready
    * @return false if the signal is not ready
    */
-  static constexpr bool ready(storage_type &storage) {
-    storage.mtx.lock();
-    return unsafe_traits::ready(storage._unsafe);
+  constexpr bool await_ready(this auto &self) {
+    self.storage.mtx.lock();
+    return self.awaiter().await_ready();
   }
   /**
    * @brief Suspend the signal
    *
    * @tparam Promise the promise type
-   * @param storage the signal storage
    * @param handle the coroutine handle
    */
   template <class Promise>
-  static constexpr void suspend(storage_type &storage, std::coroutine_handle<Promise> handle) {
-    unsafe_traits::suspend(storage._unsafe, handle);
-    storage.mtx.unlock();
+  constexpr void await_suspend(this auto &self, std::coroutine_handle<Promise> handle) {
+    self.awaiter().await_suspend(handle);
+    self.storage.mtx.unlock();
     log_trace("Signal suspended");
   }
   /**
    * @brief Resume the signal
    *
-   * @param storage the signal storage
    * @return true if the signal is still alive
    * @return false if the signal is not alive
    */
   [[nodiscard("must use the result of await_resume to confirm the signal is still alive")]]
-  static constexpr bool resume(storage_type &storage) {
-    Defer defer{[&storage] { storage.mtx.unlock(); }};
-    return unsafe_traits::resume(storage._unsafe);
+  constexpr bool await_resume(this auto &&self) {
+    Defer defer{[&self] { self.storage.mtx.unlock(); }};
+    return self.awaiter().await_resume();
+  }
+
+private:
+  unsafe_awaiter_type awaiter(this auto &&self) {
+    return unsafe_awaiter_type(self.storage._unsafe);
   }
 };
 
 template <std::ptrdiff_t MaxSignals>
-struct SignalTxTraits<SignalStorage, MaxSignals> {
-  using max_signals = std::integral_constant<std::ptrdiff_t, MaxSignals>;
-  using unsafe_storage_type = SignalStorage::unsafe_storage_type;
-  using unsafe_traits = SignalTxTraits<unsafe_storage_type, MaxSignals>;
-
+struct SignalTraits<SignalStorage, MaxSignals> {
   using storage_type = SignalStorage;
-  using awaiter_type = SignalAwaiter<SignalRxTraits<storage_type>, storage_type *>;
+  using max_signals = std::integral_constant<std::ptrdiff_t, MaxSignals>;
+
+private:
+  struct SignalRef : public SignalTraits<UnsafeSignalStorage, MaxSignals> {
+    friend struct SignalTraits<UnsafeSignalStorage, MaxSignals>;
+    UnsafeSignalStorage &storage;
+    SignalRef(UnsafeSignalStorage &storage) : storage(storage) {}
+  };
+
+public:
   /**
    * @brief Release the signal
    *
    * @param storage the signal storage
    */
-  static constexpr bool release(storage_type &storage) {
-    storage.mtx.lock();
-    bool result = unsafe_traits::release(storage._unsafe);
+  constexpr bool release(this auto &self) {
+    self.storage.mtx.lock();
+    bool result = self.unsafe_ref().release();
     if (!result) {
-      storage.mtx.unlock();
+      self.storage.mtx.unlock();
     }
     return result;
   }
   /**
    * @brief Stop the signal
    *
-   * @tparam Force if true, reset the signal count to 0
-   * @param storage the signal storage
-   * @return std::size_t the count of signals released
+   * @return true if the signal is stopped successfully, false if the signal is not alive
    */
-  static constexpr bool stop(storage_type &storage) {
-    storage.mtx.lock();
-    bool result = unsafe_traits::stop(storage._unsafe);
+  constexpr bool stop(this auto &self) {
+    self.storage.mtx.lock();
+    bool result = self.unsafe_ref().stop();
     if (!result) {
-      storage.mtx.unlock();
+      self.storage.mtx.unlock();
     }
     return result;
   }
-  static constexpr std::optional<std::ptrdiff_t> force_stop(storage_type &storage) {
-    storage.mtx.lock();
-    std::optional<std::ptrdiff_t> result = unsafe_traits::force_stop(storage._unsafe);
+
+  /**
+   * @brief Force stop the signal
+   *
+   * @return std::optional<std::ptrdiff_t> the number of signals that are stopped, or std::nullopt
+   * if the signal is not alive
+   */
+  constexpr std::optional<std::ptrdiff_t> force_stop(this auto &self) {
+    self.storage.mtx.lock();
+    std::optional<std::ptrdiff_t> result = self.unsafe_ref().force_stop();
     if (result.has_value()) {
-      storage.mtx.unlock();
+      self.storage.mtx.unlock();
       return result;
     }
     return std::nullopt;
   }
+
+private:
+  SignalRef unsafe_ref(this auto &&self) { return self.storage._unsafe; }
 };
 XSL_CORO_NE
 #endif

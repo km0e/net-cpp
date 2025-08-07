@@ -1,16 +1,15 @@
 /**
- * @file test_spsc.cpp
+ * @file spsc.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Test for xsl::spsc.
- * @version 0.1
+ * @version 0.1.0
  * @date 2024-08-23
  *
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/sync.h"
-
 #include <gtest/gtest.h>
+#include <xsl/sync.h>
 
 #include <memory>
 #include <thread>

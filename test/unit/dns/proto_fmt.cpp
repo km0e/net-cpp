@@ -1,17 +1,17 @@
 /**
- * @file test_decompress.cpp
+ * @file proto_fmt.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief DNS decompression test
- * @version 0.1
+ * @version 0.1.0
  * @date 2024-09-09
  *
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/def.h"
-#include "xsl/net.h"
-
 #include <gtest/gtest.h>
+#include <xsl/def.h>
+#include <xsl/net.h>
+#include <xsl/ser.h>
 
 #include <cstdint>
 #include <format>
@@ -95,24 +95,31 @@ TEST(dns_proto, question) {
   Type type = Type::A;
   Class class_ = Class::IN;
 
-  auto status = dns::serialized(buf, dns[0], type, class_, compressor);
-  EXPECT_EQ(status, errc{});
+  auto sz = compressor.prepare(dns[0]);
+  compressor.compress(buf.data());
+  buf = buf.subspan(sz.value());
+  xsl::serialized(buf, type, class_);
   EXPECT_EQ(std::memcmp(bytes, expected, 18), 0);
 
   std::span<const byte> bytes_span(bytes, 256);
-  status = dns::skip_question(bytes_span);
+  auto status = dns::skip_question(bytes_span);
   EXPECT_EQ(status, errc{});
   EXPECT_EQ(256 - bytes_span.size(), 20);
 
-  status = dns::serialized(buf, dns[1], type, class_, compressor);
-  EXPECT_EQ(status, errc{});
+  sz = compressor.prepare(dns[1]);
+  compressor.compress(buf.data());
+  buf = buf.subspan(sz.value());
+  xsl::serialized(buf, type, class_);
   EXPECT_EQ(std::memcmp(bytes + 20, expected + 20, 11), 0);
 
   status = dns::skip_question(bytes_span);
   EXPECT_EQ(status, errc{});
   EXPECT_EQ(256 - bytes_span.size(), 31);
 
-  status = dns::serialized(buf, dns[2], type, class_, compressor);
+  sz = compressor.prepare(dns[2]);
+  compressor.compress(buf.data());
+  buf = buf.subspan(sz.value());
+  xsl::serialized(buf, type, class_);
   EXPECT_EQ(status, errc{});
   EXPECT_EQ(std::memcmp(bytes + 31, expected + 31, 5), 0);
 

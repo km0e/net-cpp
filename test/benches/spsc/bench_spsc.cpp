@@ -2,16 +2,16 @@
  * @file bench_spsc.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Benchmark for xsl::spsc.
- * @version 0.1
+ * @version 0.1.0
  * @date 2024-08-23
  *
  * @copyright Copyright (c) 2024
  *
  */
 #include "bench.h"
-#include "xsl/sync.h"
 
 #include <benchmark/benchmark.h>
+#include <xsl/sync.h>
 
 using spsc_t = spsc_adapter<xsl::spsc<int>>;
 

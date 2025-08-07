@@ -2,7 +2,7 @@
  * @file def.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Definition of coroutines
- * @version 0.12
+ * @version 0.1.3
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -11,8 +11,17 @@
 #pragma once
 #ifndef XSL_CORO_DEF
 #  define XSL_CORO_DEF
-#  define XSL_CORO_NB namespace xsl::_coro {
-#  define XSL_CORO_NE }
+
+#  define XSL_CORO_NB \
+    XSL_NB            \
+    namespace coro {
+
+#  define XSL_CORO_NE \
+    }                 \
+    XSL_NE
+
+#  include <xsl/macro.h>
+
 #  include <coroutine>
 #  include <exception>
 #  include <utility>
@@ -68,6 +77,10 @@ public:
     }
   }
 };
+
+#  define CO_TRV(...) __MACRO_DISPATCH(__CO_TRV_, __VA_ARGS__)
+
+#  define __CO_TRV_2(expr, var) __BASE__TRV(co_, expr, var, std::move)
 
 XSL_CORO_NE
 

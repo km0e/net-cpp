@@ -11,8 +11,8 @@
 #pragma once
 #ifndef XSL_ASIO_HTTP_COMPONENT_COMPRESS
 #  define XSL_ASIO_HTTP_COMPONENT_COMPRESS
-#  include "xsl/asio/http/def.h"
-#  include "xsl/wheel.h"
+#  include <xsl/asio/http/def.h>
+#  include <xsl/wheel.h>
 
 #  include <string_view>
 XSL_ASIO_HTTP_NB

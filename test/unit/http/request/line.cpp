@@ -2,15 +2,14 @@
  * @file line.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief HTTP request target parsing
- * @version 0.1
+ * @version 0.1.0
  * @date 2025-06-14
  *
  * @copyright Copyright (c) 2025
  *
  */
-#include "xsl/net/http/request/line.h"
-
 #include <gtest/gtest.h>
+#include <xsl/net/http/request/line.h>
 using namespace xsl::_net::http;
 
 TEST(RequestLineTest, ParseValidLine) {

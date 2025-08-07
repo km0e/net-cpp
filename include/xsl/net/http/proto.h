@@ -2,7 +2,7 @@
  * @file proto.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief HTTP protocol definitions
- * @version 0.11
+ * @version 0.1.1
  * @date 2024-08-25
  *
  * @copyright Copyright (c) 2024
@@ -12,7 +12,8 @@
 #ifndef XSL_NET_HTTP_PROTO
 #  define XSL_NET_HTTP_PROTO
 
-#  include "xsl/net/http/def.h"
+#  include <xsl/log.h>
+#  include <xsl/net/http/def.h>
 
 #  include <chrono>
 #  include <cstddef>
@@ -383,20 +384,9 @@ namespace std {
 }  // namespace std
 #  include <quill/DeferredFormatCodec.h>
 
-#  define QUILL_FMT_FOR_IMPL_TO_STRING_VIEW(type)                                 \
-    template <>                                                                   \
-    struct fmtquill::formatter<xsl::_net::http::type> {                           \
-      constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }     \
-      auto format(xsl::_net::http::type const& user, format_context& ctx) const { \
-        return fmtquill::format_to(ctx.out(), "{}", user.to_string_view());       \
-      }                                                                           \
-    };                                                                            \
-    template <>                                                                   \
-    struct quill::Codec<xsl::_net::http::type>                                    \
-        : quill::DeferredFormatCodec<xsl::_net::http::type> {};
+LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::_net::http::Version)
+LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::_net::http::Method)
+LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::_net::http::Charset)
 
-QUILL_FMT_FOR_IMPL_TO_STRING_VIEW(Version)
-QUILL_FMT_FOR_IMPL_TO_STRING_VIEW(Method)
-QUILL_FMT_FOR_IMPL_TO_STRING_VIEW(Charset)
 #  undef QUILL_FMT_FOR_IMPL_TO_STRING_VIEW
 #endif

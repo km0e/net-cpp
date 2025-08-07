@@ -2,19 +2,19 @@
  * @file http.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.1.0
  * @date 2025-06-15
  *
  * @copyright Copyright (c) 2025
  *
  */
-#include "xsl/asio/http.h"
-
-#include "xsl/asio/gai.h"
-#include "xsl/asio/http/request.h"
-#include "xsl/asio/http/response.h"
-#include "xsl/coro.h"
-#include "xsl/net.h"
+#include <xsl/asio/gai.h>
+#include <xsl/asio/http.h>
+#include <xsl/asio/http/request.h>
+#include <xsl/asio/http/response.h>
+#include <xsl/coro.h>
+#include <xsl/io.h>
+#include <xsl/net.h>
 
 #include <expected>
 #include <memory>
@@ -22,7 +22,7 @@
 
 XSL_ASIO_NB
 
-auto get(Poller& poller, std::string_view url)
+auto get(Context& ctx, std::string_view url)
     -> Task<std::expected<std::tuple<std::unique_ptr<Response>, AsyncSocketCompose<TcpIp>>, errc>> {
   RequestPartBuilder builder;
   auto uri = net::AbsoluteUri(url);
@@ -47,7 +47,7 @@ auto get(Poller& poller, std::string_view url)
   builder.add_header("User-Agent", API_VERSION);
   builder.add_header("Accept", "*/*");
   auto res = co_await gai_async_connect<TcpIp>(
-      poller, uri.host.data(),
+      ctx, uri.host.data(),
       uri.port.empty() ? uri.scheme == "http" ? "80" : "443" : uri.port.data());
   if (!res) {
     log_error("Failed to connect: {}", res.error().message());

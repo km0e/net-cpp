@@ -1,8 +1,8 @@
 /**
- * @file test_connect.cpp
+ * @file connect.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.11
+ * @version 0.1.1
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -13,7 +13,7 @@
 #include <gtest/gtest.h>
 #include <xsl/asio.h>
 #include <xsl/feature.h>
-#include <xsl/logctl.h>
+#include <xsl/log.h>
 
 #include <span>
 #include <string>
@@ -40,13 +40,13 @@ protected:
   void SetUp() override { start_poller(); }
   void TearDown() override { stop_poller(); }
 
-  std::shared_ptr<Poller> poller;
+  std::shared_ptr<Context> ctx;
   std::thread poller_thread;
 
   void start_poller() {
-    poller = std::make_shared<Poller>();
+    ctx = std::make_shared<Context>();
     poller_thread = std::thread([this] {
-      poller->run();
+      ctx->run();
       log_debug("Poller shutdown");
     });
   }
@@ -79,17 +79,17 @@ protected:
   }
 
   void stop_poller() {
-    poller->shutdown();
+    ctx->shutdown();
     poller_thread.join();
     log_debug("Poller joined");
   }
 
 public:
-  AsyncSocketIOFixture() : poller(nullptr), poller_thread() {}
+  AsyncSocketIOFixture() : ctx(nullptr), poller_thread() {}
 };
 
 TEST_F(AsyncSocketIOFixture, tcp_connect_with_ais) {
-  auto res_skt = gai_async_connect<Tcp<Ip<4>>>(*poller, ip.c_str(), port.c_str()).block();
+  auto res_skt = gai_async_connect<Tcp<Ip<4>>>(*ctx, ip.c_str(), port.c_str()).block();
   ASSERT_TRUE(res_skt.has_value());
   ASSERT_NE(res_skt->raw(), 0);
   echo(*res_skt);
@@ -110,7 +110,7 @@ TEST_F(AsyncSocketIOFixture, tcp_connect_with_ais) {
 TEST_F(AsyncSocketIOFixture, udp_connect_with_ais) {
   auto res = gai_connect<Udp<Ip<4>>>(ip.c_str(), port.c_str());
   ASSERT_TRUE(res.has_value());
-  auto skt = AsyncSocket(*poller, std::move(*res));
+  auto skt = AsyncSocket(*ctx, std::move(*res));
   echo(skt);
   SockAddrCompose<Udp<Ip<4>>> addr{ip, port};
   echo_to(skt, addr);
@@ -119,8 +119,8 @@ TEST_F(AsyncSocketIOFixture, udp_connect_with_ais) {
 TEST_F(AsyncSocketIOFixture, udp_connect_with_ip_port) {
   auto skt = SocketCompose<Udp<Ip<4>>>();
   ASSERT_TRUE(skt.is_valid());
-  ASSERT_EQ(skt.connect({ip, port}), errc{});
-  auto async_skt = AsyncSocket(*poller, std::move(skt));
+  ASSERT_TRUE(skt.connect({ip, port}));
+  auto async_skt = AsyncSocket(*ctx, std::move(skt));
   echo(async_skt);
   SockAddrCompose<Udp<Ip<4>>> addr{ip, port};
   echo_to(async_skt, addr);

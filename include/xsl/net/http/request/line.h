@@ -12,12 +12,12 @@
 
 #ifndef XSL_NET_HTTP_REQUEST_LINE
 #  define XSL_NET_HTTP_REQUEST_LINE
-#  include "xsl/def.h"
-#  include "xsl/logctl.h"
-#  include "xsl/net/http/def.h"
-#  include "xsl/net/http/proto.h"
-#  include "xsl/net/http/request/target.h"
-#  include "xsl/regex.h"
+#  include <xsl/def.h>
+#  include <xsl/log.h>
+#  include <xsl/net/http/def.h>
+#  include <xsl/net/http/proto.h>
+#  include <xsl/net/http/request/target.h>
+#  include <xsl/regex.h>
 
 #  include <regex>
 

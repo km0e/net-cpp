@@ -2,7 +2,7 @@
  * @file uri.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief URI handling
- * @version 0.1
+ * @version 0.1.0
  * @date 2025-06-14
  *
  * @copyright Copyright (c) 2024
@@ -12,7 +12,7 @@
 
 #ifndef XSL_NET_URI
 #  define XSL_NET_URI
-#  include "xsl/net/def.h"
+#  include <xsl/net/def.h>
 
 #  include <expected>
 #  include <ranges>

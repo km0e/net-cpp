@@ -2,13 +2,13 @@
  * @file test_type_traits.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.12
+ * @version 0.1.2
  * @date 2024-08-25
  *
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/type_traits.h"
+#include <xsl/type_traits.h>
 
 #include <cstddef>
 #include <type_traits>

@@ -1,5 +1,5 @@
 /**
- * @file test_utils.cpp
+ * @file utils.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
  * @version 0.1
@@ -8,9 +8,8 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/wheel/utils.h"
-
 #include <gtest/gtest.h>
+#include <xsl/wheel/utils.h>
 
 using namespace xsl::wheel;
 

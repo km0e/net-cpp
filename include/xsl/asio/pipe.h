@@ -2,7 +2,7 @@
  * @file pipe.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Async pipe device
- * @version 0.1
+ * @version 0.1.0
  * @date 2025-06-03
  *
  * @copyright Copyright (c) 2025
@@ -11,8 +11,9 @@
 #pragma once
 #ifndef XSL_ASIO_PIPE
 #  define XSL_ASIO_PIPE
-#  include "xsl/asio/def.h"
-#  include "xsl/asio/dev.h"
+#  include <xsl/asio/def.h>
+#  include <xsl/asio/dev.h>
+#  include <xsl/io.h>
 XSL_ASIO_NB
 
 const size_t MAX_SINGLE_FWD_SIZE = 4096;
@@ -21,8 +22,7 @@ using AsyncPipeReadDevice = AsyncDevice<io::IOM_EVENTS::IN>;
 using AsyncPipeWriteDevice = AsyncDevice<io::IOM_EVENTS::OUT>;
 
 /// @brief create a async pipe
-std::expected<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>, errc> async_pipe(
-    Poller& poller);
+std::expected<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>, errc> async_pipe(Context& ctx);
 
 /**
  * @brief splice data from a device to another device, one of the device must be a pipe
@@ -72,7 +72,7 @@ Task<std::optional<errc>> splice(From from, To to) {
  * @param pipe_out the pipe to write to
  * @return Task<void>
  */
-template <io::AsyncRead From, io::AsyncWrite To>
+template <AsyncRead From, AsyncWrite To>
 Task<void> splice_bidirectional(From from, To to, AsyncPipeReadDevice pipe_in,
                                 AsyncPipeWriteDevice pipe_out) {
   co_yield splice(std::move(from), std::move(pipe_out));
@@ -89,9 +89,9 @@ Task<void> splice_bidirectional(From from, To to, AsyncPipeReadDevice pipe_in,
  * @param poller the poller
  * @return Task<void>
  */
-template <io::AsyncRead From, io::AsyncWrite To>
-std::expected<Task<void>, errc> splice_bidirectional(From from, To to, Poller& poller) {
-  auto pipe = async_pipe(poller);
+template <AsyncRead From, AsyncWrite To>
+std::expected<Task<void>, errc> splice_bidirectional(From from, To to, Context& ctx) {
+  auto pipe = async_pipe(ctx);
   if (!pipe) {
     return std::unexpected(pipe.error());
   }

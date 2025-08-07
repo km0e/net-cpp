@@ -1,8 +1,8 @@
 /**
  * @file context.h
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
- * @version 0.11
+ * @brief Context for I/O operations
+ * @version 0.1.1
  * @date 2025-06-02
  *
  * @copyright Copyright (c) 2025
@@ -12,10 +12,9 @@
 
 #ifndef XSL_IO_CONTEXT
 #  define XSL_IO_CONTEXT
-#  include "xsl/io/def.h"
-#  include "xsl/sync.h"
-
 #  include <sys/epoll.h>
+#  include <xsl/io/def.h>
+#  include <xsl/sync.h>
 
 #  include <csignal>
 #  include <memory>
@@ -125,11 +124,11 @@ public:
 };
 
 using HandleProxy = std::function<PollHandleHint(std::function<PollHandleHint()>&&)>;
-class Poller {
+class Context {
 public:
-  Poller();
-  Poller(std::shared_ptr<HandleProxy>&& proxy);
-  ~Poller();
+  Context();
+  Context(std::shared_ptr<HandleProxy>&& proxy);
+  ~Context();
   constexpr bool valid() { return this->fd != -1; }
   bool add(int fd, IOM_EVENTS events, PollHandler&& handler);
   constexpr bool modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) {

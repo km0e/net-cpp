@@ -2,7 +2,7 @@
  * @file test_bind.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.11
+ * @version 0.1.1
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -14,7 +14,7 @@
 #include <xsl/asio.h>
 #include <xsl/feature.h>
 #include <xsl/io.h>
-#include <xsl/logctl.h>
+#include <xsl/log.h>
 #include <xsl/sys.h>
 
 #include <cstdint>
@@ -38,13 +38,13 @@ protected:
   void SetUp() override { start_poller(); }
   void TearDown() override { stop_poller(); }
 
-  std::shared_ptr<Poller> poller;
+  std::shared_ptr<Context> ctx;
   std::thread poller_thread;
 
   void start_poller() {
-    poller = std::make_shared<Poller>();
+    ctx = std::make_shared<Context>();
     poller_thread = std::thread([this] {
-      poller->run();
+      ctx->run();
       log_debug("Poller shutdown");
     });
   }
@@ -70,18 +70,18 @@ protected:
             break;
           }
         }
-      }(AsyncSocket(*poller, std::move(*res_skt)));
+      }(AsyncSocket(*ctx, std::move(*res_skt)));
     }
   }
 
   void stop_poller() {
-    poller->shutdown();
+    ctx->shutdown();
     poller_thread.join();
     log_debug("Poller joined");
   }
 
 public:
-  AsyncSocketIOFixture() : poller(nullptr), poller_thread() {}
+  AsyncSocketIOFixture() : ctx(nullptr), poller_thread() {}
 };
 
 TEST_F(AsyncSocketIOFixture, tcp_bind) {
@@ -90,15 +90,15 @@ TEST_F(AsyncSocketIOFixture, tcp_bind) {
   if (!res_skt.has_value()) {
     log_debug("Failed to bind: {}", res_skt.error().message());
   }
-  ASSERT_EQ(res_skt->listen(), errc{}) << "Failed to listen";
+  ASSERT_TRUE(res_skt->listen()) << "Failed to listen";
   ASSERT_TRUE(res_skt.has_value());
-  auto skt = AsyncSocket(*poller, std::move(*res_skt));
+  auto skt = AsyncSocket(*ctx, std::move(*res_skt));
   echo(skt).detach();
   xsl::flush_log();
   auto N = TEST_COUNT;
   while (N--) {
     // auto res_client = getaddrinfo<TcpIpv4>("127.0.0.1", port);
-    auto res_client = gai_async_connect<TcpIpv4>(*poller, "127.0.0.1", port).block();
+    auto res_client = gai_async_connect<TcpIpv4>(*ctx, "127.0.0.1", port).block();
     ASSERT_TRUE(res_client.has_value());
     auto client = std::move(*res_client);
     auto buf = std::make_unique<char[]>(1024);

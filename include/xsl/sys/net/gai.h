@@ -2,7 +2,7 @@
  * @file gai.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Get address information
- * @version 0.12
+ * @version 0.1.2
  * @date 2024-09-10
  *
  * @copyright Copyright (c) 2024
@@ -11,9 +11,8 @@
 #pragma once
 #ifndef XSL_SYS_NET_GAI
 #  define XSL_SYS_NET_GAI
-#  include "xsl/sys/net/def.h"
-
 #  include <netdb.h>
+#  include <xsl/sys/net/def.h>
 
 #  include <cstddef>
 #  include <cstdio>
@@ -136,7 +135,10 @@ namespace {
     addrinfo *res;
     std::memset(&hints, 0, sizeof(hints));
     hints.ai_flags = static_cast<int>(flags);
-    hints.ai_family = Traits{}.family();
+    if constexpr (requires { Traits{}.family(); })
+      hints.ai_family = Traits{}.family();
+    else
+      hints.ai_family = AF_UNSPEC;  // AF_UNSPEC for any family
     hints.ai_socktype = Traits{}.type();
     hints.ai_protocol = Traits{}.protocol();
     int ret = getaddrinfo(name, serv, &hints, &res);

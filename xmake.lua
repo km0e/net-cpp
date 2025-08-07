@@ -1,58 +1,40 @@
 set_project("xsl")
-set_xmakever("2.5.1")
+set_xmakever("3.0.0")
 set_version("0.1.0", { build = "%Y%m%d%H%M" })
 
 -- add release , debug and coverage modes
 add_rules("mode.debug", "mode.release", "mode.coverage", "mode.valgrind")
-
-add_rules("plugin.compile_commands.autoupdate")
+add_rules("plugin.compile_commands.autoupdate", { outputdir = "." })
 
 set_warnings("everything")
 -- set_warnings("all", "error", 'pedantic', 'extra')
 
-set_languages("cxxlatest")
+set_languages("cxx23")
 
 -- dependency
-add_requires("toml++", { configs = { header_only = true } })
+add_requires("toml++[header_only]", "thread-pool", "cli11", "openssl3", "sqlite3")
 
-add_requires("thread-pool", "cli11", "quill")
-
-add_requires("openssl3")
+add_requires("asio")
 
 set_policy("build.optimization.lto", true)
-
-target("w_cli")
-do
-    set_kind("phony")
-    add_packages("cli11", { public = true })
-end
-
 -- log level
 
 option("log_level")
 do
-    set_showmenu(true)
-    set_default("info")
-    set_values("trace", "debug", "info", "warning", "error", "critical", "none")
-    set_description("Set the log level")
+    set_default("trace")
+    set_description("Set the log level for the project.")
+    set_values("none", "trace", "debug", "info", "warning", "error", "critical")
 end
 
-function set_log_level(target)
-    local log_level = get_config("log_level")
-    local log_levels = { "none", "trace", "debug", "info", "warning", "error", "critical" }
-    local log_level_map = {}
-    log_level_map[log_levels[1]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=8"
-    log_level_map[log_levels[2]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_TRACE_L1"
-    log_level_map[log_levels[3]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_DEBUG"
-    log_level_map[log_levels[4]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_INFO"
-    log_level_map[log_levels[5]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_WARNING"
-    log_level_map[log_levels[6]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_ERROR"
-    log_level_map[log_levels[7]] = "QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_CRITICAL"
-    target:add("defines", log_level_map[log_level], { public = true }) -- public is important
-    print("log define: ", target:get("defines"))
+target("config")
+do
+    set_kind("phony")
+    set_default(false)
+    add_includedirs("$(projectdir)/include", { public = true })
+    add_ldflags("-fuse-ld=mold", { force = true })
 end
 
--- flags
+includes("third_party")
 
 -- set_policy("build.sanitizer.thread", true)
 -- set_policy("build.sanitizer.address", true)
@@ -60,8 +42,14 @@ end
 -- set_policy("build.sanitizer.leak", true)
 -- set_policy("build.sanitizer.undefined", true)
 
-add_ldflags("-fuse-ld=mold", { force = true })
+target("prepare")
+do
+    set_kind("phony")
+    set_default(false)
+    add_deps("config", { public = true }, "log", { public = true })
+end
 
 includes("src")
 includes("test")
+
 includes("examples")

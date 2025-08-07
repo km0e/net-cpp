@@ -2,7 +2,7 @@
  * @file vec.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.1.0
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -11,7 +11,7 @@
 #pragma once
 #ifndef XSL_WHEEL_VEC
 #  define XSL_WHEEL_VEC
-#  include "xsl/wheel/def.h"
+#  include <xsl/wheel/def.h>
 
 #  include <algorithm>
 #  include <cassert>

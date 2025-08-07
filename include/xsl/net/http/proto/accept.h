@@ -1,8 +1,8 @@
 /**
  * @file accept.h
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
- * @version 0.1
+ * @brief HTTP Accept header parsing
+ * @version 0.1.0
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -11,7 +11,7 @@
 #pragma once
 #ifndef XSL_NET_HTTP_PROTO_ACCEPT
 #  define XSL_NET_HTTP_PROTO_ACCEPT
-#  include "xsl/net/http/proto/media-type.h"
+#  include <xsl/net/http/proto/media-type.h>
 
 #  include <vector>
 

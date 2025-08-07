@@ -1,19 +1,17 @@
 /**
- * @file test_ser.cpp
+ * @file ser.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Test serialization and deserialization utilities
- * @version 0.1
+ * @version 0.1.0
  * @date 2024-09-11
  *
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/ser.h"
-
-#include "xsl/def.h"
-#include "xsl/wheel.h"
-
 #include <gtest/gtest.h>
+#include <xsl/def.h>
+#include <xsl/ser.h>
+#include <xsl/wheel.h>
 
 #include <span>
 

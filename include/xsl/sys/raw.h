@@ -11,11 +11,10 @@
 #pragma once
 #ifndef XSL_SYS_RAW
 #  define XSL_SYS_RAW
-#  include "xsl/sys/def.h"
-
 #  include <fcntl.h>
 #  include <sys/socket.h>
 #  include <unistd.h>
+#  include <xsl/sys/def.h>
 
 #  include <expected>
 #  include <system_error>
@@ -95,10 +94,8 @@ constexpr int filter_interrupt(F &&f, auto &&...args) {
   return ret;
 }
 
-constexpr errc check_ec(int ret) {
-  if (ret == -1) {
-    return errc{errno};
-  }
+constexpr std::expected<void, errc> check_ec(int ret) {
+  ENSURE(ret != -1, errc{errno});
   return {};
 }
 

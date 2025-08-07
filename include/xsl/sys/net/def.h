@@ -2,7 +2,7 @@
  * @file def.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Network definitions
- * @version 0.14
+ * @version 0.1.5
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -13,12 +13,11 @@
 #  define XSL_SYS_NET_DEF
 #  define XSL_SYS_NET_NB namespace xsl::_sys::net {
 #  define XSL_SYS_NET_NE }
-#  include "xsl/feature.h"
-#  include "xsl/io/context.h"
-
 #  include <arpa/inet.h>
 #  include <netinet/in.h>
 #  include <sys/socket.h>
+#  include <xsl/feature.h>
+#  include <xsl/io/context.h>
 
 #  include <cassert>
 #  include <type_traits>
@@ -43,11 +42,9 @@ public:
 
 template <int Family>
 class FamilyTraits {
-protected:
-  int _family = Family;  ///< family constant
 public:
-  constexpr int family() { return _family; }
-  constexpr FamilyTraits(int family = Family) : _family(family) {}
+  constexpr FamilyTraits() = default;
+  constexpr FamilyTraits(int) {}
 };
 
 template <>
@@ -67,7 +64,7 @@ public:
 template <int Type>
 class StaticType {
 public:
-  static constexpr int type() { return Type; }
+  static consteval int type() { return Type; }
   constexpr StaticType() = default;
   constexpr StaticType(int) {}
 };
@@ -77,7 +74,7 @@ class TypeTraits {
 protected:
   int _type = Type;  ///< type constant
 public:
-  constexpr int type() { return _type; }
+  constexpr int type() const { return _type; }
   static consteval bool is_connection_based() { return false; }
 };
 
@@ -106,7 +103,7 @@ concept ConnectionLessSocketTraits = !SockTraits::is_connection_based();
 template <int Protocol>
 class StaticProtocol {
 public:
-  static constexpr int protocol() { return Protocol; }
+  static consteval int protocol() { return Protocol; }
   constexpr StaticProtocol() = default;
   constexpr StaticProtocol(int) {}
 };
@@ -116,7 +113,7 @@ class ProtocolTraits {
 protected:
   int _protocol = Protocol;  ///< protocol constant
 public:
-  constexpr int protocol() { return _protocol; }
+  constexpr int protocol() const { return _protocol; }
 };
 
 template <>
@@ -134,7 +131,9 @@ public:
 };
 
 template <int Family, int Type, int Protocol>
-struct SocketTraitsBase : FamilyTraits<Family>, TypeTraits<Type>, ProtocolTraits<Protocol> {
+struct SocketTraitsBase : public FamilyTraits<Family>,
+                          public TypeTraits<Type>,
+                          public ProtocolTraits<Protocol> {
   using poll_traits_type = io::DefaultPollTraits;  ///< poll traits
   SocketTraitsBase() = default;
   SocketTraitsBase(int family, int type, int protocol)

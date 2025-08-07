@@ -2,7 +2,7 @@
  * @file base.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.1.0
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -11,7 +11,7 @@
 #pragma once
 #ifndef XSL_NET_HTTP_PROTO_BASE
 #  define XSL_NET_HTTP_PROTO_BASE
-#  include "xsl/net/http/def.h"
+#  include <xsl/net/http/def.h>
 
 #  include <string>
 #  include <string_view>

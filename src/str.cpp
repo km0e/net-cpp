@@ -2,21 +2,16 @@
  * @file str.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.1.0
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/def.h"
-#include "xsl/str.h"
+#include <xsl/def.h>
+#include <xsl/str.h>
 
 XSL_NB
-
-
-// void bool_to_bytes(bool value, byte* bytes) { bytes[0] = value ? 1 : 0; }
-
-// bool bool_from_bytes(const byte* bytes) { return bytes[0] == 1; }
 
 constexpr std::strong_ordering operator<=>(const FixedString& lhs, const FixedString& rhs) {
   return lhs.compare(std::string_view(rhs.data(), rhs.size())) <=> 0;

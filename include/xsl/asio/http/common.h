@@ -2,7 +2,7 @@
  * @file common.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief HTTP common definitions
- * @version 0.1
+ * @version 0.1.0
  * @date 2025-07-10
  *
  * @copyright Copyright (c) 2025
@@ -12,12 +12,12 @@
 
 #ifndef XSL_ASIO_HTTP_COMMON
 #  define XSL_ASIO_HTTP_COMMON
-#  include "xsl/asio/buf.h"
-#  include "xsl/asio/http/def.h"
-#  include "xsl/byte.h"
-#  include "xsl/def.h"
-#  include "xsl/io.h"
-#  include "xsl/net.h"
+#  include <xsl/asio/buf.h>
+#  include <xsl/asio/http/def.h>
+#  include <xsl/byte.h>
+#  include <xsl/def.h>
+#  include <xsl/io.h>
+#  include <xsl/net.h>
 
 XSL_ASIO_HTTP_NB
 const int DEFAULT_HEADER_COUNT = 16;

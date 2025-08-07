@@ -2,17 +2,16 @@
  * @file test_signal.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Test for signal
- * @version 0.22
+ * @version 0.2.2
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
  *
  */
-#include "CLI/CLI.hpp"
-#include "xsl/coro.h"
-#include "xsl/logctl.h"
-
+#include <CLI/CLI.hpp>
 #include <gtest/gtest.h>
+#include <xsl/coro.h>
+#include <xsl/log.h>
 
 #include <cassert>
 #include <cstddef>
@@ -30,15 +29,6 @@ protected:
   void TearDown() override {}
 
   ~SignalCommonTest() {}
-
-  template <class Signal>
-  void pin(Signal &sig) {
-    auto pin = sig.pin();
-    auto moved = std::move(sig);
-    ASSERT_TRUE(pin);
-    pin.release();
-    ASSERT_TRUE([&pin] -> Task<bool> { co_return co_await pin; }().block());
-  }
 
   template <class Signal>
   void stop(Signal &sig) {
@@ -90,10 +80,6 @@ TEST_F(SignalCommonTest, MPSC) {
   std::size_t N = TEST_COUNT;
   while (N--) {
     {
-      Signal<1> sig{};
-      pin(sig);
-    }
-    {
       Signal<> m_sig{};
       stop(m_sig);
     }
@@ -108,15 +94,25 @@ TEST_F(SignalCommonTest, SPSC) {
   std::size_t N = TEST_COUNT;
   while (N--) {
     {
-      SPSCSignal<1> sig{};
-      pin(sig);
-    }
-    {
       SPSCSignal<> m_sig{};
       stop(m_sig);
     }
     {
       SPSCSignal<> m_sig{};
+      force_stop(m_sig);
+    }
+  }
+}
+
+TEST_F(SignalCommonTest, SPSC3) {
+  std::size_t N = TEST_COUNT;
+  while (N--) {
+    {
+      SPSCSignal2<> m_sig{};
+      stop(m_sig);
+    }
+    {
+      SPSCSignal2<> m_sig{};
       force_stop(m_sig);
     }
   }

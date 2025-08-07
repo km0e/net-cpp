@@ -1,7 +1,11 @@
 file(GLOB SRC_FILES "*.cpp")
 foreach(SRC_FILE ${SRC_FILES})
   get_filename_component(SRC_NAME_WE ${SRC_FILE} NAME_WE)
+  if(SRC_NAME_WE STREQUAL "asio_example")
+    continue() # Skip the main example file
+  endif()
   message(STATUS "Add example ${SRC_NAME_WE} (${SRC_FILE})")
   add_executable(${SRC_NAME_WE} ${SRC_FILE})
   target_link_libraries(${SRC_NAME_WE} clilib xsl_asio)
 endforeach()
+add_subdirectory(dns)

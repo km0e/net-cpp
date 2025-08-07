@@ -2,7 +2,7 @@
  * @file buf.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.1.0
  * @date 2025-07-12
  *
  * @copyright Copyright (c) 2025
@@ -12,8 +12,8 @@
 
 #ifndef XSL_ASIO_BUF
 #  define XSL_ASIO_BUF
-#  include "xsl/asio/def.h"
-#  include "xsl/io.h"
+#  include <xsl/asio/def.h>
+#  include <xsl/io.h>
 
 #  include <memory>
 XSL_ASIO_NB

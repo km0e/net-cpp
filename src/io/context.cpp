@@ -1,15 +1,15 @@
 /**
- * @file sync.cpp
+ * @file context.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1
+ * @version 0.1.0
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
  *
  */
 
-#include "xsl/io/context.h"
+#include <xsl/io/context.h>
 
 XSL_IO_NB
 constexpr IOM_EVENTS& operator|=(IOM_EVENTS& a, IOM_EVENTS b) {
@@ -24,16 +24,17 @@ constexpr IOM_EVENTS operator~(IOM_EVENTS a) {
   return static_cast<IOM_EVENTS>(~static_cast<uint32_t>(a));
 }
 
-Poller::Poller()
-    : Poller(
+Context::Context()
+    : Context(
           std::make_shared<HandleProxy>([](std::function<PollHandleHint()>&& f) { return f(); })) {}
-Poller::Poller(std::shared_ptr<HandleProxy>&& proxy) : fd(-1), handlers(), proxy(std::move(proxy)) {
+Context::Context(std::shared_ptr<HandleProxy>&& proxy)
+    : fd(-1), handlers(), proxy(std::move(proxy)) {
   this->fd = epoll_create(1);
   log_debug("Poller fd: {}", this->fd.load());
 }
-Poller::~Poller() { this->shutdown(); }
+Context::~Context() { this->shutdown(); }
 
-bool Poller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
+bool Context::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
   epoll_event event;
   event.events = static_cast<uint32_t>(events);
   event.data.fd = fd;
@@ -48,7 +49,7 @@ bool Poller::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
   return true;
 }
 
-void Poller::remove(int fd) {
+void Context::remove(int fd) {
   epoll_ctl(this->fd, EPOLL_CTL_DEL, fd, nullptr);
   (*this->handlers.lock()).erase(fd);
 }

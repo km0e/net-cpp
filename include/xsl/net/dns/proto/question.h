@@ -1,8 +1,8 @@
 /**
  * @file question.h
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief
- * @version 0.1
+ * @brief Dns question structure
+ * @version 0.1.1
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -11,34 +11,40 @@
 #pragma once
 #ifndef XSL_NET_DNS_PROTO_QUESTION
 #  define XSL_NET_DNS_PROTO_QUESTION
-#  include "xsl/net/dns/proto/def.h"
-#  include "xsl/net/dns/utils.h"
-
-#  include <expected>
-#  include <string_view>
+#  include <xsl/net/dns/proto/def.h>
+#  include <xsl/net/dns/utils.h>
 
 XSL_NET_DNS_NB
 /**
- * @brief serialize the question
- *
- * @param buf buffer to store the serialized data
- * @param dn domain name
- * @param type type
- * @param class_ class
- * @param compressor domain name compressor
- * @return errc
+ * @brief DNS question structure
+ * @see https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.2
  */
-constexpr errc serialized(std::span<byte> &buf, const std::string_view &dn, Type type, Class class_,
-                          DnCompressor &compressor) {
-  auto status = compressor.prepare(dn);
-  if (!status) {
-    return status.error();
+struct Question {
+  static constexpr std::size_t SIZE = 4;  ///< size of the question (type + class)
+
+  Type type;     ///< type of the question
+  Class class_;  ///< class of the question
+
+  constexpr Question() = default;
+  constexpr Question(Type type, Class class_) : type(type), class_(class_) {}
+  constexpr Question(const Question &) = default;
+  constexpr Question &operator=(const Question &) = default;
+
+  constexpr void serialize(std::span<byte> &buf) const {
+    type.serialized(buf);
+    class_.serialized(buf);
   }
-  compressor.compress(buf);
-  type.serialized(buf);
-  class_.serialized(buf);
-  return {};
-}
+  constexpr std::size_t serialize(byte *buf) const {
+    return type.serialize(buf) + class_.serialize(buf + type.SIZE);
+  }
+  constexpr std::size_t deserialize(const byte *buf) {
+    std::size_t offset = 0;
+    offset += type.deserialize(buf + offset);
+    offset += class_.deserialize(buf + offset);
+    return offset;
+  }
+};
+
 /// @brief skip the question part
 constexpr errc skip_question(std::span<const byte> &src) {
   auto ec = skip_dn(src);

@@ -2,16 +2,16 @@
  * @file utils.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief RFC 1035 message compression
- * @version 0.1
+ * @version 0.1.1
  * @date 2024-08-19
  * @ref https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.4
  *
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/net/dns/utils.h"
-
-#include "xsl/net/dns/def.h"
+#include <xsl/macro.h>
+#include <xsl/net/dns/def.h>
+#include <xsl/net/dns/utils.h>
 
 #include <cassert>
 #include <cstddef>
@@ -113,7 +113,7 @@ std::expected<std::size_t, errc> DnCompressor::prepare(std::string_view src) {
     auto m = match(offs, noff, &offset, *dnptrs, src.data() + src.size(), lens, label_cnt);
     if (m > suffix_len) {
       suffix_len = m;
-      suffix_off = offset;
+      suffix_off = offset + (*dnptrs - base);
       if (m == src.size()) break;
     }
   }
@@ -138,6 +138,30 @@ errc DnDecompressor::decompress(std::span<const byte> &src) {
     this->buf[this->buf_end + *ptr] = '.';
     this->buf_end += *ptr + 1;
     src = src.subspan(*ptr);
+    ptr += *ptr + 1;
+  }
+}
+
+std::expected<std::size_t, errc> DnDecompressor::decompress(const byte *src) {
+  this->buf_end = 0;  /// reset the buffer
+  const std::uint8_t *ptr = reinterpret_cast<const uint8_t *>(src);
+  std::size_t size = 0;
+  for (;;) {
+    size += 1;  // count the size of the label
+    if (*ptr == 0) return {size};
+    if (*ptr & 0xc0) {  // jump to the label if it is a pointer
+      ENSURE((*ptr & 0xc0) == 0xc0, errc::illegal_byte_sequence);  // invalid pointer
+      ptr = this->base + ((ptr[0] & 0x3f) << 8 | ptr[1]);
+      size += 1;  // count the size of the pointer
+      auto ec = this->prepare_rest(ptr);
+      ENSURE(ec == errc{}, ec);
+      return {size};
+    }
+    assert(ptr - base < 0x4000);
+    memcpy(this->buf + this->buf_end, ptr + 1, *ptr);
+    this->buf[this->buf_end + *ptr] = '.';
+    this->buf_end += *ptr + 1;
+    size += *ptr;
     ptr += *ptr + 1;
   }
 }

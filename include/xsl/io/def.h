@@ -2,7 +2,7 @@
  * @file def.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.12
+ * @version 0.1.2
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -13,8 +13,8 @@
 #  define XSL_IO_DEF
 #  define XSL_IO_NB namespace xsl::io {
 #  define XSL_IO_NE }
-#  include "xsl/byte.h"
-#  include "xsl/coro.h"
+#  include <xsl/byte.h>
+#  include <xsl/coro.h>
 
 #  include <concepts>
 #  include <cstddef>
@@ -47,21 +47,6 @@ concept Write = requires(Device t, std::span<const byte> buf) {
 
 template <class Device>
 concept ReadWrite = Read<Device> && Write<Device>;
-
-template <class Device>
-concept AsyncRead = requires(Device t, byte* data, std::size_t size) {
-  { t.read(data, size) } -> coro::Awaitable;
-  requires std::same_as<typename decltype(t.read(data, size))::result_type, Result>;
-};
-
-template <class Device>
-concept AsyncWrite = requires(Device t, const byte* data, std::size_t size) {
-  { t.write(data, size) } -> coro::Awaitable;
-  requires std::same_as<typename decltype(t.write(data, size))::result_type, Result>;
-};
-
-template <class Device>
-concept AsyncReadWrite = AsyncRead<Device> && AsyncWrite<Device>;
 
 XSL_IO_NE
 #endif  // XSL_IO_DEF

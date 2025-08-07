@@ -1,5 +1,5 @@
 /**
- * @file test_bit.cpp
+ * @file bit.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
  * @version 0.1
@@ -8,9 +8,8 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include "xsl/wheel/bit.h"
-
 #include <gtest/gtest.h>
+#include <xsl/wheel/bit.h>
 
 using namespace xsl::wheel;
 

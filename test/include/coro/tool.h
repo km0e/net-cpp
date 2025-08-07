@@ -2,7 +2,7 @@
  * @file tool.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.11
+ * @version 0.1.1
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -11,7 +11,7 @@
 #pragma once
 #ifndef XSL_TEST_CORO_TOOL_
 #  define XSL_TEST_CORO_TOOL_
-#  include "xsl/coro.h"
+#  include <xsl/coro.h>
 
 #  include <semaphore>
 #  include <stdexcept>

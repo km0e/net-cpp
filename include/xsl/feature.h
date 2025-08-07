@@ -2,7 +2,7 @@
  * @file feature.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Feature flags
- * @version 0.12
+ * @version 0.1.2
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -11,8 +11,8 @@
 #pragma once
 #ifndef XSL_FEATURE
 #  define XSL_FEATURE
-#  include "xsl/def.h"
-#  include "xsl/type_traits.h"
+#  include <xsl/def.h>
+#  include <xsl/type_traits.h>
 
 #  include <cstdint>
 #  include <type_traits>

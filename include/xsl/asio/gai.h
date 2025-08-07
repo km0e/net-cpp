@@ -2,7 +2,7 @@
  * @file gai.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Get address info
- * @version 0.2
+ * @version 0.2.0
  * @date 2024-09-10
  *
  * @copyright Copyright (c) 2024
@@ -11,11 +11,11 @@
 #pragma once
 #ifndef XSL_ASIO_GAI
 #  define XSL_ASIO_GAI
-#  include "xsl/asio/def.h"
-#  include "xsl/asio/socket.h"
-#  include "xsl/sys.h"
-
 #  include <netdb.h>
+#  include <xsl/asio/def.h>
+#  include <xsl/asio/socket.h>
+#  include <xsl/io.h>
+#  include <xsl/sys.h>
 
 #  include <system_error>
 #  include <utility>
@@ -25,13 +25,13 @@ namespace {
   template <class Traits>
   inline Task<std::expected<AsyncSocket<Traits>, errc>> raw_connect(sys::net::Socket<Traits> &&skt,
                                                                     const sockaddr &sa,
-                                                                    socklen_t len, Poller &poller) {
+                                                                    socklen_t len, Context &ctx) {
     auto ec = errc{};
     if (sys::filter_interrupt(::connect, skt.raw(), &sa, len) != 0) {
       if (errno != EINPROGRESS) [[unlikely]] {
         ec = errc{errno};
       } else {
-        auto async_skt = AsyncSocket(poller, std::move(skt));
+        auto async_skt = AsyncSocket(ctx, std::move(skt));
         if (!co_await async_skt.write_signal()) {
           // skt = std::move(async_skt).sync(poller);
           co_return std::unexpected{errc::not_connected};
@@ -73,7 +73,7 @@ namespace {
  * @return Task<std::expected<AsyncSocket<Traits>, std::error_condition>>
  */
 template <class... Flags, typename Traits = sys::net::SocketTraits<Flags...>, typename... Args>
-Task<std::expected<AsyncSocket<Traits>, std::error_condition>> gai_async_connect(Poller &poller,
+Task<std::expected<AsyncSocket<Traits>, std::error_condition>> gai_async_connect(Context &ctx,
                                                                                  Args &&...args) {
   auto res_resolved = sys::net::getaddrinfo<Traits>(std::forward<Args>(args)...);
   if (!res_resolved) {
@@ -86,7 +86,7 @@ Task<std::expected<AsyncSocket<Traits>, std::error_condition>> gai_async_connect
     if (!skt.is_valid()) {
       continue;
     }
-    auto res_skt = co_await raw_connect(std::move(skt), *ai.ai_addr, ai.ai_addrlen, poller);
+    auto res_skt = co_await raw_connect(std::move(skt), *ai.ai_addr, ai.ai_addrlen, ctx);
     if (res_skt) {
       co_return std::move(*res_skt);
     }

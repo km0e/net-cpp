@@ -2,24 +2,23 @@
  * @file net.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Network utilities
- * @version 0.2
+ * @version 0.2.1
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
  *
  */
 #pragma once
-#ifndef XSL_CORO_NET_H
-#  define XSL_CORO_NET_H
-#  include "xsl/asio/dns/resolver.h"
-#  include "xsl/asio/gai.h"
-#  include "xsl/asio/http.h"
-#  include "xsl/asio/http/request.h"
-#  include "xsl/asio/http/server.h"
-#  include "xsl/asio/http/service.h"
-#  include "xsl/asio/pipe.h"
-#  include "xsl/asio/socket.h"
-#  include "xsl/asio/tcp/server.h"
+#ifndef XSL_ASIO_H
+#  define XSL_ASIO_H
+#  include <xsl/asio/gai.h>
+#  include <xsl/asio/http.h>
+#  include <xsl/asio/http/request.h>
+#  include <xsl/asio/http/server.h>
+#  include <xsl/asio/http/service.h>
+#  include <xsl/asio/pipe.h>
+#  include <xsl/asio/socket.h>
+#  include <xsl/asio/tcp/server.h>
 
 namespace xsl::asio {
   using _asio::AsyncSocket;
@@ -40,8 +39,6 @@ namespace xsl::asio {
   }  // namespace tcp
 
   namespace udp {}  // namespace udp
-  using _asio::Resolver;
-  using _asio::ResolverImpl;
 
   using _asio::http::HandleContext;
   using _asio::http::HandleResult;
@@ -82,8 +79,9 @@ namespace xsl::asio {
       auto copy_poller = poller;
       auto skt = net::gai_bind<Traits>(host.data(), port.data());
       if (!skt) return std::unexpected(skt.error());
-      auto ec = skt->listen();
-      if (ec != errc{}) return std::unexpected(ec);
+      HNSURE(skt->listen(), ([host, port](errc e) {
+               return make_error_condition(e, std::format("Failed to listen on {}:{}", host, port));
+             }));
       return {{host, port, std::move(copy_poller), *poller, std::move(*skt)}};
     }
   };

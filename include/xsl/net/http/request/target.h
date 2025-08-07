@@ -2,7 +2,7 @@
  * @file target.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief HTTP request target definitions
- * @version 0.1
+ * @version 0.1.0
  * @date 2025-06-14
  *
  * @copyright Copyright (c) 2025
@@ -12,8 +12,8 @@
 #ifndef XSL_NET_HTTP_REQUEST_TARGET
 #  define XSL_NET_HTTP_REQUEST_TARGET
 
-#  include "xsl/net/http/def.h"
-#  include "xsl/net/uri.h"
+#  include <xsl/net/http/def.h>
+#  include <xsl/net/uri.h>
 
 #  include <regex>
 

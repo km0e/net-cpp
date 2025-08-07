@@ -2,43 +2,38 @@
  * @file signal.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Signal for coroutines
- * @version 0.4
+ * @version 0.5.0
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
  *
  */
 #pragma once
+
 #ifndef XSL_CORO_SIGNAL
 #  define XSL_CORO_SIGNAL
-#  include "xsl/coro/def.h"
-#  include "xsl/coro/signal/mpsc.h"
-#  include "xsl/coro/signal/spsc.h"
-#  include "xsl/coro/signal/spsc2.h"
-#  include "xsl/coro/signal/unsafe.h"
+#  include <xsl/coro/def.h>
+#  include <xsl/coro/signal/def.h>
+#  include <xsl/coro/signal/mpsc.h>
+#  include <xsl/coro/signal/spsc.h>
+#  include <xsl/coro/signal/spsc2.h>
+#  include <xsl/coro/signal/unsafe.h>
 
 #  include <cassert>
 #  include <cstddef>
-#  include <memory>
 
 XSL_CORO_NB
-template <std::ptrdiff_t MaxSignals = unsafe_max_signals::value,
-          class TxTraits = SignalTxTraits<UnsafeSignalStorage, MaxSignals>,
-          class Pointer = std::shared_ptr<typename TxTraits::storage_type>>
-using UnsafeSignal = AnySignal<TxTraits, Pointer>;
+template <std::ptrdiff_t MaxSignals = UnsafeSignalStorage::max_signals::value>
+using UnsafeSignal = AnySignal<UnsafeSignalStorage, MaxSignals>;
 
-template <std::ptrdiff_t MaxSignals = mpsc_max_signals::value,
-          class TxTraits = SignalTxTraits<SignalStorage, MaxSignals>,
-          class Pointer = std::shared_ptr<typename TxTraits::storage_type>>
-using Signal = AnySignal<TxTraits, Pointer>;
+template <std::ptrdiff_t MaxSignals = UnsafeSignalStorage::max_signals::value>
+using Signal = AnySignal<SignalStorage, MaxSignals>;
 
-template <std::ptrdiff_t MaxSignals = spsc_max_signals::value,
-          class TxTraits = SignalTxTraits<SPSCSignalStorage, MaxSignals>,
-          class Pointer = std::shared_ptr<typename TxTraits::storage_type>>
-using SPSCSignal = AnySignal<TxTraits, Pointer>;
+template <std::ptrdiff_t MaxSignals = SPSCSignalStorage::max_signals::value>
+using SPSCSignal = AnySignal<SPSCSignalStorage, MaxSignals>;
 
-template <std::ptrdiff_t MaxSignals = spsc_max_signals::value>
-using SPSCSignal2 = Signal2<MaxSignals>;
+template <std::ptrdiff_t MaxSignals = SPSCSignalStorage::max_signals::value>
+using SPSCSignal2 = AnySignal<SPSCSignalStorage2, MaxSignals>;
 
 XSL_CORO_NE
 #endif

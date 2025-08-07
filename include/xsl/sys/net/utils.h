@@ -11,11 +11,10 @@
 #pragma once
 #ifndef XSL_SYS_NET_UTILS
 #  define XSL_SYS_NET_UTILS
-#  include "xsl/sys/net/def.h"
-#  include "xsl/sys/net/socket.h"
-#  include "xsl/sys/raw.h"
-
 #  include <netdb.h>
+#  include <xsl/sys/net/def.h>
+#  include <xsl/sys/net/socket.h>
+#  include <xsl/sys/raw.h>
 
 #  include <cerrno>
 #  include <system_error>
@@ -58,7 +57,8 @@ constexpr std::expected<Socket<Traits>, std::error_condition> gai_connect(Args &
  * @tparam Flags The flags for getaddrinfo, should be Ip<4>/Ip<6>, Tcp/Udp, TcpIpv4 ...
  * @tparam Traits
  * @tparam Args
- * @param args The arguments for getaddrinfo
+ * @param args The arguments for getaddrinfo, such as ("0.0.0.0", "8080"), ("::", "8080"),
+ * ("localhost", "8080"), etc.
  * @return std::expected<Socket<Traits>, std::error_condition>
  */
 template <class... Flags, class Traits = SocketTraits<Flags...>, class... Args>

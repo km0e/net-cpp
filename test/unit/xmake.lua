@@ -1,4 +1,4 @@
-add_deps("xsl_log_ctl")
+add_deps("prepare_t", { public = true })
 
 add_includedirs("$(projectdir)/test/include", { public = true })
 

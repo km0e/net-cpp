@@ -1,6 +1,5 @@
 find_package(SQLite3)
 
-include(FetchContent)
 FetchContent_Declare(
     tomlplusplus
     GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git

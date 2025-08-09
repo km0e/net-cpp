@@ -27,22 +27,6 @@ if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
   )
 endif()
 
-find_package(cli11 QUIET)
-if (NOT cli11_FOUND)
-  message(STATUS "cli11 not found, adding cli11")
-  add_subdirectory(third_party/cli11)
-endif()
-
-add_library(clilib ALIAS CLI11)
-
-find_package(googletest QUIET)
-if(NOT googletest_FOUND)
-  message(STATUS "googletest not found, adding googletest")
-  add_subdirectory(third_party/googletest)
-  # For Windows: Prevent overriding the parent project's compiler/linker settings
-  # set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-endif()
-
 add_link_options(-fuse-ld=mold)
 
 # --- Logging ----
@@ -86,6 +70,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
+
+include(FetchContent)
 
 add_subdirectory(third_party)
 

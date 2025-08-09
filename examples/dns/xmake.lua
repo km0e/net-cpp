@@ -20,4 +20,5 @@ do
     set_kind("binary")
     add_files("server.cpp")
     add_deps("xsl_dns_app_utils")
+    add_packages("toml++")
 end

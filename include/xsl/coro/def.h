@@ -80,7 +80,7 @@ public:
 
 #  define CO_TRV(...) __MACRO_DISPATCH(__CO_TRV_, __VA_ARGS__)
 
-#  define __CO_TRV_2(expr, var) __BASE__TRV(co_, expr, var, std::move)
+#  define __CO_TRV_2(expr, var) __BASE__TRV(co_, expr, var)
 
 XSL_CORO_NE
 

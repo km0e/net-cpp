@@ -14,6 +14,7 @@
 #  include <fcntl.h>
 #  include <sys/socket.h>
 #  include <unistd.h>
+#  include <xsl/error.h>
 #  include <xsl/sys/def.h>
 
 #  include <expected>
@@ -94,7 +95,7 @@ constexpr int filter_interrupt(F &&f, auto &&...args) {
   return ret;
 }
 
-constexpr std::expected<void, errc> check_ec(int ret) {
+constexpr Expected<void> check_ec(int ret) {
   ENSURE(ret != -1, errc{errno});
   return {};
 }

@@ -79,9 +79,7 @@ namespace xsl::asio {
       auto copy_poller = poller;
       auto skt = net::gai_bind<Traits>(host.data(), port.data());
       if (!skt) return std::unexpected(skt.error());
-      HNSURE(skt->listen(), ([host, port](errc e) {
-               return make_error_condition(e, std::format("Failed to listen on {}:{}", host, port));
-             }));
+      HNSURE(skt->listen(), Error(e, std::format("Failed to listen on {}:{}", host, port)));
       return {{host, port, std::move(copy_poller), *poller, std::move(*skt)}};
     }
   };

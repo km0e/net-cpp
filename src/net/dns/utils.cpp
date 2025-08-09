@@ -9,7 +9,7 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include <xsl/macro.h>
+#include <xsl/error.h>
 #include <xsl/net/dns/def.h>
 #include <xsl/net/dns/utils.h>
 
@@ -142,7 +142,7 @@ errc DnDecompressor::decompress(std::span<const byte> &src) {
   }
 }
 
-std::expected<std::size_t, errc> DnDecompressor::decompress(const byte *src) {
+Expected<std::size_t> DnDecompressor::decompress(const byte *src) {
   this->buf_end = 0;  /// reset the buffer
   const std::uint8_t *ptr = reinterpret_cast<const uint8_t *>(src);
   std::size_t size = 0;

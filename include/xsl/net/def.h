@@ -11,8 +11,14 @@
 #pragma once
 #ifndef XSL_NET_DEF
 #  define XSL_NET_DEF
+#  include <xsl/def.h>
 
-#  define XSL_NET_NB namespace xsl::_net {
-#  define XSL_NET_NE }
+#  define XSL_NET_NB \
+    XSL_NB           \
+    namespace _net {
+
+#  define XSL_NET_NE \
+    XSL_NE           \
+    }
 
 #endif

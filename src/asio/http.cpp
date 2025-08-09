@@ -25,11 +25,12 @@ XSL_ASIO_NB
 auto get(Context& ctx, std::string_view url)
     -> Task<std::expected<std::tuple<std::unique_ptr<Response>, AsyncSocketCompose<TcpIp>>, errc>> {
   RequestPartBuilder builder;
-  auto uri = net::AbsoluteUri(url);
-  if (uri.scheme.empty() || uri.host.empty()) {
+  auto _uri = net::AbsoluteUri::match(url);
+  if (_uri || _uri->scheme.empty() || _uri->host.empty()) {
     log_error("Invalid URL: {}", url);
     co_return std::unexpected(errc::invalid_argument);  // Return an empty builder
   }
+  auto uri = std::move(*_uri);
   if (uri.scheme != "http" && uri.scheme != "https") {
     log_error("Unsupported scheme: {}", uri.scheme);
     co_return std::unexpected(errc::not_supported);  // Return an empty builder

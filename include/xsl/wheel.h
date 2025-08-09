@@ -2,7 +2,7 @@
  * @file wheel.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Wheel utilities
- * @version 0.1.1
+ * @version 0.1.2
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -15,11 +15,13 @@
 #  include <xsl/def.h>
 #  include <xsl/wheel/const.h>
 #  include <xsl/wheel/static.h>
+#  include <xsl/wheel/str.h>
 #  include <xsl/wheel/utils.h>
 #  include <xsl/wheel/vec.h>
 XSL_NB
 using wheel::CRLF;
 using wheel::Defer;
+using wheel::FixedString;
 using wheel::FixedVector;
 using wheel::rt_assert;
 using wheel::StaticSize;

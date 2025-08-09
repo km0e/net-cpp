@@ -9,9 +9,9 @@
  *
  */
 #include <xsl/def.h>
-#include <xsl/str.h>
+#include <xsl/wheel/str.h>
 
-XSL_NB
+XSL_WHEEL_NB
 
 constexpr std::strong_ordering operator<=>(const FixedString& lhs, const FixedString& rhs) {
   return lhs.compare(std::string_view(rhs.data(), rhs.size())) <=> 0;
@@ -22,4 +22,4 @@ constexpr std::strong_ordering operator<=>(const FixedString& lhs, std::string_v
 constexpr std::strong_ordering operator<=>(const FixedString& lhs, const char* rhs) {
   return lhs.compare(std::string_view(rhs)) <=> 0;
 }
-XSL_NE
+XSL_WHEEL_NE

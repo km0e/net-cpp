@@ -11,14 +11,15 @@
 #pragma once
 #ifndef XSL_WHEEL_UTILS
 #  define XSL_WHEEL_UTILS
-#  include <xsl/str.h>
 #  include <xsl/wheel/def.h>
+#  include <xsl/wheel/str.h>
 
 #  include <exception>
 #  include <functional>
 #  include <iostream>
 #  include <source_location>
 #  include <string>
+#  include <string_view>
 XSL_WHEEL_NB
 namespace impl {
 

@@ -2,7 +2,7 @@
  * @file target.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief HTTP request target definitions
- * @version 0.1.0
+ * @version 0.1.1
  * @date 2025-06-14
  *
  * @copyright Copyright (c) 2025
@@ -47,6 +47,13 @@ using AbsoluteForm = AbsoluteUri;
 struct AuthorityForm {
   static constexpr std::string_view regex_str = R"(^([^:*]*)(?::(\d*))?)";  ///< 2
   static const std::regex regex_re;
+  static optional<AuthorityForm> match(std::string_view sv) {
+    std::cmatch match;
+    if (std::regex_match(sv.begin(), sv.end(), match, regex_re)) {
+      return AuthorityForm(std::ranges::subrange(match.begin() + 1, match.end()));
+    }
+    return std::nullopt;
+  }  ///< for convenience, use string_view
   /// FIX:with host implementation
 
   std::string_view host = {};  ///< authority host, may be empty
@@ -56,14 +63,6 @@ struct AuthorityForm {
     requires std::is_same_v<std::ranges::range_value_t<Range>, std::sub_match<const char*>>
   AuthorityForm(Range&& output)
       : host{output[0].first, output[0].second}, port{output[1].first, output[1].second} {}
-  AuthorityForm(std::string_view sv)
-      : AuthorityForm([&]() -> AuthorityForm {
-          std::cmatch match;
-          if (std::regex_match(sv.begin(), sv.end(), match, regex_re)) {
-            return {std::ranges::subrange(match.begin() + 1, match.end())};
-          }
-          return {};
-        }()) {}  ///< for convenience, use string_view
 };
 
 /**
@@ -74,6 +73,10 @@ struct AsteriskForm {
   static constexpr std::string_view regex_str = R"(^(\*))";  /// <1
 };
 
+/**
+ * @brief RequestTarget represents the target of an HTTP request.
+ * @see https://datatracker.ietf.org/doc/html/rfc9112#section-3.2
+ */
 struct RequestTarget {
   static const std::regex regex_re;
   using TargetType

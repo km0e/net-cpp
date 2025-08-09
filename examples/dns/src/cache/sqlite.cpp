@@ -1,20 +1,26 @@
+/**
+ * @file sqlite.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief SQLite-based DNS cache implementation
+ * @version 0.1.0
+ * @date 2025-08-05
+ *
+ * @copyright Copyright (c) 2025
+ *
+ */
 #include <cache/sqlite.h>
 #include <xsl/def.h>
+#include <xsl/error.h>
 #include <xsl/wheel.h>
 
 using namespace xsl;
 
-auto SqliteCache::error_handler() const {
-  return [this](int err) -> std::error_condition {
-    return make_error_condition(err, sqlite3_errmsg(db.get()));
-  };
-}
-
-std::expected<void, std::error_condition> SqliteCache::open(const char *db_path) {
-  EXPECT(sqlite3_open_v2(db_path, std::out_ptr(db),
+Expected<std::unique_ptr<SqliteCache>> SqliteCache::create(const char *uri) {
+  auto cache = std::make_unique<SqliteCache>();
+  EXPECT(sqlite3_open_v2(uri, std::out_ptr(cache->db),
                          SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, nullptr),
-         SQLITE_OK, [this](auto err) { return make_error_condition(err, db.get()); });
-  auto db = this->db.get();
+         SQLITE_OK, Error(e, sqlite3_errmsg(cache->db.get())));
+
   const char *sql
       = "CREATE TABLE IF NOT EXISTS dns_cache ("
         "name TEXT NOT NULL, "
@@ -33,31 +39,32 @@ std::expected<void, std::error_condition> SqliteCache::open(const char *db_path)
         "?)";
   std::string_view sql_delete = "DELETE FROM dns_cache WHERE rowid = ?";
   char *err_msg = nullptr;
-  EXPECT(sqlite3_exec(db, sql, nullptr, nullptr, &err_msg), SQLITE_OK, [&err_msg](auto err) {
-    auto ec = make_error_condition(err, err_msg);
-    sqlite3_free(err_msg);
-    return ec;
-  });
+  Defer defer{[&err_msg]() {
+    if (err_msg) sqlite3_free(err_msg);
+  }};
 
-  EXPECT_N(
-      SQLITE_OK, [&db](auto err) { return make_error_condition(err, db); },
-      sqlite3_prepare_v3(db, sql_query.data(), static_cast<int>(sql_query.size()),
-                         SQLITE_PREPARE_PERSISTENT, std::out_ptr(query), nullptr),
-      sqlite3_prepare_v3(db, sql_delete.data(), static_cast<int>(sql_delete.size()),
-                         SQLITE_PREPARE_PERSISTENT, std::out_ptr(del), nullptr),
-      sqlite3_prepare_v3(db, sql_insert.data(), static_cast<int>(sql_insert.size()),
-                         SQLITE_PREPARE_PERSISTENT, std::out_ptr(insert), nullptr));
-  return {};
+  auto db = cache->db.get();
+  EXPECT(sqlite3_exec(db, sql, nullptr, nullptr, &err_msg), SQLITE_OK,
+         Error(e, std::string(err_msg)));
+  EXPECT_N(SQLITE_OK, Error(e, sqlite3_errmsg(db)),
+           sqlite3_prepare_v3(db, sql_query.data(), static_cast<int>(sql_query.size()),
+                              SQLITE_PREPARE_PERSISTENT, std::out_ptr(cache->query), nullptr),
+           sqlite3_prepare_v3(db, sql_delete.data(), static_cast<int>(sql_delete.size()),
+                              SQLITE_PREPARE_PERSISTENT, std::out_ptr(cache->del), nullptr),
+           sqlite3_prepare_v3(db, sql_insert.data(), static_cast<int>(sql_insert.size()),
+                              SQLITE_PREPARE_PERSISTENT, std::out_ptr(cache->insert), nullptr));
+  return cache;
 }
+
 SqliteCache::SqliteCache() {}
 
 constexpr bool SqliteCache::is_valid() const { return db != nullptr && query != nullptr; }
 
-std::expected<RR, std::error_condition> SqliteCache::get(std::string_view name, Type type = Type::A,
-                                                         Class class_ = Class::IN) {
+Expected<RR> SqliteCache::get(std::string_view name, Type type = Type::A,
+                              Class class_ = Class::IN) {
   auto eh = error_handler();
   EXPECT_N(
-      SQLITE_OK, eh,
+      SQLITE_OK, eh(e),
       sqlite3_bind_text(query.get(), 1, name.data(), static_cast<int>(name.size()), SQLITE_STATIC),
       sqlite3_bind_int(query.get(), 2, type._type),
       sqlite3_bind_int(query.get(), 3, class_._class));
@@ -69,17 +76,18 @@ std::expected<RR, std::error_condition> SqliteCache::get(std::string_view name, 
   } else if (ec != SQLITE_ROW) {     // TODO: handle SQLITE_BUSY
     return std::unexpected(eh(ec));  // Handle other errors
   }
-  TRY(sqlite3_column_blob(query.get(), 1), data, make_error_condition(db.get()));
-  TRY(sqlite3_column_bytes(query.get(), 1), data_size, make_error_condition(db.get()));
+  TRY(data, sqlite3_column_blob(query.get(), 1),
+      Error(sqlite3_extended_errcode(db.get()), sqlite3_errmsg(db.get())));
+  TRY(data_size, sqlite3_column_bytes(query.get(), 1),
+      Error(sqlite3_extended_errcode(db.get()), sqlite3_errmsg(db.get())));
   int ttl = sqlite3_column_int(query.get(), 2);
   int timestamp = sqlite3_column_int(query.get(), 3);
   auto now = std::chrono::system_clock::now().time_since_epoch().count();
   if (ttl <= 0 || (now - timestamp) > ttl) {
-    // log_debug("Record for name: {}, type: {}, class: {} has expired", name, type, class_);
     auto id = sqlite3_column_int(query.get(), 0);
-    EXPECT(sqlite3_bind_int(del.get(), 1, id), SQLITE_OK, eh);
+    EXPECT(sqlite3_bind_int(del.get(), 1, id), SQLITE_OK, eh(e));
     Defer defer_del{[this]() { sqlite3_reset(del.get()); }};
-    EXPECT(sqlite3_step(del.get()), SQLITE_DONE, eh);  // TODO: handle SQLITE_BUSY
+    EXPECT(sqlite3_step(del.get()), SQLITE_DONE, eh(e));  // TODO: handle SQLITE_BUSY
     return RR{nullptr};
   } else {
     auto rr = RR(data_size);
@@ -91,10 +99,10 @@ std::expected<RR, std::error_condition> SqliteCache::get(std::string_view name, 
     return rr;
   }
 }
-std::expected<void, std::error_condition> SqliteCache::put(std::string_view name, RRView v) {
+Expected<void> SqliteCache::put(std::string_view name, RRView v) {
   auto eh = error_handler();
   EXPECT_N(
-      SQLITE_OK, eh,
+      SQLITE_OK, eh(e),
       sqlite3_bind_text(insert.get(), 1, name.data(), static_cast<int>(name.size()),
                         SQLITE_TRANSIENT),
       sqlite3_bind_int(insert.get(), 2, v.type()._type),
@@ -102,6 +110,6 @@ std::expected<void, std::error_condition> SqliteCache::put(std::string_view name
       sqlite3_bind_int(insert.get(), 4, v.ttl()),
       sqlite3_bind_blob(insert.get(), 5, v.rdata(), static_cast<int>(v.rdlength()), SQLITE_STATIC));
   Defer defer{[this]() { sqlite3_reset(insert.get()); }};
-  EXPECT(sqlite3_step(insert.get()), SQLITE_DONE, eh);  // TODO: handle SQLITE_BUSY
+  EXPECT(sqlite3_step(insert.get()), SQLITE_DONE, eh(e));  // TODO: handle SQLITE_BUSY
   return {};
 }

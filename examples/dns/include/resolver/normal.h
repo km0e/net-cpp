@@ -52,15 +52,9 @@ class UdpResolver : public Resolver {
   using sockaddr_t = sys::net::SockAddr<SktTraitsType>;
 
 public:
-  static std::expected<std::unique_ptr<UdpResolver>, error_condition> create(Context &ctx,
-                                                                             std::string &&addr) {
-    uint16_t port = 53;
-    if (auto pos = addr.find(':'); pos != std::string::npos) {
-      port = static_cast<uint16_t>(std::stoi(addr.substr(pos + 1)));
-      addr.resize(pos);  // remove port from address
-    }
-    TRV(net::make_sockaddr<SktTraitsType>(addr.data(), port), sa,
-        make_ec_gen(std::format("Failed to parse address: {}", addr)));
+  static Expected<std::unique_ptr<UdpResolver>> create(Context &ctx, std::string_view ip,
+                                                       uint16_t port) {
+    TRV(sa, sys::net::make_sockaddr<SktTraitsType>(ip, port));
     return {std::make_unique<UdpResolver>(ctx, std::move(sa))};
   }
   UdpResolver(Context &ctx, sockaddr_t &&addr) : addr{std::move(addr)}, socket{ctx, addr} {}
@@ -83,7 +77,7 @@ public:
 
     {
       DnCompressor compressor{query.buf.data()};
-      CO_TRV(compressor.prepare(dn), size);
+      CO_TRV(size, compressor.prepare(dn));
       compressor.compress(query.buf.unfilled());
       query.buf.fill(size);
     }

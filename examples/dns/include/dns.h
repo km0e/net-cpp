@@ -1,3 +1,13 @@
+/**
+ * @file dns.h
+ * @author Haixin Pang (kmdr.error@gmail.com)
+ * @brief DNS core functionality
+ * @version 0.1.0
+ * @date 2025-08-05
+ *
+ * @copyright Copyright (c) 2025
+ *
+ */
 #pragma once
 #ifndef XSL_APP_DNS_CORE_H
 #  define XSL_APP_DNS_CORE_H
@@ -24,8 +34,8 @@ public:
   void add_resolver(std::string_view name, std::unique_ptr<ResolverType> &&resolver) {
     resolvers.emplace(name, std::move(resolver));
   }
-  Task<std::expected<std::pair<std::vector<dns::RRView>, DnsBuf>, error_condition>> get(
-      std::string_view name, Question &q) {
+  Task<Expected<std::pair<std::vector<dns::RRView>, DnsBuf>>> get(std::string_view name,
+                                                                  Question &q) {
     auto res = cache->get(name, q.type, q.class_);  // check cache first
     if (!res) {
       log_error("Cache error: {}", res.error().message());
@@ -58,8 +68,7 @@ public:
       }
       co_return std::make_pair(std::move(rrs), std::move(buf));
     }
-    co_return std::unexpected(
-        make_error_condition(errc::result_out_of_range, std::move(error_msg)));
+    co_return std::unexpected(Error(errc::result_out_of_range, std::move(error_msg)));
   }
   std::unique_ptr<DnsCache> cache;
   std::unordered_map<std::string, std::unique_ptr<Resolver>> resolvers;

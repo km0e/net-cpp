@@ -2,7 +2,7 @@
  * @file uri.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief URI handling
- * @version 0.1.0
+ * @version 0.1.1
  * @date 2025-06-14
  *
  * @copyright Copyright (c) 2024
@@ -50,6 +50,13 @@ struct AbsoluteUri {
   static constexpr std::string_view regex_str
       = R"(^([^:/?#]+)://(?:(?:[^/?#@]*@)?([^/?#:]*)(?::([^/?#]*))?)((?:/[^/?#]*)*)(?:\?([^#]*))?)";  /// <4
   static const std::regex regex_re;
+  static optional<AbsoluteUri> match(std::string_view sv) {
+    std::cmatch output;
+    if (std::regex_match(sv.begin(), sv.end(), output, regex_re)) {
+      return AbsoluteUri(std::ranges::subrange(output.begin() + 1, output.end()));
+    }
+    return std::nullopt;
+  }  ///< for convenience, use string_view
   std::string_view scheme = {};  ///< URI scheme, e.g., "http", "https"
   std::string_view host = {};    ///< authority host, may be empty
   std::string_view port = {};    ///< authority port, 0 means not specified
@@ -66,14 +73,6 @@ struct AbsoluteUri {
         port{output[2].first, output[2].second},
         path{output[3].first, output[3].second},
         query{output[4].first, output[4].second} {}
-  AbsoluteUri(std::string_view uri)
-      : AbsoluteUri([&]() -> AbsoluteUri {
-          std::cmatch output;
-          if (std::regex_match(uri.begin(), uri.end(), output, AbsoluteUri::regex_re)) {
-            return {std::ranges::subrange(output.begin() + 1, output.end())};
-          }
-          return {};
-        }()) {}
   AbsoluteUri& operator=(AbsoluteUri&&) = default;
 
   std::string_view origin_form() const {

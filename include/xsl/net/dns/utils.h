@@ -12,6 +12,7 @@
 #ifndef XSL_NET_DNS_UTILS_H
 #  define XSL_NET_DNS_UTILS_H
 #  include <xsl/def.h>
+#  include <xsl/error.h>
 #  include <xsl/net/dns/def.h>
 #  include <xsl/net/dns/proto/def.h>
 
@@ -109,7 +110,7 @@ public:
   /// @brief prepare the domain name for decompression
   errc decompress(std::span<const byte> &src);
   /// @brief prepare the domain name for decompression
-  std::expected<std::size_t, errc> decompress(const byte *src);
+  Expected<std::size_t> decompress(const byte *src);
   /// @brief get the decompressed domain name
   std::string_view dn() const;
   /// @brief get the needed memory size for the decompressed domain name

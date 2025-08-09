@@ -13,6 +13,7 @@
 #  define XSL_SYS_NET_SOCKET
 #  include <sys/socket.h>
 #  include <xsl/def.h>
+#  include <xsl/error.h>
 #  include <xsl/sys/dev.h>
 #  include <xsl/sys/net/def.h>
 #  include <xsl/sys/net/sockaddr.h>
@@ -32,7 +33,7 @@ struct ConnectionUtils {
     return check_ec(filter_interrupt(::connect, self.raw(), &addr, addrlen));
   }
   /// @brief Bind to a address
-  constexpr std::expected<void, errc> bind(this auto &self, const SockAddr<Traits> &sa) {
+  constexpr Expected<void> bind(this auto &self, const SockAddr<Traits> &sa) {
     auto [addr, addrlen] = sa.raw();
     return check_ec(::bind(self.raw(), &addr, addrlen));
   }

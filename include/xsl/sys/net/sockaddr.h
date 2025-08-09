@@ -2,7 +2,7 @@
  * @file sockaddr.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Socket address handling
- * @version 0.1.1
+ * @version 0.1.2
  * @date 2024-09-07
  *
  * @copyright Copyright (c) 2024
@@ -14,6 +14,7 @@
 #  include <arpa/inet.h>
 #  include <sys/socket.h>
 #  include <unistd.h>
+#  include <xsl/error.h>
 #  include <xsl/sys/net/def.h>
 
 #  include <cstdlib>
@@ -283,7 +284,7 @@ template <class... Flags>
 using SockAddrCompose = SockAddr<SocketTraits<Flags...>>;
 
 template <class... Flags>
-std::expected<SockAddrCompose<Flags...>, errc> make_sockaddr(const char *ip, uint16_t port) {
+Expected<SockAddrCompose<Flags...>> make_sockaddr(const char *ip, uint16_t port) {
   SockAddrCompose<Flags...> _addr{};
   auto [_addr_ptr, _addrlen] = _addr.raw();
   if (sockaddr_in6 *addr = reinterpret_cast<sockaddr_in6 *>(&_addr_ptr);
@@ -300,13 +301,20 @@ std::expected<SockAddrCompose<Flags...>, errc> make_sockaddr(const char *ip, uin
     _addrlen = sizeof(sockaddr_in);
     return std::expected<SockAddrCompose<Flags...>, errc>{std::in_place, std::move(_addr)};
   }
-  return std::unexpected{errc{errno}};
+  return std::unexpected{Error{}};
 }
 
 template <class... Flags>
 decltype(auto) make_sockaddr(const char *ip, const char *port) {
   return make_sockaddr<Flags...>(ip, static_cast<uint16_t>(std::atoi(port)));
 }
-
+template <class... Flags>
+decltype(auto) make_sockaddr(const std::string_view &ip, const char *port) {
+  return make_sockaddr<Flags...>(ip.data(), static_cast<uint16_t>(std::atoi(port)));
+}
+template <class... Flags>
+decltype(auto) make_sockaddr(const std::string_view &ip, uint16_t port) {
+  return make_sockaddr<Flags...>(ip.data(), static_cast<uint16_t>(port));
+}
 XSL_SYS_NET_NE
 #endif

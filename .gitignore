@@ -1,12 +1,22 @@
-compile_commands.json
-.cache/*
-build/*
-.xmake/*
-.vscode/*
-.ccls-cache/*
-log/
-.venv/
+# Xmake cache
+.xmake/
+build/
 
+# MacOS Cache
+.DS_Store
+
+compile_commands.json
+# Clangd cache
+.cache/*
+
+# CCLS cache
+.ccls-cache/*
+
+
+log/
+
+# Python cache
 __pycache__
 
+# CMake cache
 out/

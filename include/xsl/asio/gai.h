@@ -17,7 +17,6 @@
 #  include <xsl/io.h>
 #  include <xsl/sys.h>
 
-#  include <system_error>
 #  include <utility>
 XSL_ASIO_NB
 
@@ -73,15 +72,11 @@ namespace {
  * @return Task<std::expected<AsyncSocket<Traits>, std::error_condition>>
  */
 template <class... Flags, typename Traits = sys::net::SocketTraits<Flags...>, typename... Args>
-Task<std::expected<AsyncSocket<Traits>, std::error_condition>> gai_async_connect(Context &ctx,
-                                                                                 Args &&...args) {
-  auto res_resolved = sys::net::getaddrinfo<Traits>(std::forward<Args>(args)...);
-  if (!res_resolved) {
-    co_return std::unexpected{res_resolved.error()};
-  }
+Task<Expected<AsyncSocket<Traits>>> gai_async_connect(Context &ctx, Args &&...args) {
+  CO_TRV(res_resolved, sys::net::getaddrinfo<Traits>(std::forward<Args>(args)...));
   using Skt = sys::net::Socket<Traits>;
   errc ec;
-  for (auto &ai : *res_resolved) {
+  for (auto &ai : res_resolved) {
     Skt skt(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
     if (!skt.is_valid()) {
       continue;

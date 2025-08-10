@@ -44,10 +44,9 @@ function target(target) end
 ---@return nil
 function set_kind(kind) end
 
----@param packages string
----@param options table?
+---@param ... string|table
 ---@return nil
-function add_packages(packages, options) end
+function add_packages(...) end
 
 ---@param option string
 ---@return nil
@@ -148,3 +147,7 @@ function option_end() end
 ---@param action function
 ---@return nil
 function before_prepare(action) end
+
+---@param opimization string
+---@return nil
+function set_optimize(opimization) end

@@ -71,7 +71,7 @@ namespace xsl::asio {
     using io_dev_type = AsyncSocket<Traits>;
 
     template <class Poller>
-    std::expected<tcp::Server<Traits>, std::error_condition> make_creator(
+    Expected<tcp::Server<Traits>> make_creator(
         const std::shared_ptr<Poller> &poller, std::string_view host,
         std::string_view port)  /// TODO: add attr opt for socket
     {
@@ -79,7 +79,7 @@ namespace xsl::asio {
       auto copy_poller = poller;
       auto skt = net::gai_bind<Traits>(host.data(), port.data());
       if (!skt) return std::unexpected(skt.error());
-      HNSURE(skt->listen(), Error(e, std::format("Failed to listen on {}:{}", host, port)));
+      HNSURE(skt->listen());
       return {{host, port, std::move(copy_poller), *poller, std::move(*skt)}};
     }
   };
@@ -89,16 +89,15 @@ namespace xsl::asio {
     using io_dev_type = AsyncSocket<Traits>;
 
     template <class Poller>
-    std::expected<AsyncSocket<Traits>, std::error_condition> make_io(
-        Poller &poller, std::string_view host,
-        std::string_view port)  /// TODO: add attr opt for socket
+    Expected<AsyncSocket<Traits>> make_io(Poller &poller, std::string_view host,
+                                          std::string_view port)  /// TODO: add attr opt for socket
     {
       auto skt = net::gai_bind<Traits>(host.data(), port.data());
       if (!skt) return std::unexpected(skt.error());
       return {{poller, std::move(*skt)}};
     }
     template <class Poller>
-    std::expected<AsyncSocket<Traits>, std::error_condition> make_io_to(
+    Expected<AsyncSocket<Traits>> make_io_to(
         Poller &poller, std::string_view host,
         std::string_view port)  /// TODO: add attr opt for socket
     {

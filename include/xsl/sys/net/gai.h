@@ -12,13 +12,13 @@
 #ifndef XSL_SYS_NET_GAI
 #  define XSL_SYS_NET_GAI
 #  include <netdb.h>
+#  include <xsl/error.h>
 #  include <xsl/sys/net/def.h>
 
 #  include <cstddef>
 #  include <cstdio>
 #  include <cstring>
 #  include <iterator>
-#  include <system_error>
 #  include <utility>
 XSL_SYS_NET_NB
 
@@ -86,27 +86,6 @@ public:
   addrinfo *info;
 };
 
-namespace {
-  class ResolveCategory : public std::error_category {
-  public:
-    ~ResolveCategory() = default;
-
-    constexpr const char *name() const noexcept override { return "resolve"; }
-    std::error_condition default_error_condition(int ev) const noexcept override {
-      return ev == 0 ? std::error_condition{} : std::error_condition{ev, *this};
-    }
-    constexpr bool equivalent(int code,
-                              const std::error_condition &condition) const noexcept override {
-      return condition.category() == *this && condition.value() == code;
-    }
-    constexpr bool equivalent(const std::error_code &code, int condition) const noexcept override {
-      return code.category() == *this && code.value() == condition;
-    }
-    constexpr std::string message(int ev) const override { return gai_strerror(ev); }
-  };
-
-}  // namespace
-
 enum class ResolveFlag : int {
   ZERO = 0,
   V4MAPPED = AI_V4MAPPED,
@@ -125,12 +104,10 @@ constexpr ResolveFlag operator|(ResolveFlag lhs, ResolveFlag rhs) {
 const ResolveFlag SERVER_FLAGS = ResolveFlag::ADDRCONFIG | ResolveFlag::PASSIVE;
 const ResolveFlag CLIENT_FLAGS = ResolveFlag::ADDRCONFIG;
 
-template <class Traits>
-using ResolveResult = std::expected<AddrInfos<Traits>, std::error_condition>;
-
 namespace {
   template <class Traits>
-  constexpr ResolveResult<Traits> resolve(const char *name, const char *serv, ResolveFlag flags) {
+  constexpr Expected<AddrInfos<Traits>> resolve(const char *name, const char *serv,
+                                                ResolveFlag flags) {
     addrinfo hints;
     addrinfo *res;
     std::memset(&hints, 0, sizeof(hints));
@@ -141,10 +118,7 @@ namespace {
       hints.ai_family = AF_UNSPEC;  // AF_UNSPEC for any family
     hints.ai_socktype = Traits{}.type();
     hints.ai_protocol = Traits{}.protocol();
-    int ret = getaddrinfo(name, serv, &hints, &res);
-    if (ret != 0) {
-      return std::unexpected{std::error_condition{ret, ResolveCategory()}};
-    }
+    ENSURE(getaddrinfo(name, serv, &hints, &res), );
     return {AddrInfos<Traits>(res)};
   }
 }  // namespace

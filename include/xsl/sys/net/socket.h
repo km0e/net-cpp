@@ -28,7 +28,7 @@ class Socket;
 template <class Traits>
 struct ConnectionUtils {
   /// @brief Connect to a address
-  expected<void, errc> connect(this Socket<Traits> &self, const SockAddr<Traits> &sa) {
+  Expected<void> connect(this Socket<Traits> &self, const SockAddr<Traits> &sa) {
     auto [addr, addrlen] = sa.raw();
     return check_ec(filter_interrupt(::connect, self.raw(), &addr, addrlen));
   }
@@ -85,7 +85,7 @@ struct ConnectionUtils<Traits> {
     return ConnectionUtils::accept(self.raw(), addr);
   }
   /// @brief Start listening
-  constexpr std::expected<void, errc> listen(this auto &&self, int max_connections = 128) {
+  constexpr Expected<void> listen(this auto &&self, int max_connections = 128) {
     return check_ec(::listen(self.raw(), max_connections));
   }
 

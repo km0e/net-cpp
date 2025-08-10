@@ -32,23 +32,18 @@ XSL_SYS_NET_NB
  */
 
 template <class... Flags, ConnectionLessSocketTraits Traits = SocketTraits<Flags...>, class... Args>
-constexpr std::expected<Socket<Traits>, std::error_condition> gai_connect(Args &&...args) {
-  auto res_resolved = getaddrinfo<Flags...>(std::forward<Args>(args)...);
-  if (!res_resolved) {
-    return std::unexpected{res_resolved.error()};
-  }
+constexpr Expected<Socket<Traits>> gai_connect(Args &&...args) {
+  TRV(res_resolved, getaddrinfo<Flags...>(std::forward<Args>(args)...));
   auto skt = Socket<Traits>();
-  if (!skt.is_valid()) {
-    return std::unexpected{current_ec()};
-  }
+  ENSURE(skt.is_valid(), );
   int ec = 0;
-  for (auto &ai : *res_resolved) {
+  for (auto &ai : res_resolved) {
     ec = filter_interrupt(::connect, skt.raw(), ai.ai_addr, ai.ai_addrlen);
     if (ec == 0) {
       return std::move(skt);
     }
   }
-  return std::unexpected{errc{errno}};
+  return std::unexpected{Error{}};
 }
 
 /**
@@ -62,14 +57,11 @@ constexpr std::expected<Socket<Traits>, std::error_condition> gai_connect(Args &
  * @return std::expected<Socket<Traits>, std::error_condition>
  */
 template <class... Flags, class Traits = SocketTraits<Flags...>, class... Args>
-std::expected<Socket<Traits>, std::error_condition> gai_bind(Args &&...args) {
-  auto res_resolved = getaddrinfo<Flags...>(std::forward<Args>(args)...);
-  if (!res_resolved) {
-    return std::unexpected{res_resolved.error()};
-  }
+Expected<Socket<Traits>> gai_bind(Args &&...args) {
+  TRV(res_resolved, getaddrinfo<Flags...>(std::forward<Args>(args)...));
   using Skt = Socket<Traits>;
   errc ec{};
-  for (auto &ai : *res_resolved) {
+  for (auto &ai : res_resolved) {
     Skt skt(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
     if (!skt.is_valid()) {
       log_warning("Failed to create socket, err: {}", current_ec().message());
@@ -86,7 +78,7 @@ std::expected<Socket<Traits>, std::error_condition> gai_bind(Args &&...args) {
     }
     ec = errc{errno};
   }
-  return std::unexpected{std::make_error_condition(ec)};
+  return std::unexpected{Error(ec)};
 }
 
 XSL_SYS_NET_NE

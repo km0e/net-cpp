@@ -158,12 +158,15 @@ public:
    *
    * @return Service<in_dev_type, out_dev_type, router_type>
    */
-  constexpr auto build(this ServiceBuilder&& self) { return std::move(self.s); }
+  constexpr auto build(this ServiceBuilder&& self) noexcept(
+      std::is_nothrow_move_constructible_v<Service<I, O, Rt>>) {
+    return std::move(self.s);
+  }
 
 private:
   Service<I, O, Rt> s = {};  ///< Details of the service, including handlers and status handlers
   id_type _id = 1;           ///< Id for path handlers
-  constexpr void try_update_id(id_type& id) {
+  constexpr void try_update_id(id_type& id) noexcept(noexcept(std::exchange(_id, _id.value + 1))) {
     if (!id) {
       id = std::exchange(_id,
                          _id.value + 1);  ///< Try to update the id if it is not set

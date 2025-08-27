@@ -2,7 +2,7 @@
  * @file utils.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief socket utilities
- * @version 0.1.1
+ * @version 0.2.0
  * @date 2025-06-07
  *
  * @copyright Copyright (c) 2025
@@ -12,12 +12,14 @@
 #ifndef XSL_SYS_NET_UTILS
 #  define XSL_SYS_NET_UTILS
 #  include <netdb.h>
+#  include <xsl/error.h>
+#  include <xsl/feature.h>
 #  include <xsl/sys/net/def.h>
+#  include <xsl/sys/net/gai.h>
 #  include <xsl/sys/net/socket.h>
 #  include <xsl/sys/raw.h>
 
 #  include <cerrno>
-#  include <system_error>
 #  include <utility>
 XSL_SYS_NET_NB
 
@@ -28,14 +30,14 @@ XSL_SYS_NET_NB
  * @tparam Traits
  * @tparam Args
  * @param args The arguments for getaddrinfo
- * @return std::expected<Socket<Traits>, std::error_condition>
+ * @return Expected<Socket<Traits>>
  */
 
 template <class... Flags, ConnectionLessSocketTraits Traits = SocketTraits<Flags...>, class... Args>
 constexpr Expected<Socket<Traits>> gai_connect(Args &&...args) {
   TRV(res_resolved, getaddrinfo<Flags...>(std::forward<Args>(args)...));
   auto skt = Socket<Traits>();
-  ENSURE(skt.is_valid(), );
+  ENSURE(skt.is_valid(), errno);
   int ec = 0;
   for (auto &ai : res_resolved) {
     ec = filter_interrupt(::connect, skt.raw(), ai.ai_addr, ai.ai_addrlen);
@@ -43,7 +45,7 @@ constexpr Expected<Socket<Traits>> gai_connect(Args &&...args) {
       return std::move(skt);
     }
   }
-  return std::unexpected{Error{}};
+  RETURN(ec);
 }
 
 /**
@@ -60,11 +62,11 @@ template <class... Flags, class Traits = SocketTraits<Flags...>, class... Args>
 Expected<Socket<Traits>> gai_bind(Args &&...args) {
   TRV(res_resolved, getaddrinfo<Flags...>(std::forward<Args>(args)...));
   using Skt = Socket<Traits>;
-  errc ec{};
+  int ec{};
   for (auto &ai : res_resolved) {
     Skt skt(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
     if (!skt.is_valid()) {
-      log_warning("Failed to create socket, err: {}", current_ec().message());
+      log_warning("Failed to create socket, err: {}", std::strerror(errno));
       continue;
     }
     log_debug("Set non-blocking to fd: {}", skt.raw());
@@ -76,9 +78,74 @@ Expected<Socket<Traits>> gai_bind(Args &&...args) {
     if (::bind(skt.raw(), ai.ai_addr, ai.ai_addrlen) == 0) {
       return std::move(skt);
     }
-    ec = errc{errno};
+    ec = errno;
   }
-  return std::unexpected{Error(ec)};
+  RETURN(ec);
+}
+
+template <class Traits>
+struct TcpIpSocketUtils : Traits {
+  using io_dev_type = Socket<Traits>;
+
+  template <class... Flags>  /// TODO: add attr opt for socket
+  Expected<SocketCompose<Traits, Flags...>> c(const char *ip, inet::port_t port) noexcept {
+    using traits_type = SocketTraits<Traits, Flags...>;
+    TRV(addr, make_sockaddr<traits_type>(ip, port));
+    TRV(sock, socket(addr));
+    ENSURE(sock.reuse_addr());
+    ENSURE(sock.bind(addr));
+    return std::move(sock);
+  }
+};
+
+template <class Traits>
+struct UdpIpSocketUtils : Traits {
+  using io_dev_type = Socket<Traits>;
+
+  template <class... Flags>  /// TODO: add attr opt for socket
+  Expected<SocketCompose<Traits, Flags...>> c(const char *ip, inet::port_t port) noexcept {
+    using traits_type = SocketTraits<Traits, Flags...>;
+    TRV(addr, make_sockaddr<traits_type>(ip, port));
+    TRV(sock, socket(addr));
+    ENSURE(sock.reuse_addr());
+    ENSURE(sock.bind(addr));
+    return std::move(sock);
+  }
+  template <class... Flags>  /// TODO: add attr opt for socket
+  Expected<SocketCompose<Traits, Flags...>> c2(const char *ip, inet::port_t port) noexcept {
+    using traits_type = SocketTraits<Traits, Flags...>;
+    TRV(addr, make_sockaddr<traits_type>(ip, port));
+    TRV(sock, socket(addr));
+    ENSURE(sock.connect(addr));
+    return std::move(sock);
+  }
+};
+
+template <class Traits>
+struct SocketUtils {
+  using io_dev_type = Socket<Traits>;
+  template <class... Flags>  /// TODO: add attr opt for socket
+  Expected<SocketCompose<Traits, Flags...>> c(const char *ip, inet::port_t port) noexcept;
+};
+
+template <>
+struct SocketUtils<TcpIpv4SocketTraits> : TcpIpSocketUtils<TcpIpv4SocketTraits> {};
+
+template <>
+struct SocketUtils<TcpIpSocketTraits> : TcpIpSocketUtils<TcpIpSocketTraits> {};
+
+template <>
+struct SocketUtils<TcpIpv6SocketTraits> : TcpIpSocketUtils<TcpIpv6SocketTraits> {};
+
+template <>
+struct SocketUtils<UdpIpv4SocketTraits> : UdpIpSocketUtils<UdpIpv4SocketTraits> {};
+
+template <>
+struct SocketUtils<UdpIpSocketTraits> : UdpIpSocketUtils<UdpIpSocketTraits> {};
+
+template <class... Flags>
+consteval auto make_socket_utils() {
+  return SocketUtils<net::SocketTraits<Flags...>>();
 }
 
 XSL_SYS_NET_NE

@@ -19,7 +19,6 @@
 #  include <cassert>
 #  include <cstddef>
 #  include <cstdint>
-#  include <expected>
 #  include <span>
 #  include <string_view>
 XSL_NET_DNS_NB
@@ -42,7 +41,7 @@ public:
    * truncated
    * @return std::size_t
    */
-  std::expected<std::size_t, errc> prepare(std::string_view src);
+  Expected<std::size_t, errc> prepare(std::string_view src);
   /**
    * @brief compress the domain name
    *
@@ -58,7 +57,7 @@ public:
     //               >= _src.size() - suffix_len + 2 + (0 < suffix_len && suffix_len <
     //               _src.size()));
     memcpy(_dst + 1, _src.data(), _src.size() - suffix_len);
-    std::size_t i = 0;
+    auto i = 0uz;
     for (std::size_t j = 0; i < _src.size() - suffix_len; j++) {
       _dst[i] = byte{lens[j]};
       i += lens[j] + 1;  // jump to the next label length field
@@ -110,7 +109,7 @@ public:
   /// @brief prepare the domain name for decompression
   errc decompress(std::span<const byte> &src);
   /// @brief prepare the domain name for decompression
-  Expected<std::size_t> decompress(const byte *src);
+  Expected<std::size_t, errc> decompress(const byte *src);
   /// @brief get the decompressed domain name
   std::string_view dn() const;
   /// @brief get the needed memory size for the decompressed domain name

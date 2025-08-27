@@ -2,7 +2,7 @@
  * @file macro.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Macro utilities for error handling and dispatching
- * @version 0.1.1
+ * @version 0.1.2
  * @date 2025-08-05
  *
  * @copyright Copyright (c) 2024
@@ -37,6 +37,18 @@ XSL_NB
  *
  * */
 #  define __MACRO_DISPATCH(pre, ...) __CONCAT2(pre, __NUM_ARGS(__VA_ARGS__))(__VA_ARGS__)
+
+#  define __IGNORE_1(a, ...) (__VA_ARGS__)
+
+#  define __WRAP_LAMBDA(...) [&]() { return (__VA_ARGS__); }
+
+#  define __MAP_N(macro, ...) __MACRO_DISPATCH(__MAP_, macro, __VA_ARGS__)
+
+#  define __MAP_2(macro, a) macro(a)
+#  define __MAP_3(macro, a, ...) macro(a), __MAP_2(macro, __VA_ARGS__)
+#  define __MAP_4(macro, a, ...) macro(a), __MAP_3(macro, __VA_ARGS__)
+#  define __MAP_5(macro, a, ...) macro(a), __MAP_4(macro, __VA_ARGS__)
+#  define __MAP_6(macro, a, ...) macro(a), __MAP_5(macro, __VA_ARGS__)
 
 XSL_NE
 #endif

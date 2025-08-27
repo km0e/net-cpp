@@ -77,11 +77,6 @@ public:
     }
   }
 };
-
-#  define CO_TRV(...) __MACRO_DISPATCH(__CO_TRV_, __VA_ARGS__)
-
-#  define __CO_TRV_2(var, expr) __BASE__TRV(co_, var, expr)
-
 XSL_CORO_NE
 
 #endif  // XSL_CORO_DEF

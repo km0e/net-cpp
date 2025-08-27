@@ -2,7 +2,7 @@
  * @file pipe.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Async pipe device
- * @version 0.1.0
+ * @version 0.1.1
  * @date 2025-06-03
  *
  * @copyright Copyright (c) 2025
@@ -17,9 +17,13 @@
 XSL_ASIO_NB
 
 const size_t MAX_SINGLE_FWD_SIZE = 4096;
-using AsyncPipeReadDevice = AsyncDevice<io::IOM_EVENTS::IN>;
+struct AsyncPipeTraits {
+  using poll_traits_type = io::DefaultPollTraits;
+};
 
-using AsyncPipeWriteDevice = AsyncDevice<io::IOM_EVENTS::OUT>;
+using AsyncPipeReadDevice = AsyncDevice<_value_pack<io::IOM_EVENTS::IN>, AsyncPipeTraits>;
+
+using AsyncPipeWriteDevice = AsyncDevice<_value_pack<io::IOM_EVENTS::OUT>, AsyncPipeTraits>;
 
 /// @brief create a async pipe
 std::expected<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>, errc> async_pipe(Context& ctx);
@@ -91,11 +95,8 @@ Task<void> splice_bidirectional(From from, To to, AsyncPipeReadDevice pipe_in,
  */
 template <AsyncRead From, AsyncWrite To>
 std::expected<Task<void>, errc> splice_bidirectional(From from, To to, Context& ctx) {
-  auto pipe = async_pipe(ctx);
-  if (!pipe) {
-    return std::unexpected(pipe.error());
-  }
-  auto [pipe_in, pipe_out] = std::move(*pipe);
+  TRVEC(pipe, async_pipe(ctx));
+  auto [pipe_in, pipe_out] = std::move(pipe);
   return {splice_bidirectional(std::move(from), std::move(to), std::move(pipe_in),
                                std::move(pipe_out))};
 }

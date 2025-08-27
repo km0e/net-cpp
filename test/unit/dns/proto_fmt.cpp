@@ -65,7 +65,7 @@ TEST(dns_proto, header) {
   std::span<byte> buf = std::as_writable_bytes(std::span(bytes, 12));
 
   header.serialize(buf);
-  for (std::size_t i = 0; i < 12; ++i) {
+  for (auto i = 0uz; i < 12; ++i) {
     EXPECT_EQ(bytes[i], expected[i]) << "Byte " << i << " mismatch";
   }
 

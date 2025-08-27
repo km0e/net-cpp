@@ -35,7 +35,7 @@ struct Test<Placeholder, char> {
 };
 
 template <class... Flags>
-using Test_t = organize_feature_flags_t<Test<int, set<char, float>>, Flags...>;
+using Test_t = select_feature_flags_t<Test<int, set<char, float>>, Flags...>;
 
 TEST(feature, organize_feature_flags_t) {
   ASSERT_EQ((Test_t<float>::f()), 1);

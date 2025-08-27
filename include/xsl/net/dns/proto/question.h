@@ -22,8 +22,8 @@ XSL_NET_DNS_NB
 struct Question {
   static constexpr std::size_t SIZE = 4;  ///< size of the question (type + class)
 
-  Type type;     ///< type of the question
-  Class class_;  ///< class of the question
+  Type type = Type::ANY;      ///< type of the question
+  Class class_ = Class::ANY;  ///< class of the question
 
   constexpr Question() = default;
   constexpr Question(Type type, Class class_) : type(type), class_(class_) {}

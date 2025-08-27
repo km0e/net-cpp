@@ -22,8 +22,8 @@ using namespace xsl;
 
 Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Context> ctx) {
   byte buffer[4096]{};
-  auto util = make_socket_io_utils<UdpIpv4>();
-  auto rw = *util.make_io_to(*ctx, ip.data(), port.data());
+  auto util = make_async_socket_utils<UdpIpv4>();
+  auto rw = *util.c2(*ctx, ip.data(), port.data());
   while (true) {
     std::cin.read(reinterpret_cast<char *>(buffer), sizeof(buffer));
     auto res = co_await rw.write(buffer, std::cin.gcount());

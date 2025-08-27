@@ -2,7 +2,7 @@
  * @file task.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Task coroutine
- * @version 0.2.2
+ * @version 0.2.3
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -30,7 +30,9 @@ XSL_CORO_NB
 
 class NextBase {
 public:
-  constexpr NextBase() : _next(nullptr), _executor(nullptr) {}
+  constexpr NextBase() noexcept(noexcept(std::coroutine_handle<>{nullptr})
+                                && noexcept(std::shared_ptr<ExecutorBase>{nullptr}))
+      : _next(nullptr), _executor(nullptr) {}
 
   constexpr std::suspend_always initial_suspend() const noexcept { return {}; }
 
@@ -109,7 +111,7 @@ public:
 protected:
   std::coroutine_handle<promise_type> _handle;
 
-  constexpr std::coroutine_handle<promise_type> move_handle() && {
+  constexpr std::coroutine_handle<promise_type> move_handle() && noexcept {
     return std::exchange(this->_handle, {});
   }
 
@@ -127,7 +129,8 @@ public:
     }
   }
 
-  constexpr auto operator co_await(this auto &&self) {
+  constexpr auto operator co_await(this auto &&self) noexcept(
+      std::is_nothrow_move_constructible_v<Task>) {
     log_trace("move handle to Awaiter");
     return std::move(self);
   }
@@ -136,12 +139,24 @@ public:
     return ThenAwaiter<Task>(std::move(self).move_handle()).then(std::forward<decltype(f)>(f));
   }
 
-  constexpr auto and_then(this Task &&self,
-                          std::invocable<typename result_type::value_type> auto &&f)
-    requires is_same_pack_v<result_type, std::expected<void, void>>
-  {
-    return ThenAwaiter<Task>(std::move(self).move_handle()).and_then(std::forward<decltype(f)>(f));
+  template <class Self, class Res = Self::result_type>
+    requires(!std::is_reference_v<Self>) && is_same_pack_v<Res, std::expected<void, void>>
+  constexpr decltype(auto) and_then(this Self &&self,
+                                    std::invocable<typename Res::value_type> auto &&f) {
+    return std::move(self).then([f = std::forward<decltype(f)>(f)](auto &&res) {
+      return std::forward<decltype(res)>(res).and_then(f);
+    });
   }
+
+  template <class Self, class Res = Self::result_type>
+    requires(!std::is_reference_v<Self>) && is_same_pack_v<Res, std::expected<void, void>>
+  constexpr decltype(auto) map(this Self &&self,
+                               std::invocable<typename Res::value_type> auto &&f) {
+    return std::move(self).then([f = std::forward<decltype(f)>(f)](auto &&res) {
+      return std::forward<decltype(res)>(res).transform(f);
+    });
+  }
+
   /**
    * @brief Block the task
    *
@@ -149,7 +164,7 @@ public:
    * @param self
    * @return result_type
    */
-  constexpr result_type block(this Task &&self) {
+  constexpr result_type block(this auto &&self) {
     log_trace("Task block");
     return coro::block(std::move(self));
   }

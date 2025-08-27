@@ -39,7 +39,8 @@ public:
 
   constexpr const std::shared_ptr<ExecutorBase> &executor() const noexcept { return _executor; }
 
-  constexpr void by(this auto &&self, auto &&executor) {
+  constexpr void by(this auto &&self, auto &&executor) noexcept(
+      std::is_nothrow_assignable_v<std::shared_ptr<ExecutorBase>, decltype(executor)>) {
     self._executor = std::forward<decltype(executor)>(executor);
   }
 

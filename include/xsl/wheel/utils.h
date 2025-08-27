@@ -73,8 +73,9 @@ constexpr void rt_assert(Cond&& cond, T msg,
 template <class T>
 class Defer {
 public:
-  constexpr Defer(T&& t) : _t(std::forward<T>(t)) {}
-  constexpr ~Defer() { _t(); }
+  constexpr Defer(T&& t) noexcept(std::is_nothrow_move_constructible_v<T>)
+      : _t(std::forward<T>(t)) {}
+  constexpr ~Defer() noexcept(noexcept(std::declval<T>()())) { _t(); }
 
 private:
   T _t;

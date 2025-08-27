@@ -244,4 +244,5 @@ namespace std {
 
 LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::_net::dns::Type);
 LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::_net::dns::Class);
+
 #endif

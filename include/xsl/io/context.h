@@ -2,7 +2,7 @@
  * @file context.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Context for I/O operations
- * @version 0.1.1
+ * @version 0.1.2
  * @date 2025-06-02
  *
  * @copyright Copyright (c) 2025
@@ -13,6 +13,7 @@
 #ifndef XSL_IO_CONTEXT
 #  define XSL_IO_CONTEXT
 #  include <sys/epoll.h>
+#  include <xsl/error.h>
 #  include <xsl/io/def.h>
 #  include <xsl/sync.h>
 
@@ -104,33 +105,14 @@ struct DefaultPollTraits {
 template <class Storage>
 struct PollHandlerTraits;
 
-template <class Traits, class Storage>
-class PollForCoro : public Storage {
-public:
-  using traits_type = PollHandlerTraits<Storage>;
-
-  template <class... Args>
-    requires std::constructible_from<Storage, Args...>
-  constexpr PollForCoro(Traits, Args&&... args) : Storage(std::forward<Args>(args)...) {}
-
-  constexpr PollHandleHint operator()(int, IOM_EVENTS events) {
-    if (Traits::poll_check(events) == PollHandleHintTag::DELETE) {
-      return PollHandleHintTag::DELETE;
-    } else {
-      traits_type::pubsub(*this)->publish([&events](IOM_EVENTS e) { return !!(events & e); });
-      return PollHandleHintTag::NONE;
-    }
-  }
-};
-
 using HandleProxy = std::function<PollHandleHint(std::function<PollHandleHint()>&&)>;
 class Context {
 public:
   Context();
   Context(std::shared_ptr<HandleProxy>&& proxy);
   ~Context();
-  constexpr bool valid() { return this->fd != -1; }
-  bool add(int fd, IOM_EVENTS events, PollHandler&& handler);
+  constexpr bool valid() noexcept { return this->fd != -1; }
+  Expected<void, errc> add(int fd, IOM_EVENTS events, PollHandler&& handler);
   constexpr bool modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) {
     if (!this->valid()) {
       return false;

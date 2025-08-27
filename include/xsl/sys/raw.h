@@ -18,7 +18,6 @@
 #  include <xsl/sys/def.h>
 
 #  include <expected>
-#  include <system_error>
 #  include <utility>
 XSL_SYS_NB
 using RawHandle = int;  ///< RawHandle is a file descriptor type
@@ -96,11 +95,11 @@ constexpr int filter_interrupt(F &&f, auto &&...args) {
 }
 
 constexpr Expected<void> check_ec(int ret) {
-  ENSURE(ret != -1, errc{errno});
+  ENSURE(ret != -1, errno);
   return {};
 }
 
-inline std::error_condition current_ec() { return std::make_error_condition(errc{errno}); }
+inline errc current_ec() noexcept { return errc{errno}; }
 
 // TODO: Implement the timer
 //  int timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);

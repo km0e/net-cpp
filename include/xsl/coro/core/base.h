@@ -25,7 +25,8 @@ class PromiseBase {
 public:
   using result_type = ResultType;
 
-  constexpr PromiseBase() : _result() {}
+  constexpr PromiseBase() noexcept(std::is_nothrow_default_constructible_v<Result<ResultType>>)
+      : _result() {}
 
   constexpr auto get_return_object(this auto &&self) noexcept {
     log_trace("get_return_object");
@@ -34,7 +35,10 @@ public:
     return coro_type{std::coroutine_handle<promise_type>::from_promise(self)};
   }
 
-  constexpr void unhandled_exception() { this->_result = std::current_exception(); }
+  constexpr void unhandled_exception() noexcept(noexcept(this->_result
+                                                         = std::current_exception())) {
+    this->_result = std::current_exception();
+  }
 
   /**
    * @brief Return a value
@@ -57,7 +61,8 @@ protected:
 
 public:
   using typename Base::result_type;
-  constexpr void return_value(result_type &&value) {
+  constexpr void return_value(result_type &&value) noexcept(
+      noexcept(this->_result.template emplace<result_type>(std::move(value)))) {
     log_trace("Promise return_value");
     _result.template emplace<result_type>(std::move(value));
   }
@@ -71,7 +76,7 @@ protected:
 
 public:
   using typename Base::result_type;
-  constexpr void return_void() {}
+  constexpr void return_void() noexcept {}
 };
 XSL_CORO_NE
 #endif

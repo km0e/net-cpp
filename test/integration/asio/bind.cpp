@@ -52,7 +52,7 @@ protected:
   Task<void> echo(AsyncSocket<Traits> &skt) {
     auto N = TEST_COUNT;
     while (N--) {
-      auto res_skt = co_await skt.accept();
+      auto res_skt = co_await skt.accept_async(*ctx);
       if (!res_skt.has_value()) {
         co_return;
       }
@@ -70,7 +70,7 @@ protected:
             break;
           }
         }
-      }(AsyncSocket(*ctx, std::move(*res_skt)));
+      }(std::move(*res_skt));
     }
   }
 
@@ -86,19 +86,16 @@ public:
 
 TEST_F(AsyncSocketIOFixture, tcp_bind) {
   using namespace xsl;
-  auto res_skt = net::gai_bind<TcpIpv4>(port);
-  if (!res_skt.has_value()) {
-    log_debug("Failed to bind: {}", res_skt.error().message());
-  }
-  ASSERT_TRUE(res_skt->listen()) << "Failed to listen";
-  ASSERT_TRUE(res_skt.has_value());
-  auto skt = AsyncSocket(*ctx, std::move(*res_skt));
-  echo(skt).detach();
+  auto util = make_async_socket_utils<TcpIpv4>();
+  auto res = util.c(*ctx, "0.0.0.0", port);  // to init the util
+  ASSERT_TRUE(res.has_value());
+  ASSERT_TRUE(res->listen()) << "Failed to listen";
+  echo(*res).detach();
   xsl::flush_log();
   auto N = TEST_COUNT;
   while (N--) {
     // auto res_client = getaddrinfo<TcpIpv4>("127.0.0.1", port);
-    auto res_client = gai_async_connect<TcpIpv4>(*ctx, "127.0.0.1", port).block();
+    auto res_client = util.ac2(*ctx, "127.0.0.1", port).block();
     ASSERT_TRUE(res_client.has_value());
     auto client = std::move(*res_client);
     auto buf = std::make_unique<char[]>(1024);

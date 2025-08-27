@@ -43,7 +43,7 @@ struct StaticFileConfig {
    * @param index the index file name, default is "index.html"
    * @return StaticFileConfig&
    */
-  auto& directory_index(std::string_view index) {
+  inline auto& directory_index(std::string_view index) {
     this->directory_index_ = index;
     return *this;
   }  // set the directory index file
@@ -242,7 +242,9 @@ public:
   using in_dev_type = ABI;
   using out_dev_type = ABO;
 
-  constexpr FolderRouteHandler(StaticFileConfig&& cfg) : Base(std::move(cfg)) {}
+  constexpr FolderRouteHandler(StaticFileConfig&& cfg) noexcept(
+      std::is_nothrow_move_constructible_v<StaticFileConfig>)
+      : Base(std::move(cfg)) {}
   constexpr ~FolderRouteHandler() {}
   HandleResult operator()(HandleContext<in_dev_type, out_dev_type>& ctx) {
     log_debug("FolderRouteHandler: {}", ctx.current_path);
@@ -268,19 +270,18 @@ public:
 template <AsyncRead R, AsyncWrite W>
 constexpr Handler<R, W> create_static_handler(StaticFileConfig&& cfg) {
   using handler_type = Handler<R, W>;
-  rt_assert(!cfg.path.empty(), "path is empty");
+  assert(!cfg.path.empty() && "path is empty");
   std::error_code ec;
   auto status = std::filesystem::status(cfg.path, ec);
-  rt_assert(!ec, std::format("stat failed: {}",
-                             ec.message()));  // TODO:use closure to avoid unnecessary copy
+  assert(!ec);  // TODO:use closure to avoid unnecessary copy
   if (status.type() == std::filesystem::file_type::directory) {
     return handler_type{FolderRouteHandler<R, W>{std::move(cfg)}};
   } else if (status.type() == std::filesystem::file_type::regular) {
     auto frh = FileRouteHandler<R, W>(std::move(cfg));
     return handler_type{std::move(frh)};
   }
-  rt_assert(false, "path is not a file or directory");
-  return {};
+  assert(false && "path is not a file or directory");
+  std::unreachable();
 }
 XSL_ASIO_HTTP_NE
 #endif  // XSL_ASIO_HTTP_HELPER_STATIC

@@ -30,10 +30,10 @@ using namespace xsl;
  * @note this example all use static call
  */
 Task<void> run(std::shared_ptr<Context> poller, std::string_view ip, std::string_view port) {
-  auto util = HttpUtil(make_socket_io_utils<Tcp<Ip<4>>>());
+  auto util = HttpUtil(make_async_socket_utils<TcpIpv4>());
   auto service = util.make_service2();
   service.add_static("/", {doc_root, {}});
-  auto creator = util.make_creator(poller, ip, port);
+  auto creator = util.c_creator(poller, ip.data(), port.data());
   Defer defer([&]() {
     log_info("Server stopped");
     poller->shutdown();
@@ -41,7 +41,7 @@ Task<void> run(std::shared_ptr<Context> poller, std::string_view ip, std::string
   if (creator) {
     co_await creator->serve_connection(std::move(service).build());
   } else {
-    log_error("Failed to create server: {}", creator.error().message());
+    log_error("Failed to create server: {}", creator.error()->message());
   }
   co_return;
 }

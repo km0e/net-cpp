@@ -257,7 +257,7 @@ namespace _pub_sub {
 
 template <class K, class S, class... Features>
 constexpr decltype(auto) make_pub_sub(std::same_as<K> auto... keys) {
-  using F = organize_feature_flags_t<
+  using F = select_feature_flags_t<
       _pub_sub::Create<Item<always_true, void>, Item<always_true, void>, Shared, Exact>, K, S,
       Features...>;
 

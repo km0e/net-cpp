@@ -38,7 +38,7 @@ struct Version {
     UNKNOWN = 0xff,
   } _version;
   static constexpr Version from_string_view(std::string_view str) {
-    for (std::size_t i = 0; i < 4; i++) {
+    for (auto i = 0uz; i < 4; i++) {
       if (str == HTTP_VERSION_STR[i]) return Version(static_cast<decltype(_version)>(i));
     }
     return Version(UNKNOWN);
@@ -77,7 +77,7 @@ struct Method {
     UNKNOWN = 0xff,
   } _method;
   static constexpr Method from_string_view(std::string_view str) {
-    for (std::size_t i = 0; i < HTTP_METHOD_COUNT; i++) {
+    for (auto i = 0uz; i < HTTP_METHOD_COUNT; i++) {
       if (str == HTTP_METHOD_STR[i]) return Method(i);
     }
     return Method(UNKNOWN);

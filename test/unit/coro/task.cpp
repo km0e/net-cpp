@@ -12,6 +12,7 @@
 
 #include <gtest/gtest.h>
 #include <xsl/coro/core/executor.h>
+#include <xsl/error.h>
 
 using namespace xsl::coro;
 
@@ -60,6 +61,23 @@ TEST(Task, multi_task) {
 
 TEST(Task, penetrate_exception) {
   ASSERT_THROW(exception_penetrate_task().block(), std::runtime_error);
+}
+
+Task<Expected<int, int>> func1() { co_return {1}; }
+
+TEST(Task, and_then) {
+  EXPECT_EQ(*func1().and_then([](auto) { return Expected<int, int>{2}; }).block(), 2);
+}
+
+TEST(Task, map) {
+  EXPECT_EQ(*func1().map([](auto v) { return v + 1; }).block(), 2);
+  EXPECT_EQ(*func1()
+                 .and_then([](auto) { return Expected<int, int>{2}; })
+                 .map([](auto v) { return v + 1; })
+                 .block(),
+            3);
+  EXPECT_EQ(*func1().map([](auto v) { return v + 1; }).map([](auto v) { return v + 1; }).block(),
+            3);
 }
 
 int main(int argc, char **argv) {

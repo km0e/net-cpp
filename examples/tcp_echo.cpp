@@ -20,19 +20,19 @@ std::string port = "8080";
 using namespace xsl;
 using namespace xsl::asio;
 
-Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<Context> poller) {
-  auto util = make_socket_io_utils<Tcp<Ip<4>>>();
-  auto creator = *util.make_creator(poller, ip, port);
+Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<Context> ctx) {
+  auto util = make_async_socket_utils<Tcp, Ip>();
+  auto creator = *util.c_creator(ctx, ip, port);
   while (true) {
-    auto task = co_await creator.accept().and_then(
-        [&](auto &&skt) { return splice_bidirectional(skt, skt, *poller); });
+    auto task = co_await creator.accept_async().and_then(
+        [&](auto &&skt) { return splice_bidirectional(skt, skt, *ctx); });
     if (!task) {
       log_warning("splice error: {}", std::make_error_code(task.error()).message());
       break;
     }
     co_yield std::move(*task);
   }
-  poller->shutdown();
+  ctx->shutdown();
   co_return;
 }
 

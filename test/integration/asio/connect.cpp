@@ -14,6 +14,7 @@
 #include <xsl/asio.h>
 #include <xsl/feature.h>
 #include <xsl/log.h>
+#include <xsl/sys.h>
 
 #include <span>
 #include <string>
@@ -89,12 +90,13 @@ public:
 };
 
 TEST_F(AsyncSocketIOFixture, tcp_connect_with_ais) {
-  auto res_skt = gai_async_connect<Tcp<Ip<4>>>(*ctx, ip.c_str(), port.c_str()).block();
+  auto util = make_async_socket_utils<TcpIpv4>();
+  auto res_skt = util.ac2(*ctx, ip.c_str(), port.c_str()).block();
   ASSERT_TRUE(res_skt.has_value());
   ASSERT_NE(res_skt->raw(), 0);
   echo(*res_skt);
-  SockAddrCompose<Tcp<Ip<4>>> addr{ip, port};
-  echo_to(*res_skt, addr);
+  auto addr = sys::net::make_sockaddr<TcpIpv4>(ip.c_str(), port.c_str());
+  echo_to(*res_skt, *addr);
 }
 
 // TEST_F(AsyncSocketIOFixture, tcp_connect_with_ip_port) {
@@ -107,23 +109,13 @@ TEST_F(AsyncSocketIOFixture, tcp_connect_with_ais) {
 //   echo_to(async_skt, addr);
 // }
 
-TEST_F(AsyncSocketIOFixture, udp_connect_with_ais) {
-  auto res = gai_connect<Udp<Ip<4>>>(ip.c_str(), port.c_str());
-  ASSERT_TRUE(res.has_value());
-  auto skt = AsyncSocket(*ctx, std::move(*res));
-  echo(skt);
-  SockAddrCompose<Udp<Ip<4>>> addr{ip, port};
-  echo_to(skt, addr);
-}
-
 TEST_F(AsyncSocketIOFixture, udp_connect_with_ip_port) {
-  auto skt = SocketCompose<Udp<Ip<4>>>();
-  ASSERT_TRUE(skt.is_valid());
-  ASSERT_TRUE(skt.connect({ip, port}));
-  auto async_skt = AsyncSocket(*ctx, std::move(skt));
-  echo(async_skt);
-  SockAddrCompose<Udp<Ip<4>>> addr{ip, port};
-  echo_to(async_skt, addr);
+  auto util = make_async_socket_utils<UdpIpv4>();
+  auto res = util.c2(*ctx, ip.c_str(), port.c_str());
+  ASSERT_TRUE(res.has_value());
+  echo(*res);
+  auto addr = sys::net::make_sockaddr<UdpIpv4>(ip.c_str(), port.c_str());
+  echo_to(*res, *addr);
 }
 
 int main(int argc, char **argv) {

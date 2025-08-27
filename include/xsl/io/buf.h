@@ -14,20 +14,22 @@
 #  define XSL_IO_BUF
 #  include <xsl/io/def.h>
 
+#  include <algorithm>
+#  include <cassert>
 #  include <memory>
 XSL_IO_NB
 
 template <std::size_t BlockSize>
 class FixedBuffer {
 public:
-  FixedBuffer() : _data(std::make_unique<byte[]>(BlockSize)), _size(0) {}
+  FixedBuffer() = default;
   FixedBuffer(std::unique_ptr<byte[]>&& data, std::size_t size = 0)
       : _data(std::move(data)), _size(size) {
     assert(_data && "Data pointer cannot be null");
     assert(_size <= BlockSize && "Size exceeds block size");
   }
   FixedBuffer(const FixedBuffer&) = delete;
-  FixedBuffer(FixedBuffer&&) = default;
+  FixedBuffer(FixedBuffer&& rhs) : _data(std::move(rhs._data)), _size(rhs._size) { rhs._size = 0; }
   FixedBuffer& operator=(const FixedBuffer&) = delete;
   FixedBuffer& operator=(FixedBuffer&&) = default;
 
@@ -77,8 +79,9 @@ public:
   constexpr std::size_t size() const { return _size; }
 
 private:
-  std::unique_ptr<byte[]> _data;  ///< Pointer to the buffer data
-  std::size_t _size = 0;          ///< Current size of the buffer
+  std::unique_ptr<byte[]> _data
+      = std::make_unique<byte[]>(BlockSize);  ///< Pointer to the buffer data
+  std::size_t _size = 0;                      ///< Current size of the buffer
 };
 
 template <std::size_t BlockSize>

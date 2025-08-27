@@ -2,7 +2,7 @@
  * @file io.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief IO utilities
- * @version 0.1.2
+ * @version 0.1.3
  * @date 2024-08-31
  *
  * @copyright Copyright (c) 2024
@@ -26,6 +26,26 @@
 #  include <cstring>
 #  include <span>
 XSL_ASIO_NB
+
+template <class Traits, class Storage>
+class PollForCoro : public Storage {
+public:
+  using traits_type = PollHandlerTraits<Storage>;
+
+  template <class... Args>
+    requires std::constructible_from<Storage, Args...>
+  constexpr PollForCoro(Traits, Args &&...args) : Storage(std::forward<Args>(args)...) {}
+
+  constexpr PollHandleHint operator()(int, IOM_EVENTS events) {
+    if (Traits::poll_check(events) == PollHandleHintTag::DELETE) {
+      return PollHandleHintTag::DELETE;
+    } else {
+      traits_type::pubsub(*this)->publish([&events](IOM_EVENTS e) { return !!(events & e); });
+      return PollHandleHintTag::NONE;
+    }
+  }
+};
+
 /**
  * @brief Receive data from a device, specialized for not connect-based device
  *

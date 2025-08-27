@@ -27,7 +27,8 @@ concept BasicLockable = requires(T t) {
 template <BasicLockable T, class V>
 class LockGuard {
 public:
-  constexpr LockGuard(T& m, V& v) : lock(m), v(v) {}
+  constexpr LockGuard(T& m, V& v) noexcept(std::is_nothrow_constructible_v<std::lock_guard<T>, T&>)
+      : lock(m), v(v) {}
   constexpr ~LockGuard() {}
   constexpr auto operator->(this auto&& self) { return std::addressof(self.v); }
   constexpr auto& operator*(this auto&& self) { return self.v; }
@@ -78,7 +79,10 @@ public:
   constexpr ShardRes(auto&&... args) : src(std::forward<decltype(args)>(args)...), mutex() {}
   constexpr ~ShardRes() {}
   constexpr ShardGuard<R> lock_shared(this auto& self) { return {self.mutex, self.src}; }
-  constexpr LockGuard<std::shared_mutex, R> lock(this auto& self) { return {self.mutex, self.src}; }
+  constexpr LockGuard<std::shared_mutex, R> lock(this auto& self) noexcept(
+      std::is_nothrow_constructible_v<LockGuard<std::shared_mutex, R>, std::shared_mutex&, R&>) {
+    return {self.mutex, self.src};
+  }
 
 private:
   R src;

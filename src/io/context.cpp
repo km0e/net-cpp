@@ -9,6 +9,7 @@
  *
  */
 
+#include <xsl/error.h>
 #include <xsl/io/context.h>
 
 XSL_IO_NB
@@ -34,19 +35,17 @@ Context::Context(std::shared_ptr<HandleProxy>&& proxy)
 }
 Context::~Context() { this->shutdown(); }
 
-bool Context::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
+Expected<void, errc> Context::add(int fd, IOM_EVENTS events, PollHandler&& handler) {
   epoll_event event;
   event.events = static_cast<uint32_t>(events);
   event.data.fd = fd;
   auto guard = this->handlers.lock();
   // must be here, otherwise the handler may be not registered
   // in time when the event comes
-  if (epoll_ctl(this->fd, EPOLL_CTL_ADD, fd, &event) == -1) {
-    return false;
-  }
+  ENSEC(epoll_ctl(this->fd, EPOLL_CTL_ADD, fd, &event) == 0);
   log_debug("Register {} for fd: {}", to_string(events), fd);
   guard->insert_or_assign(fd, make_shared<PollHandler>(std::move(handler)));
-  return true;
+  return {};
 }
 
 void Context::remove(int fd) {

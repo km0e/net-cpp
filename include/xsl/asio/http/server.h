@@ -30,7 +30,8 @@ public:
   using context_type = HandleContext<io_dev_type, io_dev_type>;
   using handler_type = Handler<io_dev_type, io_dev_type>;
 
-  constexpr Server(lower_type&& server) : server(std::move(server)) {}
+  constexpr Server(lower_type&& server) noexcept(std::is_nothrow_move_constructible_v<lower_type>)
+      : server(std::move(server)) {}
 
   constexpr Server(Server&&) = default;
   constexpr Server& operator=(Server&&) = default;
@@ -40,7 +41,7 @@ public:
     auto service_ptr = std::make_shared<std::remove_reference_t<decltype(service)>>(
         std::forward<decltype(service)>(service));
     while (true) {
-      auto res = co_await this->server.accept();
+      auto res = co_await this->server.accept_async();
       if (!res) {
         log_error("accept error: {}", std::make_error_code(res.error()).message());
         continue;

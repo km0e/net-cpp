@@ -75,7 +75,15 @@ include(FetchContent)
 
 add_subdirectory(third_party)
 
-add_library(xsl_prepare ALIAS log)
+add_library(xsl_prepare STATIC)
+
+target_sources(
+   xsl_prepare
+    PRIVATE
+    ${PROJECT_SOURCE_DIR}/src/log.cpp
+)
+
+target_link_libraries(xsl_prepare quill)
 
 set_log_level(xsl_prepare)
 

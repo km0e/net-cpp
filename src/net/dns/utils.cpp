@@ -17,7 +17,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <expected>
 #include <span>
 XSL_NET_DNS_NB
 /**
@@ -97,18 +96,17 @@ static std::size_t match(short *offs, int noff, int *offset, const std::uint8_t 
  * @return Status
  */
 [[nodiscard("must check the return value")]]
-std::expected<std::size_t, errc> DnCompressor::prepare(std::string_view src) {
-  if (src.empty() || src.size() > size_limits::name)
-    return std::unexpected{errc::invalid_argument};  /// invalid domain name
+Expected<std::size_t, errc> DnCompressor::prepare(std::string_view src) {
+  ENSEC((!src.empty()) && src.size() <= size_limits::name, errc::invalid_argument);
   if (src.back() == '.') src.remove_suffix(1);
   if (src.empty()) return {1};
   auto label_cnt = get_label_lens(lens, src);
-  if (!label_cnt) return std::unexpected{errc::invalid_argument};  /// invalid domain name
+  ENSEC(label_cnt != 0, errc::invalid_argument);
 
   for (auto p : std::span{dnptrs, dnptrs_cnt}) {
     short offs[128];
     int noff = get_offs(offs, *dnptrs, p);
-    if (!noff) return std::unexpected{errc::illegal_byte_sequence};  // invalid pointer
+    ENSEC(noff != 0, errc::illegal_byte_sequence);
     auto offset = 0;
     auto m = match(offs, noff, &offset, *dnptrs, src.data() + src.size(), lens, label_cnt);
     if (m > suffix_len) {
@@ -142,7 +140,7 @@ errc DnDecompressor::decompress(std::span<const byte> &src) {
   }
 }
 
-Expected<std::size_t> DnDecompressor::decompress(const byte *src) {
+Expected<std::size_t, errc> DnDecompressor::decompress(const byte *src) {
   this->buf_end = 0;  /// reset the buffer
   const std::uint8_t *ptr = reinterpret_cast<const uint8_t *>(src);
   std::size_t size = 0;
@@ -150,11 +148,11 @@ Expected<std::size_t> DnDecompressor::decompress(const byte *src) {
     size += 1;  // count the size of the label
     if (*ptr == 0) return {size};
     if (*ptr & 0xc0) {  // jump to the label if it is a pointer
-      ENSURE((*ptr & 0xc0) == 0xc0, errc::illegal_byte_sequence);  // invalid pointer
+      ENSEC((*ptr & 0xc0) == 0xc0, errc::illegal_byte_sequence);  // invalid pointer
       ptr = this->base + ((ptr[0] & 0x3f) << 8 | ptr[1]);
       size += 1;  // count the size of the pointer
       auto ec = this->prepare_rest(ptr);
-      ENSURE(ec == errc{}, ec);
+      ENSEC(ec == errc{}, ec);
       return {size};
     }
     assert(ptr - base < 0x4000);

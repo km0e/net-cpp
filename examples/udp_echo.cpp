@@ -24,9 +24,9 @@ using namespace xsl;
 
 Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Context> poller) {
   byte buffer[4096]{};
-  auto util = make_socket_io_utils<UdpIpv4>();
-  auto rw = *util.make_io(*poller, ip.data(), port.data());
-  sys::net::SockAddrCompose<UdpIpv4> addr{};
+  auto util = make_async_socket_utils<UdpIpv4>();
+  auto rw = *util.c(*poller, ip.data(), port.data());
+  auto addr = sys::net::make_sockaddr<UdpIpv4>();
   std::string dst(128, '\0');
   std::uint16_t port_num;
   while (true) {
@@ -36,7 +36,7 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
       break;
     }
     if (auto res = addr.parse(dst, port_num); res != errc{}) {
-      log_debug("Error: {}", to_string(res));
+      log_debug("Error: {}", to_string_view(res));
       continue;
     }
     std::println(std::cout, "<{},{}>: {}", dst, port_num,

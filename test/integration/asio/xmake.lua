@@ -1,6 +1,6 @@
 add_deps("xsl_asio")
 
-target("intest_connect")
+target("it_connect")
 do
     set_kind("binary")
     set_default(false)

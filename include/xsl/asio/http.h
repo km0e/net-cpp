@@ -21,13 +21,15 @@ using namespace xsl::_asio::http;
 
 template <class IOUtils>
 struct HttpUtil : public IOUtils {
-  consteval HttpUtil(IOUtils&& utils) : IOUtils(std::move(utils)) {}
+  consteval HttpUtil(IOUtils&& utils) noexcept(std::is_nothrow_move_constructible_v<IOUtils>)
+      : IOUtils(std::move(utils)) {}
 
   using io_dev_type = typename IOUtils::io_dev_type;
 
   template <class Poller, class... Args>
-  constexpr auto make_creator(Poller& poller, Args&&... args) {
-    return IOUtils::make_creator(poller, std::forward<Args>(args)...).transform([](auto&& creator) {
+  constexpr auto c_creator(Poller& poller, Args&&... args) noexcept(
+      noexcept(IOUtils::c_creator(poller, std::forward<Args>(args)...))) {
+    return IOUtils::c_creator(poller, std::forward<Args>(args)...).transform([](auto&& creator) {
       return Server{std::forward<decltype(creator)>(creator)};
     });
   }
@@ -38,7 +40,5 @@ struct HttpUtil : public IOUtils {
   }
 };
 
-Task<std::expected<std::tuple<std::unique_ptr<Response>, AsyncSocketCompose<TcpIp>>, errc>> get(
-    Context& ctx, std::string_view url);
 XSL_ASIO_NE
 #endif

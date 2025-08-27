@@ -30,7 +30,6 @@ namespace net {
   using _net::AbsoluteUri;
   using sys::net::gai_bind;
   using sys::net::gai_connect;
-  using sys::net::make_sockaddr;
   using sys::net::SockAddr;
   using sys::net::Socket;
   using sys::net::SocketAttribute;

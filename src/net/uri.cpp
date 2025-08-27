@@ -8,11 +8,12 @@
  * @copyright Copyright (c) 2025
  *
  */
+#include <xsl/error.h>
 #include <xsl/net/def.h>
 #include <xsl/net/uri.h>
 XSL_NET_NB
-std::expected<std::string_view, std::errc> percent_decode(std::string& buffer,
-                                                          std::string_view sv) noexcept {
+Expected<std::string_view, std::errc> percent_decode(std::string& buffer,
+                                                     std::string_view sv) noexcept {
   buffer.reserve(buffer.size() + sv.size());
   std::size_t initial_size = buffer.size();
   while (true) {
@@ -21,17 +22,11 @@ std::expected<std::string_view, std::errc> percent_decode(std::string& buffer,
       break;
     }
     buffer.append(sv.substr(0, percent_pos));
-    if (sv.size() < percent_pos + 3) {
-      return std::unexpected{std::errc::illegal_byte_sequence};
-    }
+    ENSEC(sv.size() >= percent_pos + 3, std::errc::illegal_byte_sequence);
     int value = 0;
     auto res = std::from_chars(sv.data() + percent_pos + 1, sv.data() + percent_pos + 3, value, 16);
-    if (res.ec != std::errc()) {
-      return std::unexpected{std::errc::illegal_byte_sequence};
-    }
-    if (value < 0 || value > 255) {
-      return std::unexpected{std::errc::illegal_byte_sequence};
-    }
+    ENSEC(res.ec == std::errc(), std::errc::illegal_byte_sequence);
+    ENSEC(value >= 0 && value <= 255, std::errc::illegal_byte_sequence);
     buffer.push_back(static_cast<char>(value));
     sv = sv.substr(percent_pos + 3);
   }

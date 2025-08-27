@@ -13,11 +13,12 @@
 #  define XSL_IO_DEF
 #  define XSL_IO_NB namespace xsl::io {
 #  define XSL_IO_NE }
+
 #  include <xsl/byte.h>
-#  include <xsl/coro.h>
 
 #  include <concepts>
 #  include <cstddef>
+#  include <cstring>
 #  include <span>
 XSL_IO_NB
 
@@ -32,7 +33,7 @@ struct Result {
   bool operator!() const { return ec != errc{}; }
   operator bool() const { return ec == errc{}; }
 
-  decltype(auto) message() const { return std::make_error_code(ec).message(); }
+  decltype(auto) message() const { return std::strerror(static_cast<int>(ec)); }
 };
 
 template <class Device>

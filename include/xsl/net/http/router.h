@@ -82,7 +82,7 @@ namespace router_details {
      * @return Id&, the handler for the prefix
      */
     constexpr Id& add_prefix(std::string_view path) {
-      rt_assert(path[0] == '/', "Invalid path");
+      assert(path[0] == '/' && "Invalid path");
       if (path == "/") {
         return prefix_handler;  ///< If the path is empty, return the fallback handler
       }

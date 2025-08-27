@@ -442,9 +442,9 @@ struct MediaTypeBase {
   const char *start;
   const char *slash;
   const char *end;
-  constexpr std::string_view main_type() const { return {start, slash}; }
-  constexpr std::string_view sub_type() const { return {slash + 1, end}; }
-  constexpr bool type_includes(const MediaTypeBase &other) const {
+  constexpr std::string_view main_type() const noexcept { return {start, slash}; }
+  constexpr std::string_view sub_type() const noexcept { return {slash + 1, end}; }
+  constexpr bool type_includes(const MediaTypeBase &other) const noexcept {
     using namespace common_media_type;
     if (this->main_type() == any) {
       return true;
@@ -472,7 +472,7 @@ struct MediaTypeView : MediaTypeBase {
     return {base, {}};
   }
   ParametersView parameters;
-  constexpr std::string_view to_string_view() const {
+  constexpr std::string_view to_string_view() const noexcept {
     return {start, parameters.empty() ? end : parameters.back().value.data()};
   }
 };

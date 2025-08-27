@@ -2,7 +2,7 @@
  * @file net.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Network utilities
- * @version 0.2.1
+ * @version 0.2.2
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -11,7 +11,6 @@
 #pragma once
 #ifndef XSL_ASIO_H
 #  define XSL_ASIO_H
-#  include <xsl/asio/gai.h>
 #  include <xsl/asio/http.h>
 #  include <xsl/asio/http/request.h>
 #  include <xsl/asio/http/server.h>
@@ -19,11 +18,14 @@
 #  include <xsl/asio/pipe.h>
 #  include <xsl/asio/socket.h>
 #  include <xsl/asio/tcp/server.h>
+#  include <xsl/error.h>
+#  include <xsl/feature.h>
+#  include <xsl/sys.h>
 
 namespace xsl::asio {
   using _asio::AsyncSocket;
   using _asio::AsyncSocketCompose;
-  using _asio::gai_async_connect;
+  using _asio::make_async_socket;
   using _asio::splice_bidirectional;
   using sys::net::gai_connect;
   using sys::net::getaddrinfo;
@@ -53,7 +55,6 @@ namespace xsl::asio {
   using _asio::http::Status;
   using _asio::http::to_string_view;
 
-  using _asio::get;
   using _asio::RequestPartBuilder;
 
   namespace http1 {
@@ -64,52 +65,84 @@ namespace xsl::asio {
   using _asio::HttpUtil;
 
   template <class Traits>
-  struct SocketIOUtils;
+  struct AsyncSocketUtils;
 
   template <sys::net::SocketTraitsCompatible<sys::net::SocketTraits<TcpIp>> Traits>
-  struct SocketIOUtils<Traits> : public Traits {
+  struct AsyncSocketUtils<Traits> : public Traits {
     using io_dev_type = AsyncSocket<Traits>;
 
-    template <class Poller>
-    Expected<tcp::Server<Traits>> make_creator(
-        const std::shared_ptr<Poller> &poller, std::string_view host,
-        std::string_view port)  /// TODO: add attr opt for socket
-    {
-      log_debug("Start listening on {}:{}", host, port);
-      auto copy_poller = poller;
-      auto skt = net::gai_bind<Traits>(host.data(), port.data());
-      if (!skt) return std::unexpected(skt.error());
-      HNSURE(skt->listen());
-      return {{host, port, std::move(copy_poller), *poller, std::move(*skt)}};
+    /// TODO: add attr opt for socket
+    template <class Ctx>
+    Expected<tcp::Server<Traits>> c_creator(std::shared_ptr<Ctx>& ctx, std::string_view ip,
+                                            sys::net::inet::port_t port) noexcept {
+      TRV(sock, sock_utils.c(ip.data(), port));
+      ENSURE(sock.listen());
+      TRV(asock, make_async_socket(*ctx, std::move(sock)));
+      auto copy_ctx = ctx;
+      return {tcp::Server<Traits>{std::string{ip}, port, std::move(copy_ctx), std::move(asock)}};
     }
+    template <class Ctx>
+    decltype(auto) c_creator(std::shared_ptr<Ctx>& ctx, std::string_view ip,
+                             const char* port) noexcept {
+      return c_creator(ctx, ip, static_cast<sys::net::inet::port_t>(std::atoi(port)));
+    }
+    template <class Ctx>
+    decltype(auto) c_creator(std::shared_ptr<Ctx>& ctx, std::string_view ip,
+                             std::string_view port) noexcept {
+      return c_creator(ctx, ip, static_cast<sys::net::inet::port_t>(std::atoi(port.data())));
+    }
+    template <class... Flags>
+    Expected<AsyncSocketCompose<Traits, Flags...>> c(auto& ctx, const char* ip,
+                                                     sys::net::inet::port_t port) noexcept {
+      TRV(sock, sock_utils.template c<Flags...>(ip, port));
+      TRV(asock, make_async_socket(ctx, std::move(sock)));
+      return std::move(asock);
+    }
+
+    template <class... Flags>
+    Task<Expected<AsyncSocketCompose<Traits, Flags...>>> ac2(auto& ctx, const char* ip,
+                                                             sys::net::inet::port_t port) noexcept {
+      using traits_type = sys::net::SocketTraits<Traits, Flags...>;
+      CO_TRV(addr, sys::net::make_sockaddr<traits_type>(ip, port));
+      CO_TRV(sock, socket(addr));
+      CO_ENSURE(co_await _asio::async_connect(sock, addr, ctx));
+      CO_TRV(asock, make_async_socket(ctx, std::move(sock)));
+      co_return std::move(asock);
+    }
+    template <class... Flags>
+    decltype(auto) ac2(auto& ctx, const char* ip, const char* port) noexcept {
+      return ac2<Flags...>(ctx, ip, static_cast<sys::net::inet::port_t>(std::atoi(port)));
+    }
+
+    sys::net::SocketUtils<Traits> sock_utils;
   };
 
   template <sys::net::SocketTraitsCompatible<sys::net::SocketTraits<UdpIp>> Traits>
-  struct SocketIOUtils<Traits> : public Traits {
+  struct AsyncSocketUtils<Traits> : public Traits {
     using io_dev_type = AsyncSocket<Traits>;
-
-    template <class Poller>
-    Expected<AsyncSocket<Traits>> make_io(Poller &poller, std::string_view host,
-                                          std::string_view port)  /// TODO: add attr opt for socket
-    {
-      auto skt = net::gai_bind<Traits>(host.data(), port.data());
-      if (!skt) return std::unexpected(skt.error());
-      return {{poller, std::move(*skt)}};
+    /// TODO: add attr opt for socket
+    Expected<AsyncSocket<Traits>> c(auto& ctx, std::string_view ip, sys::net::inet::port_t port) {
+      TRV(sock, sock_utils.c(ip.data(), port));
+      TRV(asock, make_async_socket(ctx, std::move(sock)));
+      return {std::move(asock)};
     }
-    template <class Poller>
-    Expected<AsyncSocket<Traits>> make_io_to(
-        Poller &poller, std::string_view host,
-        std::string_view port)  /// TODO: add attr opt for socket
-    {
-      auto skt = net::gai_connect<Traits>(host.data(), port.data());
-      if (!skt) return std::unexpected(skt.error());
-      return {{poller, std::move(*skt)}};
+    decltype(auto) c(auto& ctx, std::string_view ip, std::string_view port) {
+      return c(ctx, ip, static_cast<sys::net::inet::port_t>(std::atoi(port.data())));
     }
+    Expected<AsyncSocket<Traits>> c2(auto& ctx, std::string_view ip, sys::net::inet::port_t port) {
+      TRV(sock, sock_utils.c2(ip.data(), port));
+      TRV(asock, make_async_socket(ctx, std::move(sock)));
+      return {std::move(asock)};
+    }
+    decltype(auto) c2(auto& ctx, std::string_view ip, std::string_view port) {
+      return c2(ctx, ip, static_cast<sys::net::inet::port_t>(std::atoi(port.data())));
+    }
+    sys::net::SocketUtils<Traits> sock_utils [[no_unique_address]];
   };
-  template <class... Flags>
-  consteval auto make_socket_io_utils() {
-    return SocketIOUtils<_sys::net::SocketTraits<Flags...>>();
-  }
 
+  template <class... Flags>
+  consteval auto make_async_socket_utils() {
+    return AsyncSocketUtils<sys::net::SocketTraits<Flags...>>();
+  }
 }  // namespace xsl::asio
 #endif

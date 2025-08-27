@@ -2,7 +2,7 @@
  * @file server.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief TcpServer
- * @version 0.1.3
+ * @version 0.1.4
  * @date 2024-08-18
  *
  * @copyright Copyright (c) 2024
@@ -15,7 +15,6 @@
 #  include <xsl/asio/tcp/def.h>
 #  include <xsl/io.h>
 
-#  include <string_view>
 XSL_ASIO_TCP_NB
 using namespace xsl::io;
 using namespace xsl::net;
@@ -30,7 +29,7 @@ class Server {
 public:
   using io_dev_type = AsyncSocket<Traits>;
 
-  constexpr Server(std::string_view host, std::string_view port, auto &&ctx, auto &&...args)
+  constexpr Server(std::string &&host, sys::net::inet::port_t port, auto &&ctx, auto &&...args)
       : host(host),
         port(port),
         ctx(std::forward<decltype(ctx)>(ctx)),
@@ -45,7 +44,7 @@ public:
    * @return Task<Result>
    */
   Task<io::Result> read(std::span<io_dev_type> conns) noexcept {
-    std::size_t i = 0;
+    auto i = 0uz;
     for (auto &conn : conns) {
       auto res = co_await this->accept();
       if (!res) {
@@ -57,13 +56,11 @@ public:
     co_return {i, std::nullopt};
   }
   /// @brief accept a connection
-  constexpr decltype(auto) accept() noexcept {
-    return this->_dev.accept().then([this](auto &&res) {
-      return res.transform([this](auto &&skt) { return io_dev_type(*this->ctx, std::move(skt)); });
-    });
-  }
+  constexpr decltype(auto) accept() noexcept { return this->_dev.accept(); }
+  /// @brief accept a connection with async
+  constexpr decltype(auto) accept_async() noexcept { return this->_dev.accept_async(*ctx); }
   std::string host;
-  std::string port;
+  sys::net::inet::port_t port;
 
   std::shared_ptr<Context> ctx;
 

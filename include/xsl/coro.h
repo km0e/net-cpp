@@ -16,26 +16,12 @@
 #  include <xsl/coro/core/detach.h>
 #  include <xsl/coro/core/executor.h>
 #  include <xsl/coro/core/task.h>
+#  include <xsl/coro/error.h>
 #  include <xsl/coro/guard.h>
 #  include <xsl/coro/pub_sub.h>
 #  include <xsl/coro/signal.h>
 #  include <xsl/def.h>
 XSL_NB
-using coro::block;
-using coro::detach;
-
-using coro::Signal;
-using coro::SPSCChannel;
-using coro::SPSCSignal;
-using coro::SPSCSignal2;
-using coro::UnsafeSignal;
-
-using coro::StaticExactPubSubStorage;
-
-using coro::make_pub_sub;
-using coro::PubSub;
-
-using coro::ArgGuard;
-using coro::Task;
+using namespace coro;
 XSL_NE
 #endif

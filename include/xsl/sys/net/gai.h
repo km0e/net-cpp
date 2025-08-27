@@ -14,6 +14,7 @@
 #  include <netdb.h>
 #  include <xsl/error.h>
 #  include <xsl/sys/net/def.h>
+#  include <xsl/sys/net/error.h>
 
 #  include <cstddef>
 #  include <cstdio>
@@ -106,8 +107,8 @@ const ResolveFlag CLIENT_FLAGS = ResolveFlag::ADDRCONFIG;
 
 namespace {
   template <class Traits>
-  constexpr Expected<AddrInfos<Traits>> resolve(const char *name, const char *serv,
-                                                ResolveFlag flags) {
+  constexpr Expected<AddrInfos<Traits>, GaiError> resolve(const char *name, const char *serv,
+                                                          ResolveFlag flags) {
     addrinfo hints;
     addrinfo *res;
     std::memset(&hints, 0, sizeof(hints));
@@ -118,7 +119,7 @@ namespace {
       hints.ai_family = AF_UNSPEC;  // AF_UNSPEC for any family
     hints.ai_socktype = Traits{}.type();
     hints.ai_protocol = Traits{}.protocol();
-    ENSURE(getaddrinfo(name, serv, &hints, &res), );
+    ENSGAI(getaddrinfo(name, serv, &hints, &res));
     return {AddrInfos<Traits>(res)};
   }
 }  // namespace

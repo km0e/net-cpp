@@ -41,7 +41,7 @@ public:
    * @param il initializer list
    */
   constexpr FixedVector(std::initializer_list<T> il) : _data(new T[il.size()]), _size(il.size()) {
-    std::size_t i = 0;
+    auto i = 0uz;
     for (const auto& x : il) {
       _data[i++] = x;
     }
@@ -60,7 +60,7 @@ public:
    * @param value the value to initialize the vector
    */
   constexpr FixedVector(std::size_t size, const T& value) : _data(new T[size]), _size(size) {
-    for (std::size_t i = 0; i < size; ++i) {
+    for (auto i = 0uz; i < size; ++i) {
       _data[i] = value;
     }
   }

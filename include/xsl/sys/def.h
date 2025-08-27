@@ -11,6 +11,8 @@
 #pragma once
 #ifndef XSL_SYS_DEF
 #  define XSL_SYS_DEF
+#  define XSL_SYS_ENB namespace xsl::sys {
+#  define XSL_SYS_ENE }
 #  define XSL_SYS_NB namespace xsl::_sys {
 #  define XSL_SYS_NE }
 #  include <fcntl.h>

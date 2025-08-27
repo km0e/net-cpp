@@ -2,7 +2,7 @@
  * @file def.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Network definitions
- * @version 0.1.5
+ * @version 0.2.0
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -18,10 +18,14 @@
 #  include <sys/socket.h>
 #  include <xsl/feature.h>
 #  include <xsl/io/context.h>
+#  include <xsl/sys/def.h>
 
 #  include <cassert>
 #  include <type_traits>
 XSL_SYS_NET_NB
+namespace inet {
+  using port_t = in_port_t;  ///< port type
+}  // namespace inet
 
 enum class SocketAttribute : int {
   NonBlocking = SOCK_NONBLOCK,
@@ -140,25 +144,25 @@ struct SocketTraitsBase : public FamilyTraits<Family>,
       : FamilyTraits<Family>(family), TypeTraits<Type>(type), ProtocolTraits<Protocol>(protocol) {}
 };
 
-struct AnySocketTraits : public SocketTraitsBase<AF_UNSPEC, 0, 0> {
+struct AnySocketTraits : SocketTraitsBase<AF_UNSPEC, 0, 0> {
   using SocketTraitsBase::SocketTraitsBase;
 };
-struct TcpIpv4SocketTraits : public SocketTraitsBase<AF_INET, SOCK_STREAM, IPPROTO_TCP> {
+struct TcpIpv4SocketTraits : TcpIpv4, SocketTraitsBase<AF_INET, SOCK_STREAM, IPPROTO_TCP> {
   using SocketTraitsBase::SocketTraitsBase;
 };
-struct TcpIpv6SocketTraits : public SocketTraitsBase<AF_INET6, SOCK_STREAM, IPPROTO_TCP> {
+struct TcpIpv6SocketTraits : TcpIpv6, SocketTraitsBase<AF_INET6, SOCK_STREAM, IPPROTO_TCP> {
   using SocketTraitsBase::SocketTraitsBase;
 };
-struct TcpIpSocketTraits : public SocketTraitsBase<AF_UNSPEC, SOCK_STREAM, IPPROTO_TCP> {
+struct TcpIpSocketTraits : TcpIp, SocketTraitsBase<AF_UNSPEC, SOCK_STREAM, IPPROTO_TCP> {
   using SocketTraitsBase::SocketTraitsBase;
 };
-struct UdpIpv4SocketTraits : public SocketTraitsBase<AF_INET, SOCK_DGRAM, IPPROTO_UDP> {
+struct UdpIpv4SocketTraits : UdpIpv4, SocketTraitsBase<AF_INET, SOCK_DGRAM, IPPROTO_UDP> {
   using SocketTraitsBase::SocketTraitsBase;
 };
-struct UdpIpv6SocketTraits : public SocketTraitsBase<AF_INET6, SOCK_DGRAM, IPPROTO_UDP> {
+struct UdpIpv6SocketTraits : UdpIpv6, SocketTraitsBase<AF_INET6, SOCK_DGRAM, IPPROTO_UDP> {
   using SocketTraitsBase::SocketTraitsBase;
 };
-struct UdpIpSocketTraits : public SocketTraitsBase<AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP> {
+struct UdpIpSocketTraits : UdpIp, SocketTraitsBase<AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP> {
   using SocketTraitsBase::SocketTraitsBase;
 };
 
@@ -175,77 +179,52 @@ namespace impl_sock {
   template <class... Flags>
   struct SocketTraitsTag;
 
-  template <class... Flags>
-  using SocketTraitsTagCompose = organize_feature_flags_t<
-      SocketTraitsTag<
-          set<Tcp<Ip<4>>, Tcp<Ip<6>>, Tcp<Placeholder>, TcpIpv4, TcpIpv6, TcpIp,
-              TcpIpv4SocketTraits, TcpIpv6SocketTraits, TcpIpSocketTraits, Udp<Ip<4>>, Udp<Ip<6>>,
-              Udp<Placeholder>, UdpIpv4, UdpIpv6, UdpIp, UdpIpv4SocketTraits, UdpIpv6SocketTraits,
-              UdpIpSocketTraits, AnySocketTraits>>,
-      Flags...>;
-  template <>
-  struct SocketTraitsTag<AnySocketTraits> : std::type_identity<AnySocketTraits> {};
+  template <class T, class U>
+  struct SocketMerge : std::type_identity<T> {};
 
-  template <>
-  struct SocketTraitsTag<Tcp<Ip<4>>> : std::type_identity<TcpIpv4SocketTraits> {};
+  template <class T>
+  struct SocketMerge<AnySocketTraits, T> : std::type_identity<T> {};
+  template <class T>
+  struct SocketMerge<T, T> : std::type_identity<T> {};
+  template <class T, class U>
+    requires(std::is_base_of_v<T, U>)
+  struct SocketMerge<T, U> : std::type_identity<U> {};
+  template <class T, class U>
+    requires(std::is_base_of_v<U, T>)
+  struct SocketMerge<T, U> : std::type_identity<T> {};
 
-  template <>
-  struct SocketTraitsTag<TcpIpv4> : std::type_identity<TcpIpv4SocketTraits> {};
+#  define XSL_DEFINE_SOCKET_MERGE(Flag1, Flag2, Result) \
+    template <>                                         \
+    struct SocketMerge<Flag1, Flag2> : std::type_identity<Result> {};
 
-  template <>
-  struct SocketTraitsTag<TcpIpv4SocketTraits> : std::type_identity<TcpIpv4SocketTraits> {};
+  XSL_DEFINE_SOCKET_MERGE(Tcp, Ip, TcpIpSocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(Udp, Ip, UdpIpSocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(TcpIp, Ipv4, TcpIpv4SocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(TcpIp, Ipv6, TcpIpv6SocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(UdpIp, Ipv4, UdpIpv4SocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(UdpIp, Ipv6, UdpIpv6SocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(Tcp, Ipv4, TcpIpv4SocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(Tcp, Ipv6, TcpIpv6SocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(Udp, Ipv4, UdpIpv4SocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(Udp, Ipv6, UdpIpv6SocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(AnySocketTraits, AnySocketTraits, AnySocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(AnySocketTraits, Tcp, TcpIpSocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(AnySocketTraits, Udp, UdpIpSocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(AnySocketTraits, Ipv4, TcpIpv4SocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(AnySocketTraits, Ipv6, TcpIpv6SocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(AnySocketTraits, TcpIp, TcpIpSocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(AnySocketTraits, UdpIp, UdpIpSocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(AnySocketTraits, TcpIpv4, TcpIpv4SocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(AnySocketTraits, TcpIpv6, TcpIpv6SocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(AnySocketTraits, UdpIpv4, UdpIpv4SocketTraits)
+  XSL_DEFINE_SOCKET_MERGE(AnySocketTraits, UdpIpv6, UdpIpv6SocketTraits)
 
-  template <>
-  struct SocketTraitsTag<Tcp<Ip<6>>> : std::type_identity<TcpIpv6SocketTraits> {};
+#  undef XSL_DEFINE_SOCKET_MERGE
 
-  template <>
-  struct SocketTraitsTag<TcpIpv6> : std::type_identity<TcpIpv6SocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<TcpIpv6SocketTraits> : std::type_identity<TcpIpv6SocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<Tcp<Placeholder>> : std::type_identity<TcpIpSocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<TcpIp> : std::type_identity<TcpIpSocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<TcpIpSocketTraits> : std::type_identity<TcpIpSocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<Udp<Ip<4>>> : std::type_identity<UdpIpv4SocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<UdpIpv4> : std::type_identity<UdpIpv4SocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<UdpIpv4SocketTraits> : std::type_identity<UdpIpv4SocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<Udp<Ip<6>>> : std::type_identity<UdpIpv6SocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<UdpIpv6> : std::type_identity<UdpIpv6SocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<UdpIpv6SocketTraits> : std::type_identity<UdpIpv6SocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<Udp<Placeholder>> : std::type_identity<UdpIpSocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<UdpIp> : std::type_identity<UdpIpSocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<UdpIpSocketTraits> : std::type_identity<UdpIpSocketTraits> {};
-
-  template <>
-  struct SocketTraitsTag<Placeholder> : std::type_identity<AnySocketTraits> {};
 }  // namespace impl_sock
 
 template <class... Flags>
-using SocketTraits = impl_sock::SocketTraitsTagCompose<Flags...>::type;
+using SocketTraits = merge_feature_flags_t<impl_sock::SocketMerge, AnySocketTraits, Flags...>;
 
 XSL_SYS_NET_NE
 #endif

@@ -2,7 +2,7 @@
  * @file then.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief
- * @version 0.1.2
+ * @version 0.1.3
  * @date 2024-09-01
  *
  * @copyright Copyright (c) 2024
@@ -16,7 +16,6 @@
 
 #  include <concepts>
 #  include <coroutine>
-#  include <expected>
 #  include <tuple>
 #  include <type_traits>
 #  include <utility>
@@ -53,15 +52,6 @@ public:
     auto next_transforms = std::tuple_cat(std::make_tuple(std::forward<_Transform>(transform)),
                                           std::move(self._transforms));
     return Next{std::exchange(self._handle, {}), std::move(next_transforms)};
-  }
-
-  constexpr auto and_then(this ThenAwaiter &&self,
-                          std::invocable<typename result_type::value_type> auto &&f)
-    requires is_same_pack_v<result_type, std::expected<void, void>>
-  {
-    return std::move(self).then([f = std::forward<decltype(f)>(f)](auto &&res) {
-      return std::forward<decltype(res)>(res).and_then(f);
-    });
   }
 
 protected:

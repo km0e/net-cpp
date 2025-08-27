@@ -47,7 +47,7 @@ public:
 
   constexpr Block(Block &&task) noexcept : _handle(std::exchange(task._handle, {})) {}
 
-  constexpr ~Block() {}
+  constexpr ~Block() noexcept {}
 
 protected:
   std::coroutine_handle<promise_type> _handle;

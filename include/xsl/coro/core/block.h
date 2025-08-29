@@ -13,7 +13,7 @@
 #ifndef XSL_CORO_BLOCK
 #  define XSL_CORO_BLOCK
 #  include <xsl/coro/def.h>
-#  include <xsl/log.h>
+#  include <xsl/coro/log.h>
 
 #  include <cassert>
 #  include <coroutine>
@@ -89,13 +89,13 @@ constexpr decltype(auto) block(Awaiter &&awaiter) {
           eptr = std::current_exception();
         }
         sem.release();
-        log_trace("block: resume");
+        co_trace("block: resume");
       }(std::forward<Awaiter>(awaiter));
       sem.acquire();
       if (eptr) {
         std::rethrow_exception(eptr);
       }
-      log_debug("block: final");
+      co_debug("block: final");
     }(std::forward<Awaiter>(awaiter));
   }
 }

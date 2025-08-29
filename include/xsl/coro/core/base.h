@@ -12,7 +12,7 @@
 #ifndef XSL_CORO_BASE
 #  define XSL_CORO_BASE
 #  include <xsl/coro/def.h>
-#  include <xsl/log.h>
+#  include <xsl/coro/log.h>
 
 XSL_CORO_NB
 /**
@@ -29,7 +29,7 @@ public:
       : _result() {}
 
   constexpr auto get_return_object(this auto &&self) noexcept {
-    log_trace("get_return_object");
+    co_trace("get_return_object");
     using promise_type = std::decay_t<decltype(self)>;
     using coro_type = promise_type::coro_type;
     return coro_type{std::coroutine_handle<promise_type>::from_promise(self)};
@@ -46,7 +46,7 @@ public:
    * @return result_type
    */
   constexpr result_type operator*() {
-    log_trace("PromiseBase operator*");
+    co_trace("PromiseBase operator*");
     return std::move(_result).unwrap();
   }
 
@@ -63,7 +63,7 @@ public:
   using typename Base::result_type;
   constexpr void return_value(result_type &&value) noexcept(
       noexcept(this->_result.template emplace<result_type>(std::move(value)))) {
-    log_trace("Promise return_value");
+    co_trace("Promise return_value");
     _result.template emplace<result_type>(std::move(value));
   }
 };

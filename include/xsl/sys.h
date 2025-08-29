@@ -25,12 +25,12 @@
 XSL_NB
 
 namespace sys {
-  using _sys::current_ec;
-  using _sys::filter_interrupt;
-  using _sys::read;
-  using _sys::write;
+  using sys::current_ec;
+  using sys::filter_interrupt;
+  // using sys::read;
+  // using sys::write;
 }  // namespace sys
-using _sys::RawHandle;
-using _sys::RawOwner;
+using sys::RawHandle;
+using sys::RawOwner;
 XSL_NE
 #endif

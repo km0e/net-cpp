@@ -12,6 +12,7 @@
 #ifndef XSL_CORO_SIGNAL_UNSAFE
 #  define XSL_CORO_SIGNAL_UNSAFE
 #  include <xsl/coro/def.h>
+#  include <xsl/coro/log.h>
 #  include <xsl/coro/signal/def.h>
 #  include <xsl/log.h>
 
@@ -49,7 +50,7 @@ struct SignalAwaiterTraits<UnsafeSignalStorage> {
   template <class Promise>
   constexpr void await_suspend(this auto&& self, std::coroutine_handle<Promise> handle) {
     self.storage.state = [handle] { handle.promise().resume(handle); };
-    log_trace("Signal suspended");
+    co_trace("Signal suspended");
   }
   /**
    * @brief Resume the signal
@@ -62,7 +63,7 @@ struct SignalAwaiterTraits<UnsafeSignalStorage> {
     auto& state = std::get<std::ptrdiff_t>(self.storage.state);
     if (state > 0) {
       state--;
-      log_trace("Signal resumed {}", state);
+      co_trace("Signal resumed {}", state);
       return state + 1;  // signal is still alive, return the count
     }
     return 0;  // signal is not alive
@@ -88,11 +89,11 @@ struct SignalTraits<UnsafeSignalStorage, MaxSignals> {
           return 1;
         }
       }(*state);
-      log_trace("Signal released {}", *state);
+      co_trace("Signal released {}", *state);
       return false;
     } else {
       std::get<std::function<void()>>(std::exchange(self.storage.state, std::ptrdiff_t{1}))();
-      log_trace("Signal Callback");
+      co_trace("Signal Callback");
       return true;
     }
   }

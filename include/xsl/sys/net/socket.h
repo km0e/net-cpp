@@ -11,14 +11,13 @@
 #pragma once
 #ifndef XSL_SYS_NET_SOCKET
 #  define XSL_SYS_NET_SOCKET
+#  include <netdb.h>
 #  include <sys/socket.h>
 #  include <xsl/def.h>
 #  include <xsl/error.h>
 #  include <xsl/sys/dev.h>
 #  include <xsl/sys/net/def.h>
 #  include <xsl/sys/net/sockaddr.h>
-
-#  include <expected>
 
 XSL_SYS_NET_NB
 using namespace xsl::io;
@@ -29,14 +28,12 @@ template <class Traits>
 struct ConnectionUtils {
   /// @brief Connect to a address
   Expected<void, errc> connect(this Socket<Traits> &self, const SockAddr<Traits> &sa) {
-    auto [addr, addrlen] = sa.raw();
-    ENSEC(filter_interrupt(::connect, self.raw(), &addr, addrlen));
+    ENSEC(filter_interrupt(::connect, self.raw(), &sa.addr(), sa.len()));
     return {};
   }
   /// @brief Bind to a address
   constexpr Expected<void> bind(this auto &self, const SockAddr<Traits> &sa) {
-    auto [addr, addrlen] = sa.raw();
-    return check_ec(::bind(self.raw(), &addr, addrlen));
+    return check_ec(::bind(self.raw(), &sa.addr(), sa.len()));
   }
 };
 
@@ -75,12 +72,12 @@ struct ConnectionUtils<Traits> {
   }
   /// @brief Bind to a address
   constexpr Expected<void, errc> bind(this auto &&self, const SockAddr<Traits> &sa) noexcept {
-    auto [addr, addrlen] = sa.raw();
-    ENSEC(::bind(self.raw(), &addr, addrlen) == 0);
+    ENSEC(::bind(self.raw(), &sa.addr(), sa.len()) == 0);
     return {};
   }
   /// @brief Accept a connection
-  constexpr Expected<Socket<Traits>> accept(this auto &&self, SockAddr<Traits> *addr = nullptr) {
+  constexpr Expected<Socket<Traits>, errc> accept(this auto &&self,
+                                                  SockAddr<Traits> *addr = nullptr) {
     return ConnectionUtils::accept(self.raw(), addr);
   }
   /// @brief Start listening
@@ -95,8 +92,7 @@ protected:
       if (addr == nullptr) {
         return ::accept4(_raw, nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC);
       } else {
-        auto [sockaddr, addrlen] = addr->raw();
-        return ::accept4(_raw, &sockaddr, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
+        return ::accept4(_raw, &addr->addr(), &addr->len(), SOCK_NONBLOCK | SOCK_CLOEXEC);
       }
     }();
     ENSEC(tmp_fd >= 0);
@@ -131,6 +127,15 @@ Expected<Socket<Traits>, errc> socket(const SockAddr<Traits> &sa,
                                       = SocketAttribute::NonBlocking
                                         | SocketAttribute::CloseOnExec) noexcept {
   int fd = ::socket(sa.family(), sa.type() | static_cast<int>(attr), sa.protocol());
+  ENSEC(fd != -1);
+  return Socket<Traits>(fd);
+}
+template <class Traits>
+Expected<Socket<Traits>, errc> socket(const addrinfo &ai,
+                                      SocketAttribute attr
+                                      = SocketAttribute::NonBlocking
+                                        | SocketAttribute::CloseOnExec) noexcept {
+  int fd = ::socket(ai.ai_family, ai.ai_socktype | static_cast<int>(attr), ai.ai_protocol);
   ENSEC(fd != -1);
   return Socket<Traits>(fd);
 }

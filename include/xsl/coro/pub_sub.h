@@ -12,6 +12,7 @@
 
 #ifndef XSL_CORO_PUB_SUB
 #  define XSL_CORO_PUB_SUB
+#  include <xsl/compose.h>
 #  include <xsl/coro/def.h>
 #  include <xsl/coro/signal.h>
 #  include <xsl/feature.h>
@@ -24,25 +25,33 @@
 
 XSL_CORO_NB
 
-template <class Storage>
-struct PubSubTraits;
-
-template <class Storage>
-class PubSub : public PubSubTraits<Storage> {
-  using traits_type = PubSubTraits<Storage>;
-  using key_type = typename traits_type::key_type;
-  using signal_type = typename traits_type::signal_type;
-
+template <class K, class S, K... keys>
+struct PubSubUtil {
 public:
-  using traits_type::traits_type;
-
-  template <key_type key>
-  constexpr signal_type *signal() {
-    if constexpr (requires { this->traits_type::template signal<key>(); }) {
-      return this->traits_type::template signal<key>();
+  /**
+   * @brief Publish to the receiver
+   *
+   * @tparam _Args
+   * @param args
+   * @return true if the publisher is successful
+   * @return false if the publisher is not successful
+   * @note This function just traverses the storage and finds the receiver with the key
+   */
+  template <K key>
+    requires(sizeof...(keys) == 0) || (find_value_v<key, _value_pack<keys...>> < sizeof...(keys))
+  constexpr bool publish(this auto &&self) {
+    if constexpr (sizeof...(keys) > 0) {
+      if (auto tx = self.template signal<key>()) {
+        tx->release();
+        return true;
+      }
     } else {
-      return this->traits_type::signal(key_type{key});
+      if (auto tx = self.signal(key)) {
+        tx->release();
+        return true;
+      }
     }
+    return false;
   }
   /**
    * @brief Publish to the receiver
@@ -53,28 +62,10 @@ public:
    * @return false if the publisher is not successful
    * @note This function just traverses the storage and finds the receiver with the key
    */
-  template <key_type key>
-  constexpr bool publish() {
-    if (signal_type *tx = this->PubSub::signal<key>()) {
-      tx->release();
-      return true;
-    } else {
-      return false;
-    }
-  }
-  /**
-   * @brief Publish to the receiver
-   *
-   * @tparam _Args
-   * @param args
-   * @return true if the publisher is successful
-   * @return false if the publisher is not successful
-   * @note This function just traverses the storage and finds the receiver with the key
-   */
-  template <typename... _Args>
-  constexpr bool publish(_Args &&...args) {
-    key_type key{std::forward<_Args>(args)...};
-    if (signal_type *tx = this->traits_type::signal(key)) {
+  constexpr bool publish(this auto &&self, auto &&...args)
+    requires std::constructible_from<K, decltype(args)...>
+  {
+    if (auto tx = self.signal(std::forward<decltype(args)>(args)...)) {
       tx->release();
       return true;
     } else {
@@ -89,72 +80,98 @@ public:
    * @return true
    * @return false
    */
-  template <std::predicate<const key_type &> Pred>
-  constexpr bool publish(Pred &&pred) {
+  constexpr bool publish(this auto &&self, std::invocable<K> auto &&pred) {
     bool empty = true;
-    auto f = [&empty, &pred](const key_type &key, auto &tx) {
+    auto f = [&empty, &pred](const auto &key, auto &tx) {
       if (pred(key)) {
         tx.release();
         empty = false;
       }
     };
-    this->for_each(f);
+    self.for_each(f);
     return !empty;
   }
   /// @brief Stop the pubsub
-  constexpr void stop() {
-    auto f = [](const key_type &, auto &tx) { tx.stop(); };
-    this->for_each(f);
+  constexpr void stop(this auto &&self) {
+    auto f = [](const auto &, auto &tx) { tx.stop(); };
+    self.for_each(f);
   }
 };
 
 template <typename K, typename S, K... keys>
 struct StaticExactPubSubStorage : public std::array<S, sizeof...(keys)> {};
 
+template <class K, std::size_t N, class Signal = SPSCSignal2<>>
+using ExactPubSubStorage = std::array<std::pair<K, Signal>, N>;
+
+namespace _pub_sub {
+  template <class...>
+  struct Create;
+
+  template <class K, class S, K... keys>
+  struct Create<_value_pack<keys...>, S, Placeholder>
+      : std::type_identity<StaticExactPubSubStorage<K, S, keys...>> {};
+
+  template <class K, class S>
+  struct Create<K, S, Placeholder> : std::type_identity<std::unordered_map<K, S>> {};
+
+  template <class K, class S, std::size_t N>
+  struct Create<K, S, Exact<N>> : std::type_identity<ExactPubSubStorage<K, N, S>> {};
+
+}  // namespace _pub_sub
+
+template <class K, class S, class... Features>
+constexpr decltype(auto) make_pub_sub(std::same_as<K> auto... keys) {
+  using Storage
+      = select_feature_flags_t<_pub_sub::Create<Item<always_true<Placeholder, void>, void>,
+                                                Item<always_true<Placeholder, void>, void>,
+                                                Item<is_same_pack<Placeholder, void>, Exact<0>>>,
+                               K, S, Features...>::type;
+  SharedStorageCompose<Storage> ps{};
+  std::construct_at<Storage>(ps.get(), keys...);
+  // StorageTraits<Storage>::init(&ps.template acc<Storage>(), keys...);
+
+  return ps;
+}
+XSL_CORO_NE
+XSL_NB
+
 template <typename K, typename S, K... keys>
-struct PubSubTraits<StaticExactPubSubStorage<K, S, keys...>>
-    : public StaticExactPubSubStorage<K, S, keys...> {
+struct StorageUtils<coro::StaticExactPubSubStorage<K, S, keys...>>
+    : coro::StaticExactPubSubStorage<K, S, keys...>, coro::PubSubUtil<K, S, keys...> {
   using key_type = K;
   using signal_type = S;
-  using storage_type = StaticExactPubSubStorage<K, S, keys...>;
+  using storage_type = coro::StaticExactPubSubStorage<K, S, keys...>;
 
-  using storage_type::storage_type;
-
-protected:
-  template <std::invocable<K, S &> F>
-  constexpr void for_each(F &&_f) {
-    [this]<std::size_t... I>(std::index_sequence<I...>, F &&_f) {
-      ((std::invoke(_f, keys, (*this)[I])), ...);
-    }(std::make_index_sequence<(sizeof...(keys))>{}, std::forward<F>(_f));
+  constexpr void for_each(this auto &&self, std::invocable<K, S &> auto &&_f) {
+    [&self]<std::size_t... I>(std::index_sequence<I...>, auto &&_f) {
+      ((std::invoke(std::forward<decltype(_f)>(_f), keys, self[I])), ...);
+    }(std::make_index_sequence<(sizeof...(keys))>{}, std::forward<decltype(_f)>(_f));
   }
 
-public:
   template <K key>
-  constexpr auto signal() {
+  constexpr auto signal(this auto &&self) {
     const std::size_t index = find_value_v<key, _value_pack<keys...>>;
     if constexpr (index < sizeof...(keys)) {
-      return &(*this)[index];
+      return &self[index];
     } else {
       return nullptr;
     }
   }
 };
 
-template <class K, std::size_t N, class Signal = SPSCSignal2<>>
-using ExactPubSubStorage = std::array<std::pair<K, Signal>, N>;
-
 template <typename K, std::size_t N, typename S>
-struct PubSubTraits<ExactPubSubStorage<K, N, S>> : public ExactPubSubStorage<K, N, S> {
+struct StorageUtils<coro::ExactPubSubStorage<K, N, S>> : coro::ExactPubSubStorage<K, N, S>,
+                                                         coro::PubSubUtil<K, S> {
   using key_type = K;
   using signal_type = S;
-  using storage_type = ExactPubSubStorage<K, N, S>;
+  using storage_type = coro::ExactPubSubStorage<K, N, S>;
 
   using storage_type::storage_type;
 
-  constexpr PubSubTraits(std::same_as<K> auto... keys)
+  constexpr StorageUtils(std::same_as<K> auto... keys)
       : storage_type{{std::pair{std::forward<decltype(keys)>(keys), S()}...}} {}
 
-protected:
   template <std::invocable<K, S &> F>
   constexpr void for_each(F &&_f) {
     for (auto &[keys, s] : *this) {
@@ -162,12 +179,11 @@ protected:
     }
   }
 
-public:
   template <K key>
-  constexpr auto signal() {
-    auto iter = std::find_if(this->begin(), this->end(),
+  constexpr auto signal(this auto &&self) {
+    auto iter = std::find_if(self.begin(), self.end(),
                              [](const auto &pair) { return pair.first == key; });
-    if (iter != this->end()) {
+    if (iter != self.end()) {
       return &iter->second;
     } else {
       return nullptr;
@@ -176,15 +192,14 @@ public:
 };
 
 template <typename K, typename S>
-struct PubSubTraits<std::unordered_map<K, S>> : public std::unordered_map<K, S> {
+struct StorageUtils<std::unordered_map<K, S>> : std::unordered_map<K, S>, coro::PubSubUtil<K, S> {
   using key_type = K;
   using signal_type = S;
   using storage_type = std::unordered_map<K, S>;
 
-  constexpr PubSubTraits(std::same_as<K> auto... keys)
+  constexpr StorageUtils(std::same_as<K> auto... keys)
       : storage_type{{std::forward<decltype(keys)>(keys), S()}...} {}
 
-protected:
   template <std::invocable<K, S &> F>
   constexpr void for_each(F &&_f) {
     for (auto &[keys, s] : *this) {
@@ -192,80 +207,34 @@ protected:
     }
   }
 
-public:
   /**
    * @brief Subscribe to the receiver
    *
    * @param args
    * @return std::optional<SignalReceiver<>>
    */
-  constexpr std::pair<S *, bool> subscribe(auto &&...args) {
-    auto [iter, ok] = this->try_emplace({std::forward<decltype(args)>(args)...});
+  constexpr std::pair<S *, bool> subscribe(this auto &&self, auto &&...args) {
+    auto [iter, ok] = self.try_emplace({std::forward<decltype(args)>(args)...});
     return {&iter->second, ok};
   }
 
-  constexpr S *signal(key_type key) {
-    auto iter = this->find(key);
-    if (iter != this->end()) {
+  constexpr S *signal(this auto &&self, auto &&...args)
+    requires std::constructible_from<K, decltype(args)...>
+  {
+    K key{std::forward<decltype(args)>(args)...};
+    auto iter = self.find(key);
+    if (iter != self.end()) {
       return &iter->second;
     } else {
       return nullptr;
     }
   }
+
+  template <K key>
+  constexpr S *signal(this auto &&self) {
+    return self.signal(key);
+  }
 };
+XSL_NE
 
-namespace _pub_sub {
-  template <class...>
-  struct Create;
-
-  template <class K, class S, class _Shared, K... keys>
-  struct Create<_value_pack<keys...>, S, _Shared, Placeholder> {
-    constexpr decltype(auto) operator()(auto...) {
-      using PubSub = PubSub<StaticExactPubSubStorage<K, S, keys...>>;
-      if constexpr (std::is_same_v<_Shared, Shared>) {
-        return std::make_shared<PubSub>();
-      } else {
-        return PubSub{};
-      }
-    }
-  };
-
-  template <class K, class S, class _Shared>
-  struct Create<K, S, _Shared, Placeholder> {
-    constexpr decltype(auto) operator()(std::same_as<K> auto... keys) {
-      using PubSub = PubSub<std::unordered_map<K, S>>;
-      if constexpr (std::is_same_v<_Shared, Shared>) {
-        return std::make_shared<PubSub>(keys...);
-      } else {
-        return PubSub{keys...};
-      }
-    }
-  };
-
-  template <class K, class S, class _Shared>
-  struct Create<K, S, Placeholder, _Shared, Exact> {
-    constexpr decltype(auto) operator()(std::same_as<K> auto... keys) {
-      using PubSub = PubSub<ExactPubSubStorage<K, sizeof...(keys), S>>;
-      if constexpr (std::is_same_v<_Shared, Shared>) {
-        return std::make_shared<PubSub>(keys...);
-      } else {
-        return PubSub{keys...};
-      }
-    }
-  };
-}  // namespace _pub_sub
-
-template <class K, class S, class... Features>
-constexpr decltype(auto) make_pub_sub(std::same_as<K> auto... keys) {
-  using F = select_feature_flags_t<
-      _pub_sub::Create<Item<always_true, void>, Item<always_true, void>, Shared, Exact>, K, S,
-      Features...>;
-
-  return F{}(keys...);
-}
-
-static_assert(std::is_same_v<decltype(make_pub_sub<_value_pack<(int)1, 2>, SPSCSignal2<1>>()),
-                             PubSub<StaticExactPubSubStorage<int, SPSCSignal2<1>, 1, 2>>>);
-
-XSL_CORO_NE
 #endif

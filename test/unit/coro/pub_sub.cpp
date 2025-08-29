@@ -18,8 +18,8 @@
 
 using namespace xsl;
 TEST(ExactPubSub, Exit) {
-  auto pubsub = coro::make_pub_sub<_value_pack<1>, SPSCSignal2<1>, Shared>();
-  pubsub->publish<1>();
+  auto pubsub = coro::make_pub_sub<_value_pack<1>, SPSCSignal2<1>>();
+  pubsub->template publish<1>();
   int count = 0;
   [](auto sub, int &count) -> Task<void> {
     while (co_await *sub->template signal<1>()) {
@@ -31,8 +31,8 @@ TEST(ExactPubSub, Exit) {
 }
 
 TEST(ExactPubSub, UnSafeExit) {
-  auto pubsub = coro::make_pub_sub<_value_pack<1>, UnsafeSignal<1>, Shared>();
-  pubsub->publish<1>();
+  auto pubsub = coro::make_pub_sub<_value_pack<1>, UnsafeSignal<1>>();
+  pubsub->template publish<1>();
   int count = 0;
   [](auto sub, int &count) -> Task<void> {
     while (co_await *sub->template signal<1>()) {
@@ -44,7 +44,7 @@ TEST(ExactPubSub, UnSafeExit) {
 }
 
 TEST(ExactPubSub, PubByPred) {
-  auto pubsub = coro::make_pub_sub<_value_pack<1>, SPSCSignal2<1>, Shared>();
+  auto pubsub = coro::make_pub_sub<_value_pack<1>, SPSCSignal2<1>>();
   pubsub->publish([](int v) { return v == 1; });
   int count = 0;
   [](auto sub, int &count) -> Task<void> {
@@ -59,13 +59,13 @@ TEST(ExactPubSub, PubByPred) {
 TEST(PubSub, SafeExit) {
   auto pubsub = [] -> auto {
     auto pubsub = coro::make_pub_sub<int, SPSCSignal2<100>>();
-    pubsub.subscribe(1);
-    pubsub.template publish<1>();
+    pubsub->subscribe(1);
+    pubsub->template publish<1>();
     return pubsub;
   }();
   int count = 0;
   [](auto sub, int &count) -> Task<void> {
-    while (co_await *sub.template signal<1>()) {
+    while (co_await *sub->template signal<1>()) {
       count++;
     }
   }(std::move(pubsub), count)
@@ -75,9 +75,9 @@ TEST(PubSub, SafeExit) {
 
 TEST(PubSub, PubByPred) {
   auto pubsub = coro::make_pub_sub<int, SPSCSignal2<100>>();
-  auto [sig, _] = pubsub.subscribe(1);
-  pubsub.subscribe(2);
-  pubsub.publish([](const int &v) { return v == 1; });
+  auto [sig, _] = pubsub->subscribe(1);
+  pubsub->subscribe(2);
+  pubsub->publish([](const int &v) { return v == 1; });
   int count = 0;
   [](auto sub, int &count) -> Task<void> {
     while (co_await *sub) {
@@ -103,7 +103,7 @@ TEST(PubSub, HeavyConcurrent) {
   std::counting_semaphore<> sem{0};
   for (auto i : rand_sub) {
     [](int v, auto &pubsub, auto &sem, auto &counter) -> Task<void> {
-      auto [sig, ok] = pubsub.subscribe(v);
+      auto [sig, ok] = pubsub->subscribe(v);
       if (!ok) {
         co_return;
       }
@@ -116,11 +116,11 @@ TEST(PubSub, HeavyConcurrent) {
   }
   int total = 0;
   for (auto i : rand_pub) {
-    if (pubsub.publish(i)) {
+    if (pubsub->publish(i)) {
       total++;
     }
   }
-  pubsub.stop();
+  pubsub->stop();
   for (auto i{0u}; i < counter.size(); i++) {
     sem.acquire();
   }

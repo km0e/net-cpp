@@ -12,10 +12,7 @@
 
 #ifndef XSL_IO_EXT
 #  define XSL_IO_EXT
-#  include <xsl/coro.h>
 #  include <xsl/io/def.h>
-
-#  include <concepts>
 
 XSL_IO_NB
 
@@ -28,10 +25,6 @@ struct WriteFileHint {
   std::size_t size;
 };
 
-template <class Device>
-concept AsyncWriteExt = requires(Device t, WriteFileHint hint) {
-  { t.write_file(hint) } -> std::same_as<Task<io::Result>>;
-};
 XSL_IO_NE
 
 #endif  // !#ifndef XSL_IO_EXTe

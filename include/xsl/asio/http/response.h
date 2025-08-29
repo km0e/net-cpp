@@ -96,9 +96,9 @@ public:
   }
 
   Task<io::Result> sendto(W& awd) {
-    auto str = this->_part.to_string();
+    auto str = this->_part.to_string();  // TODO:write directly
     log_trace("response: {}", str);
-    auto res = co_await awd.write(std::as_bytes(std::span(str)));
+    auto res = co_await awd.write(str.data(), str.size());
     if (!res) co_return res;
     if (!_body) co_return {res.size};
     auto body_res = co_await this->_body(awd);

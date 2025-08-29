@@ -9,6 +9,10 @@ if (NOT quill_FOUND)
     FetchContent_MakeAvailable(quill)
 endif()
 
+add_library(loglib ALIAS quill)
+
+find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)
+
 find_package(CLI11 QUIET)
 if (NOT cli11_FOUND)
     message(STATUS "cli11 not found, adding cli11")

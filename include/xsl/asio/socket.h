@@ -15,6 +15,7 @@
 #  include <xsl/asio/def.h>
 #  include <xsl/asio/dev.h>
 #  include <xsl/asio/io.h>
+#  include <xsl/compose.h>
 #  include <xsl/error.h>
 #  include <xsl/io.h>
 #  include <xsl/net.h>
@@ -28,35 +29,55 @@ template <typename Traits>
 struct AsyncConnectionUtils : public sys::net::ConnectionUtils<Traits> {};
 
 template <class Traits>
-class AsyncSocketUtil : public Traits,
-                        public AsyncConnectionUtils<Traits>,
-                        public NetAsyncRx,
-                        public NetAsyncTx {
-public:
-  using traits_type = Traits;
-  using poll_traits_type = typename traits_type::poll_traits_type;
-
-  using value_type = byte;
+struct AsyncSocketStorage {};
+template <class Traits>
+struct DynAsyncSocketStorage {};
+XSL_ASIO_NE
+XSL_NB
+template <class Traits>
+struct StorageUtils<_asio::AsyncSocketStorage<Traits>>
+    : public Traits, public _asio::AsyncConnectionUtils<Traits> {
+  using poll_traits_type = typename Traits::poll_traits_type;
 };
+template <class Traits>
+struct StorageUtils<_asio::DynAsyncSocketStorage<Traits>>
+    : public Traits,
+      public _asio::AsyncConnectionUtils<Traits>,
+      public _asio::AsyncDeviceUtil,
+      public _asio::NetAsyncRx,
+      public _asio::NetAsyncTx {
+  using socket_traits_type = Traits;
+  using poll_traits_type = typename Traits::poll_traits_type;
+};
+XSL_NE
+XSL_ASIO_NB
 
 template <class Traits>
-using AsyncSocket
-    = AsyncDevice<_value_pack<IOM_EVENTS::IN, IOM_EVENTS::OUT>, AsyncSocketUtil<Traits>>;
+using AsyncSocket = SharedStorageCompose<
+    BaseOn<DirectAsyncReadWriteUtils>, RawOwner,
+    StaticExactPubSubStorage<IOM_EVENTS, SPSCSignal2<1>, IOM_EVENTS::IN, IOM_EVENTS::OUT>,
+    DynAsyncSocketStorage<Traits>>;
+
+template <class Traits>
+using DynAsyncSocket = SharedStorageCompose<
+    Wrapper<AsyncReadWriteWrapper>,
+    BaseOn<DirectAsyncReadWriteUtils, SharedDynamicUtil<AsyncReadWriteBase>>, RawOwner,
+    StaticExactPubSubStorage<IOM_EVENTS, SPSCSignal2<1>, IOM_EVENTS::IN, IOM_EVENTS::OUT>,
+    DynAsyncSocketStorage<Traits>>;
 
 template <class Traits>
 constexpr Expected<AsyncSocket<Traits>, errc> make_async_socket(Context &ctx,
                                                                 sys::net::Socket<Traits> &&sock) {
-  auto raw = std::move(sock).into_raw();
-  TRVEC(dev, (make_async_device<IOM_EVENTS::IN, IOM_EVENTS::OUT>(ctx, std::move(raw),
-                                                                 AsyncSocketUtil<Traits>{})));
-  return {AsyncSocket<Traits>{std::move(dev)}};
+  AsyncSocket<Traits> ss{};
+  init_async_device(ss, std::move(sock).into_raw(), ctx);
+  return {std::move(ss)};
 }
 
 template <class... Flags>
 using AsyncSocketCompose = AsyncSocket<sys::net::SocketTraits<Flags...>>;
 
 template <sys::net::ConnectionBasedSocketTraits Traits>
-struct AsyncConnectionUtils<Traits> : public sys::net::ConnectionUtils<Traits> {
+struct AsyncConnectionUtils<Traits> : sys::net::ConnectionUtils<Traits> {
   using Base = sys::net::ConnectionUtils<Traits>;
 
   /// @brief Accept a connection
@@ -80,18 +101,15 @@ struct AsyncConnectionUtils<Traits> : public sys::net::ConnectionUtils<Traits> {
   }
 };
 
-template <class Traits>
-inline Task<std::expected<AsyncSocket<Traits>, errc>> async_connect(sys::net::Socket<Traits> &skt,
-                                                                    const SockAddr<Traits> &sa,
-                                                                    Context &ctx) {
+inline Task<Expected<void, errc>> async_connect(int fd, const sockaddr *sa, socklen_t len,
+                                                std::invocable auto &&fn) {
   auto ec = errc{};
-  auto [addr, len] = sa.raw();
-  if (sys::filter_interrupt(::connect, skt.raw(), &addr, len) != 0) {
+  if (sys::filter_interrupt(::connect, fd, sa, len) != 0) {
     if (errno != EINPROGRESS) [[unlikely]] {
       ec = errc{errno};
     } else {
-      CO_TRVEC(askt, make_async_socket(ctx, std::move(skt)));
-      if (!co_await askt.write_signal()) {
+      CO_TRVEC(write_signal, fn());
+      if (!co_await *write_signal) {
         // skt = std::move(async_skt).sync(poller);
         co_return std::unexpected{errc::not_connected};
       }
@@ -108,17 +126,18 @@ inline Task<std::expected<AsyncSocket<Traits>, errc>> async_connect(sys::net::So
         }
         return 0;
       };
-      int res = check(askt.raw());
+      int res = check(fd);
       if (res != 0) [[unlikely]] {
         // skt = std::move(async_skt).sync(poller);
         co_return std::unexpected{errc{res}};
       }
-      log_debug("Connected to fd: {}", askt.raw());
-      co_return std::move(askt);
+      log_debug("Connected to fd: {}", fd);
+      co_return {};
     }
   }
   co_return std::unexpected{ec};
 }
 
 XSL_ASIO_NE
+
 #endif

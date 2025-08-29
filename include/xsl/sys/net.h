@@ -16,40 +16,77 @@
 #  include <xsl/sys/net/def.h>
 #  include <xsl/sys/net/socket.h>
 #  include <xsl/sys/net/utils.h>
-XSL_SYS_ENB
-namespace net {
-  namespace inet = _sys::net::inet;
+XSL_SYS_NB
+namespace inet = net::inet;
+namespace detail {
+  using net::SocketCompose, net::SocketTraits;
+  template <class Traits>
+  struct TcpIpSocketUtils : Traits {
+    using io_dev_type = net::Socket<Traits>;
 
-  using _sys::net::AddrInfos;
-  using _sys::net::ConnectionBasedSocketTraits;
-  using _sys::net::ConnectionUtils;
-  using _sys::net::gai_bind;
-  using _sys::net::gai_connect;
-  using _sys::net::GaiErrorUtil;
-  using _sys::net::getaddrinfo;
-  /**
-   * @brief Make a socket address
-   *
-   * @tparam Flags list of flags, such as Ip<4>/Ip<6>, Tcp/Udp, TcpIpv4 ...
-   * @param (ip:[const char*|std::string_view|const std::string&], port:[const
-   * char*|std::string_view|const std::string&|uint16_t])
-   * @return Expected<SockAddr<SocketTraits<Flags...>>>
-   */
-  using _sys::net::make_sockaddr;
-  using _sys::net::make_socket_utils;
-  using _sys::net::SockAddr;
-  using _sys::net::SockAddrCompose;
-  using _sys::net::Socket;
-  using _sys::net::socket;
-  using _sys::net::SocketAttribute;
-  using _sys::net::SocketCompose;
-  using _sys::net::SocketTraits;
-  using _sys::net::SocketTraitsCompatible;
-  using _sys::net::SocketUtils;
-  namespace dns {
-    using _sys::net::CLIENT_FLAGS;
-    using _sys::net::SERVER_FLAGS;
-  }  // namespace dns
-}  // namespace net
-XSL_SYS_ENE
+    template <class... Flags>  /// TODO: add attr opt for socket
+    Expected<SocketCompose<Traits, Flags...>> c(const char *ip, inet::port_t port) noexcept {
+      using traits_type = SocketTraits<Traits, Flags...>;
+      TRV(addr, net::make_sockaddr<traits_type>(ip, port));
+      TRV(sock, socket(addr));
+      ENSURE(sock.reuse_addr());
+      ENSURE(sock.bind(addr));
+      return std::move(sock);
+    }
+  };
+
+  template <class Traits>
+  struct UdpIpSocketUtils : Traits {
+    using io_dev_type = net::Socket<Traits>;
+
+    template <class... Flags>  /// TODO: add attr opt for socket
+    Expected<SocketCompose<Traits, Flags...>> c(const char *ip, inet::port_t port) noexcept {
+      using traits_type = SocketTraits<Traits, Flags...>;
+      TRV(addr, net::make_sockaddr<traits_type>(ip, port));
+      TRV(sock, socket(addr));
+      ENSURE(sock.reuse_addr());
+      ENSURE(sock.bind(addr));
+      return std::move(sock);
+    }
+    template <class... Flags>  /// TODO: add attr opt for socket
+    Expected<SocketCompose<Traits, Flags...>> c2(const char *ip, inet::port_t port) noexcept {
+      using traits_type = SocketTraits<Traits, Flags...>;
+      TRV(addr, net::make_sockaddr<traits_type>(ip, port));
+      TRV(sock, socket(addr));
+      ENSURE(sock.connect(addr));
+      return std::move(sock);
+    }
+  };
+}  // namespace detail
+
+template <class Traits>
+struct SocketUtils {
+  using io_dev_type = net::Socket<Traits>;
+  template <class... Flags>  /// TODO: add attr opt for socket
+  Expected<net::SocketCompose<Traits, Flags...>> c(const char *ip, inet::port_t port) noexcept;
+};
+
+template <>
+struct SocketUtils<net::TcpIpv4SocketTraits> : detail::TcpIpSocketUtils<net::TcpIpv4SocketTraits> {
+};
+
+template <>
+struct SocketUtils<net::TcpIpSocketTraits> : detail::TcpIpSocketUtils<net::TcpIpSocketTraits> {};
+
+template <>
+struct SocketUtils<net::TcpIpv6SocketTraits> : detail::TcpIpSocketUtils<net::TcpIpv6SocketTraits> {
+};
+
+template <>
+struct SocketUtils<net::UdpIpv4SocketTraits> : detail::UdpIpSocketUtils<net::UdpIpv4SocketTraits> {
+};
+
+template <>
+struct SocketUtils<net::UdpIpSocketTraits> : detail::UdpIpSocketUtils<net::UdpIpSocketTraits> {};
+
+template <class... Flags>
+consteval auto make_socket_utils() {
+  return SocketUtils<net::SocketTraits<Flags...>>();
+}
+XSL_SYS_NE
 #endif

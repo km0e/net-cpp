@@ -57,7 +57,6 @@ TEST(route, prefix) {
 }
 
 int main() {
-  xsl::no_log();
   ::testing::InitGoogleTest();
   return RUN_ALL_TESTS();
 }

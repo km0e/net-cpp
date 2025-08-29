@@ -17,4 +17,6 @@ target_link_libraries(
     xsl_net
     xsl_io
     xsl_coro
+    ssl
+    crypto
 )

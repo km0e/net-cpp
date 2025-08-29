@@ -23,13 +23,6 @@ struct GaiError : public Error {
   ~GaiError() override = default;
   auto message() const -> std::string_view override { return gai_strerror(code()); }
 };
-
-struct GaiErrorUtil {
-  auto operator()(int ec) const { return GaiError(ec); }
-};
-
-#  define ENSGAI(expr) __BASE__ENSURE2(, expr, GaiErrorUtil{})
-
 XSL_SYS_NET_NE
 
 #endif

@@ -117,8 +117,6 @@ TEST(HttpProto, parse_accept_encoding) {
 }
 
 int main(int argc, char **argv) {
-  xsl::no_log();
-  // xsl::set_log_level(xsl::LogLevel::TRACE);
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

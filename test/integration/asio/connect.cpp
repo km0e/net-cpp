@@ -16,7 +16,6 @@
 #include <xsl/log.h>
 #include <xsl/sys.h>
 
-#include <span>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -52,12 +51,11 @@ protected:
     });
   }
 
-  template <class Traits>
-  void echo(AsyncSocket<Traits> &skt) {
+  template <class AsyncSocket>
+  void echo(AsyncSocket &skt) {
     auto buf = std::make_unique<byte[]>(1024);
     for (auto &msg : echo_msg) {
-      auto send_bytes = std::as_bytes(std::span(msg.data(), msg.size()));
-      auto res = skt.write(send_bytes).block();
+      auto res = skt.write(msg.data(), msg.size()).block();
       ASSERT_TRUE(res);
       res = skt.read(buf.get(), 1024).block();
       ASSERT_TRUE(res) << "Read error: " << res.message();
@@ -65,15 +63,13 @@ protected:
     }
   }
 
-  template <class Traits>
-  void echo_to(AsyncSocket<Traits> &skt, SockAddr<Traits> &addr) {
+  template <class AsyncSocket>
+  void echo_to(AsyncSocket &skt, auto &addr) {
     auto buf = std::make_unique<char[]>(1024);
     for (auto &msg : echo_msg) {
-      auto send_bytes = std::as_bytes(std::span(msg.data(), msg.size()));
-      auto res = skt.sendto(addr, send_bytes).block();
+      auto res = skt->sendto(addr, reinterpret_cast<const byte *>(msg.data()), msg.size()).block();
       ASSERT_TRUE(res);
-      auto recv_bytes = std::as_writable_bytes(std::span(buf.get(), 1024));
-      res = skt.recvfrom(addr, recv_bytes).block();
+      res = skt->recvfrom(addr, reinterpret_cast<byte *>(buf.get()), 1024).block();
       ASSERT_TRUE(res);
       ASSERT_EQ(std::string_view(buf.get(), res.size), msg);
     }
@@ -93,7 +89,7 @@ TEST_F(AsyncSocketIOFixture, tcp_connect_with_ais) {
   auto util = make_async_socket_utils<TcpIpv4>();
   auto res_skt = util.ac2(*ctx, ip.c_str(), port.c_str()).block();
   ASSERT_TRUE(res_skt.has_value());
-  ASSERT_NE(res_skt->raw(), 0);
+  ASSERT_NE((*res_skt)->raw(), 0);
   echo(*res_skt);
   auto addr = sys::net::make_sockaddr<TcpIpv4>(ip.c_str(), port.c_str());
   echo_to(*res_skt, *addr);

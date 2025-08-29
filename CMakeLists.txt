@@ -83,7 +83,7 @@ target_sources(
     ${PROJECT_SOURCE_DIR}/src/log.cpp
 )
 
-target_link_libraries(xsl_prepare quill)
+target_link_libraries(xsl_prepare loglib)
 
 set_log_level(xsl_prepare)
 

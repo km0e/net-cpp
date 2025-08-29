@@ -13,17 +13,29 @@
 #  define XSL_ASIO_PIPE
 #  include <xsl/asio/def.h>
 #  include <xsl/asio/dev.h>
+#  include <xsl/feature.h>
 #  include <xsl/io.h>
 XSL_ASIO_NB
 
 const size_t MAX_SINGLE_FWD_SIZE = 4096;
-struct AsyncPipeTraits {
+struct AsyncPipeStorage {};
+XSL_ASIO_NE
+XSL_NB
+
+template <>
+struct StorageUtils<_asio::AsyncPipeStorage> {
   using poll_traits_type = io::DefaultPollTraits;
 };
 
-using AsyncPipeReadDevice = AsyncDevice<_value_pack<io::IOM_EVENTS::IN>, AsyncPipeTraits>;
+XSL_NE
+XSL_ASIO_NB
 
-using AsyncPipeWriteDevice = AsyncDevice<_value_pack<io::IOM_EVENTS::OUT>, AsyncPipeTraits>;
+using AsyncPipeReadDevice = SharedStorageCompose<BaseOn<DirectAsyncReadWriteUtils>, RawOwner,
+                                                 IOSignalStorage<IOM_EVENTS::IN>, AsyncPipeStorage>;
+
+using AsyncPipeWriteDevice
+    = SharedStorageCompose<BaseOn<DirectAsyncReadWriteUtils>, RawOwner,
+                           IOSignalStorage<IOM_EVENTS::OUT>, AsyncPipeStorage>;
 
 /// @brief create a async pipe
 std::expected<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>, errc> async_pipe(Context& ctx);
@@ -42,7 +54,7 @@ Task<std::optional<errc>> splice(From from, To to) {
   // log_debug("splice from: {}, to: {}", from.raw(), to.raw());
   std::size_t offset = 0;
   do {
-    ssize_t n = ::splice(from.raw(), nullptr, to.raw(), nullptr, MAX_SINGLE_FWD_SIZE,
+    ssize_t n = ::splice(from->raw(), nullptr, to->raw(), nullptr, MAX_SINGLE_FWD_SIZE,
                          SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
     log_debug("recv n: {}", n);
     if (n > 0) {

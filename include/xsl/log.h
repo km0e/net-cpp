@@ -42,47 +42,75 @@ consteval LogLevel compile_active_log_level() {
 #  endif
 }
 
-class LogCtl {
+constexpr std::string_view log_level_to_string(LogLevel level) {
+  switch (level) {
+    case LogLevel::None:
+      return "none";
+    case LogLevel::Error:
+      return "error";
+    case LogLevel::Warning:
+      return "warning";
+    case LogLevel::Info:
+      return "info";
+    case LogLevel::Debug:
+      return "debug";
+    case LogLevel::Trace:
+      return "trace";
+    default:
+      return "none";
+  }
+}
+#  define log_trace(fmt, ...) LOG_TRACE_L1(xsl::logger_xsl.logger, fmt, ##__VA_ARGS__)
+
+#  define log_debug(fmt, ...) LOG_DEBUG(xsl::logger_xsl.logger, fmt, ##__VA_ARGS__)
+
+#  define log_info(fmt, ...) LOG_INFO(xsl::logger_xsl.logger, fmt, ##__VA_ARGS__)
+
+#  define log_warning(fmt, ...) LOG_WARNING(xsl::logger_xsl.logger, fmt, ##__VA_ARGS__)
+
+#  define log_error(fmt, ...) LOG_ERROR(xsl::logger_xsl.logger, fmt, ##__VA_ARGS__)
+
+#  define log_critical(fmt, ...) LOG_CRITICAL(xsl::logger_xsl.logger, fmt, ##__VA_ARGS__)
+
+class LogCtl2 {
 private:
-  LogCtl();
-  constexpr LogCtl(const LogCtl&) = delete;
-  constexpr LogCtl& operator=(const LogCtl&) = delete;
+  constexpr LogCtl2(const LogCtl2&) = delete;
+  constexpr LogCtl2& operator=(const LogCtl2&) = delete;
 
 public:
-  ~LogCtl();
   quill::Logger* logger;
+
+  LogCtl2(std::string const& logger_name, std::string const& sink_name = "console");
+  ~LogCtl2();
 #  if QUILL_COMPILE_ACTIVE_LOG_LEVEL <= QUILL_COMPILE_ACTIVE_LOG_LEVEL_CRITICAL
-  static LogCtl instance;
 
-  static constexpr void no_log() { set_log_level(LogLevel::None); }
+  void flush_log() { logger->flush_log(); }
 
-  static void flush_log() { instance.logger->flush_log(); }
-
-  static constexpr void set_log_level(LogLevel level) {
+  constexpr void set_log_level(LogLevel level) {
     switch (level) {
       case LogLevel::None:
-        instance.logger->set_log_level(quill::LogLevel::None);
+        logger->set_log_level(quill::LogLevel::None);
         break;
       case LogLevel::Error:
-        instance.logger->set_log_level(quill::LogLevel::Error);
+        logger->set_log_level(quill::LogLevel::Error);
         break;
       case LogLevel::Warning:
-        instance.logger->set_log_level(quill::LogLevel::Warning);
+        logger->set_log_level(quill::LogLevel::Warning);
         break;
       case LogLevel::Info:
-        instance.logger->set_log_level(quill::LogLevel::Info);
+        logger->set_log_level(quill::LogLevel::Info);
         break;
       case LogLevel::Debug:
-        instance.logger->set_log_level(quill::LogLevel::Debug);
+        logger->set_log_level(quill::LogLevel::Debug);
         break;
       case LogLevel::Trace:
-        instance.logger->set_log_level(quill::LogLevel::TraceL1);
+        logger->set_log_level(quill::LogLevel::TraceL1);
         break;
     }
   }
 
-  static constexpr LogLevel get_log_level() {
-    switch (instance.logger->get_log_level()) {
+  constexpr LogLevel get_log_level() {
+    switch (logger->get_log_level()) {
       case quill::LogLevel::None:
         return LogLevel::None;
       case quill::LogLevel::Error:
@@ -100,24 +128,6 @@ public:
     }
   }
 
-  static constexpr std::string_view log_level_to_string(LogLevel level) {
-    switch (level) {
-      case LogLevel::None:
-        return "none";
-      case LogLevel::Error:
-        return "error";
-      case LogLevel::Warning:
-        return "warning";
-      case LogLevel::Info:
-        return "info";
-      case LogLevel::Debug:
-        return "debug";
-      case LogLevel::Trace:
-        return "trace";
-      default:
-        return "none";
-    }
-  }
 #  else
   static constexpr void no_log() {}
 
@@ -127,23 +137,7 @@ public:
 #  endif
 };
 
-#  define log_trace(fmt, ...) LOG_TRACE_L1(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define log_debug(fmt, ...) LOG_DEBUG(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define log_info(fmt, ...) LOG_INFO(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define log_warning(fmt, ...) LOG_WARNING(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define log_error(fmt, ...) LOG_ERROR(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-#  define log_critical(fmt, ...) LOG_CRITICAL(xsl::LogCtl::instance.logger, fmt, ##__VA_ARGS__)
-
-constexpr void set_log_level(LogLevel level) { xsl::LogCtl::set_log_level(level); }
-
-constexpr void no_log() { set_log_level(xsl::LogLevel::None); }
-
-inline void flush_log() { xsl::LogCtl::flush_log(); }
+extern LogCtl2 logger_xsl;
 
 XSL_NE
 #  include <quill/DeferredFormatCodec.h>

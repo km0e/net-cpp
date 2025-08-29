@@ -71,7 +71,7 @@ public:
   constexpr AddrInfos &operator=(AddrInfos &&other) {
     if (this != &other) {
       this->~AddrInfos();
-      new (this) AddrInfos(std::exchange(other.info, nullptr));
+      std::construct_at(this, std::exchange(other.info, nullptr));
     }
     return *this;
   }
@@ -113,13 +113,16 @@ namespace {
     addrinfo *res;
     std::memset(&hints, 0, sizeof(hints));
     hints.ai_flags = static_cast<int>(flags);
-    if constexpr (requires { Traits{}.family(); })
-      hints.ai_family = Traits{}.family();
+    if constexpr (requires { Traits::family(); })
+      hints.ai_family = Traits::family();
     else
       hints.ai_family = AF_UNSPEC;  // AF_UNSPEC for any family
     hints.ai_socktype = Traits{}.type();
     hints.ai_protocol = Traits{}.protocol();
-    ENSGAI(getaddrinfo(name, serv, &hints, &res));
+    int ec = getaddrinfo(name, serv, &hints, &res);
+    if (ec != 0) {
+      return std::unexpected{GaiError(ec)};
+    }
     return {AddrInfos<Traits>(res)};
   }
 }  // namespace

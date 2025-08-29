@@ -8,6 +8,14 @@ do
     set_default(false)
 end
 
+target("http_client")
+do
+    set_kind("binary")
+    set_default(false)
+    add_files("http_client.cpp")
+    add_deps("xsl_asio")
+end
+
 target("http_server")
 do
     set_kind("binary")

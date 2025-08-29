@@ -17,7 +17,6 @@
 #  include <xsl/coro/core/executor.h>
 #  include <xsl/coro/core/then.h>
 #  include <xsl/coro/def.h>
-#  include <xsl/log.h>
 #  include <xsl/type_traits.h>
 
 #  include <cassert>
@@ -63,11 +62,11 @@ public:
 
   template <class Promise>
   constexpr void next(std::coroutine_handle<Promise> handle) {
-    log_trace("Promise next");
+    co_trace("Promise next");
     this->_next = handle;
     if constexpr (!std::is_same_v<typename Promise::executor_type, void>) {
       if (!this->executor()) {
-        log_trace("set executor");
+        co_trace("set executor");
         this->_executor = handle.promise().executor();
       }
     }
@@ -77,7 +76,7 @@ public:
   constexpr void resume(std::coroutine_handle<Promise> handle) {
     if (this->executor()) {
       this->_executor->schedule([handle] mutable {
-        log_trace("task resume {}", (uint64_t)handle.address());
+        co_trace("task resume {}", (uint64_t)handle.address());
         handle();
       });
     } else {
@@ -131,7 +130,7 @@ public:
 
   constexpr auto operator co_await(this auto &&self) noexcept(
       std::is_nothrow_move_constructible_v<Task>) {
-    log_trace("move handle to Awaiter");
+    co_trace("move handle to Awaiter");
     return std::move(self);
   }
 
@@ -165,7 +164,7 @@ public:
    * @return result_type
    */
   constexpr result_type block(this auto &&self) {
-    log_trace("Task block");
+    co_trace("Task block");
     return coro::block(std::move(self));
   }
   /**
@@ -182,7 +181,7 @@ public:
   }
   /// @brief Detach the task
   constexpr void detach(this Task &&self) {
-    log_trace("task detach");
+    co_trace("task detach");
     coro::detach(std::move(self));
   }
   /// @brief Detach the task with executor
@@ -196,13 +195,13 @@ public:
   template <class _Promise>
   constexpr std::coroutine_handle<promise_type> await_suspend(
       std::coroutine_handle<_Promise> handle) {
-    log_trace("await_suspend: {} -> {}", (uint64_t)_handle.address(), (uint64_t)handle.address());
+    co_trace("await_suspend: {} -> {}", (uint64_t)_handle.address(), (uint64_t)handle.address());
     this->_handle.promise().next(handle);
     return this->_handle;
   }
 
   constexpr result_type await_resume() {
-    log_trace("task await_resume for {}", (uint64_t)_handle.address());
+    co_trace("task await_resume for {}", (uint64_t)_handle.address());
     return *_handle.promise();
   }
 };

@@ -48,7 +48,6 @@ Task<void> imm_serve_connection(R& ard, W& awd, Service& service) {
         break;
       }
     }
-
     log_debug("ready to serve request: {}", req.line.path);
     ResponseBuilder<W> resp = co_await service(req, ard);
     log_debug("ready to send response: {}", resp._part.status_code.to_reason_phrase());

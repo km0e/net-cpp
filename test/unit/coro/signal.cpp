@@ -48,7 +48,6 @@ protected:
     // INFO("call stop");
     sig.stop();
     consumer.join();
-    xsl::flush_log();
     ASSERT_EQ(count, N);
   }
 
@@ -71,7 +70,6 @@ protected:
     auto rest = sig.force_stop();
     std::ptrdiff_t cnt = rest.has_value() ? *rest : 0;
     consumer.join();
-    xsl::flush_log();
     ASSERT_EQ(cnt + count, N);
   }
 };

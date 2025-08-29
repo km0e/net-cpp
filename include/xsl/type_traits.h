@@ -42,6 +42,30 @@ struct _n {
 template <auto... Values>
 struct _value_pack {};
 
+namespace _impl_first {
+  template <class Pack>
+  struct first;
+
+  template <template <class...> class Pack, class First, class... Rest>
+  struct first<Pack<First, Rest...>> : std::type_identity<First> {};
+}  // namespace _impl_first
+
+template <class Pack>
+using first_t = typename _impl_first::first<Pack>::type;
+
+namespace _impl_at {
+  template <std::size_t Index, class Pack>
+  struct at;
+
+  template <std::size_t Index, template <class...> class Pack, class This, class... Rest>
+  struct at<Index, Pack<This, Rest...>> : at<Index - 1, Pack<Rest...>> {};
+  template <template <class...> class Pack, class This, class... Rest>
+  struct at<0, Pack<This, Rest...>> : std::type_identity<This> {};
+}  // namespace _impl_at
+
+template <std::size_t Index, class Pack>
+using at_t = typename _impl_at::at<Index, Pack>::type;
+
 namespace impl_size {
   template <class Pack>
   struct size;
@@ -127,7 +151,7 @@ namespace impl_remove {
             class... Checked>
   struct remove_first_of_if<Pred, Opts, Pack<>, Checked...> : _2<Pack<Checked...>, void> {};
 }  // namespace impl_remove
-template <class L, class R>
+template <class L = void, class R = void>
 struct always_true : std::true_type {};
 
 template <class Pack, template <class L, class R> class Pred = always_true, class T = void>
@@ -197,11 +221,15 @@ namespace impl_is_same_pack {
     requires(sizeof...(Vs1) > 0) || (sizeof...(Vs2) > 0)
   struct is_same_pack<Pack<T1, Vs1...>, Pack<T2, Vs2...>> : std::true_type {};
 
+  template <template <template <class> class...> class Pack, template <class...> class... Ts1,
+            template <class...> class... Ts2>
+  struct is_same_pack<Pack<Ts1...>, Pack<Ts2...>> : std::true_type {};
+
   template <class T, template <T...> class Pack, T... Vs1, T... Vs2>
   struct is_same_pack<Pack<Vs1...>, Pack<Vs2...>> : std::true_type {};
 }  // namespace impl_is_same_pack
 
-template <class Pack1, class Pack2>
+template <class Pack1 = _n<>, class Pack2 = _n<>>
 struct is_same_pack : impl_is_same_pack::is_same_pack<Pack1, Pack2> {};
 
 template <class Pack1, class Pack2>
@@ -256,6 +284,49 @@ namespace {
  */
 template <class T, class U>
 using like_t = typename like<T, std::remove_cvref_t<U>>::type;
+
+namespace _test {
+  template <std::size_t N>
+  struct test_same_pack {};
+
+  static_assert(is_same_pack_v<_n<int, char>, _n<int, char>>);
+  static_assert(is_same_pack_v<_n<int, char>, _n<int, char, char>>);
+  static_assert(is_same_pack_v<std::integral_constant<int, 1>, std::integral_constant<char, 'a'>>);
+  static_assert(
+      is_same_pack_v<std::integer_sequence<int, 1>, std::integer_sequence<char, 'a', 'b'>>);
+  static_assert(is_same_pack_v<test_same_pack<1>, test_same_pack<1>>);
+
+  static_assert(!is_same_pack_v<_n<int, char>, _2<char, int>>);
+
+  template <class T>
+  struct test_for_each {
+    using type = std::make_unsigned_t<T>;
+  };
+  static_assert(
+      std::is_same_v<for_each_t<test_for_each, _n<int, char>>, _n<unsigned, unsigned char>>);
+
+  template <class L, class R>
+  struct test_remove_first_if : std::bool_constant<std::is_same_v<L, R>> {};
+
+  static_assert(
+      std::is_same_v<remove_first_if<_n<int, char>, test_remove_first_if, int>, _2<_n<char>, int>>);
+  static_assert(
+      std::is_same_v<remove_first_if<_n<char, int>, test_remove_first_if, int>, _2<_n<char>, int>>);
+  static_assert(std::is_same_v<remove_first_if<_n<char, char>, test_remove_first_if, int>,
+                               _2<_n<char, char>, void>>);
+
+  static_assert(std::is_same_v<like_t<int, int>, int>);
+  static_assert(std::is_same_v<like_t<int, char>, char>);
+  static_assert(std::is_same_v<like_t<int, char &>, char>);
+  static_assert(std::is_same_v<like_t<int, char &&>, char>);
+  static_assert(std::is_same_v<like_t<int &, char>, char &>);
+  static_assert(std::is_same_v<like_t<int &&, char>, char &&>);
+  static_assert(std::is_same_v<like_t<const int, char>, const char>);
+  static_assert(std::is_same_v<like_t<const int, char &>, const char>);
+  static_assert(std::is_same_v<like_t<const int, char &&>, const char>);
+  static_assert(std::is_same_v<like_t<const int &, char>, const char &>);
+  static_assert(std::is_same_v<like_t<const int &&, char>, const char &&>);
+}  // namespace _test
 
 XSL_NE
 #endif

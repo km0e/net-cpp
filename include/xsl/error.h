@@ -209,6 +209,7 @@ inline std::string_view to_string_view(errc ec) { return std::strerror(static_ca
 #  define __ENSURE_2(co, expr) __BASE__ENSURE2(co, expr, xsl::ErrorUtil<>{})
 #  define __ENSURE_3(co, expr, ...) __BASE__ENSURE(co, expr, xsl::ErrorUtil<>{}, __VA_ARGS__)
 #  define __ENSURE_4(...) __ENSURE_3(__VA_ARGS__)
+#  define __ENSURE_5(...) __ENSURE_3(__VA_ARGS__)
 
 #  define __ENSURE2_2(co, expr, ...) \
     __BASE__ENSURE2(co, expr, xsl::ErrorUtil<> {} __VA_OPT__(, ) __VA_ARGS__)
@@ -217,6 +218,23 @@ inline std::string_view to_string_view(errc ec) { return std::strerror(static_ca
 
 #  define RETURN(...) \
     return std::unexpected { xsl::ErrorUtil<>{}(__VA_ARGS__) }
+
+#  define CONTV(var, expr) __BASE__CONTV(var, expr, xsl::ErrorUtil<>{})
+
+#  define __BASE__CONTV(var, expr, util) \
+    auto __result_##var = (expr);        \
+    if (!__result_##var) {               \
+      continue;                          \
+    }                                    \
+    auto &var = util.a(__result_##var);
+
+#  define CONT(expr) __BASE__CONT(expr)
+
+#  define __BASE__CONT(expr)  \
+    auto __result__ = (expr); \
+    if (!__result__) {        \
+      continue;               \
+    }
 
 XSL_NE
 

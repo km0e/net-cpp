@@ -25,8 +25,12 @@
 namespace xsl::asio {
   using _asio::AsyncSocket;
   using _asio::AsyncSocketCompose;
+  using _asio::DynAsyncSocket;
+  using _asio::HttpClient;
   using _asio::make_async_socket;
   using _asio::splice_bidirectional;
+  using _asio::TLSContextBuilder;
+  using _asio::TLSMode;
   using sys::net::gai_connect;
   using sys::net::getaddrinfo;
   using sys::net::SockAddr;
@@ -73,13 +77,18 @@ namespace xsl::asio {
 
     /// TODO: add attr opt for socket
     template <class Ctx>
-    Expected<tcp::Server<Traits>> c_creator(std::shared_ptr<Ctx>& ctx, std::string_view ip,
+    Expected<tcp::Server<Traits>> c_creator(const std::shared_ptr<Ctx>& ctx, std::string_view ip,
                                             sys::net::inet::port_t port) noexcept {
       TRV(sock, sock_utils.c(ip.data(), port));
       ENSURE(sock.listen());
-      TRV(asock, make_async_socket(*ctx, std::move(sock)));
       auto copy_ctx = ctx;
+      TRV(asock, make_async_socket(*copy_ctx, std::move(sock)));
       return {tcp::Server<Traits>{std::string{ip}, port, std::move(copy_ctx), std::move(asock)}};
+    }
+    template <class Ctx>
+    Expected<tcp::Server<Traits>> c_creator(const std::shared_ptr<Ctx>& ctx, const char* ip,
+                                            const char* port) noexcept {
+      return c_creator(ctx, ip, static_cast<sys::net::inet::port_t>(std::atoi(port)));
     }
     template <class Ctx>
     decltype(auto) c_creator(std::shared_ptr<Ctx>& ctx, std::string_view ip,
@@ -104,17 +113,77 @@ namespace xsl::asio {
                                                              sys::net::inet::port_t port) noexcept {
       using traits_type = sys::net::SocketTraits<Traits, Flags...>;
       CO_TRV(addr, sys::net::make_sockaddr<traits_type>(ip, port));
-      CO_TRV(sock, socket(addr));
-      CO_ENSURE(co_await _asio::async_connect(sock, addr, ctx));
-      CO_TRV(asock, make_async_socket(ctx, std::move(sock)));
+      AsyncSocket<traits_type> asock;
+      CO_TRV(sock, sys::net::socket(addr));
+      CO_ENSURE(
+          co_await _asio::async_connect(sock.raw(), &addr.addr(), addr.len(),
+                                        [&] -> Expected<decltype(&asock.write_signal()), errc> {
+                                          TRVEC(tasock, make_async_socket(ctx, std::move(sock)));
+                                          asock = std::move(tasock);
+                                          return {&asock.write_signal()};
+                                        }));
       co_return std::move(asock);
     }
     template <class... Flags>
     decltype(auto) ac2(auto& ctx, const char* ip, const char* port) noexcept {
       return ac2<Flags...>(ctx, ip, static_cast<sys::net::inet::port_t>(std::atoi(port)));
     }
+    template <class... Flags, class _Traits = sys::net::SocketTraits<Traits, Flags...>>
+    Task<Expected<AsyncSocket<_Traits>, errc>> ac2(auto& ctx,
+                                                   sys::net::AddrInfos<Traits>& ais) noexcept {
+      Expected<AsyncSocket<_Traits>, errc> asock;
+      for (addrinfo& ai : ais) {
+        CONTV(sock, sys::net::socket<_Traits>(ai));
+        auto res = co_await _asio::async_connect(
+            sock.raw(), ai.ai_addr, ai.ai_addrlen,
+            [&] -> Expected<decltype(&asock->write_signal()), errc> {
+              TRVEC(tasock, make_async_socket(ctx, std::move(sock)));
+              asock = std::move(tasock);
+              return {&asock->write_signal()};
+            });
+        if (res) {
+          break;
+        }
+        asock = std::unexpected(res.error());
+      }
+      co_return asock;
+    }
+    template <class... Flags, class _Traits = sys::net::SocketTraits<Traits, Flags...>>
+    Task<Expected<AsyncSocket<_Traits>, errc>> ac2(auto& ctx,
+                                                   sys::net::AddrInfos<Traits>&& ais) noexcept {
+      return ac2_impl<AsyncSocket<_Traits>, _Traits>(ctx, ais);
+    }
 
-    sys::net::SocketUtils<Traits> sock_utils;
+    template <class... Flags, class _Traits = sys::net::SocketTraits<Traits, Flags...>>
+    Task<Expected<DynAsyncSocket<_Traits>, errc>> ac2_dyn(
+        auto& ctx, sys::net::AddrInfos<Traits>& ais) noexcept {
+      return ac2_impl<DynAsyncSocket<_Traits>, _Traits>(ctx, ais);
+    }
+
+    sys::SocketUtils<Traits> sock_utils;
+
+  private:
+    template <class AsyncSocket, class _Traits>
+    Task<Expected<AsyncSocket, errc>> ac2_impl(auto& ctx,
+                                               sys::net::AddrInfos<Traits>& ais) noexcept {
+      Expected<AsyncSocket, errc> asock;
+      for (addrinfo& ai : ais) {
+        CONTV(sock, sys::net::socket<_Traits>(ai));
+        auto res = co_await _asio::async_connect(
+            sock.raw(), ai.ai_addr, ai.ai_addrlen,
+            [&] -> Expected<decltype(&(*asock)->write_signal()), errc> {
+              AsyncSocket ss{};
+              _asio::init_async_device(ss, std::move(sock).into_raw(), ctx);
+              asock = std::move(ss);
+              return {&(*asock)->write_signal()};
+            });
+        if (res) {
+          break;
+        }
+        asock = std::unexpected(res.error());
+      }
+      co_return asock;
+    }
   };
 
   template <sys::net::SocketTraitsCompatible<sys::net::SocketTraits<UdpIp>> Traits>
@@ -137,7 +206,7 @@ namespace xsl::asio {
     decltype(auto) c2(auto& ctx, std::string_view ip, std::string_view port) {
       return c2(ctx, ip, static_cast<sys::net::inet::port_t>(std::atoi(port.data())));
     }
-    sys::net::SocketUtils<Traits> sock_utils [[no_unique_address]];
+    sys::SocketUtils<Traits> sock_utils [[no_unique_address]];
   };
 
   template <class... Flags>

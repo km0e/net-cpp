@@ -30,7 +30,7 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
   std::string dst(128, '\0');
   std::uint16_t port_num;
   while (true) {
-    auto res = co_await rw.recvfrom(addr, buffer, 4096);
+    auto res = co_await rw->recvfrom(addr, buffer, 4096);
     if (!res) {
       log_debug("Error: {}", res.message());
       break;
@@ -41,7 +41,7 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
     }
     std::println(std::cout, "<{},{}>: {}", dst, port_num,
                  std::string_view(reinterpret_cast<const char *>(buffer), res.size));
-    res = co_await rw.sendto(addr, buffer, res.size);
+    res = co_await rw->sendto(addr, buffer, res.size);
     if (!res) {
       log_debug("Error: {}", res.message());
       break;

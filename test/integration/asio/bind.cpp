@@ -48,11 +48,11 @@ protected:
       log_debug("Poller shutdown");
     });
   }
-  template <class Traits>
-  Task<void> echo(AsyncSocket<Traits> &skt) {
+  template <class AsyncSocket>
+  Task<void> echo(AsyncSocket &skt) {
     auto N = TEST_COUNT;
     while (N--) {
-      auto res_skt = co_await skt.accept_async(*ctx);
+      auto res_skt = co_await skt->accept_async(*ctx);
       if (!res_skt.has_value()) {
         co_return;
       }
@@ -60,12 +60,12 @@ protected:
         auto buf = std::make_unique<char[]>(1024);
         while (true) {
           auto recv_bytes = std::as_writable_bytes(std::span(buf.get(), 1024));
-          auto res = co_await skt.read(recv_bytes);
+          auto res = co_await skt->read(recv_bytes);
           if (!res) {
             break;
           }
           auto send_bytes = std::as_bytes(std::span(buf.get(), res.size));
-          res = co_await skt.write(send_bytes);
+          res = co_await skt->write(send_bytes);
           if (!res) {
             break;
           }
@@ -89,9 +89,8 @@ TEST_F(AsyncSocketIOFixture, tcp_bind) {
   auto util = make_async_socket_utils<TcpIpv4>();
   auto res = util.c(*ctx, "0.0.0.0", port);  // to init the util
   ASSERT_TRUE(res.has_value());
-  ASSERT_TRUE(res->listen()) << "Failed to listen";
+  ASSERT_TRUE((*res)->listen()) << "Failed to listen";
   echo(*res).detach();
-  xsl::flush_log();
   auto N = TEST_COUNT;
   while (N--) {
     // auto res_client = getaddrinfo<TcpIpv4>("127.0.0.1", port);
@@ -101,10 +100,10 @@ TEST_F(AsyncSocketIOFixture, tcp_bind) {
     auto buf = std::make_unique<char[]>(1024);
     for (auto &msg : echo_msg) {
       auto send_bytes = std::as_bytes(std::span(msg.data(), msg.size()));
-      auto res = client.write(send_bytes).block();
+      auto res = client->write(send_bytes).block();
       ASSERT_TRUE(res);
       auto recv_bytes = std::as_writable_bytes(std::span(buf.get(), 1024));
-      res = client.read(recv_bytes).block();
+      res = client->read(recv_bytes).block();
       ASSERT_TRUE(res);
       ASSERT_EQ(std::string_view(buf.get(), res.size), msg);
     }

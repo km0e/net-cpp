@@ -14,8 +14,10 @@
 #  include <fcntl.h>
 #  include <sys/socket.h>
 #  include <unistd.h>
+#  include <xsl/compose.h>
 #  include <xsl/error.h>
 #  include <xsl/sys/def.h>
+#  include <xsl/type_traits.h>
 
 #  include <expected>
 #  include <utility>
@@ -39,7 +41,9 @@ struct RawOwner {
     }
   }
   /// @brief get raw file descriptor
-  constexpr auto &&raw(this auto &&self) noexcept { return std::forward<decltype(self)>(self).fd; }
+  constexpr auto raw(this auto &&self) noexcept -> like_t<decltype(self), RawHandle> {
+    return self.fd;
+  }
   /// @brief check if the file descriptor is valid
   constexpr bool is_valid() const noexcept { return fd >= 0; }
 };
@@ -118,4 +122,11 @@ inline errc current_ec() noexcept { return errc{errno}; }
 //    LOG2("Failed to set timerfd, error: {}", strerror(errno));
 //  }
 XSL_SYS_NE
+XSL_NB
+template <>
+struct StorageUtils<sys::RawOwner> : sys::RawOwner {
+  using sys::RawOwner::RawOwner;
+};
+
+XSL_NE
 #endif

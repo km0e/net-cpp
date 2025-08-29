@@ -68,7 +68,7 @@ public:
     part.headers.emplace("Content-Length", std::to_string(body.size()));
     this->_response = response_type{{std::move(part)},
                                     [body = std::move(body)](out_dev_type& awd) -> Task<Result> {
-                                      return awd.write(std::as_bytes(std::span(body)));
+                                      return awd.write(body.data(), body.size());
                                     }};
   }
   /// @brief checkout the response

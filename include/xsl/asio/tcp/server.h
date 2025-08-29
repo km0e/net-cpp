@@ -58,7 +58,7 @@ public:
   /// @brief accept a connection
   constexpr decltype(auto) accept() noexcept { return this->_dev.accept(); }
   /// @brief accept a connection with async
-  constexpr decltype(auto) accept_async() noexcept { return this->_dev.accept_async(*ctx); }
+  constexpr decltype(auto) accept_async() noexcept { return this->_dev->accept_async(*ctx); }
   std::string host;
   sys::net::inet::port_t port;
 

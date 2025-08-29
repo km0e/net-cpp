@@ -70,7 +70,6 @@ public:
         return Status::NOT_ACCEPTABLE;
       }
     }
-
     if (ctx.request.has_header("If-None-Match")) {
       // TODO: implement If-None-Match
     } else if (auto if_modified_since = ctx.request.get_header("If-Modified-Since");
@@ -78,7 +77,7 @@ public:
       auto last_modified = std::filesystem::last_write_time(path);
       auto if_modified_since_time = from_date_string<std::chrono::file_clock>(*if_modified_since);
       if (if_modified_since_time && *if_modified_since_time >= last_modified) {
-        log_debug("not modified: {}", path.native());
+        log_debug("{} not modified since: {}", path.native(), *if_modified_since);
         return Status::NOT_MODIFIED;
       }
     }

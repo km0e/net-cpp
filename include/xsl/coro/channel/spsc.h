@@ -13,6 +13,7 @@
 #  define XSL_CORO_CHANNEL_SPSC
 #  include <xsl/coro/channel/def.h>
 #  include <xsl/coro/def.h>
+#  include <xsl/coro/log.h>
 #  include <xsl/log.h>
 #  include <xsl/wheel/bit.h>
 
@@ -93,7 +94,7 @@ struct ChannelAwaiterTraits<SPSCChannelStorage<ValueType>> {
     if (head == ep._local
         && head == (ep._local = self.storage._tail._ctl.load(std::memory_order_acquire))) {
       return false;
-      log_info("SPSCChannel: queue is empty, head = {}, local = {}", head, ep._local);
+      co_info("SPSCChannel: queue is empty, head = {}, local = {}", head, ep._local);
     }
     return true;  // if the queue is not empty, return true
   }

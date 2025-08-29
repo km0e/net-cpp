@@ -12,7 +12,6 @@
 #pragma once
 #ifndef XSL_CORO_ERROR
 #  define XSL_CORO_ERROR
-#  include <xsl/asio/def.h>
 #  include <xsl/error.h>
 
 #  define CO_TRV(var, expr, ...) __BASE__TRV(co_, var, expr, xsl::ErrorUtil<>{}, __VA_ARGS__)

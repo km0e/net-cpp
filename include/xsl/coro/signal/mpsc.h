@@ -12,6 +12,7 @@
 #ifndef XSL_CORO_SIGNAL_MPSC
 #  define XSL_CORO_SIGNAL_MPSC
 #  include <xsl/coro/def.h>
+#  include <xsl/coro/log.h>
 #  include <xsl/coro/signal/def.h>
 #  include <xsl/coro/signal/unsafe.h>
 #  include <xsl/wheel.h>
@@ -47,7 +48,7 @@ struct SignalAwaiterTraits<SignalStorage> {
   constexpr void await_suspend(this auto &self, std::coroutine_handle<Promise> handle) {
     self.awaiter().await_suspend(handle);
     self.storage.mtx.unlock();
-    log_trace("Signal suspended");
+    co_trace("Signal suspended");
   }
   /**
    * @brief Resume the signal

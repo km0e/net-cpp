@@ -15,7 +15,6 @@ add_rules(
 set_warnings("everything")
 -- set_warnings("all", "error", 'pedantic', 'extra')
 
--- set_languages("cxx23")
 set_languages("cxxlatest")
 
 if is_mode("release") then

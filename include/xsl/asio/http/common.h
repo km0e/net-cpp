@@ -71,6 +71,7 @@ public:
       parsed_end += len;
       break;
     }
+    self.rest.clear();
     while (true) {
       auto [len, ec] = self.rest.parse(data_view());
       if (ec == errc{}) break;

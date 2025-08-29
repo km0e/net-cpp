@@ -12,6 +12,7 @@
 #include <sys/raw.h>
 #include <unistd.h>
 #include <xsl/asio/dev.h>
+#include <xsl/asio/io.h>
 #include <xsl/asio/pipe.h>
 #include <xsl/def.h>
 #include <xsl/io/context.h>
@@ -23,8 +24,10 @@ XSL_ASIO_NB
 Expected<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>, errc> async_pipe(Context& ctx) {
   int fds[2];
   ENSEC(pipe2(fds, O_NONBLOCK | O_CLOEXEC) == 0);
-  TRVEC(read, make_async_device<io::IOM_EVENTS::IN>(ctx, RawOwner{fds[0]}, AsyncPipeTraits{}));
-  TRVEC(write, make_async_device<io::IOM_EVENTS::OUT>(ctx, RawOwner{fds[1]}, AsyncPipeTraits{}));
+  auto read = AsyncPipeReadDevice();
+  ENSEC(init_async_device(read, RawOwner{fds[0]}, ctx));
+  auto write = AsyncPipeWriteDevice();
+  ENSEC(init_async_device(write, RawOwner{fds[1]}, ctx));
   return {std::make_pair(std::move(read), std::move(write))};
 }
 

@@ -17,17 +17,22 @@
 using namespace xsl::asio;
 using namespace xsl;
 
-std::string url = "http://www.baidu.com";
+std::string url = "https://www.baidu.com";
 std::string output_file = "";
 
-Task<void> run(std::string_view url, io::Context& ctx) {
-  tls::TLSContextBuilder tls_ctx_builder;
-  auto res = co_await get(ctx, url);
-  if (!res) {
-    log_error("Failed to get response: {}", std::make_error_code(res.error()).message());
-    co_return;
-  }
-  auto [response, socket] = std::move(*res);
+Task<void> run(std::string_view url, std::shared_ptr<xsl::Context> ctx) {
+  auto tls_builder = TLSContextBuilder::client();
+  MUST(tls_builder.set_verify_mode()
+           .default_verify_paths()
+           .set_min_version()
+           .add_mode(TLSMode::ENABLE_PARTIAL_WRITE)
+           .build(),
+       tls_ctx);
+  HttpClient client(ctx);
+  client.set_tls_context(std::move(tls_ctx));
+
+  MUST(co_await client.get(url), res);
+  auto [response, socket] = std::move(res);
   log_info("Response status: {}", response->line.status_code.to_string_view());
   log_info("Response headers:");
   for (const auto& header : response->rest.headers) {
@@ -49,7 +54,7 @@ Task<void> run(std::string_view url, io::Context& ctx) {
     log_debug("Reading response body from socket...");
     byte buffer[4096];
     while (current_length < content_length) {
-      auto res = co_await socket.read(buffer, 4096);
+      auto res = co_await socket->read(buffer, 4096);
       if (!res) {
         log_error("Failed to read from socket: {}", res.message());
         co_return;
@@ -63,7 +68,7 @@ Task<void> run(std::string_view url, io::Context& ctx) {
     log_debug("Reading response body from socket...");
     byte buffer[4096];
     while (current_length < content_length) {
-      auto res = co_await socket.read(buffer, 4096);
+      auto res = co_await socket->read(buffer, 4096);
       if (!res) {
         log_error("Failed to read from socket: {}", res.message());
         co_return;
@@ -72,7 +77,7 @@ Task<void> run(std::string_view url, io::Context& ctx) {
       std::cout.write(reinterpret_cast<const char*>(buffer), res.size);
     }
   }
-  ctx.shutdown();
+  ctx->shutdown();
 }
 
 int main(int argc, char* argv[]) {
@@ -84,7 +89,7 @@ int main(int argc, char* argv[]) {
 
   auto poller = std::make_shared<xsl::Context>();
   auto executor = std::make_shared<coro::NewThreadExecutor>();
-  run(url, *poller).detach(std::move(executor));
+  run(url, poller).detach(executor);
   poller->run();
   return 0;
 }

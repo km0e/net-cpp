@@ -10,6 +10,7 @@
  */
 #include <xsl/coro/core/executor.h>
 #include <xsl/coro/def.h>
+#include <xsl/coro/log.h>
 #include <xsl/log.h>
 
 #include <thread>
@@ -17,7 +18,7 @@ XSL_CORO_NB
 void NoopExecutor::schedule(move_only_function<void()> &&func) { func(); }
 
 void NewThreadExecutor::schedule(move_only_function<void()> &&func) {
-  log_debug("new task scheduled");
+  co_debug("new task scheduled");
   std::thread(std::move(func)).detach();
 }
 

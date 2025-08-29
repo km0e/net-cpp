@@ -27,24 +27,47 @@
 #  include <span>
 XSL_ASIO_NB
 
-template <class Traits, class Storage>
-class PollForCoro : public Storage {
+template <IOM_EVENTS... Events>
+using IOSignalStorage = StaticExactPubSubStorage<io::IOM_EVENTS, SPSCSignal2<1>, Events...>;
+
+template <class Traits, class Accessor>
+class PollForCoro : public Accessor {
 public:
-  using traits_type = PollHandlerTraits<Storage>;
+  template <class _Accessor>
+  constexpr PollForCoro(Traits, _Accessor &&a) : Accessor(std::forward<_Accessor>(a)) {}
 
-  template <class... Args>
-    requires std::constructible_from<Storage, Args...>
-  constexpr PollForCoro(Traits, Args &&...args) : Storage(std::forward<Args>(args)...) {}
-
-  constexpr PollHandleHint operator()(int, IOM_EVENTS events) {
+  constexpr PollHandleHint operator()(this auto &&self, int, IOM_EVENTS events) {
     if (Traits::poll_check(events) == PollHandleHintTag::DELETE) {
       return PollHandleHintTag::DELETE;
     } else {
-      traits_type::pubsub(*this)->publish([&events](IOM_EVENTS e) { return !!(events & e); });
+      self->publish([&events](IOM_EVENTS e) { return !!(events & e); });
       return PollHandleHintTag::NONE;
     }
   }
 };
+
+template <IOM_EVENTS... Es, class T1, class T2, class... Args>
+Expected<void, errc> add_to_context(
+    SharedStorage<T1, T2, RawOwner, IOSignalStorage<Es...>, Args...> &s, Context &ctx, auto tag) {
+  ENSEC(ctx.add(s->raw(), (IOM_EVENTS::ET | ... | Es),
+                _asio::PollForCoro{tag, std::forward<decltype(s)>(s)}));
+  return {};
+}
+
+template <class Traits, class Accessor>
+PollForCoro(Traits, Accessor &&) -> PollForCoro<Traits, std::remove_reference_t<Accessor>>;
+
+template <IOM_EVENTS... Es, class T1, class T2, class... Args>
+constexpr Expected<void, errc> init_async_device(
+    SharedStorage<T1, T2, RawOwner, IOSignalStorage<Es...>, Args...> &s, RawOwner &&o,
+    Context &ctx) {
+  using tag_t = typename std::decay_t<decltype(*s.get())>::poll_traits_type;
+  std::construct_at<RawOwner>(s.get(), std::move(o));
+
+  std::construct_at<IOSignalStorage<Es...>>(s.get());
+  add_to_context(s, ctx, tag_t{});
+  return {};
+}
 
 /**
  * @brief Receive data from a device, specialized for not connect-based device
@@ -55,8 +78,7 @@ public:
  * @param sig
  * @return Task<io::Result>
  */
-template <class Signal>
-Task<io::Result> imm_recv(RawHandle _raw, byte *data, std::size_t size, Signal &sig) {
+Task<io::Result> imm_recv(RawHandle _raw, byte *data, std::size_t size, auto &sig) {
   log_trace("{} try to recv {} bytes", _raw, size);
   do {
     ssize_t n = ::recv(_raw, data, size, 0);
@@ -79,8 +101,7 @@ Task<io::Result> imm_recv(RawHandle _raw, byte *data, std::size_t size, Signal &
  * @param sig
  * @return Task<io::Result>
  */
-template <class Signal>
-decltype(auto) recv(RawHandle _raw, byte *data, std::size_t size, Signal &sig) {
+decltype(auto) recv(RawHandle _raw, byte *data, std::size_t size, auto &sig) {
   return imm_recv(_raw, data, size, sig).then([&](io::Result res) -> io::Result {
     if (res.size == 0) {
       log_trace("recv {} bytes, not connected", res.size);
@@ -98,8 +119,7 @@ decltype(auto) recv(RawHandle _raw, byte *data, std::size_t size, Signal &sig) {
  * @param sig
  * @return Task<io::Result>
  */
-template <class Signal>
-decltype(auto) recv(RawHandle _raw, std::span<byte> &buf, Signal &sig) {
+decltype(auto) recv(RawHandle _raw, std::span<byte> &buf, auto &sig) {
   return imm_recv(_raw, buf.data(), buf.size(), sig).then([&](io::Result res) -> io::Result {
     if (res.size == 0) {
       log_trace("recv {} bytes, not connected", res.size);
@@ -118,8 +138,7 @@ decltype(auto) recv(RawHandle _raw, std::span<byte> &buf, Signal &sig) {
  * @param sig
  * @return Task<io::Result>
  */
-template <class Signal>
-decltype(auto) recv(RawHandle _raw, const std::span<byte> &buf, Signal &sig) {
+decltype(auto) recv(RawHandle _raw, const std::span<byte> &buf, auto &sig) {
   return imm_recv(_raw, buf.data(), buf.size(), sig).then([&](io::Result res) -> io::Result {
     if (res.size == 0) {
       log_trace("recv {} bytes, not connected", res.size);
@@ -145,12 +164,11 @@ struct NetAsyncRx {
     }
   }
 
-  template <class Self, sys::net::SocketTraitsCompatible<typename Self::traits_type> Up>
+  template <class Self, sys::net::SocketTraitsCompatible<typename Self::socket_traits_type> Up>
   Task<io::Result> recvfrom(this Self &self, sys::net::SockAddr<Up> &addr, byte *buf,
                             std::size_t n) {
-    auto [sockaddr, addrlen] = addr.raw();
     do {
-      ssize_t sz = ::recvfrom(self.raw(), buf, n, 0, &sockaddr, &addrlen);
+      ssize_t sz = ::recvfrom(self.raw(), buf, n, 0, &addr.addr(), &addr.len());
       if (sz >= 0) {
         co_return {static_cast<size_t>(sz)};
       } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -241,8 +259,7 @@ constexpr Task<io::Result> send(Dev &dev, std::span<const byte> data) {
  * @param sig the signal receiver
  * @return Task<io::Result>
  */
-template <class Signal>
-Task<io::Result> send_file(RawHandle _raw, io::WriteFileHint hint, Signal &sig) {
+Task<io::Result> send_file(RawHandle _raw, io::WriteFileHint hint, auto &sig) {
   int ffd = open(hint.path.c_str(), O_RDONLY | O_CLOEXEC);
   if (ffd == -1) {
     log_error("open file failed");
@@ -282,13 +299,12 @@ struct NetAsyncTx {
     return send(self.raw(), data, size, self.write_signal());
   }
   /// @brief Send data to a specific address through a device
-  template <class Self, sys::net::SocketTraitsCompatible<typename Self::traits_type> Up>
+  template <class Self, sys::net::SocketTraitsCompatible<typename Self::socket_traits_type> Up>
   Task<io::Result> sendto(this Self &self, sys::net::SockAddr<Up> &addr, const byte *buf,
                           std::size_t n) {
-    auto [sockaddr, addrlen] = addr.raw();
     auto begin = buf;
     do {
-      ssize_t sz = ::sendto(self.raw(), begin, n, 0, &sockaddr, addrlen);
+      ssize_t sz = ::sendto(self.raw(), begin, n, 0, &addr.addr(), addr.len());
       if (sz >= 0) {
         begin += sz;
         n -= sz;
@@ -305,7 +321,7 @@ struct NetAsyncTx {
     co_return {static_cast<std::size_t>(begin - buf)};
   }
   /// @brief Send data to a specific address through a device
-  template <class Self, sys::net::SocketTraitsCompatible<typename Self::traits_type> Up>
+  template <class Self, sys::net::SocketTraitsCompatible<typename Self::socket_traits_type> Up>
   Task<io::Result> sendto(this Self &self, sys::net::SockAddr<Up> &addr,
                           std::span<const byte> data) {
     return self.sendto(addr, data.data(), data.size()).then([&](io::Result res) -> io::Result {

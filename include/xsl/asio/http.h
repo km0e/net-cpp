@@ -16,6 +16,7 @@
 #  include <xsl/asio/http/server.h>
 #  include <xsl/asio/http/service.h>
 #  include <xsl/asio/socket.h>
+#  include <xsl/asio/tls.h>
 XSL_ASIO_NB
 using namespace xsl::_asio::http;
 
@@ -26,10 +27,10 @@ struct HttpUtil : public IOUtils {
 
   using io_dev_type = typename IOUtils::io_dev_type;
 
-  template <class Poller, class... Args>
-  constexpr auto c_creator(Poller& poller, Args&&... args) noexcept(
-      noexcept(IOUtils::c_creator(poller, std::forward<Args>(args)...))) {
-    return IOUtils::c_creator(poller, std::forward<Args>(args)...).transform([](auto&& creator) {
+  template <class Ctx, class... Args>
+  constexpr auto c_creator(const std::shared_ptr<Ctx>& ctx, Args&&... args) noexcept(
+      noexcept(IOUtils::c_creator(ctx, std::forward<Args>(args)...))) {
+    return IOUtils::c_creator(ctx, std::forward<Args>(args)...).transform([](auto&& creator) {
       return Server{std::forward<decltype(creator)>(creator)};
     });
   }
@@ -40,7 +41,19 @@ struct HttpUtil : public IOUtils {
   }
 };
 
-Task<std::expected<std::tuple<std::unique_ptr<Response>, AsyncSocketCompose<TcpIp>>, errc>> get(
-    Context& ctx, std::string_view url);
+class HttpClient {
+public:
+  constexpr HttpClient(const std::shared_ptr<Context>& ctx) : tls_ctx_(), ctx_(ctx) {}
+  ~HttpClient() = default;
+
+  void set_tls_context(TLSContext&& ctx) { this->tls_ctx_ = std::move(ctx); }
+  Task<Expected<std::tuple<std::unique_ptr<Response>, std::shared_ptr<AsyncReadWriteBase>>>> get(
+      std::string_view url);
+
+private:
+  TLSContext tls_ctx_;
+  std::shared_ptr<Context> ctx_;
+};
+
 XSL_ASIO_NE
 #endif

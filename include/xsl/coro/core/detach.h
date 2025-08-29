@@ -14,7 +14,6 @@
 #  include <xsl/coro/core/base.h>
 #  include <xsl/coro/core/executor.h>
 #  include <xsl/coro/def.h>
-#  include <xsl/log.h>
 
 #  include <cassert>
 #  include <concepts>
@@ -59,7 +58,7 @@ public:
 
   constexpr void operator()(this auto self,
                             std::convertible_to<std::shared_ptr<ExecutorBase>> auto &&executor) {
-    log_trace("detach");
+    co_trace("detach");
     self._handle.promise().by(std::forward<decltype(executor)>(executor));
     self._handle.resume();
   }
@@ -74,7 +73,7 @@ template <class Awaiter,
            && (!std::is_reference_v<Awaiter>)
 constexpr void detach(Awaiter &&awaiter, Executor &&executor = nullptr) {
   auto d = [](Awaiter &&awaiter) -> Detach<typename awaiter_traits<Awaiter>::result_type> {
-    log_trace("detach");
+    co_trace("detach");
     co_await std::move(awaiter);
   }(std::forward<Awaiter>(awaiter));
   std::move(d)(std::forward<decltype(executor)>(executor));

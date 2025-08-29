@@ -87,7 +87,6 @@ TEST_F(DnCompressCommonTest, DifferentBase) {
 }
 
 int main(int argc, char **argv) {
-  xsl::no_log();
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

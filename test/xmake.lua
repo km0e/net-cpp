@@ -7,8 +7,6 @@ do
     add_includedirs("$(projectdir)/test/include", { public = true })
 end
 
-includes("compile")
-
 includes("unit")
 
 includes("benches")

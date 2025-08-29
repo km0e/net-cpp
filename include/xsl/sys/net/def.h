@@ -11,8 +11,15 @@
 #pragma once
 #ifndef XSL_SYS_NET_DEF
 #  define XSL_SYS_NET_DEF
-#  define XSL_SYS_NET_NB namespace xsl::_sys::net {
-#  define XSL_SYS_NET_NE }
+
+#  define XSL_SYS_NET_NB \
+    XSL_SYS_NB           \
+    namespace net {
+
+#  define XSL_SYS_NET_NE \
+    }                    \
+    XSL_SYS_NE
+
 #  include <arpa/inet.h>
 #  include <netinet/in.h>
 #  include <sys/socket.h>

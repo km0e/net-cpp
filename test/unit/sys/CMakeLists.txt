@@ -1,5 +1,5 @@
 file(GLOB TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
-link_libraries(xsl_coro)
+link_libraries(xsl_sys)
 link_libraries(clilib)
 
 foreach(TEST_SOURCE ${TEST_SOURCES})

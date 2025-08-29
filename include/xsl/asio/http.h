@@ -40,5 +40,7 @@ struct HttpUtil : public IOUtils {
   }
 };
 
+Task<std::expected<std::tuple<std::unique_ptr<Response>, AsyncSocketCompose<TcpIp>>, errc>> get(
+    Context& ctx, std::string_view url);
 XSL_ASIO_NE
 #endif

@@ -15,7 +15,7 @@
 
 #  define XSL_NET_NB \
     XSL_NB           \
-    namespace _net {
+    namespace net {
 
 #  define XSL_NET_NE \
     XSL_NE           \

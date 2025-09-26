@@ -15,18 +15,17 @@ add_rules(
 set_warnings("everything")
 -- set_warnings("all", "error", 'pedantic', 'extra')
 
-set_languages("cxxlatest")
+set_languages("cxx26")
 
 if is_mode("release") then
     set_optimize("fastest")
+    set_policy("build.optimization.lto", true)
 end
-
 -- dependency
 add_requires("thread-pool", "cli11", "openssl3")
 
 add_requires("asio")
 
-set_policy("build.optimization.lto", true)
 -- log level
 
 option("log_level")
@@ -57,6 +56,7 @@ do
     set_kind("static")
     set_default(false)
     add_files("src/log.cpp")
+    add_defines("XSL_UNDERLYING_EPOLL", { public = true })
     add_includedirs("$(projectdir)/include", { public = true })
     add_options("log_level", { public = true })
     add_ldflags("-fuse-ld=mold", { force = true })
@@ -66,7 +66,7 @@ end
 target("xsl")
 do
     set_kind("static")
-    add_files("src/**.cpp")
+    add_deps("xsl_sys", "xsl_net", "xsl_coro", "xsl_wheel", "xsl_asio")
     add_headerfiles("$(projectdir)/include/(xsl/**.h)")
     add_includedirs("$(projectdir)/include", { public = true })
     add_options("log_level", { public = true })

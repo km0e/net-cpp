@@ -13,8 +13,6 @@
 #  define XSL_CORO_CHANNEL_SPSC
 #  include <xsl/coro/channel/def.h>
 #  include <xsl/coro/def.h>
-#  include <xsl/coro/log.h>
-#  include <xsl/log.h>
 #  include <xsl/wheel/bit.h>
 
 #  include <atomic>
@@ -30,15 +28,15 @@ XSL_CORO_NB
  * @tparam T type of the queue
  */
 template <class T>
-struct SnapShot {
+struct Snapshot {
   std::atomic_size_t _ctl;
   std::size_t _local;
   T *_buffer;
   const std::size_t _size_mask;
 };
 
-static_assert(sizeof(SnapShot<void *>) <= 64,
-              "SnapShot must be less than or equal to 64 bytes to ensure cache line alignment");
+static_assert(sizeof(Snapshot<void *>) <= 64,
+              "Snapshot must be less than or equal to 64 bytes to ensure cache line alignment");
 
 /// @brief Storage for the queue
 template <class value_type>
@@ -46,7 +44,7 @@ class SPSCChannelStorage {
   constexpr SPSCChannelStorage(auto &&alloc, std::size_t mask, value_type *buffer)
       : _head{0, 0, buffer, mask},
         _tail{0, 0, buffer, mask},
-        destructor_callback(
+        _destructor_callback(
             [alloc = std::move(alloc), mask, buffer](std::size_t i, std::size_t n) mutable {
               using alloc_traits = std::allocator_traits<std::decay_t<decltype(alloc)>>;
               if (!std::is_trivially_destructible_v<value_type>) {  // if the type is not trivially
@@ -76,36 +74,40 @@ public:
     auto i = _head._ctl.load(std::memory_order_relaxed);
     auto n = _tail._ctl.load(std::memory_order_relaxed);
     if (i != n) {
-      destructor_callback(i, n);  // call the destructor callback to destroy the objects in the
+      _destructor_callback(i, n);  // call the destructor callback to destroy the objects in the
                                   // queue
     }
   }
-  alignas(64) SnapShot<value_type> _head;
-  alignas(64) SnapShot<value_type> _tail;
-  std::function<void(std::size_t, std::size_t)> destructor_callback;
+  // move would double-free: _head._buffer, _tail._buffer, and _destructor_callback
+  // all hold copies of the pointer — neither source nor dest knows to null out the other
+  SPSCChannelStorage(SPSCChannelStorage&&) = delete;
+  SPSCChannelStorage& operator=(SPSCChannelStorage&&) = delete;
+  alignas(64) Snapshot<value_type> _head;
+  alignas(64) Snapshot<value_type> _tail;
+  std::function<void(std::size_t, std::size_t)> _destructor_callback;
   std::atomic<std::function<void()> *> _callback = {};
 };
 
 template <class ValueType>
 struct ChannelAwaiterTraits<SPSCChannelStorage<ValueType>> {
   constexpr bool await_ready(this auto &&self) noexcept {
-    SnapShot<ValueType> &ep = self.storage._head;
+    Snapshot<ValueType> &ep = self.storage._head;
     std::size_t const head = ep._ctl.load(std::memory_order_relaxed);
     if (head == ep._local
         && head == (ep._local = self.storage._tail._ctl.load(std::memory_order_acquire))) {
       return false;
-      co_info("SPSCChannel: queue is empty, head = {}, local = {}", head, ep._local);
     }
     return true;  // if the queue is not empty, return true
   }
 
   template <class Promise>
   constexpr decltype(auto) await_suspend(this auto &&self, std::coroutine_handle<Promise> handle) {
-    self.storage._callback.store(new std::function<void()>([handle, &self]() {
+    auto* ctl = &self.storage._tail._ctl;
+    auto* local = &self.storage._head._local;
+    self.storage._callback.store(new std::function<void()>([handle, ctl, local]() {
                                    /// NOTE: update the head's local tail pointer to the tail's ctl
                                    /// value
-                                   self.storage._head._local
-                                       = self.storage._tail._ctl.load(std::memory_order_relaxed);
+                                   *local = ctl->load(std::memory_order_relaxed);
                                    handle.promise().resume(handle);
                                  }),
                                  std::memory_order_release);
@@ -114,18 +116,20 @@ struct ChannelAwaiterTraits<SPSCChannelStorage<ValueType>> {
 
   [[nodiscard("must use the result of await_resume to confirm the signal is still alive")]]
   constexpr ValueType await_resume(this auto &&self) {
-    SnapShot<ValueType> &ep = self.storage._head;
+    Snapshot<ValueType> &ep = self.storage._head;
     std::size_t const head = ep._ctl.load(std::memory_order_relaxed);
     ep._ctl.store((head + 1) & ep._size_mask,
                   std::memory_order_relaxed);  // first, update the head pointer
     auto p = ep._buffer + head;
-    return std::move(*p);
+    auto result = std::move(*p);
+    std::destroy_at(p);
+    return result;
   }
 };
 
 template <class ValueType, std::size_t MaxElements>
 struct ChannelTraits<SPSCChannelStorage<ValueType>, MaxElements> {
-  using storage_type = SPSCChannelStorage<std::allocator<void>>;
+  using storage_type = SPSCChannelStorage<ValueType>;
 
   /**
    * @brief Push a value into the channel
@@ -135,7 +139,7 @@ struct ChannelTraits<SPSCChannelStorage<ValueType>, MaxElements> {
    * @return true if the value is pushed successfully, false if the channel is full
    */
   constexpr bool push(this auto &&self, auto &&...args) {
-    SnapShot<ValueType> &ep = self.storage._tail;
+    Snapshot<ValueType> &ep = self.storage._tail;
     const std::size_t tail = ep._ctl.load(std::memory_order_relaxed);
     const std::size_t n_tail = (tail + 1) & ep._size_mask;
     if (n_tail != ep._local
@@ -143,8 +147,8 @@ struct ChannelTraits<SPSCChannelStorage<ValueType>, MaxElements> {
       std::construct_at(ep._buffer + tail, std::forward<decltype(args)>(args)...);
       ep._ctl.store(n_tail, std::memory_order_release);
       if (auto func = self.storage._callback.exchange(nullptr, std::memory_order_acquire); func) {
+        auto _ = std::unique_ptr<std::function<void()>>(func);  // scope guard
         (*func)();    // call the callback to notify the receiver
-        delete func;  // delete the callback
       }
       return true;
     }

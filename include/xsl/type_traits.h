@@ -42,18 +42,18 @@ struct _n {
 template <auto... Values>
 struct _value_pack {};
 
-namespace _impl_first {
+namespace _detail {
   template <class Pack>
   struct first;
 
   template <template <class...> class Pack, class First, class... Rest>
   struct first<Pack<First, Rest...>> : std::type_identity<First> {};
-}  // namespace _impl_first
+}  // namespace _detail
 
 template <class Pack>
-using first_t = typename _impl_first::first<Pack>::type;
+using first_t = typename _detail::first<Pack>::type;
 
-namespace _impl_at {
+namespace _detail {
   template <std::size_t Index, class Pack>
   struct at;
 
@@ -61,23 +61,23 @@ namespace _impl_at {
   struct at<Index, Pack<This, Rest...>> : at<Index - 1, Pack<Rest...>> {};
   template <template <class...> class Pack, class This, class... Rest>
   struct at<0, Pack<This, Rest...>> : std::type_identity<This> {};
-}  // namespace _impl_at
+}  // namespace _detail
 
 template <std::size_t Index, class Pack>
-using at_t = typename _impl_at::at<Index, Pack>::type;
+using at_t = typename _detail::at<Index, Pack>::type;
 
-namespace impl_size {
+namespace _detail {
   template <class Pack>
   struct size;
 
   template <template <class...> class Pack, class... Ts>
   struct size<Pack<Ts...>> : std::integral_constant<std::size_t, sizeof...(Ts)> {};
-}  // namespace impl_size
+}  // namespace _detail
 
 template <class Pack>
-inline constexpr std::size_t size_v = impl_size::size<Pack>::value;
+inline constexpr std::size_t size_v = _detail::size<Pack>::value;
 
-namespace impl_find {
+namespace _detail {
   template <template <class L, class R> class Pred, class T, class Pack, std::size_t Index = 0>
     requires requires {
       { Pred<T, Pack>::value } -> std::convertible_to<bool>;
@@ -92,12 +92,12 @@ namespace impl_find {
   template <template <class L, class R> class Pred, class T, template <class...> class Pack,
             std::size_t Index>
   struct find_if<Pred, T, Pack<>, Index> : std::integral_constant<std::size_t, Index> {};
-}  // namespace impl_find
+}  // namespace _detail
 
 template <template <class L, class R> class Pred, class T, class Pack>
-inline constexpr std::size_t find_if_v = impl_find::find_if<Pred, T, Pack>::value;
+inline constexpr std::size_t find_if_v = _detail::find_if<Pred, T, Pack>::value;
 
-namespace impl_find_value {
+namespace _detail {
   template <auto Target, typename Pack, std::size_t Index = 0>
   struct find;
 
@@ -108,10 +108,10 @@ namespace impl_find_value {
 
   template <auto Target, template <auto...> class Pack, std::size_t Index>
   struct find<Target, Pack<>, Index> : std::integral_constant<std::size_t, Index> {};
-}  // namespace impl_find_value
+}  // namespace _detail
 
 template <auto Target, typename Pack>
-inline constexpr std::size_t find_value_v = impl_find_value::find<Target, Pack>::value;
+inline constexpr std::size_t find_value_v = _detail::find<Target, Pack>::value;
 
 template <class T, class Pack>
 inline constexpr bool existing_v = find_if_v<std::is_same, T, Pack> != size_v<Pack>;
@@ -120,7 +120,7 @@ template <class T, class Pack>
 using existing = std::bool_constant<existing_v<T, Pack>>;
 //
 
-namespace impl_remove {
+namespace _detail {
   template <template <class L, class R> class Pred, class T, class Pack, class... Checked>
     requires requires {
       { Pred<T, int>::value } -> std::convertible_to<bool>;
@@ -150,50 +150,50 @@ namespace impl_remove {
   template <template <class L, class R> class Pred, class Opts, template <class...> class Pack,
             class... Checked>
   struct remove_first_of_if<Pred, Opts, Pack<>, Checked...> : _2<Pack<Checked...>, void> {};
-}  // namespace impl_remove
+}  // namespace _detail
 template <class L = void, class R = void>
 struct always_true : std::true_type {};
 
 template <class Pack, template <class L, class R> class Pred = always_true, class T = void>
-using remove_first_if = typename impl_remove::remove_first_if<Pred, T, Pack>::self;
+using remove_first_if = typename _detail::remove_first_if<Pred, T, Pack>::self;
 
 static_assert(
     std::is_same_v<remove_first_if<_n<int, float>, always_true, int>, _2<_n<float>, int>>);
 
 template <template <class L, class R> class Pred, class Opts, class Pack>
-using remove_first_of_if = typename impl_remove::remove_first_of_if<Pred, Opts, Pack>::self;
+using remove_first_of_if = typename _detail::remove_first_of_if<Pred, Opts, Pack>::self;
 
-namespace impl_swap {
+namespace _detail {
   template <class LeftPack, class RightPack>
   struct swap;
   //
   template <template <class...> class Left, class... Ts1, template <class...> class Right,
             class... Ts2>
   struct swap<Left<Ts1...>, Right<Ts2...>> : _2<Left<Ts2...>, Right<Ts1...>> {};
-}  // namespace impl_swap
+}  // namespace _detail
 //
 template <class LeftPack, class RightPack>
-using swap_t = typename impl_swap::swap<LeftPack, RightPack>::self;
+using swap_t = typename _detail::swap<LeftPack, RightPack>::self;
 
-namespace impl_copy {
+namespace _detail {
   template <class From, class To>
   struct copy;
 
   template <template <class...> class From, template <class...> class To, class... Ts, class... Us>
   struct copy<From<Ts...>, To<Us...>> : public std::type_identity<To<Ts...>> {};
 
-}  // namespace impl_copy
+}  // namespace _detail
 template <class From, class To>
-using copy_t = typename impl_copy::copy<From, To>::type;
+using copy_t = typename _detail::copy<From, To>::type;
 
-namespace impl_verify {
+namespace _detail {
   template <class LMBD, class Pack, class V = void>
   inline constexpr bool verify_v = false;
   template <class LMBD, class... T>
   inline constexpr bool
       verify_v<LMBD, _n<T...>, std::void_t<decltype(std::declval<LMBD>()(std::declval<T>()...))>>
       = true;
-}  // namespace impl_verify
+}  // namespace _detail
 /**
  @brief Verify if the lambda can be applied to the types
 
@@ -201,7 +201,7 @@ namespace impl_verify {
  @tparam T
  */
 template <class LMBD, class... T>
-inline constexpr bool verify_v = impl_verify::verify_v<LMBD, _n<T...>>;
+inline constexpr bool verify_v = _detail::verify_v<LMBD, _n<T...>>;
 
 // template <class Base, class Derive>
 // inline constexpr bool base
@@ -235,16 +235,16 @@ struct is_same_pack : impl_is_same_pack::is_same_pack<Pack1, Pack2> {};
 template <class Pack1, class Pack2>
 inline constexpr bool is_same_pack_v = impl_is_same_pack::is_same_pack<Pack1, Pack2>::value;
 
-namespace impl_inner {
+namespace _detail {
   template <class T>
   struct inner;
 
   template <template <class...> class Pack, class T, class... Ts>
   struct inner<Pack<T, Ts...>> : std::type_identity<T> {};
-}  // namespace impl_inner
+}  // namespace _detail
 
 template <class T>
-using inner_t = typename impl_inner::inner<T>::type;
+using inner_t = typename _detail::inner<T>::type;
 
 namespace {
   template <template <class> class Map, class Pack, class... Res>
@@ -269,8 +269,8 @@ namespace {
     using no_ref_u = std::conditional_t<std::is_const_v<no_ref_t>, const U, U>;
 
     using ref_u = std::conditional_t<
-        std::is_lvalue_reference_v<T>, no_ref_u &,
-        std::conditional_t<std::is_rvalue_reference_v<T>, no_ref_u &&, no_ref_u>>;
+        std::is_lvalue_reference_v<T>, no_ref_u&,
+        std::conditional_t<std::is_rvalue_reference_v<T>, no_ref_u&&, no_ref_u>>;
 
     using type = std::conditional_t<std::is_const_v<T>, const ref_u, ref_u>;
   };
@@ -317,15 +317,15 @@ namespace _test {
 
   static_assert(std::is_same_v<like_t<int, int>, int>);
   static_assert(std::is_same_v<like_t<int, char>, char>);
-  static_assert(std::is_same_v<like_t<int, char &>, char>);
-  static_assert(std::is_same_v<like_t<int, char &&>, char>);
-  static_assert(std::is_same_v<like_t<int &, char>, char &>);
-  static_assert(std::is_same_v<like_t<int &&, char>, char &&>);
+  static_assert(std::is_same_v<like_t<int, char&>, char>);
+  static_assert(std::is_same_v<like_t<int, char&&>, char>);
+  static_assert(std::is_same_v<like_t<int&, char>, char&>);
+  static_assert(std::is_same_v<like_t<int&&, char>, char&&>);
   static_assert(std::is_same_v<like_t<const int, char>, const char>);
-  static_assert(std::is_same_v<like_t<const int, char &>, const char>);
-  static_assert(std::is_same_v<like_t<const int, char &&>, const char>);
-  static_assert(std::is_same_v<like_t<const int &, char>, const char &>);
-  static_assert(std::is_same_v<like_t<const int &&, char>, const char &&>);
+  static_assert(std::is_same_v<like_t<const int, char&>, const char>);
+  static_assert(std::is_same_v<like_t<const int, char&&>, const char>);
+  static_assert(std::is_same_v<like_t<const int&, char>, const char&>);
+  static_assert(std::is_same_v<like_t<const int&&, char>, const char&&>);
 }  // namespace _test
 
 XSL_NE

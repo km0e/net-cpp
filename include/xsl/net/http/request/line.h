@@ -21,7 +21,7 @@
 
 #  include <regex>
 
-XSL_HTTP_NB
+XSL_NET_HTTP_NB
 
 struct RequestLine {
   std::string _raw = {};            ///< the raw request line if percent-encoded
@@ -94,5 +94,5 @@ struct RequestLine {
   }
 };
 
-XSL_HTTP_NE
+XSL_NET_HTTP_NE
 #endif  // XSL_NET_HTTP_REQUEST_LINE

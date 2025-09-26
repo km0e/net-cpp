@@ -15,12 +15,12 @@
 #  include <xsl/wheel.h>
 
 #  include <string_view>
-XSL_ASIO_HTTP_NB
+XSL_ASIO_NB
 const us_map<std::string_view> encoding_to_extension = {
     {"br", ".br"},
     {"gzip", ".gz"},
 
     {"deflate", ".deflate"},
 };
-XSL_ASIO_HTTP_NE
+XSL_ASIO_NE
 #endif

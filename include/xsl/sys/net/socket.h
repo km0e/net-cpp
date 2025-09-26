@@ -27,14 +27,16 @@ class Socket;
 template <class Traits>
 struct ConnectionUtils {
   /// @brief Connect to a address
-  Expected<void, errc> connect(this Socket<Traits> &self, const SockAddr<Traits> &sa) {
-    ENSEC(filter_interrupt(::connect, self.raw(), &sa.addr(), sa.len()));
+  Expected<void, errc> connect(this Socket<Traits>& self, const SockAddr<Traits>& sa) {
+    ENSEC(filter_interrupt(::connect, self.raw(), &sa.addr(), sa.len()) == 0);
     return {};
   }
   /// @brief Bind to a address
-  constexpr Expected<void> bind(this auto &self, const SockAddr<Traits> &sa) {
-    return check_ec(::bind(self.raw(), &sa.addr(), sa.len()));
+  constexpr Expected<void, errc> bind(this auto& self, const SockAddr<Traits>& sa) {
+    ENSEC(::bind(self.raw(), &sa.addr(), sa.len()) == 0);
+    return {};
   }
+  consteval bool is_connection_based() const { return Traits::is_connection_based(); }
 };
 
 template <class Traits>
@@ -52,7 +54,6 @@ public:
   using Base::Base;
 
   using traits_type = Traits;
-  using poll_traits_type = typename traits_type::poll_traits_type;
 
   using value_type = byte;
 
@@ -64,30 +65,33 @@ public:
 template <ConnectionBasedSocketTraits Traits>
 struct ConnectionUtils<Traits> {
   /// @brief Connect to a address
-  Expected<> connect(this Socket<Traits> &self,
-                     const SockAddr<Traits> &sa) {  // @NOTE:This may return INPROGRESS, because
-                                                    // the socket is non-blocking
+  Expected<void, errc> connect(this Socket<Traits>& self,
+                               const SockAddr<Traits>& sa) {  // @NOTE:This may return INPROGRESS,
+                                                              // because the socket is non-blocking
     auto [addr, addrlen] = sa.raw();
-    return check_ec(filter_interrupt(::connect, self.raw(), &addr, addrlen));
+    ENSEC(filter_interrupt(::connect, self.raw(), &addr, addrlen) == 0);
+    return {};
   }
   /// @brief Bind to a address
-  constexpr Expected<void, errc> bind(this auto &&self, const SockAddr<Traits> &sa) noexcept {
+  constexpr Expected<void, errc> bind(this auto&& self, const SockAddr<Traits>& sa) noexcept {
     ENSEC(::bind(self.raw(), &sa.addr(), sa.len()) == 0);
     return {};
   }
   /// @brief Accept a connection
-  constexpr Expected<Socket<Traits>, errc> accept(this auto &&self,
-                                                  SockAddr<Traits> *addr = nullptr) {
+  constexpr Expected<Socket<Traits>, errc> accept(this auto&& self,
+                                                  SockAddr<Traits>* addr = nullptr) {
     return ConnectionUtils::accept(self.raw(), addr);
   }
   /// @brief Start listening
-  constexpr Expected<void, errc> listen(this auto &&self, int max_connections = 128) noexcept {
+  constexpr Expected<void, errc> listen(this auto&& self, int max_connections = 128) noexcept {
     ENSEC(::listen(self.raw(), max_connections) == 0);
     return {};
   }
 
+  consteval bool is_connection_based() const { return Traits::is_connection_based(); }
+
 protected:
-  static constexpr Expected<Socket<Traits>, errc> accept(RawHandle _raw, SockAddr<Traits> *addr) {
+  static constexpr Expected<Socket<Traits>, errc> accept(RawHandle _raw, SockAddr<Traits>* addr) {
     auto tmp_fd = [_raw, addr] {
       if (addr == nullptr) {
         return ::accept4(_raw, nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC);
@@ -109,7 +113,7 @@ protected:
 
 template <class Traits>
 struct SocketOptions {  /// TODO: add more socket options
-  Expected<void, errc> reuse_addr(this auto &&self, bool reuse = true) noexcept {
+  Expected<void, errc> reuse_addr(this auto&& self, bool reuse = true) noexcept {
     int opt = reuse ? 1 : 0;
     ENSEC(setsockopt(self.raw(), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == 0);
     return {};
@@ -122,7 +126,7 @@ template <class... Flags>
 using SocketCompose = Socket<SocketTraits<Flags...>>;
 
 template <class Traits>
-Expected<Socket<Traits>, errc> socket(const SockAddr<Traits> &sa,
+Expected<Socket<Traits>, errc> socket(const SockAddr<Traits>& sa,
                                       SocketAttribute attr
                                       = SocketAttribute::NonBlocking
                                         | SocketAttribute::CloseOnExec) noexcept {
@@ -131,7 +135,7 @@ Expected<Socket<Traits>, errc> socket(const SockAddr<Traits> &sa,
   return Socket<Traits>(fd);
 }
 template <class Traits>
-Expected<Socket<Traits>, errc> socket(const addrinfo &ai,
+Expected<Socket<Traits>, errc> socket(const addrinfo& ai,
                                       SocketAttribute attr
                                       = SocketAttribute::NonBlocking
                                         | SocketAttribute::CloseOnExec) noexcept {

@@ -38,21 +38,23 @@ protected:
   void SetUp() override { start_poller(); }
   void TearDown() override { stop_poller(); }
 
-  std::shared_ptr<Context> ctx;
+  Rc<CoroContext> ctx;
   std::thread poller_thread;
 
   void start_poller() {
-    ctx = std::make_shared<Context>();
+    MUST(asio_ctx(NewThreadExecutor{}), ctx);
+    this->ctx = ctx;
     poller_thread = std::thread([this] {
-      ctx->run();
+      static_cast<sys::IOContext*>(this->ctx->get_reserved())->run();
       log_debug("Poller shutdown");
     });
   }
   template <class AsyncSocket>
-  Task<void> echo(AsyncSocket &skt) {
+  Task<void> echo(AsyncSocket& skt) {
     auto N = TEST_COUNT;
+    auto& ctx = co_await CurrentIOContext;
     while (N--) {
-      auto res_skt = co_await skt->accept_async(*ctx);
+      auto res_skt = co_await skt->accept_async(ctx);
       if (!res_skt.has_value()) {
         co_return;
       }
@@ -75,30 +77,30 @@ protected:
   }
 
   void stop_poller() {
-    ctx->shutdown();
+    static_cast<sys::IOContext*>(ctx->get_reserved())->shutdown();
     poller_thread.join();
     log_debug("Poller joined");
   }
 
 public:
-  AsyncSocketIOFixture() : ctx(nullptr), poller_thread() {}
+  AsyncSocketIOFixture() : ctx(), poller_thread() {}
 };
 
 TEST_F(AsyncSocketIOFixture, tcp_bind) {
   using namespace xsl;
-  auto util = make_async_socket_utils<TcpIpv4>();
-  auto res = util.c(*ctx, "0.0.0.0", port);  // to init the util
+  auto util = AsyncSocketCreatorCompose<TcpIpv4>();
+  auto& ctx = *static_cast<sys::IOContext*>(this->ctx->get_reserved());
+  auto res = util.cb(ctx, "0.0.0.0", port);  // to init the util
   ASSERT_TRUE(res.has_value());
   ASSERT_TRUE((*res)->listen()) << "Failed to listen";
   echo(*res).detach();
   auto N = TEST_COUNT;
   while (N--) {
-    // auto res_client = getaddrinfo<TcpIpv4>("127.0.0.1", port);
-    auto res_client = util.ac2(*ctx, "127.0.0.1", port).block();
+    auto res_client = util.ca2("127.0.0.1", port).block();
     ASSERT_TRUE(res_client.has_value());
     auto client = std::move(*res_client);
     auto buf = std::make_unique<char[]>(1024);
-    for (auto &msg : echo_msg) {
+    for (auto& msg : echo_msg) {
       auto send_bytes = std::as_bytes(std::span(msg.data(), msg.size()));
       auto res = client->write(send_bytes).block();
       ASSERT_TRUE(res);
@@ -110,7 +112,7 @@ TEST_F(AsyncSocketIOFixture, tcp_bind) {
   }
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   CLI::App app{"TCP Server"};
   app.add_option("-p,--port", port, "Port to connect to");
   CLI11_PARSE(app, argc, argv);

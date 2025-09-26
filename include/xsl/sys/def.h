@@ -11,11 +11,21 @@
 #pragma once
 #ifndef XSL_SYS_DEF
 #  define XSL_SYS_DEF
-#  define XSL_SYS_NB namespace xsl::sys {
-#  define XSL_SYS_NE }
+#  define XSL_SYS_NB \
+    XSL_NB           \
+    namespace sys {
+#  define XSL_SYS_NE \
+    }                \
+    XSL_NE
 #  include <fcntl.h>
 #  include <xsl/io/def.h>
 XSL_SYS_NB
+
+#  ifdef XSL_UNDERLYING_IO_URING
+#  else
+#    define _XSL_UNDERLYING_EPOLL
+#  endif
+
 using RawHandle = int;
 
 enum class DeviceAttribute {

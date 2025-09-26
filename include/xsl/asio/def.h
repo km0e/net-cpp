@@ -15,31 +15,40 @@
 
 #  define XSL_ASIO_NB \
     XSL_NB            \
-    namespace _asio {
+    namespace asio {
 #  define XSL_ASIO_NE \
-    XSL_NE            \
-    }  // namespace _asio
+    }                 \
+    XSL_NE
 #  include <xsl/byte.h>
 #  include <xsl/concept.h>
 #  include <xsl/coro.h>
 #  include <xsl/def.h>
 #  include <xsl/io.h>
 #  include <xsl/io/def.h>
+#  include <xsl/sys.h>
 #  include <xsl/type_traits.h>
 
 #  include <concepts>
 
 XSL_ASIO_NB
 
+namespace {
+  using sys::IOContext;
+  using sys::IOM_EVENTS;
+}  // namespace
+
 using io::Result;
+using IOSignal = SPSCSignal4;
+
+inline const Reserved<IOContext> CurrentIOContext{};
 
 /**
  * @brief Define the abstract async read device
  */
 template <class Device>
 concept AsyncRead = requires(Device t, xsl::byte* data, std::size_t size) {
-  { t.read(data, size) } -> coro::Awaitable;
-  requires std::same_as<typename decltype(t.read(data, size))::result_type, Result>;
+  { t->read(data, size) } -> coro::Awaitable;
+  requires std::same_as<typename decltype(t->read(data, size))::result_type, Result>;
 };
 
 /**
@@ -47,8 +56,8 @@ concept AsyncRead = requires(Device t, xsl::byte* data, std::size_t size) {
  */
 template <class Device>
 concept AsyncWrite = requires(Device t, const byte* data, std::size_t size) {
-  { t.write(data, size) } -> coro::Awaitable;
-  requires std::same_as<typename decltype(t.write(data, size))::result_type, Result>;
+  { t->write(data, size) } -> coro::Awaitable;
+  requires std::same_as<typename decltype(t->write(data, size))::result_type, Result>;
 };
 
 /**
@@ -90,27 +99,6 @@ public:
 
 class DirectAsyncReadWriteUtils {
 public:
-  /**
-   * @brief Get the read signal
-   *
-   * @return SPSCSignal2<1>&
-   */
-  constexpr auto read_signal(this auto&& self) noexcept -> like_t<decltype(self), SPSCSignal2<1>>
-    requires requires { self->template signal<IOM_EVENTS::IN>(); }
-  {
-    return *self->template signal<IOM_EVENTS::IN>();
-  }
-
-  /**
-   * @brief Get the write signal
-   *
-   * @return SPSCSignal2<1>&
-   */
-  constexpr auto write_signal(this auto&& self) noexcept -> like_t<decltype(self), SPSCSignal2<1>>
-    requires requires { self->template signal<IOM_EVENTS::OUT>(); }
-  {
-    return *self->template signal<IOM_EVENTS::OUT>();
-  }
   coro::Task<io::Result> read(this auto&& self, byte* data, std::size_t size) {
     return self->read(data, size);
   }
@@ -124,6 +112,14 @@ public:
     return self->write_file(std::move(hint));
   }
 };
+
+template <class E>
+  requires std::is_constructible_v<CoroContext, E>
+Expected<Rc<CoroContext>, errc> asio_ctx(E&& e) noexcept {
+  TRVEC(ctx, IOContext::create());
+  return Rc<CoroContext>(std::forward<E>(e), ctx,
+                         [](void* p) { delete reinterpret_cast<IOContext*>(p); });
+}
 
 XSL_ASIO_NE
 

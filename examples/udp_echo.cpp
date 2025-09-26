@@ -22,10 +22,11 @@ std::string port = "8080";
 using namespace xsl::asio;
 using namespace xsl;
 
-Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl::Context> poller) {
+Task<void> talk(std::string_view ip, std::string_view port) {
   byte buffer[4096]{};
-  auto util = make_async_socket_utils<UdpIpv4>();
-  auto rw = *util.c(*poller, ip.data(), port.data());
+  auto util = AsyncSocketCreatorCompose<UdpIpv4>();
+  auto& ctx = co_await CurrentIOContext;
+  auto rw = *util.c(ctx, ip.data(), port.data());
   auto addr = sys::net::make_sockaddr<UdpIpv4>();
   std::string dst(128, '\0');
   std::uint16_t port_num;
@@ -40,27 +41,26 @@ Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<xsl:
       continue;
     }
     std::println(std::cout, "<{},{}>: {}", dst, port_num,
-                 std::string_view(reinterpret_cast<const char *>(buffer), res.size));
+                 std::string_view(reinterpret_cast<const char*>(buffer), res.size));
     res = co_await rw->sendto(addr, buffer, res.size);
     if (!res) {
       log_debug("Error: {}", res.message());
       break;
     }
-    log_info("Sent: {}", std::string_view(reinterpret_cast<const char *>(buffer), res.size));
+    log_info("Sent: {}", std::string_view(reinterpret_cast<const char*>(buffer), res.size));
   }
-  poller->shutdown();
+  ctx.shutdown();
   co_return;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   CLI::App app{"Echo server"};
   app.add_option("-i,--ip", ip, "IP address");
   app.add_option("-p,--port", port, "Port");
   CLI11_PARSE(app, argc, argv);
 
-  auto poller = std::make_shared<xsl::Context>();
-  auto executor = std::make_shared<coro::NewThreadExecutor>();
-  talk(ip, port, poller).detach(std::move(executor));
-  poller->run();
+  MUST(asio_ctx(NewThreadExecutor{}), ctx);
+  talk(ip, port).detach(ctx);
+  static_cast<sys::IOContext*>(ctx->get_reserved())->run();
   return 0;
 }

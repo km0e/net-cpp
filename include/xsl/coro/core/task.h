@@ -2,7 +2,7 @@
  * @file task.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Task coroutine
- * @version 0.2.3
+ * @version 0.3.0
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -13,11 +13,13 @@
 #  define XSL_CORO_TASK
 #  include <xsl/coro/core/base.h>
 #  include <xsl/coro/core/block.h>
+#  include <xsl/coro/core/context.h>
 #  include <xsl/coro/core/detach.h>
 #  include <xsl/coro/core/executor.h>
 #  include <xsl/coro/core/then.h>
 #  include <xsl/coro/def.h>
 #  include <xsl/type_traits.h>
+#  include <xsl/wheel.h>
 
 #  include <cassert>
 #  include <concepts>
@@ -27,11 +29,43 @@
 
 XSL_CORO_NB
 
+template <class Awaiter>
+struct AwaiterWrapper {
+  Awaiter awaiter;
+  CoroContext& ctx;
+
+  template <class _Awaiter>
+  explicit AwaiterWrapper(_Awaiter&& awaiter, CoroContext& ctx) noexcept
+      : awaiter(std::forward<_Awaiter>(awaiter)), ctx(ctx) {}
+
+  constexpr bool await_ready() noexcept(noexcept(std::declval<Awaiter>().await_ready())) {
+    return awaiter.await_ready();
+  }
+  template <class Promise>
+  constexpr auto await_suspend(std::coroutine_handle<Promise> handle) noexcept(
+      noexcept(std::declval<Awaiter>().await_suspend(handle))) {
+    return awaiter.await_suspend(handle);
+  }
+  constexpr decltype(auto) await_resume() {
+    if constexpr (requires { awaiter.await_resume(ctx); }) {
+      return awaiter.await_resume(ctx);
+    } else {
+      return awaiter.await_resume();
+    }
+  }
+};
+
+template <class Awaiter>
+  requires(std::is_lvalue_reference_v<Awaiter>)
+AwaiterWrapper(Awaiter&&, CoroContext&) -> AwaiterWrapper<Awaiter>;
+
+template <class Awaiter>
+  requires(!std::is_reference_v<Awaiter>)
+AwaiterWrapper(Awaiter&&, CoroContext&) -> AwaiterWrapper<Awaiter&&>;
+
 class NextBase {
 public:
-  constexpr NextBase() noexcept(noexcept(std::coroutine_handle<>{nullptr})
-                                && noexcept(std::shared_ptr<ExecutorBase>{nullptr}))
-      : _next(nullptr), _executor(nullptr) {}
+  constexpr NextBase() noexcept : _ctx(), _next(nullptr) {}
 
   constexpr std::suspend_always initial_suspend() const noexcept { return {}; }
 
@@ -46,48 +80,50 @@ public:
 
   constexpr final_awaiter final_suspend() const noexcept { return {this->_next}; }
 
-  constexpr const std::shared_ptr<ExecutorBase> &executor() const noexcept { return _executor; }
-
   template <class Awaiter, class... _Args>
     requires(!std::is_reference_v<Awaiter>)
-  constexpr std::suspend_never yield_value(Awaiter &&awaiter) {
-    coro::detach(std::forward<Awaiter>(awaiter), this->executor());
+  constexpr std::suspend_never yield_value(Awaiter&& awaiter) {
+    coro::detach(std::forward<Awaiter>(awaiter), Rc(this->_ctx->new_child_context()));
     return {};
   }
 
-  constexpr void by(this auto &&self,
-                    std::convertible_to<std::shared_ptr<ExecutorBase>> auto &&executor) {
-    self._executor = std::forward<decltype(executor)>(executor);
+  template <class Awaiter>
+  constexpr decltype(auto) await_transform(Awaiter&& awaiter) {
+    return AwaiterWrapper(std::forward<Awaiter>(awaiter), *this->_ctx);
+  }
+
+  constexpr auto ctx(this auto&& self) noexcept -> like_t<decltype(self), Rc<CoroContext>> {
+    return self._ctx;
+  }
+
+  template <class... Args>
+    requires std::constructible_from<Rc<CoroContext>, Args&&...>
+  constexpr void by(this auto&& self, Args&&... args) {
+    co_trace("Promise by");
+    self._ctx = Rc<CoroContext>(std::forward<Args>(args)...);
   }
 
   template <class Promise>
-  constexpr void next(std::coroutine_handle<Promise> handle) {
+  constexpr void next(this auto&& self, std::coroutine_handle<Promise> handle) {
     co_trace("Promise next");
-    this->_next = handle;
-    if constexpr (!std::is_same_v<typename Promise::executor_type, void>) {
-      if (!this->executor()) {
-        co_trace("set executor");
-        this->_executor = handle.promise().executor();
-      }
+    self._next = handle;
+    if constexpr (requires { handle.promise().ctx(); }) {
+      co_trace("set executor");
+      self._ctx = handle.promise().ctx();
     }
   }
 
   template <class Promise>
   constexpr void resume(std::coroutine_handle<Promise> handle) {
-    if (this->executor()) {
-      this->_executor->schedule([handle] mutable {
-        co_trace("task resume {}", (uint64_t)handle.address());
-        handle();
-      });
-    } else {
+    this->_ctx->dispatch([handle] mutable {
+      co_trace("task resume {}", (uint64_t)handle.address());
       handle();
-    }
+    });
   }
 
 protected:
+  Rc<CoroContext> _ctx;
   std::coroutine_handle<> _next;
-
-  std::shared_ptr<ExecutorBase> _executor;
 };
 
 template <class ResultType>
@@ -97,14 +133,12 @@ template <class ResultType>
 class TaskPromiseBase : public NextBase, public PromiseBase<ResultType> {
 public:
   using coro_type = Task<ResultType>;
-  using executor_type = ExecutorBase;
 };
 
 template <class ResultType>
 class Task {
 public:
   using result_type = ResultType;
-  using executor_type = ExecutorBase;
   using promise_type = Promise<TaskPromiseBase<ResultType>>;
 
 protected:
@@ -116,42 +150,51 @@ protected:
 
 public:
   constexpr Task(std::coroutine_handle<promise_type> handle) noexcept : _handle(handle) {}
-  constexpr Task(Task &&task) noexcept : _handle(std::move(task).move_handle()) {}
-  constexpr Task &operator=(Task &&task) noexcept {
+  Task(const Task&) = delete;
+  Task& operator=(const Task&) = delete;
+  constexpr Task(Task&& task) noexcept : _handle(std::move(task).move_handle()) {}
+  constexpr Task& operator=(Task&& task) noexcept {
     _handle = task.move_handle();
     return *this;
   }
   constexpr ~Task() {
     if (_handle) {
-      assert(_handle.done());
+      assert(_handle.done() && "Task destroyed before co_return/co_yield");
       _handle.destroy();
     }
   }
 
-  constexpr auto operator co_await(this auto &&self) noexcept(
-      std::is_nothrow_move_constructible_v<Task>) {
-    co_trace("move handle to Awaiter");
-    return std::move(self);
-  }
+  // operator co_await removed: Task itself is the awaiter.
+  // This avoids a GCC coroutine codegen bug that double-destroys the
+  // co_await temporary during coroutine frame cleanup.
 
-  constexpr auto then(this Task &&self, std::invocable<result_type> auto &&f) {
+  constexpr auto then(this Task&& self, std::invocable<result_type> auto&& f) {
     return ThenAwaiter<Task>(std::move(self).move_handle()).then(std::forward<decltype(f)>(f));
   }
 
   template <class Self, class Res = Self::result_type>
     requires(!std::is_reference_v<Self>) && is_same_pack_v<Res, std::expected<void, void>>
-  constexpr decltype(auto) and_then(this Self &&self,
-                                    std::invocable<typename Res::value_type> auto &&f) {
-    return std::move(self).then([f = std::forward<decltype(f)>(f)](auto &&res) {
+  constexpr decltype(auto) and_then(this Self&& self,
+                                    std::invocable<typename Res::value_type> auto&& f) {
+    return std::move(self).then([f = std::forward<decltype(f)>(f)](auto&& res) {
       return std::forward<decltype(res)>(res).and_then(f);
     });
   }
 
   template <class Self, class Res = Self::result_type>
     requires(!std::is_reference_v<Self>) && is_same_pack_v<Res, std::expected<void, void>>
-  constexpr decltype(auto) map(this Self &&self,
-                               std::invocable<typename Res::value_type> auto &&f) {
-    return std::move(self).then([f = std::forward<decltype(f)>(f)](auto &&res) {
+            && std::is_void_v<typename Res::value_type>
+  constexpr decltype(auto) map(this Self&& self, std::invocable<> auto&& f) {
+    return std::move(self).then([f = std::forward<decltype(f)>(f)](auto&& res) {
+      return std::forward<decltype(res)>(res).transform(f);
+    });
+  }
+
+  template <class Self, class Res = Self::result_type>
+    requires(!std::is_reference_v<Self>) && is_same_pack_v<Res, std::expected<void, void>>
+  constexpr decltype(auto) map(this Self&& self,
+                               std::invocable<typename Res::value_type> auto&& f) {
+    return std::move(self).then([f = std::forward<decltype(f)>(f)](auto&& res) {
       return std::forward<decltype(res)>(res).transform(f);
     });
   }
@@ -163,8 +206,11 @@ public:
    * @param self
    * @return result_type
    */
-  constexpr result_type block(this auto &&self) {
+  constexpr decltype(auto) block(this auto&& self)
+    requires(std::is_rvalue_reference_v<decltype(self)>)
+  {
     co_trace("Task block");
+    self._handle.promise().by(CoroContext{});
     return coro::block(std::move(self));
   }
   /**
@@ -174,20 +220,23 @@ public:
    * @param executor the executor
    * @return auto&&
    */
-  constexpr auto &&by(this auto &&self,
-                      std::convertible_to<std::shared_ptr<ExecutorBase>> auto &&executor) {
-    self._handle.promise().by(std::forward<decltype(executor)>(executor));
+  template <class... Args>
+    requires std::constructible_from<Rc<CoroContext>, Args&&...>
+  constexpr auto&& by(this auto&& self, Args&&... args) {
+    self._handle.promise().by(Rc<CoroContext>(std::forward<Args>(args)...));
     return std::forward<decltype(self)>(self);
   }
-  /// @brief Detach the task
-  constexpr void detach(this Task &&self) {
-    co_trace("task detach");
-    coro::detach(std::move(self));
-  }
   /// @brief Detach the task with executor
-  constexpr void detach(this Task &&self,
-                        std::convertible_to<std::shared_ptr<ExecutorBase>> auto &&executor) {
-    coro::detach(std::move(self), std::forward<decltype(executor)>(executor));
+  template <class... Args>
+    requires std::constructible_from<Rc<CoroContext>, Args&&...>
+  constexpr void detach(this auto&& self, Args&&... args)
+    requires(std::is_rvalue_reference_v<decltype(self)>)
+  {
+    coro::detach(std::move(self), Rc<CoroContext>(std::forward<Args>(args)...));
+    co_debug("Task detached");
+  }
+  constexpr std::shared_ptr<std::atomic<Continuation*>>& cc() noexcept {
+    return this->_handle.promise().ctx()->cc();
   }
 
   constexpr bool await_ready() const { return false; }

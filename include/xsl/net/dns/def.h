@@ -11,8 +11,14 @@
 #pragma once
 #ifndef XSL_NET_DNS_DEF
 #  define XSL_NET_DNS_DEF
-#  define XSL_NET_DNS_NB namespace xsl::_net::dns {
-#  define XSL_NET_DNS_NE }
+#  include <xsl/net/def.h>
+
+#  define XSL_NET_DNS_NB \
+    XSL_NET_NB           \
+    namespace dns {
+#  define XSL_NET_DNS_NE \
+    }                    \
+    XSL_NET_NE
 XSL_NET_DNS_NB
 XSL_NET_DNS_NE
 #endif

@@ -19,40 +19,50 @@
 
 #  include <memory>
 #  include <utility>
-
-XSL_ASIO_HTTP_NB
+XSL_ASIO_NB
 template <class LowerCreator>
-class Server {
+class HttpServer {
 public:
   using lower_type = LowerCreator;
 
-  using io_dev_type = typename lower_type::io_dev_type;
+  template <class T>
+  struct extract_io_dev_type {
+    using type = T;
+  };
+  template <class T>
+    requires requires { typename T::io_dev_type; }
+  struct extract_io_dev_type<T> {
+    using type = typename T::io_dev_type;
+  };
+
+  using io_dev_type = typename extract_io_dev_type<lower_type>::type;
+
   using context_type = HandleContext<io_dev_type, io_dev_type>;
   using handler_type = Handler<io_dev_type, io_dev_type>;
 
-  constexpr Server(lower_type&& server) noexcept(std::is_nothrow_move_constructible_v<lower_type>)
+  constexpr HttpServer(lower_type&& server) noexcept(
+      std::is_nothrow_move_constructible_v<lower_type>)
       : server(std::move(server)) {}
 
-  constexpr Server(Server&&) = default;
-  constexpr Server& operator=(Server&&) = default;
-  constexpr ~Server() {}
+  constexpr HttpServer(HttpServer&&) = default;
+  constexpr HttpServer& operator=(HttpServer&&) = default;
+  constexpr ~HttpServer() {}
 
   Task<void> serve_connection(auto&& service) {
     auto service_ptr = std::make_shared<std::remove_reference_t<decltype(service)>>(
         std::forward<decltype(service)>(service));
     while (true) {
-      auto res = co_await this->server.accept_async();
+      auto res = co_await this->server->accept_async(co_await CurrentIOContext);
       if (!res) {
         log_error("accept error: {}", std::make_error_code(res.error()).message());
         continue;
       }
-      co_yield http::serve_connection(std::move(*res), service_ptr);
+      co_yield asio::serve_connection(std::move(*res), service_ptr);
     }
   }
 
 private:
   lower_type server;
 };
-
-XSL_ASIO_HTTP_NE
+XSL_ASIO_NE
 #endif

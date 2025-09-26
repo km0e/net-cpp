@@ -29,19 +29,21 @@ using namespace xsl;
  * @return Task<void>
  * @note this example all use static call
  */
-Task<void> run(std::shared_ptr<Context> poller, std::string_view ip, std::string_view port) {
-  auto util = HttpUtil(make_async_socket_utils<TcpIpv4>());
+Task<void> run(std::string_view ip, std::string_view port) {
+  auto util = HttpUtil(AsyncSocketCreatorCompose<TcpIpv4>());
   auto service = util.make_service2();
   service.add_static("/", {doc_root, {}});
-  auto creator = util.c_creator(poller, ip.data(), port.data());
+
+  auto& io = co_await CurrentIOContext;
+  auto creator = util.cl(io, ip.data(), port.data());
   Defer defer([&]() {
     log_info("Server stopped");
-    poller->shutdown();
+    io.shutdown();
   });
   if (creator) {
     co_await creator->serve_connection(std::move(service).build());
   } else {
-    log_error("Failed to create server: {}", creator.error()->message());
+    log_error("Failed to create server: {}", creator.error());
   }
   co_return;
 }
@@ -55,10 +57,8 @@ int main(int argc, char* argv[]) {
       ->capture_default_str();
   CLI11_PARSE(app, argc, argv);
   log_info("Start http server at {}:{}", ip, port);
-
-  auto poller = std::make_shared<Context>();
-  auto executor = std::make_shared<coro::NewThreadExecutor>();
-  run(poller, ip, port).detach(std::move(executor));
-  poller->run();
+  MUST(asio_ctx(NewThreadExecutor{}), ctx);
+  run(ip, port).detach(ctx);
+  static_cast<sys::IOContext*>(ctx->get_reserved())->run();
   return 0;
 }

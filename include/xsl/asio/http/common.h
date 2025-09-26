@@ -19,7 +19,7 @@
 #  include <xsl/io.h>
 #  include <xsl/net.h>
 
-XSL_ASIO_HTTP_NB
+XSL_ASIO_NB
 const int DEFAULT_HEADER_COUNT = 16;
 
 const std::size_t HTTP_BUFFER_BLOCK_SIZE = 4096;
@@ -100,5 +100,5 @@ public:
   }
 };
 
-XSL_ASIO_HTTP_NE
+XSL_ASIO_NE
 #endif

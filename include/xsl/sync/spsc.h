@@ -29,10 +29,8 @@ template <class T>
 struct SnapShot {
   std::atomic_size_t _ctl;
   std::size_t _local;
-  T *_buffer;
+  T* _buffer;
   const std::size_t _size_mask;
-  // const char _padding[64 - sizeof(std::atomic_size_t) - sizeof(std::size_t) - sizeof(T *)
-  //                     - sizeof(std::size_t)];
 };
 /// @brief Storage for the queue
 template <class Alloc>
@@ -40,7 +38,7 @@ class Storage {
   using alloc_traits = std::allocator_traits<Alloc>;
   using value_type = typename alloc_traits::value_type;
 
-  constexpr Storage(auto &&alloc, std::size_t size)
+  constexpr Storage(auto&& alloc, std::size_t size)
       : _head{0, 0, nullptr, size},
         _tail{0, 0, nullptr, size},
         _alloc(std::forward<decltype(alloc)>(alloc)) {
@@ -50,7 +48,7 @@ class Storage {
 
 public:
   /// @brief Construct a new Storage object, actual size will be 2^ceil2pow2(size + 1)
-  constexpr Storage(std::size_t size, auto &&alloc)
+  constexpr Storage(std::size_t size, auto&& alloc)
       : Storage(std::forward<decltype(alloc)>(alloc), xsl::wheel::ceil2pow2(size + 1) - 1) {}
   constexpr Storage(std::size_t size) : Storage(Alloc(), xsl::wheel::ceil2pow2(size + 1) - 1) {}
 
@@ -75,7 +73,7 @@ public:
 };
 
 template <class Alloc>
-struct RxTraits {
+struct TxTraits {
   using storage_type = Storage<Alloc>;
   using alloc_traits = std::allocator_traits<Alloc>;
   using value_type = typename alloc_traits::value_type;
@@ -87,8 +85,8 @@ struct RxTraits {
    * @return true if the value is pushed successfully
    * @return false if the queue is full
    */
-  static constexpr bool push(storage_type &storage, auto &&...args) {
-    SnapShot<value_type> &ep = storage._tail;
+  static constexpr bool push(storage_type& storage, auto&&... args) {
+    SnapShot<value_type>& ep = storage._tail;
     const std::size_t tail = ep._ctl.load(std::memory_order_relaxed);
     const std::size_t n_tail = (tail + 1) & ep._size_mask;
     if (n_tail != ep._local
@@ -103,7 +101,7 @@ struct RxTraits {
 };
 
 template <class Alloc>
-struct TxTraits {
+struct RxTraits {
   using storage_type = Storage<Alloc>;
   using alloc_traits = std::allocator_traits<Alloc>;
   using value_type = typename alloc_traits::value_type;
@@ -118,8 +116,8 @@ struct TxTraits {
    * @return false if the queue is empty
    */
   template <class _Tp>
-  static constexpr bool pop(storage_type &storage, _Tp &v) {
-    SnapShot<value_type> &ep = storage._head;
+  static constexpr bool pop(storage_type& storage, _Tp& v) {
+    SnapShot<value_type>& ep = storage._head;
     std::size_t const head = ep._ctl.load(std::memory_order_relaxed);
     if (head == ep._local
         && head == (ep._local = storage._tail._ctl.load(std::memory_order_acquire))) {
@@ -139,9 +137,9 @@ struct TxTraits {
  * @tparam Alloc allocator
  */
 template <class Alloc>
-class Rx {
+class Tx {
 public:
-  constexpr Rx(auto &&storage) : _storage(std::forward<decltype(storage)>(storage)) {}
+  constexpr Tx(auto&& storage) : _storage(std::forward<decltype(storage)>(storage)) {}
   /**
    * @brief push a value to the queue
    *
@@ -151,8 +149,8 @@ public:
    * @return false if the queue is full
    */
   template <class _Tp>
-  constexpr bool pop(_Tp &v) {
-    return RxTraits<Alloc>::push(*_storage, v);
+  constexpr bool pop(_Tp& v) {
+    return TxTraits<Alloc>::push(*_storage, v);
   }
 
 private:
@@ -164,9 +162,9 @@ private:
  * @tparam Alloc
  */
 template <class Alloc>
-class Tx {
+class Rx {
 public:
-  constexpr Tx(auto &&storage) : _storage(std::forward<decltype(storage)>(storage)) {}
+  constexpr Rx(auto&& storage) : _storage(std::forward<decltype(storage)>(storage)) {}
   /**
    * @brief push a value to the queue
    *
@@ -174,8 +172,8 @@ public:
    * @return true if the value is pushed successfully
    * @return false if the queue is full
    */
-  constexpr bool push(auto &&...args) {
-    return TxTraits<Alloc>::pop(*_storage, std::forward<decltype(args)>(args)...);
+  constexpr bool push(auto&&... args) {
+    return RxTraits<Alloc>::pop(*_storage, std::forward<decltype(args)>(args)...);
   }
 
 private:
@@ -190,8 +188,8 @@ private:
 template <class T, class Alloc = std::allocator<T>>
 struct spsc {
   using storage_type = Storage<Alloc>;
-  using rx_traits = RxTraits<Alloc>;
-  using tx_traits = TxTraits<Alloc>;
+  using rx_traits = TxTraits<Alloc>;
+  using tx_traits = RxTraits<Alloc>;
   /**
    * @brief Construct a new spsc object
    *
@@ -204,7 +202,7 @@ struct spsc {
    * @param size size of the queue, actual size will be 2^ceil2pow2(size + 1)
    * @param alloc allocator
    */
-  constexpr spsc(std::size_t size, auto &&alloc)
+  constexpr spsc(std::size_t size, auto&& alloc)
       : _storage(std::make_shared<Storage<Alloc>>(size, std::forward<decltype(alloc)>(alloc))) {}
 
   constexpr ~spsc() {}
@@ -215,7 +213,7 @@ struct spsc {
    * @return true if the value is pushed successfully
    * @return false if the queue is full
    */
-  constexpr bool push(auto &&...args) {
+  constexpr bool push(auto&&... args) {
     return rx_traits::push(*_storage, std::forward<decltype(args)>(args)...);
   }
   /**
@@ -227,7 +225,7 @@ struct spsc {
    * @return false if the queue is empty
    */
   template <class _Tp>
-  constexpr bool pop(_Tp &v) {
+  constexpr bool pop(_Tp& v) {
     return tx_traits::pop(*_storage, v);
   }
   /**
@@ -235,9 +233,9 @@ struct spsc {
    *
    * @return std::pair<Rx<Alloc>, Tx<Alloc>>
    */
-  constexpr std::pair<Rx<Alloc>, Tx<Alloc>> split() && noexcept {
+  constexpr std::pair<Tx<Alloc>, Rx<Alloc>> split() && noexcept {
     auto copy = _storage;
-    return {Rx<Alloc>(std::move(copy)), Tx<Alloc>(std::move(_storage))};
+    return {Tx<Alloc>(std::move(copy)), Rx<Alloc>(std::move(_storage))};
   }
 
 private:

@@ -17,7 +17,7 @@
 
 #  include <regex>
 
-XSL_HTTP_NB
+XSL_NET_HTTP_NB
 /**
  * @brief OriginForm represents the origin form of an HTTP request target.
  * @see https://datatracker.ietf.org/doc/html/rfc9112#section-3.2.1
@@ -113,5 +113,5 @@ struct RequestTarget {
 #  undef GET_METHOD
 };
 
-XSL_HTTP_NE
+XSL_NET_HTTP_NE
 #endif

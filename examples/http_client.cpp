@@ -17,10 +17,10 @@
 using namespace xsl::asio;
 using namespace xsl;
 
-std::string url = "https://www.baidu.com";
+std::string url = "http://www.baidu.com";
 std::string output_file = "";
 
-Task<void> run(std::string_view url, std::shared_ptr<xsl::Context> ctx) {
+Task<void> run(std::string_view url) {
   auto tls_builder = TLSContextBuilder::client();
   MUST(tls_builder.set_verify_mode()
            .default_verify_paths()
@@ -28,7 +28,8 @@ Task<void> run(std::string_view url, std::shared_ptr<xsl::Context> ctx) {
            .add_mode(TLSMode::ENABLE_PARTIAL_WRITE)
            .build(),
        tls_ctx);
-  HttpClient client(ctx);
+  auto& ctx = co_await CurrentIOContext;
+  HttpClient client{};
   client.set_tls_context(std::move(tls_ctx));
 
   MUST(co_await client.get(url), res);
@@ -77,7 +78,7 @@ Task<void> run(std::string_view url, std::shared_ptr<xsl::Context> ctx) {
       std::cout.write(reinterpret_cast<const char*>(buffer), res.size);
     }
   }
-  ctx->shutdown();
+  ctx.shutdown();
 }
 
 int main(int argc, char* argv[]) {
@@ -87,9 +88,8 @@ int main(int argc, char* argv[]) {
       ->check(CLI::ExistingFile | CLI::NonexistentPath);
   CLI11_PARSE(app, argc, argv);
 
-  auto poller = std::make_shared<xsl::Context>();
-  auto executor = std::make_shared<coro::NewThreadExecutor>();
-  run(url, poller).detach(executor);
-  poller->run();
+  MUST(asio_ctx(NewThreadExecutor{}), ctx);
+  run(url).detach(ctx);
+  static_cast<sys::IOContext*>(ctx->get_reserved())->run();
   return 0;
 }

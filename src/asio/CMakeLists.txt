@@ -12,11 +12,12 @@ target_sources(
 
 target_link_libraries(
     xsl_asio
-    PRIVATE
+    PUBLIC
+    xsl_log
     xsl_sys
     xsl_net
-    xsl_io
     xsl_coro
-    ssl
-    crypto
+    xsl_wheel
+    OpenSSL::SSL
+    OpenSSL::Crypto
 )

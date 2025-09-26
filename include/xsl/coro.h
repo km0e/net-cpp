@@ -13,9 +13,13 @@
 #  define XSL_CORO
 #  include <xsl/coro/channel.h>
 #  include <xsl/coro/core/block.h>
+#  include <xsl/coro/core/def.h>
 #  include <xsl/coro/core/detach.h>
 #  include <xsl/coro/core/executor.h>
+#  include <xsl/coro/core/base.h>
+#  include <xsl/coro/core/context.h>
 #  include <xsl/coro/core/task.h>
+#  include <xsl/coro/core/then.h>
 #  include <xsl/coro/error.h>
 #  include <xsl/coro/guard.h>
 #  include <xsl/coro/pub_sub.h>

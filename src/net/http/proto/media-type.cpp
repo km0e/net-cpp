@@ -11,7 +11,7 @@
 #include <xsl/net/http/proto/media-type.h>
 
 #include <cstddef>
-XSL_HTTP_NB
+XSL_NET_HTTP_NB
 constexpr std::string_view to_string_view(const MediaMainType &type) {
   return MEDIA_MAIN_TYPE_STRINGS[static_cast<std::size_t>(type)];
 }
@@ -66,4 +66,4 @@ constexpr std::string MediaType::to_string() const {
   return result;
 }
 
-XSL_HTTP_NE
+XSL_NET_HTTP_NE

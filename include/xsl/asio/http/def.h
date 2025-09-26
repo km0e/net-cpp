@@ -11,11 +11,11 @@
 #pragma once
 #ifndef XSL_ASIO_HTTP_DEF
 #  define XSL_ASIO_HTTP_DEF
+#  include <xsl/asio/def.h>
+
 #  include <string_view>
 
-#  define XSL_ASIO_HTTP_NB namespace xsl::_asio::http {
-#  define XSL_ASIO_HTTP_NE }
-XSL_ASIO_HTTP_NB
+XSL_ASIO_NB
 const std::string_view API_VERSION = "XSL/0.1";
-XSL_ASIO_HTTP_NE
+XSL_ASIO_NE
 #endif

@@ -71,7 +71,7 @@ struct RCode {
   constexpr std::string_view to_string_view() const { return RCODE_STR[_code]; }
 };
 
-constexpr bool operator==(const RCode &lhs, const decltype(RCode::_code) &rhs) {
+constexpr bool operator==(const RCode& lhs, const decltype(RCode::_code)& rhs) {
   return lhs._code == rhs;
 }
 
@@ -120,7 +120,7 @@ struct Type {
   constexpr Type() = default;
   constexpr Type(decltype(_type) type) : _type(type) {}
 
-  static constexpr Type from_bytes(const byte *buf) {
+  static constexpr Type from_bytes(const byte* buf) {
     std::uint16_t u16;
     xsl::deserialize(buf, u16);
     return {static_cast<decltype(_type)>(ntohs(u16))};
@@ -140,11 +140,11 @@ struct Type {
       return "Unknown";
   }
   /// @brief Serialize Type to network byte order
-  constexpr void serialized(std::span<byte> &buf) const { xsl::serialized(buf, htons(_type)); }
+  constexpr void serialized(std::span<byte>& buf) const { xsl::serialized(buf, htons(_type)); }
   /// @brief Serialize Type to network byte order
-  constexpr std::size_t serialize(byte *buf) const { return xsl::serialize(buf, htons(_type)); }
+  constexpr std::size_t serialize(byte* buf) const { return xsl::serialize(buf, htons(_type)); }
   /// @brief Deserialize Type
-  constexpr std::size_t deserialize(const byte *buf) {
+  constexpr std::size_t deserialize(const byte* buf) {
     std::uint16_t u16;
     xsl::deserialize(buf, u16);
     _type = static_cast<decltype(_type)>(ntohs(u16));
@@ -152,11 +152,11 @@ struct Type {
   }
 };
 
-constexpr bool operator==(const Type &lhs, const decltype(Type::_type) &rhs) {
+constexpr bool operator==(const Type& lhs, const decltype(Type::_type)& rhs) {
   return lhs._type == rhs;
 }
 
-constexpr bool operator==(const Type &lhs, const Type &rhs) { return lhs == rhs._type; }
+constexpr bool operator==(const Type& lhs, const Type& rhs) { return lhs == rhs._type; }
 
 const std::string_view CLASS_STR[] = {"IN", "CS", "CH", "HS", "ANY"};
 const std::size_t MAX_CONSECUTIVE_CLASS_INDEX = 4;
@@ -174,7 +174,7 @@ struct Class {
   constexpr Class() = default;
   constexpr Class(decltype(_class) class_) : _class(class_) {}
 
-  static constexpr Class from_bytes(const byte *buf) {
+  static constexpr Class from_bytes(const byte* buf) {
     std::uint16_t u16;
     xsl::deserialize(buf, u16);
     return {static_cast<decltype(_class)>(ntohs(u16))};
@@ -193,11 +193,11 @@ struct Class {
   }
 
   /// @brief Serialize Class to network byte order
-  constexpr void serialized(std::span<byte> &buf) const { xsl::serialized(buf, htons(_class)); }
+  constexpr void serialized(std::span<byte>& buf) const { xsl::serialized(buf, htons(_class)); }
   /// @brief Serialize Class to network byte order
-  constexpr std::size_t serialize(byte *buf) const { return xsl::serialize(buf, htons(_class)); }
+  constexpr std::size_t serialize(byte* buf) const { return xsl::serialize(buf, htons(_class)); }
   /// @brief Deserialize Class
-  constexpr std::size_t deserialize(const byte *buf) {
+  constexpr std::size_t deserialize(const byte* buf) {
     std::uint16_t u16;
     xsl::deserialize(buf, u16);
     _class = static_cast<decltype(_class)>(ntohs(u16));
@@ -205,44 +205,44 @@ struct Class {
   }
 };
 
-constexpr bool operator==(const Class &lhs, const decltype(Class::_class) &rhs) {
+constexpr bool operator==(const Class& lhs, const decltype(Class::_class)& rhs) {
   return lhs._class == rhs;
 }
 
-constexpr bool operator==(const Class &lhs, const Class &rhs) { return lhs == rhs._class; }
+constexpr bool operator==(const Class& lhs, const Class& rhs) { return lhs == rhs._class; }
 
 XSL_NET_DNS_NE
 
 #  include <format>
 
 namespace std {
-  using xsl::_net::dns::Class, xsl::_net::dns::Type, xsl::_net::dns::RCode;
+  using xsl::net::dns::Class, xsl::net::dns::Type, xsl::net::dns::RCode;
   template <typename CharT>
   using basic_formatter = std::formatter<basic_string_view<CharT>, CharT>;
   template <typename CharT>
   struct formatter<Class, CharT> : basic_formatter<CharT> {
     template <class FmtContext>
-    FmtContext::iterator format(Class s, FmtContext &ctx) const {
-      return static_cast<const basic_formatter<CharT> *>(this)->format(s.to_string_view(), ctx);
+    FmtContext::iterator format(Class s, FmtContext& ctx) const {
+      return static_cast<const basic_formatter<CharT>*>(this)->format(s.to_string_view(), ctx);
     }
   };
   template <typename CharT>
   struct formatter<Type, CharT> : basic_formatter<CharT> {
     template <class FmtContext>
-    FmtContext::iterator format(Type s, FmtContext &ctx) const {
-      return static_cast<const basic_formatter<CharT> *>(this)->format(s.to_string_view(), ctx);
+    FmtContext::iterator format(Type s, FmtContext& ctx) const {
+      return static_cast<const basic_formatter<CharT>*>(this)->format(s.to_string_view(), ctx);
     }
   };
   template <typename CharT>
   struct formatter<RCode, CharT> : basic_formatter<CharT> {
     template <class FmtContext>
-    FmtContext::iterator format(RCode s, FmtContext &ctx) const {
-      return static_cast<const basic_formatter<CharT> *>(this)->format(s.to_string_view(), ctx);
+    FmtContext::iterator format(RCode s, FmtContext& ctx) const {
+      return static_cast<const basic_formatter<CharT>*>(this)->format(s.to_string_view(), ctx);
     }
   };
 }  // namespace std
 
-LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::_net::dns::Type);
-LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::_net::dns::Class);
+LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::net::dns::Type);
+LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::net::dns::Class);
 
 #endif

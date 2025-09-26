@@ -11,6 +11,8 @@
 #pragma once
 #ifndef XSL_ASIO_IO
 #  define XSL_ASIO_IO
+#  include "xsl/error.h"
+
 #  include <fcntl.h>
 #  include <sys/sendfile.h>
 #  include <sys/socket.h>
@@ -20,6 +22,7 @@
 #  include <xsl/io/def.h>
 #  include <xsl/log.h>
 #  include <xsl/sys.h>
+#  include <xsl/type_traits.h>
 
 #  include <cassert>
 #  include <cstddef>
@@ -27,16 +30,54 @@
 #  include <span>
 XSL_ASIO_NB
 
+namespace {
+  using sys::IOContext;
+  using sys::IOM_EVENTS;
+  using sys::PollHandleHint;
+  using sys::PollHandleHintTag;
+}  // namespace
+
 template <IOM_EVENTS... Events>
-using IOSignalStorage = StaticExactPubSubStorage<io::IOM_EVENTS, SPSCSignal2<1>, Events...>;
+using IOSignalStorage = StaticExactPubSubStorage<IOM_EVENTS, IOSignal, Events...>;
+
+namespace _detail {
+  template <IOM_EVENTS... Es>
+  IOSignalStorage<Es...>* _extract_io_signal_storage(IOSignalStorage<Es...>*);
+
+  template <class T>
+  using extract_io_signal_storage_t
+      = std::decay_t<decltype(*_extract_io_signal_storage(std::declval<T*>()))>;
+}  // namespace _detail
+XSL_ASIO_NE
+XSL_NB
+template <sys::IOM_EVENTS... Es1, sys::IOM_EVENTS... Es2>
+struct is_same_pack<asio::IOSignalStorage<Es1...>, asio::IOSignalStorage<Es2...>> : std::true_type {
+};
+XSL_NE
+XSL_ASIO_NB
+
+template <class Inner>
+  requires std::derived_from<Inner, RawOwner>
+class DefaultEpollWrapper : public Inner, public sys::EpollHandler {
+public:
+  ~DefaultEpollWrapper() override = default;
+  PollHandleHint epoll_handle(int, IOM_EVENTS events) override {
+    if (((!events) || !!(events & IOM_EVENTS::HUP))) {
+      return PollHandleHintTag::DELETE;
+    } else {
+      this->publish([&events](IOM_EVENTS e) { return !!(events & e); });
+      return PollHandleHintTag::NONE;
+    }
+  }
+};
 
 template <class Traits, class Accessor>
 class PollForCoro : public Accessor {
 public:
   template <class _Accessor>
-  constexpr PollForCoro(Traits, _Accessor &&a) : Accessor(std::forward<_Accessor>(a)) {}
+  constexpr PollForCoro(Traits, _Accessor&& a) : Accessor(std::forward<_Accessor>(a)) {}
 
-  constexpr PollHandleHint operator()(this auto &&self, int, IOM_EVENTS events) {
+  constexpr PollHandleHint operator()(this auto&& self, int, IOM_EVENTS events) {
     if (Traits::poll_check(events) == PollHandleHintTag::DELETE) {
       return PollHandleHintTag::DELETE;
     } else {
@@ -46,26 +87,29 @@ public:
   }
 };
 
-template <IOM_EVENTS... Es, class T1, class T2, class... Args>
-Expected<void, errc> add_to_context(
-    SharedStorage<T1, T2, RawOwner, IOSignalStorage<Es...>, Args...> &s, Context &ctx, auto tag) {
-  ENSEC(ctx.add(s->raw(), (IOM_EVENTS::ET | ... | Es),
-                _asio::PollForCoro{tag, std::forward<decltype(s)>(s)}));
+namespace _detail {
+  template <IOM_EVENTS... Es>
+  inline IOM_EVENTS or_(IOSignalStorage<Es...>*) {
+    return (IOM_EVENTS::ET | ... | Es);
+  }
+}  // namespace _detail
+
+Expected<void, errc> add_to_context(auto& s, IOContext& ctx, auto tag) {
+  IOM_EVENTS ev = _detail::or_(&*s);
+  ENSEC(ctx.add((*s).get()->raw(), ev, asio::PollForCoro{tag, std::forward<decltype(s)>(s)}));
   return {};
 }
 
 template <class Traits, class Accessor>
-PollForCoro(Traits, Accessor &&) -> PollForCoro<Traits, std::remove_reference_t<Accessor>>;
+PollForCoro(Traits, Accessor&&) -> PollForCoro<Traits, std::remove_reference_t<Accessor>>;
 
-template <IOM_EVENTS... Es, class T1, class T2, class... Args>
-constexpr Expected<void, errc> init_async_device(
-    SharedStorage<T1, T2, RawOwner, IOSignalStorage<Es...>, Args...> &s, RawOwner &&o,
-    Context &ctx) {
-  using tag_t = typename std::decay_t<decltype(*s.get())>::poll_traits_type;
-  std::construct_at<RawOwner>(s.get(), std::move(o));
-
-  std::construct_at<IOSignalStorage<Es...>>(s.get());
-  add_to_context(s, ctx, tag_t{});
+template <class T>
+constexpr Expected<void, errc> init_async_device(shared_memory<T>& s, RawOwner&& o,
+                                                 IOContext& ctx) {
+  s->template emplace<RawOwner>(std::move(o));
+  s->template emplace<_detail::extract_io_signal_storage_t<T>>();
+  IOM_EVENTS ev = _detail::or_(&*s);
+  ENSEC(ctx.add(s->raw(), ev, s));
   return {};
 }
 
@@ -78,7 +122,7 @@ constexpr Expected<void, errc> init_async_device(
  * @param sig
  * @return Task<io::Result>
  */
-Task<io::Result> imm_recv(RawHandle _raw, byte *data, std::size_t size, auto &sig) {
+Task<io::Result> imm_recv(RawHandle _raw, byte* data, std::size_t size, auto& sig) {
   log_trace("{} try to recv {} bytes", _raw, size);
   do {
     ssize_t n = ::recv(_raw, data, size, 0);
@@ -101,7 +145,7 @@ Task<io::Result> imm_recv(RawHandle _raw, byte *data, std::size_t size, auto &si
  * @param sig
  * @return Task<io::Result>
  */
-decltype(auto) recv(RawHandle _raw, byte *data, std::size_t size, auto &sig) {
+decltype(auto) recv(RawHandle _raw, byte* data, std::size_t size, auto& sig) {
   return imm_recv(_raw, data, size, sig).then([&](io::Result res) -> io::Result {
     if (res.size == 0) {
       log_trace("recv {} bytes, not connected", res.size);
@@ -119,7 +163,7 @@ decltype(auto) recv(RawHandle _raw, byte *data, std::size_t size, auto &sig) {
  * @param sig
  * @return Task<io::Result>
  */
-decltype(auto) recv(RawHandle _raw, std::span<byte> &buf, auto &sig) {
+decltype(auto) recv(RawHandle _raw, std::span<byte>& buf, auto& sig) {
   return imm_recv(_raw, buf.data(), buf.size(), sig).then([&](io::Result res) -> io::Result {
     if (res.size == 0) {
       log_trace("recv {} bytes, not connected", res.size);
@@ -138,7 +182,7 @@ decltype(auto) recv(RawHandle _raw, std::span<byte> &buf, auto &sig) {
  * @param sig
  * @return Task<io::Result>
  */
-decltype(auto) recv(RawHandle _raw, const std::span<byte> &buf, auto &sig) {
+decltype(auto) recv(RawHandle _raw, const std::span<byte>& buf, auto& sig) {
   return imm_recv(_raw, buf.data(), buf.size(), sig).then([&](io::Result res) -> io::Result {
     if (res.size == 0) {
       log_trace("recv {} bytes, not connected", res.size);
@@ -149,14 +193,14 @@ decltype(auto) recv(RawHandle _raw, const std::span<byte> &buf, auto &sig) {
 }
 
 struct NetAsyncRx {
-  decltype(auto) read(this auto &&self, std::span<byte> &buf) {
+  decltype(auto) read(this auto&& self, std::span<byte>& buf) {
     if constexpr (self.is_connection_based()) {
       return recv(self.raw(), buf, self.read_signal());
     } else {
       return imm_recv(self.raw(), buf, self.read_signal());
     }
   }
-  decltype(auto) read(this auto &&self, byte *data, std::size_t size) {
+  decltype(auto) read(this auto&& self, byte* data, std::size_t size) {
     if constexpr (self.is_connection_based()) {
       return recv(self.raw(), data, size, self.read_signal());
     } else {
@@ -165,7 +209,7 @@ struct NetAsyncRx {
   }
 
   template <class Self, sys::net::SocketTraitsCompatible<typename Self::socket_traits_type> Up>
-  Task<io::Result> recvfrom(this Self &self, sys::net::SockAddr<Up> &addr, byte *buf,
+  Task<io::Result> recvfrom(this Self& self, sys::net::SockAddr<Up>& addr, byte* buf,
                             std::size_t n) {
     do {
       ssize_t sz = ::recvfrom(self.raw(), buf, n, 0, &addr.addr(), &addr.len());
@@ -181,7 +225,7 @@ struct NetAsyncRx {
     } while (true);
   }
   template <class Self, sys::net::SocketTraitsCompatible<typename Self::traits_type> Up>
-  decltype(auto) recvfrom(this Self &self, sys::net::SockAddr<Up> &addr, std::span<byte> buf) {
+  decltype(auto) recvfrom(this Self& self, sys::net::SockAddr<Up>& addr, std::span<byte> buf) {
     return self.recvfrom(addr, buf.data(), buf.size()).then([&](io::Result res) -> io::Result {
       buf = buf.subspan(res.size);
       return res;
@@ -198,7 +242,7 @@ struct NetAsyncRx {
  * @return Task<io::Result>
  */
 template <class Signal>
-Task<io::Result> send(RawHandle _raw, const byte *data, std::size_t size, Signal &sig) {
+Task<io::Result> send(RawHandle _raw, const byte* data, std::size_t size, Signal& sig) {
   std::size_t total = 0;
   do {
     ssize_t n = ::send(_raw, data + total, size - total, 0);
@@ -227,7 +271,7 @@ Task<io::Result> send(RawHandle _raw, const byte *data, std::size_t size, Signal
  * @return Task<io::Result>
  */
 template <class Signal>
-Task<io::Result> send(RawHandle _raw, std::span<const byte> &data, Signal &sig) {
+Task<io::Result> send(RawHandle _raw, std::span<const byte>& data, Signal& sig) {
   return send(_raw, data.data(), data.size(), sig).then([&](io::Result res) -> io::Result {
     if (res.size == 0) {
       log_trace("send {} bytes, not connected", res.size);
@@ -246,7 +290,7 @@ Task<io::Result> send(RawHandle _raw, std::span<const byte> &data, Signal &sig) 
  * @return Task<io::Result>
  */
 template <class Dev>
-constexpr Task<io::Result> send(Dev &dev, std::span<const byte> data) {
+constexpr Task<io::Result> send(Dev& dev, std::span<const byte> data) {
   return dev.send(data);
 }
 
@@ -259,7 +303,7 @@ constexpr Task<io::Result> send(Dev &dev, std::span<const byte> data) {
  * @param sig the signal receiver
  * @return Task<io::Result>
  */
-Task<io::Result> send_file(RawHandle _raw, io::WriteFileHint hint, auto &sig) {
+Task<io::Result> send_file(RawHandle _raw, io::WriteFileHint hint, auto& sig) {
   int ffd = open(hint.path.c_str(), O_RDONLY | O_CLOEXEC);
   if (ffd == -1) {
     log_error("open file failed");
@@ -291,16 +335,16 @@ Task<io::Result> send_file(RawHandle _raw, io::WriteFileHint hint, auto &sig) {
 
 struct NetAsyncTx {
   /// @brief Send data to a device
-  Task<io::Result> write(this auto &&self, std::span<const byte> data) {
+  Task<io::Result> write(this auto&& self, std::span<const byte> data) {
     return send(self.raw(), data, self.write_signal());
   }
   /// @brief Send data to a device
-  Task<io::Result> write(this auto &&self, const byte *data, std::size_t size) {
+  Task<io::Result> write(this auto&& self, const byte* data, std::size_t size) {
     return send(self.raw(), data, size, self.write_signal());
   }
   /// @brief Send data to a specific address through a device
   template <class Self, sys::net::SocketTraitsCompatible<typename Self::socket_traits_type> Up>
-  Task<io::Result> sendto(this Self &self, sys::net::SockAddr<Up> &addr, const byte *buf,
+  Task<io::Result> sendto(this Self& self, sys::net::SockAddr<Up>& addr, const byte* buf,
                           std::size_t n) {
     auto begin = buf;
     do {
@@ -322,7 +366,7 @@ struct NetAsyncTx {
   }
   /// @brief Send data to a specific address through a device
   template <class Self, sys::net::SocketTraitsCompatible<typename Self::socket_traits_type> Up>
-  Task<io::Result> sendto(this Self &self, sys::net::SockAddr<Up> &addr,
+  Task<io::Result> sendto(this Self& self, sys::net::SockAddr<Up>& addr,
                           std::span<const byte> data) {
     return self.sendto(addr, data.data(), data.size()).then([&](io::Result res) -> io::Result {
       data = data.subspan(res.size);
@@ -330,7 +374,7 @@ struct NetAsyncTx {
     });
   }
   /// @brief write file to device
-  Task<io::Result> write_file(this auto &&self, WriteFileHint &&hint) {
+  Task<io::Result> write_file(this auto&& self, WriteFileHint&& hint) {
     return send_file(self.raw(), std::move(hint), self.write_signal());
   }
 };

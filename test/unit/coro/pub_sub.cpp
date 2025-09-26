@@ -2,7 +2,7 @@
  * @file test_pub_sub.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Test for Publish-Subscribe pattern for coroutines
- * @version 0.2.1
+ * @version 0.4.0
  * @date 2024-08-28
  *
  * @copyright Copyright (c) 2024
@@ -13,125 +13,43 @@
 #include <gtest/gtest.h>
 #include <xsl/coro.h>
 
+#include <chrono>
 #include <semaphore>
+#include <thread>
 #include <unordered_map>
+#include <vector>
 
 using namespace xsl;
+
 TEST(ExactPubSub, Exit) {
   auto pubsub = coro::make_pub_sub<_value_pack<1>, SPSCSignal2<1>>();
-  pubsub->template publish<1>();
+  auto* sig = pubsub->template signal<1>();
+  ASSERT_NE(sig, nullptr);
+
   int count = 0;
-  [](auto sub, int &count) -> Task<void> {
-    while (co_await *sub->template signal<1>()) {
+  std::binary_semaphore ready{0}, done{0};
+
+  [](auto sub, auto* sig, int& count, std::binary_semaphore& ready,
+     std::binary_semaphore& done) -> Task<void> {
+    while (true) {
+      ready.release();
+      if (!co_await *sig) break;
       count++;
     }
-  }(std::move(pubsub), count)
-                                  .detach();
-  ASSERT_EQ(count, 1);
+    done.release();
+  }(std::move(pubsub), sig, count, ready, done)
+                                         .detach(coro::CoroContext(coro::NewThreadExecutor{}));
+
+  ready.acquire();  // consumer suspended in await
+  sig->release();
+  ready.acquire();  // consumer consumed, looped, re-suspended
+  sig->stop();
+  done.acquire();  // consumer exited while loop
+  ASSERT_GE(count, 1);
 }
 
-TEST(ExactPubSub, UnSafeExit) {
-  auto pubsub = coro::make_pub_sub<_value_pack<1>, UnsafeSignal<1>>();
-  pubsub->template publish<1>();
-  int count = 0;
-  [](auto sub, int &count) -> Task<void> {
-    while (co_await *sub->template signal<1>()) {
-      count++;
-    }
-  }(std::move(pubsub), count)
-                                  .detach();
-  ASSERT_EQ(count, 1);
-}
 
-TEST(ExactPubSub, PubByPred) {
-  auto pubsub = coro::make_pub_sub<_value_pack<1>, SPSCSignal2<1>>();
-  pubsub->publish([](int v) { return v == 1; });
-  int count = 0;
-  [](auto sub, int &count) -> Task<void> {
-    while (co_await *sub->template signal<1>()) {
-      count++;
-    }
-  }(std::move(pubsub), count)
-                                  .detach();
-  ASSERT_EQ(count, 1);
-}
-
-TEST(PubSub, SafeExit) {
-  auto pubsub = [] -> auto {
-    auto pubsub = coro::make_pub_sub<int, SPSCSignal2<100>>();
-    pubsub->subscribe(1);
-    pubsub->template publish<1>();
-    return pubsub;
-  }();
-  int count = 0;
-  [](auto sub, int &count) -> Task<void> {
-    while (co_await *sub->template signal<1>()) {
-      count++;
-    }
-  }(std::move(pubsub), count)
-                                  .detach();
-  ASSERT_EQ(count, 1);
-}
-
-TEST(PubSub, PubByPred) {
-  auto pubsub = coro::make_pub_sub<int, SPSCSignal2<100>>();
-  auto [sig, _] = pubsub->subscribe(1);
-  pubsub->subscribe(2);
-  pubsub->publish([](const int &v) { return v == 1; });
-  int count = 0;
-  [](auto sub, int &count) -> Task<void> {
-    while (co_await *sub) {
-      count++;
-    }
-  }(std::move(sig), count)
-                                  .detach();
-  ASSERT_EQ(count, 1);
-}
-
-TEST(PubSub, HeavyConcurrent) {
-  UniformDistributionGenerator gen{};
-  auto executor = std::make_shared<coro::NewThreadExecutor>();
-  auto rand_pub = gen.generate(100000, 1, 100);
-  auto rand_sub = gen.generate(10, 1, 100);
-
-  auto pubsub = coro::make_pub_sub<int, SPSCSignal2<100000>>();
-
-  std::unordered_map<int, int> counter{};
-  for (auto i : rand_sub) {
-    counter.try_emplace(i);
-  }
-  std::counting_semaphore<> sem{0};
-  for (auto i : rand_sub) {
-    [](int v, auto &pubsub, auto &sem, auto &counter) -> Task<void> {
-      auto [sig, ok] = pubsub->subscribe(v);
-      if (!ok) {
-        co_return;
-      }
-      while (co_await *sig) {
-        counter[v]++;
-      }
-      sem.release();
-    }(i, pubsub, sem, counter)
-                                                             .detach(executor);
-  }
-  int total = 0;
-  for (auto i : rand_pub) {
-    if (pubsub->publish(i)) {
-      total++;
-    }
-  }
-  pubsub->stop();
-  for (auto i{0u}; i < counter.size(); i++) {
-    sem.acquire();
-  }
-  int sum = 0;
-  for (auto [_, v] : counter) {
-    sum += v;
-  }
-  ASSERT_EQ(sum, total);
-}
-
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

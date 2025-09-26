@@ -2,7 +2,7 @@
  * @file sockaddr.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Socket address handling
- * @version 0.2.0
+ * @version 0.2.1
  * @date 2024-09-07
  *
  * @copyright Copyright (c) 2024
@@ -32,7 +32,7 @@ XSL_SYS_NET_NB
  * @see https://man7.org/linux/man-pages/man3/inet_ntop.3.html
  */
 [[nodiscard]]
-auto inet4_n2p(const sockaddr_storage &storage, std::string &ip, inet::port_t &port) -> errc;
+auto inet4_n2p(const sockaddr_in& storage, std::string& ip, inet::port_t& port) -> errc;
 /**
  * @brief parse a socket address
  *
@@ -43,7 +43,7 @@ auto inet4_n2p(const sockaddr_storage &storage, std::string &ip, inet::port_t &p
  * @see https://man7.org/linux/man-pages/man3/inet_ntop.3.html
  */
 [[nodiscard]]
-auto inet6_n2p(const sockaddr_storage &storage, std::string &ip, inet::port_t &port) -> errc;
+auto inet6_n2p(const sockaddr_in6& storage, std::string& ip, inet::port_t& port) -> errc;
 /**
  * @brief parse a socket address
  *
@@ -54,28 +54,27 @@ auto inet6_n2p(const sockaddr_storage &storage, std::string &ip, inet::port_t &p
  * @see https://man7.org/linux/man-pages/man3/inet_ntop.3.html
  */
 [[nodiscard]]
-auto inet_n2p(const sockaddr_storage &storage, std::string &ip, inet::port_t &port) -> errc;
+auto inet_n2p(const sockaddr_storage& storage, std::string& ip, inet::port_t& port) -> errc;
 
 [[nodiscard]]
-auto inet4_n2p(const sockaddr_storage &storage, std::string &addr) -> errc;
+auto inet4_n2p(const sockaddr_in& storage, std::string& addr) -> errc;
 [[nodiscard]]
-auto inet6_n2p(const sockaddr_storage &storage, std::string &addr) -> errc;
+auto inet6_n2p(const sockaddr_storage& storage, std::string& addr) -> errc;
 [[nodiscard]]
-auto inet_n2p(const sockaddr_storage &storage, std::string &addr) -> errc;
-[[nodiscard]] inline auto inet4_n2p(const sockaddr_storage &storage)
-    -> Expected<std::string, errc> {
+auto inet_n2p(const sockaddr_storage& storage, std::string& addr) -> errc;
+[[nodiscard]] inline auto inet4_n2p(const sockaddr_in& storage) -> Expected<std::string, errc> {
   std::string addr;
   ENSEC(inet4_n2p(storage, addr));
   return addr;
 }
-[[nodiscard]] inline auto inet6_n2p(const sockaddr_storage &storage)
+[[nodiscard]] inline auto inet6_n2p(const sockaddr_storage& storage)
     -> Expected<std::string, errc> {
   std::string addr;
   ENSEC(inet6_n2p(storage, addr));
   return addr;
 }
 [[nodiscard]]
-inline auto inet_n2p(const sockaddr_storage &storage) -> Expected<std::string, errc> {
+inline auto inet_n2p(const sockaddr_storage& storage) -> Expected<std::string, errc> {
   std::string addr;
   ENSEC(inet_n2p(storage, addr));
   return addr;
@@ -91,13 +90,13 @@ public:
 #  pragma GCC diagnostic push
 #  pragma GCC diagnostic ignored "-Weffc++"
   constexpr SockAddr() noexcept = default;
-  template <std::invocable<sockaddr_storage *, socklen_t &> F>
-  constexpr SockAddr(F &&f) noexcept {
+  template <std::invocable<sockaddr_storage*, socklen_t&> F>
+  constexpr SockAddr(F&& f) noexcept {
 #  pragma GCC diagnostic pop
     f(&_addr, _addrlen);
   }
-  constexpr SockAddr(SockAddr &&) noexcept = default;
-  constexpr SockAddr &operator=(SockAddr &&) noexcept = default;
+  constexpr SockAddr(SockAddr&&) noexcept = default;
+  constexpr SockAddr& operator=(SockAddr&&) noexcept = default;
   constexpr int family() const noexcept {
     if constexpr (requires { Traits{}.family(); }) {
       return Traits{}.family();
@@ -105,7 +104,7 @@ public:
       return this->_addr.ss_family;
     }
   }
-  constexpr bool operator==(this auto &&self, const SockAddr &ano) noexcept {
+  constexpr bool operator==(this auto&& self, const SockAddr& ano) noexcept {
     if (self.family() != ano.family()) {
       return false;
     }
@@ -122,13 +121,13 @@ public:
    * @param port port number
    * @return errc
    */
-  constexpr errc parse(this auto &&self, std::string &ip, uint16_t &port) {
+  constexpr errc parse(this auto&& self, std::string& ip, uint16_t& port) {
     return inet_n2p(self._addr, ip, port);
   }
-  inline auto addr(this auto &&self) noexcept -> like_t<decltype(self), sockaddr> {
+  inline auto addr(this auto&& self) noexcept -> like_t<decltype(self), sockaddr> {
     return reinterpret_cast<like_t<decltype(self), sockaddr>>(self._addr);
   }
-  inline auto len(this auto &&self) noexcept -> like_t<decltype(self), socklen_t> {
+  inline auto len(this auto&& self) noexcept -> like_t<decltype(self), socklen_t> {
     return self._addrlen;
   }
   /**
@@ -137,7 +136,9 @@ public:
    * @param self this, some derived class
    * @return std::string
    */
-  constexpr void to_string(this auto &&self, std::string &addr) { inet_n2p(self._addr, addr); }
+  constexpr errc to_string(this auto&& self, std::string& addr) {
+    return inet_n2p(self._addr, addr);
+  }
 
   sockaddr_storage _addr;  ///< address storage
   socklen_t _addrlen;      ///< address length
@@ -148,10 +149,10 @@ using SockAddrCompose = SockAddr<SocketTraits<Flags...>>;
 
 template <class Traits>
   requires(Traits::family() == AF_INET)
-Expected<SockAddr<Traits>, errc> make_sockaddr(const char *ip, inet::port_t port) noexcept {
+Expected<SockAddr<Traits>, errc> make_sockaddr(const char* ip, inet::port_t port) noexcept {
   errc ec{};
-  SockAddr<Traits> addr([&](sockaddr_storage *addr, socklen_t &addrlen) {
-    if (sockaddr_in *addr4 = reinterpret_cast<sockaddr_in *>(addr);
+  SockAddr<Traits> addr([&](sockaddr_storage* addr, socklen_t& addrlen) {
+    if (sockaddr_in* addr4 = reinterpret_cast<sockaddr_in*>(addr);
         inet_pton(AF_INET, ip, &addr4->sin_addr) == 1) {
       addr4->sin_family = AF_INET;
       addr4->sin_port = htons(port);
@@ -166,10 +167,10 @@ Expected<SockAddr<Traits>, errc> make_sockaddr(const char *ip, inet::port_t port
 
 template <class Traits>
   requires(Traits::family() == AF_INET6)
-Expected<SockAddr<Traits>, errc> make_sockaddr(const char *ip, inet::port_t port) noexcept {
+Expected<SockAddr<Traits>, errc> make_sockaddr(const char* ip, inet::port_t port) noexcept {
   errc ec{};
-  SockAddr<Traits> addr([&](sockaddr_storage *addr, socklen_t &addrlen) {
-    if (sockaddr_in6 *addr6 = reinterpret_cast<sockaddr_in6 *>(addr);
+  SockAddr<Traits> addr([&](sockaddr_storage* addr, socklen_t& addrlen) {
+    if (sockaddr_in6* addr6 = reinterpret_cast<sockaddr_in6*>(addr);
         inet_pton(AF_INET6, ip, &addr6->sin6_addr) == 1) {
       addr6->sin6_family = AF_INET6;
       addr6->sin6_port = htons(port);
@@ -183,15 +184,15 @@ Expected<SockAddr<Traits>, errc> make_sockaddr(const char *ip, inet::port_t port
 }
 
 template <class Traits>
-Expected<SockAddr<Traits>, errc> make_sockaddr(const char *ip, inet::port_t port) noexcept {
+Expected<SockAddr<Traits>, errc> make_sockaddr(const char* ip, inet::port_t port) noexcept {
   errc ec{};
-  SockAddr<Traits> addr([&](sockaddr_storage *addr, socklen_t &addrlen) {
-    if (sockaddr_in6 *addr6 = reinterpret_cast<sockaddr_in6 *>(addr);
+  SockAddr<Traits> addr([&](sockaddr_storage* addr, socklen_t& addrlen) {
+    if (sockaddr_in6* addr6 = reinterpret_cast<sockaddr_in6*>(addr);
         inet_pton(AF_INET6, ip, &addr6->sin6_addr) == 1) {
       addr6->sin6_family = AF_INET6;
       addr6->sin6_port = htons(port);
       addrlen = sizeof(sockaddr_in6);
-    } else if (sockaddr_in *addr4 = reinterpret_cast<sockaddr_in *>(addr);
+    } else if (sockaddr_in* addr4 = reinterpret_cast<sockaddr_in*>(addr);
                inet_pton(AF_INET, ip, &addr4->sin_addr) == 1) {
       addr4->sin_family = AF_INET;
       addr4->sin_port = htons(port);
@@ -205,17 +206,22 @@ Expected<SockAddr<Traits>, errc> make_sockaddr(const char *ip, inet::port_t port
 }
 
 template <class... Flags>
-decltype(auto) make_sockaddr(const char *ip, const char *port) noexcept {
+decltype(auto) make_sockaddr(const char* ip, const char* port) noexcept {
   return make_sockaddr<SocketTraits<Flags...>>(ip, static_cast<inet::port_t>(std::atoi(port)));
 }
 template <class... Flags>
-decltype(auto) make_sockaddr(const std::string_view &ip, const char *port) noexcept {
+decltype(auto) make_sockaddr(const std::string_view& ip, const char* port) noexcept {
   return make_sockaddr<SocketTraits<Flags...>>(ip.data(),
                                                static_cast<inet::port_t>(std::atoi(port)));
 }
 template <class... Flags>
-decltype(auto) make_sockaddr(const std::string_view &ip, inet::port_t port) noexcept {
+decltype(auto) make_sockaddr(const std::string_view& ip, inet::port_t port) noexcept {
   return make_sockaddr<SocketTraits<Flags...>>(ip.data(), port);
+}
+
+template <class... Flags>
+decltype(auto) make_sockaddr(const std::string_view& ip, const std::string_view& port) noexcept {
+  return make_sockaddr<SocketTraits<Flags...>>(ip.data(), port.data());
 }
 template <class... Flags>
 decltype(auto) make_sockaddr() noexcept {

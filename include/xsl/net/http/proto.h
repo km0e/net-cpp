@@ -20,7 +20,7 @@
 #  include <optional>
 #  include <string_view>
 
-XSL_HTTP_NB
+XSL_NET_HTTP_NB
 
 const std::string_view HTTP_VERSION_STR[] = {
     "EXT",
@@ -372,9 +372,9 @@ constexpr std::optional<std::chrono::time_point<Clock, Duration>> from_date_stri
   return ft;
 }
 
-XSL_HTTP_NE
+XSL_NET_HTTP_NE
 namespace std {
-  using namespace xsl::_net::http;
+  using namespace xsl::net::http;
   template <>
   struct hash<Status> : public std::hash<decltype(Status::_status)> {
     constexpr size_t operator()(const Status& status) const noexcept {
@@ -384,9 +384,9 @@ namespace std {
 }  // namespace std
 #  include <quill/DeferredFormatCodec.h>
 
-LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::_net::http::Version)
-LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::_net::http::Method)
-LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::_net::http::Charset)
+LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::net::http::Version)
+LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::net::http::Method)
+LOG_FMT_FOR_IMPL_TO_STRING_VIEW(xsl::net::http::Charset)
 
 #  undef QUILL_FMT_FOR_IMPL_TO_STRING_VIEW
 #endif

@@ -17,7 +17,7 @@
 #  include <xsl/regex.h>
 
 #  include <cstdint>
-XSL_ASIO_HTTP_NB
+XSL_ASIO_NB
 using namespace xsl::http;
 
 struct StatusLineView {
@@ -98,7 +98,7 @@ public:
   Task<io::Result> sendto(W& awd) {
     auto str = this->_part.to_string();  // TODO:write directly
     log_trace("response: {}", str);
-    auto res = co_await awd.write(str.data(), str.size());
+    auto res = co_await awd->write(reinterpret_cast<const byte*>(str.data()), str.size());
     if (!res) co_return res;
     if (!_body) co_return {res.size};
     auto body_res = co_await this->_body(awd);
@@ -108,5 +108,5 @@ public:
   ResponsePart _part;
   std::function<Task<io::Result>(W&)> _body;
 };
-XSL_ASIO_HTTP_NE
+XSL_ASIO_NE
 #endif

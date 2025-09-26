@@ -27,8 +27,6 @@ XSL_NB
 namespace sys {
   using sys::current_ec;
   using sys::filter_interrupt;
-  // using sys::read;
-  // using sys::write;
 }  // namespace sys
 using sys::RawHandle;
 using sys::RawOwner;

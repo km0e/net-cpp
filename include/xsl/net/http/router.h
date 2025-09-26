@@ -20,7 +20,7 @@
 #  include <memory>
 #  include <string_view>
 
-XSL_HTTP_NB
+XSL_NET_HTTP_NB
 
 class RouteContext {
 public:
@@ -40,7 +40,7 @@ concept RouterLike = requires(R r, std::string_view path, RouteContext& ctx) {
   { r.route(ctx) } -> std::same_as<const Tag*>;
 };
 
-namespace router_details {
+namespace _detail {
   template <class Id>
   class HttpRouteNode {
   public:
@@ -145,12 +145,12 @@ namespace router_details {
     Id prefix_handler;
     us_map<HttpRouteNode> children;
   };
-}  // namespace router_details
+}  // namespace _detail
 
 template <class Id>
 class Router {
 public:
-  constexpr Router() : root(std::make_unique<router_details::HttpRouteNode<Id>>()) {}
+  constexpr Router() : root(std::make_unique<_detail::HttpRouteNode<Id>>()) {}
   constexpr Router(Router&&) = default;
 
   constexpr decltype(auto) add_exact(std::string_view path) { return root->add_exact(path); }
@@ -160,10 +160,10 @@ public:
   constexpr const Id* route(RouteContext& ctx) { return root->route(ctx); }
 
 private:
-  std::unique_ptr<router_details::HttpRouteNode<Id>> root;
+  std::unique_ptr<_detail::HttpRouteNode<Id>> root;
 };
 
 static_assert(RouterLike<Router<int>, int>, "Router is not a Router");
 
-XSL_HTTP_NE
+XSL_NET_HTTP_NE
 #endif

@@ -14,6 +14,7 @@
 #  define XSL_WHEEL
 #  include <xsl/def.h>
 #  include <xsl/wheel/const.h>
+#  include <xsl/wheel/rc.h>
 #  include <xsl/wheel/static.h>
 #  include <xsl/wheel/str.h>
 #  include <xsl/wheel/utils.h>
@@ -23,6 +24,7 @@ using wheel::CRLF;
 using wheel::Defer;
 using wheel::FixedString;
 using wheel::FixedVector;
+using wheel::Rc;
 using wheel::rt_assert;
 using wheel::StaticSize;
 using wheel::us_map;

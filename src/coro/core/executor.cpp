@@ -22,4 +22,41 @@ void NewThreadExecutor::schedule(move_only_function<void()> &&func) {
   std::thread(std::move(func)).detach();
 }
 
+ThreadPoolExecutor::ThreadPoolExecutor(size_t n) {
+  for (size_t i = 0; i < n; i++) {
+    _workers.emplace_back([this] {
+      for (;;) {
+        move_only_function<void()> task;
+        {
+          std::unique_lock lock(_mtx);
+          _cv.wait(lock, [this] { return _stop || !_tasks.empty(); });
+          if (_stop && _tasks.empty()) return;
+          task = std::move(_tasks.front());
+          _tasks.pop();
+        }
+        task();
+      }
+    });
+  }
+}
+
+ThreadPoolExecutor::~ThreadPoolExecutor() {
+  {
+    std::lock_guard lock(_mtx);
+    _stop = true;
+  }
+  _cv.notify_all();
+  for (auto& w : _workers) {
+    if (w.joinable()) w.join();
+  }
+}
+
+void ThreadPoolExecutor::schedule(move_only_function<void()> &&func) {
+  {
+    std::lock_guard lock(_mtx);
+    _tasks.emplace(std::move(func));
+  }
+  _cv.notify_one();
+}
+
 XSL_CORO_NE

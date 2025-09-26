@@ -27,7 +27,7 @@
 #  include <optional>
 #  include <system_error>
 
-XSL_ASIO_HTTP_NB
+XSL_ASIO_NB
 using namespace xsl::io;
 using namespace xsl::http;
 /// @brief the static file configuration
@@ -204,7 +204,7 @@ protected:
       ctx.resp(std::move(part));
     } else {
       auto send_file = [hint = WriteFileHint{path.native(), 0, file_size}](
-                           out_dev_type& awd) mutable { return awd.write_file(std::move(hint)); };
+                           out_dev_type& awd) mutable { return awd->write_file(std::move(hint)); };
       ctx.resp(std::move(part), std::move(send_file));
     }
     return std::nullopt;
@@ -282,5 +282,5 @@ constexpr Handler<R, W> create_static_handler(StaticFileConfig&& cfg) {
   assert(false && "path is not a file or directory");
   std::unreachable();
 }
-XSL_ASIO_HTTP_NE
+XSL_ASIO_NE
 #endif  // XSL_ASIO_HTTP_HELPER_STATIC

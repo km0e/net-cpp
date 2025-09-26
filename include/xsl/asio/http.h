@@ -15,10 +15,8 @@
 #  include <xsl/asio/http/response.h>
 #  include <xsl/asio/http/server.h>
 #  include <xsl/asio/http/service.h>
-#  include <xsl/asio/socket.h>
 #  include <xsl/asio/tls.h>
 XSL_ASIO_NB
-using namespace xsl::_asio::http;
 
 template <class IOUtils>
 struct HttpUtil : public IOUtils {
@@ -27,15 +25,16 @@ struct HttpUtil : public IOUtils {
 
   using io_dev_type = typename IOUtils::io_dev_type;
 
-  template <class Ctx, class... Args>
-  constexpr auto c_creator(const std::shared_ptr<Ctx>& ctx, Args&&... args) noexcept(
-      noexcept(IOUtils::c_creator(ctx, std::forward<Args>(args)...))) {
-    return IOUtils::c_creator(ctx, std::forward<Args>(args)...).transform([](auto&& creator) {
-      return Server{std::forward<decltype(creator)>(creator)};
+  template <class... Args>
+  constexpr auto cl(sys::IOContext& ctx,
+                    Args&&... args) noexcept(noexcept(IOUtils::cl(ctx,
+                                                                  std::forward<Args>(args)...))) {
+    return IOUtils::cl(ctx, std::forward<Args>(args)...).transform([](auto&& creator) {
+      return HttpServer{std::forward<decltype(creator)>(creator)};
     });
   }
 
-  template <RouterLike<_impl_service::Id> R = Router<_impl_service::Id>>
+  template <RouterLike<_detail::Id> R = Router<_detail::Id>>
   constexpr ServiceBuilder<io_dev_type, io_dev_type, R> make_service2() {
     return {};
   }
@@ -43,7 +42,7 @@ struct HttpUtil : public IOUtils {
 
 class HttpClient {
 public:
-  constexpr HttpClient(const std::shared_ptr<Context>& ctx) : tls_ctx_(), ctx_(ctx) {}
+  constexpr HttpClient() : tls_ctx_() {}
   ~HttpClient() = default;
 
   void set_tls_context(TLSContext&& ctx) { this->tls_ctx_ = std::move(ctx); }
@@ -52,7 +51,6 @@ public:
 
 private:
   TLSContext tls_ctx_;
-  std::shared_ptr<Context> ctx_;
 };
 
 XSL_ASIO_NE

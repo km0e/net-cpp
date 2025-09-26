@@ -7,10 +7,10 @@ build/
 
 compile_commands.json
 # Clangd cache
-.cache/*
+.cache/
 
 # CCLS cache
-.ccls-cache/*
+.ccls-cache/
 
 
 log/
@@ -20,3 +20,6 @@ __pycache__
 
 # CMake cache
 out/
+
+# Claude
+.claude/

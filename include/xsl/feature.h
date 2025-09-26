@@ -61,9 +61,8 @@ struct Wrapper {};
 template <class... Ts>
 struct BaseOn {};
 
-// using for resolver
 
-namespace impl {
+namespace _detail {
   struct Rest;
   template <class Pred, class... Flags>
   struct Item {};
@@ -177,10 +176,10 @@ namespace impl {
   using off_compose_t
       = copy_t<typename off_fill<_n<Flags...>, typename off_fmt<FullFlag>::type>::type, FullFlag>;
 
-}  // namespace impl
-using impl::Item;
+}  // namespace _detail
+using _detail::Item;
 template <class FullFlag, class... Flags>
-using select_feature_flags_t = impl::off_compose_t<FullFlag, Flags...>;
+using select_feature_flags_t = _detail::off_compose_t<FullFlag, Flags...>;
 
 static_assert(std::is_same_v<select_feature_flags_t<set<int, float>, int, float>, set<int, float>>);
 static_assert(std::is_same_v<select_feature_flags_t<set<int, float>, float, int>, set<int, float>>);
@@ -219,7 +218,7 @@ static_assert(std::is_same_v<select_feature_flags_t<set<Item<is_same_pack<Placeh
                                                     Wrapper<BaseOn>>,
                              set<Wrapper<BaseOn>>>);
 
-namespace impl {
+namespace _detail {
 
   template <class R, template <class T, class U> class Pred, class... Opts>
   struct merge;
@@ -230,13 +229,13 @@ namespace impl {
   template <class R, template <class T, class U> class Pred>
   struct merge<R, Pred> : std::type_identity<R> {};
 
-}  // namespace impl
+}  // namespace _detail
 
-using impl::Item;
-using impl::Rest;
+using _detail::Item;
+using _detail::Rest;
 
 template <template <class T, class U> class Pred, class Flag, class... Flags>
-using merge_feature_flags_t = typename impl::merge<Flag, Pred, Flags...>::type;
+using merge_feature_flags_t = typename _detail::merge<Flag, Pred, Flags...>::type;
 
 XSL_NE
 #endif

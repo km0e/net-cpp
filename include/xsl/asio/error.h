@@ -20,8 +20,4 @@
 XSL_ASIO_NB
 XSL_ASIO_NE
 
-using xsl::sys::net::GaiErrorUtil;
-
-#  define CO_TRVGAI(var, expr) CO_TRV(var, expr, GaiErrorUtil{})
-
 #endif

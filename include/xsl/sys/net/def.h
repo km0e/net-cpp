@@ -24,8 +24,8 @@
 #  include <netinet/in.h>
 #  include <sys/socket.h>
 #  include <xsl/feature.h>
-#  include <xsl/io/context.h>
 #  include <xsl/sys/def.h>
+#  include <xsl/sys/io/context/epoll.h>
 
 #  include <cassert>
 #  include <type_traits>
@@ -145,7 +145,6 @@ template <int Family, int Type, int Protocol>
 struct SocketTraitsBase : public FamilyTraits<Family>,
                           public TypeTraits<Type>,
                           public ProtocolTraits<Protocol> {
-  using poll_traits_type = io::DefaultPollTraits;  ///< poll traits
   SocketTraitsBase() = default;
   SocketTraitsBase(int family, int type, int protocol)
       : FamilyTraits<Family>(family), TypeTraits<Type>(type), ProtocolTraits<Protocol>(protocol) {}
@@ -182,7 +181,7 @@ concept SocketTraitsCompatible
 static_assert(SocketTraitsCompatible<TcpIpv4SocketTraits, AnySocketTraits>,
               "AnySocketTraits should be compatible with TcpIpv4SocketTraits");
 
-namespace impl_sock {
+namespace _detail {
   template <class... Flags>
   struct SocketTraitsTag;
 
@@ -228,10 +227,10 @@ namespace impl_sock {
 
 #  undef XSL_DEFINE_SOCKET_MERGE
 
-}  // namespace impl_sock
+}  // namespace _detail
 
 template <class... Flags>
-using SocketTraits = merge_feature_flags_t<impl_sock::SocketMerge, AnySocketTraits, Flags...>;
+using SocketTraits = merge_feature_flags_t<_detail::SocketMerge, AnySocketTraits, Flags...>;
 
 XSL_SYS_NET_NE
 #endif

@@ -19,7 +19,7 @@
 
 #  include <chrono>
 #  include <optional>
-XSL_ASIO_HTTP_NB
+XSL_ASIO_NB
 using namespace xsl::io;
 template <AsyncRead R, AsyncWrite W>
 class HandleContext {
@@ -66,10 +66,10 @@ public:
   constexpr void resp(ResponsePart&& part, Args&&... args) {
     auto body = std::string(std::forward<Args>(args)...);
     part.headers.emplace("Content-Length", std::to_string(body.size()));
-    this->_response = response_type{{std::move(part)},
-                                    [body = std::move(body)](out_dev_type& awd) -> Task<Result> {
-                                      return awd.write(body.data(), body.size());
-                                    }};
+    this->_response = response_type{
+        {std::move(part)}, [body = std::move(body)](out_dev_type& awd) -> Task<Result> {
+          return awd->write(reinterpret_cast<const byte*>(body.data()), body.size());
+        }};
   }
   /// @brief checkout the response
   constexpr response_type checkout(this HandleContext&& self) {
@@ -100,5 +100,5 @@ using HandleResult = Task<std::optional<Status>>;
 template <AsyncRead ABI, AsyncWrite ABO>
 using Handler = std::function<HandleResult(HandleContext<ABI, ABO>& ctx)>;
 
-XSL_ASIO_HTTP_NE
+XSL_ASIO_NE
 #endif

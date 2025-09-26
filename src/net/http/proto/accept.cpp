@@ -14,7 +14,7 @@
 
 #include <ranges>
 #include <regex>
-XSL_HTTP_NB
+XSL_NET_HTTP_NB
 AcceptView parse_accept(std::string_view accept) {
   AcceptView result;
   while (true) {
@@ -92,4 +92,4 @@ AcceptEncodingView parse_accept_encoding(std::string_view accept_encoding) {
   return result;
 }
 
-XSL_HTTP_NE
+XSL_NET_HTTP_NE

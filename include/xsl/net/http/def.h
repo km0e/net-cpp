@@ -14,11 +14,16 @@
 
 #  include <cstdint>
 #  include <string_view>
+#  include <xsl/net/def.h>
 
-#  define XSL_HTTP_NB namespace xsl::_net::http {
-#  define XSL_HTTP_NE }
-XSL_HTTP_NB
+#  define XSL_NET_HTTP_NB \
+    XSL_NET_NB            \
+    namespace http {
+#  define XSL_NET_HTTP_NE \
+    }                     \
+    XSL_NET_NE
+XSL_NET_HTTP_NB
 const std::string_view SERVER_VERSION = "XSL/0.1";
 const uint16_t HTTP_DEFAULT_PORT = 80;
-XSL_HTTP_NE
+XSL_NET_HTTP_NE
 #endif

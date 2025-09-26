@@ -17,7 +17,7 @@
 #  include <xsl/net/http/def.h>
 
 #  include <unordered_map>
-XSL_HTTP_NB
+XSL_NET_HTTP_NB
 const int DEFAULT_HEADER_COUNT = 16;
 
 const std::size_t HTTP_BUFFER_BLOCK_SIZE = 4096;
@@ -60,5 +60,5 @@ struct MessageRestView {
   }
 };
 
-XSL_HTTP_NE
+XSL_NET_HTTP_NE
 #endif  // XSL_HTTP_MSG

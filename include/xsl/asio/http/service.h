@@ -22,11 +22,11 @@
 #  include <xsl/wheel.h>
 
 #  include <utility>
-XSL_ASIO_HTTP_NB
+XSL_ASIO_NB
 using namespace xsl::io;
 using namespace xsl::http;
 
-namespace _impl_service {
+namespace _detail {
   using namespace xsl::http;
   struct Id {
     std::size_t value;
@@ -35,17 +35,17 @@ namespace _impl_service {
     constexpr bool operator!() const { return this->value == 0; }  ///< Check if id is not set
     constexpr bool operator==(const Id& other) const { return this->value == other.value; }
   };
-}  // namespace _impl_service
+}  // namespace _detail
 
-template <AsyncRead I, AsyncWrite O, RouterLike<_impl_service::Id> R>
-struct Service {
+template <AsyncRead I, AsyncWrite O, RouterLike<_detail::Id> R>
+struct HttpService {
   using in_dev_type = I;
   using out_dev_type = O;
-  using id_type = _impl_service::Id;
+  using id_type = _detail::Id;
   using handler_type = Handler<I, O>;
   using context_type = HandleContext<I, O>;
 
-  constexpr Service() : router{}, handlers{}, status_handlers{} {}
+  constexpr HttpService() : router{}, handlers{}, status_handlers{} {}
   R router;
   std::unordered_map<std::pair<id_type, Method>, handler_type> handlers;
   std::unordered_map<Status, handler_type> status_handlers;
@@ -91,11 +91,11 @@ struct Service {
 /**
  * @brief ServiceBuilder class to build a service with handlers and static files
  */
-template <AsyncRead I, AsyncWrite O, RouterLike<_impl_service::Id> Rt>
+template <AsyncRead I, AsyncWrite O, RouterLike<_detail::Id> Rt>
 class ServiceBuilder {
 public:
   using handler_type = Handler<I, O>;
-  using id_type = _impl_service::Id;
+  using id_type = _detail::Id;
 
   constexpr ServiceBuilder() = default;
   constexpr ServiceBuilder(ServiceBuilder&&) = default;
@@ -159,13 +159,13 @@ public:
    * @return Service<in_dev_type, out_dev_type, router_type>
    */
   constexpr auto build(this ServiceBuilder&& self) noexcept(
-      std::is_nothrow_move_constructible_v<Service<I, O, Rt>>) {
+      std::is_nothrow_move_constructible_v<HttpService<I, O, Rt>>) {
     return std::move(self.s);
   }
 
 private:
-  Service<I, O, Rt> s = {};  ///< Details of the service, including handlers and status handlers
-  id_type _id = 1;           ///< Id for path handlers
+  HttpService<I, O, Rt> s = {};  ///< Details of the service, including handlers and status handlers
+  id_type _id = 1;               ///< Id for path handlers
   constexpr void try_update_id(id_type& id) noexcept(noexcept(std::exchange(_id, _id.value + 1))) {
     if (!id) {
       id = std::exchange(_id,
@@ -179,12 +179,12 @@ private:
   }
 };
 
-XSL_ASIO_HTTP_NE
+XSL_ASIO_NE
 namespace std {
   template <>
-  struct hash<std::pair<xsl::_asio::http::_impl_service::Id, Method>> {
+  struct hash<std::pair<xsl::asio::_detail::Id, Method>> {
     std::size_t operator()(
-        const std::pair<xsl::_asio::http::_impl_service::Id, Method>& p) const noexcept {
+        const std::pair<xsl::asio::_detail::Id, Method>& p) const noexcept {
       return std::hash<std::size_t>()(p.first.value)
              ^ std::hash<decltype(Method::_method)>()(p.second._method);
     }

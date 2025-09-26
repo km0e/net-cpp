@@ -23,15 +23,13 @@
 #  include <xsl/macro.h>
 
 #  include <coroutine>
-#  include <exception>
 #  include <utility>
-#  include <variant>
 XSL_CORO_NB
 
 struct noop_coroutine {
   struct promise_type {
     using result_type = void;
-    using executor_type = void;
+    using has_context = std::bool_constant<false>;
     constexpr noop_coroutine get_return_object() { return noop_coroutine{}; }
     constexpr std::suspend_never initial_suspend() { return {}; }
     constexpr std::suspend_never final_suspend() noexcept { return {}; }
@@ -52,31 +50,6 @@ public:
   using result_type = typename Awaiter::result_type;
 };
 
-namespace {
-  template <class ResultType>
-  using ResultTypeOrVoid
-      = std::conditional_t<std::is_void_v<ResultType>,
-                           std::variant<std::monostate, std::exception_ptr>,
-                           std::variant<std::monostate, ResultType, std::exception_ptr>>;
-}
-
-template <class ResultType>
-class Result : public ResultTypeOrVoid<ResultType> {
-public:
-  using base_type = ResultTypeOrVoid<ResultType>;
-  using base_type::base_type;
-
-  constexpr decltype(auto) unwrap(this Result&& self) {
-    if (std::holds_alternative<std::exception_ptr>(self)) [[unlikely]] {
-      std::rethrow_exception(std::get<std::exception_ptr>(std::move(self)));
-    }
-    if constexpr (std::is_same_v<ResultType, void>) {
-      return;
-    } else {
-      return std::get<ResultType>(std::move(self));
-    }
-  }
-};
 XSL_CORO_NE
 
 #endif  // XSL_CORO_DEF

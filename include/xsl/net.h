@@ -11,6 +11,7 @@
 #pragma once
 #ifndef XSL_NET_H
 #  define XSL_NET_H
+#  include <xsl/def.h>
 #  include <xsl/net/dns/proto/def.h>
 #  include <xsl/net/dns/proto/header.h>
 #  include <xsl/net/dns/proto/question.h>
@@ -27,55 +28,53 @@
 
 XSL_NB
 namespace net {
-  using _net::AbsoluteUri;
+  using net::AbsoluteUri;
   using sys::net::gai_bind;
   using sys::net::gai_connect;
   using sys::net::SockAddr;
   using sys::net::Socket;
   using sys::net::SocketAttribute;
-  // using xsl::_net::io::splice;
 }  // namespace net
 
 namespace udp {}  // namespace udp
 namespace dns {
-  using xsl::_net::dns::Class;
-  using xsl::_net::dns::DnCompressor;
-  using xsl::_net::dns::DnDecompressor;
-  using xsl::_net::dns::Header;
-  using xsl::_net::dns::HeaderView;
-  using xsl::_net::dns::MAX_SIZE_DNS_UDP;
-  using xsl::_net::dns::Question;
-  using xsl::_net::dns::RCode;
-  using xsl::_net::dns::RR;
-  using xsl::_net::dns::RRSerializer;
-  using xsl::_net::dns::RRView;
-  using xsl::_net::dns::skip_question;
-  using xsl::_net::dns::Type;
-  // using xsl::_net::dns::Server;
+  using xsl::net::dns::Class;
+  using xsl::net::dns::DnCompressor;
+  using xsl::net::dns::DnDecompressor;
+  using xsl::net::dns::Header;
+  using xsl::net::dns::HeaderView;
+  using xsl::net::dns::MAX_SIZE_DNS_UDP;
+  using xsl::net::dns::Question;
+  using xsl::net::dns::RCode;
+  using xsl::net::dns::RR;
+  using xsl::net::dns::RRSerializer;
+  using xsl::net::dns::RRView;
+  using xsl::net::dns::skip_question;
+  using xsl::net::dns::Type;
+  // using xsl::net::dns::Server;
 }  // namespace dns
-
 namespace http {
-  using xsl::_net::http::AbsoluteForm;
-  using xsl::_net::http::AsteriskForm;
-  using xsl::_net::http::AuthorityForm;
-  using xsl::_net::http::from_date_string;
-  using xsl::_net::http::HTTP_DEFAULT_PORT;
-  using xsl::_net::http::HTTP_METHOD_COUNT;
-  using xsl::_net::http::MediaTypeView;
-  using xsl::_net::http::MessageRestView;
-  using xsl::_net::http::Method;
-  using xsl::_net::http::OriginForm;
-  using xsl::_net::http::parse_accept;
-  using xsl::_net::http::parse_accept_encoding;
-  using xsl::_net::http::RequestLine;
-  using xsl::_net::http::RequestTarget;
-  using xsl::_net::http::RouteContext;
-  using xsl::_net::http::Router;
-  using xsl::_net::http::RouterLike;
-  using xsl::_net::http::Status;
-  using xsl::_net::http::to_date_string;
-  using xsl::_net::http::to_string_view;
-  using xsl::_net::http::Version;
+  using xsl::net::http::AbsoluteForm;
+  using xsl::net::http::AsteriskForm;
+  using xsl::net::http::AuthorityForm;
+  using xsl::net::http::from_date_string;
+  using xsl::net::http::HTTP_DEFAULT_PORT;
+  using xsl::net::http::HTTP_METHOD_COUNT;
+  using xsl::net::http::MediaTypeView;
+  using xsl::net::http::MessageRestView;
+  using xsl::net::http::Method;
+  using xsl::net::http::OriginForm;
+  using xsl::net::http::parse_accept;
+  using xsl::net::http::parse_accept_encoding;
+  using xsl::net::http::RequestLine;
+  using xsl::net::http::RequestTarget;
+  using xsl::net::http::RouteContext;
+  using xsl::net::http::Router;
+  using xsl::net::http::RouterLike;
+  using xsl::net::http::Status;
+  using xsl::net::http::to_date_string;
+  using xsl::net::http::to_string_view;
+  using xsl::net::http::Version;
 }  // namespace http
 
 XSL_NE

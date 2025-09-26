@@ -11,8 +11,12 @@
 #pragma once
 #ifndef XSL_IO_DEF
 #  define XSL_IO_DEF
-#  define XSL_IO_NB namespace xsl::io {
-#  define XSL_IO_NE }
+#  define XSL_IO_NB \
+    XSL_NB          \
+    namespace io {
+#  define XSL_IO_NE \
+    }               \
+    XSL_NE
 
 #  include <xsl/byte.h>
 

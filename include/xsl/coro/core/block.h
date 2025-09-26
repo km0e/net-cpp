@@ -2,7 +2,7 @@
  * @file block.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Block coroutine until the awaited coroutine finishes
- * @version 0.1.1
+ * @version 0.1.2
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -12,6 +12,7 @@
 
 #ifndef XSL_CORO_BLOCK
 #  define XSL_CORO_BLOCK
+#  include <xsl/coro/core/def.h>
 #  include <xsl/coro/def.h>
 #  include <xsl/coro/log.h>
 
@@ -45,7 +46,7 @@ public:
 
   constexpr explicit Block(std::coroutine_handle<promise_type> handle) noexcept : _handle(handle) {}
 
-  constexpr Block(Block &&task) noexcept : _handle(std::exchange(task._handle, {})) {}
+  constexpr Block(Block&& task) noexcept : _handle(std::exchange(task._handle, {})) {}
 
   constexpr ~Block() noexcept {}
 
@@ -61,14 +62,14 @@ protected:
  * @return decltype(auto)
  */
 template <class Awaiter>
-constexpr decltype(auto) block(Awaiter &&awaiter) {
+inline decltype(auto) block(Awaiter&& awaiter) {
   using awaiter_type = std::remove_reference_t<Awaiter>;
   using result_type = typename awaiter_traits<awaiter_type>::result_type;
   std::binary_semaphore sem{0};
   if constexpr (!std::is_same_v<result_type, void>) {
-    return [&sem](Awaiter &&awaiter) -> result_type {
-      Result<result_type> result{};
-      auto _ = [&result, &sem](Awaiter &&awaiter) -> Block {
+    return [&sem](Awaiter&& awaiter) -> result_type {
+      _detail::Result<result_type> result{};
+      auto _ = [&result, &sem](Awaiter&& awaiter) -> Block {
         try {
           result = co_await std::forward<Awaiter>(awaiter);
         } catch (...) {
@@ -80,9 +81,9 @@ constexpr decltype(auto) block(Awaiter &&awaiter) {
       return std::move(result).unwrap();
     }(std::forward<Awaiter>(awaiter));
   } else {
-    return [&sem](Awaiter &&awaiter) -> void {
+    auto f = [&sem](Awaiter&& awaiter) -> void {
       std::exception_ptr eptr;
-      auto _ = [&eptr, &sem](Awaiter &&awaiter) -> Block {
+      auto _ = [&eptr, &sem](Awaiter&& awaiter) -> Block {
         try {
           co_await std::forward<Awaiter>(awaiter);
         } catch (...) {
@@ -96,7 +97,8 @@ constexpr decltype(auto) block(Awaiter &&awaiter) {
         std::rethrow_exception(eptr);
       }
       co_debug("block: final");
-    }(std::forward<Awaiter>(awaiter));
+    };
+    return f(std::forward<Awaiter>(awaiter));
   }
 }
 XSL_CORO_NE

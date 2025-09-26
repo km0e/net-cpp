@@ -10,4 +10,4 @@ target_sources(
     ${XSL_NET_SOURCE_FILES}
 )
 
-target_link_libraries(xsl_net PRIVATE xsl_sys)
+target_link_libraries(xsl_net PUBLIC xsl_log xsl_sys xsl_wheel)

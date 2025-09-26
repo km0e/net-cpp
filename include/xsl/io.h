@@ -14,18 +14,12 @@
 #  include <fcntl.h>
 #  include <xsl/def.h>
 #  include <xsl/io/buf.h>
-#  include <xsl/io/context.h>
 #  include <xsl/io/def.h>
 #  include <xsl/io/ext.h>
 XSL_NB
 
 using io::Buffer;
-using io::Context;
 using io::FixedBuffer;
-using io::IOM_EVENTS;
-using io::PollHandleHint;
-using io::PollHandleHintTag;
-using io::PollHandlerTraits;
 using io::WriteFileHint;
 using IOResult = io::Result;
 

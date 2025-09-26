@@ -45,7 +45,7 @@ constexpr Expected<Socket<Traits>> gai_connect(Args &&...args) {
       return std::move(skt);
     }
   }
-  RETURN(ec);
+  RETURN(errc{ec});
 }
 
 /**

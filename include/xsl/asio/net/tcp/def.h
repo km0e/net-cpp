@@ -11,6 +11,10 @@
 #pragma once
 #ifndef XSL_ASIO_TCP
 #  define XSL_ASIO_TCP
-#  define XSL_ASIO_TCP_NB namespace xsl::_asio::tcp {
-#  define XSL_ASIO_TCP_NE }
+#  define XSL_ASIO_TCP_NB \
+    XSL_ASIO_NB           \
+    namespace tcp {
+#  define XSL_ASIO_TCP_NE \
+    }                     \
+    XSL_ASIO_NE
 #endif

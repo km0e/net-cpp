@@ -29,7 +29,6 @@ private:
 
 public:
   using result_type = Base::result_type;
-  using executor_type = typename Base::executor_type;
 
   constexpr ArgGuardAwaiter(Awaiter &&aw, std::unique_ptr<std::tuple<Args...>> &&tmp_tuple)
       : Base(std::forward<Awaiter>(aw)), _tmp(std::move(tmp_tuple)) {}

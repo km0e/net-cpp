@@ -11,6 +11,7 @@
 #pragma once
 #ifndef XSL_CORO_BASE
 #  define XSL_CORO_BASE
+#  include <xsl/coro/core/def.h>
 #  include <xsl/coro/def.h>
 #  include <xsl/coro/log.h>
 
@@ -25,7 +26,8 @@ class PromiseBase {
 public:
   using result_type = ResultType;
 
-  constexpr PromiseBase() noexcept(std::is_nothrow_default_constructible_v<Result<ResultType>>)
+  constexpr PromiseBase() noexcept(
+      std::is_nothrow_default_constructible_v<_detail::Result<result_type>>)
       : _result() {}
 
   constexpr auto get_return_object(this auto &&self) noexcept {
@@ -51,7 +53,7 @@ public:
   }
 
 protected:
-  Result<result_type> _result;
+  _detail::Result<result_type> _result;
 };
 
 template <class Base>

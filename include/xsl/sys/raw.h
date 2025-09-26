@@ -2,7 +2,7 @@
  * @file raw.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Raw device
- * @version 0.2.1
+ * @version 0.2.2
  * @date 2024-08-27
  *
  * @copyright Copyright (c) 2024
@@ -14,7 +14,6 @@
 #  include <fcntl.h>
 #  include <sys/socket.h>
 #  include <unistd.h>
-#  include <xsl/compose.h>
 #  include <xsl/error.h>
 #  include <xsl/sys/def.h>
 #  include <xsl/type_traits.h>
@@ -30,18 +29,19 @@ struct RawOwner {
 
   constexpr RawOwner() noexcept : fd(-1) {}
   explicit constexpr RawOwner(int fd) noexcept : fd(fd) {}
-  constexpr RawOwner(RawOwner &&rhs) noexcept : fd(std::exchange(rhs.fd, -1)) {}
-  constexpr RawOwner &operator=(RawOwner &&rhs) noexcept {
+  constexpr RawOwner(RawOwner&& rhs) noexcept : fd(std::exchange(rhs.fd, -1)) {}
+  constexpr RawOwner& operator=(RawOwner&& rhs) noexcept {
     fd = std::exchange(rhs.fd, -1);
     return *this;
   }
   constexpr ~RawOwner() noexcept {
     if (fd >= 0) {
       ::close(fd);
+      fd = -1;
     }
   }
   /// @brief get raw file descriptor
-  constexpr auto raw(this auto &&self) noexcept -> like_t<decltype(self), RawHandle> {
+  constexpr auto raw(this auto&& self) noexcept -> like_t<decltype(self), RawHandle> {
     return self.fd;
   }
   /// @brief check if the file descriptor is valid
@@ -90,17 +90,12 @@ std::expected<void, errc> set_blocking(int fd, bool blocking);
  * @return int the return value of the function
  */
 template <class F>
-constexpr int filter_interrupt(F &&f, auto &&...args) {
+constexpr int filter_interrupt(F&& f, auto&&... args) {
   int ret;
   do {
     ret = f(std::forward<decltype(args)>(args)...);
   } while (ret == -1 && errno == EINTR);
   return ret;
-}
-
-constexpr Expected<void> check_ec(int ret) {
-  ENSURE(ret != -1, errno);
-  return {};
 }
 
 inline errc current_ec() noexcept { return errc{errno}; }
@@ -122,11 +117,4 @@ inline errc current_ec() noexcept { return errc{errno}; }
 //    LOG2("Failed to set timerfd, error: {}", strerror(errno));
 //  }
 XSL_SYS_NE
-XSL_NB
-template <>
-struct StorageUtils<sys::RawOwner> : sys::RawOwner {
-  using sys::RawOwner::RawOwner;
-};
-
-XSL_NE
 #endif

@@ -20,7 +20,7 @@
 #  include <cstddef>
 #  include <cstdint>
 #  include <string_view>
-XSL_HTTP_NB
+XSL_NET_HTTP_NB
 
 enum class MediaMainType : uint8_t {
   ANY,
@@ -476,5 +476,5 @@ struct MediaTypeView : MediaTypeBase {
     return {start, parameters.empty() ? end : parameters.back().value.data()};
   }
 };
-XSL_HTTP_NE
+XSL_NET_HTTP_NE
 #endif

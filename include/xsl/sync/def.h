@@ -11,6 +11,10 @@
 #pragma once
 #ifndef XSL_SYNC_CONFIG
 #  define XSL_SYNC_CONFIG
-#  define XSL_SYNC_NB namespace xsl::_sync {
-#  define XSL_SYNC_NE }
+#  define XSL_SYNC_NB \
+    XSL_NB            \
+    namespace _sync {
+#  define XSL_SYNC_NE \
+    }                 \
+    XSL_NE
 #endif

@@ -13,32 +13,29 @@
 #  define XSL_ASIO_PIPE
 #  include <xsl/asio/def.h>
 #  include <xsl/asio/dev.h>
+#  include <xsl/asio/io.h>
+#  include <xsl/compose.h>
 #  include <xsl/feature.h>
 #  include <xsl/io.h>
 XSL_ASIO_NB
 
 const size_t MAX_SINGLE_FWD_SIZE = 4096;
-struct AsyncPipeStorage {};
-XSL_ASIO_NE
-XSL_NB
-
-template <>
-struct StorageUtils<_asio::AsyncPipeStorage> {
-  using poll_traits_type = io::DefaultPollTraits;
+struct AsyncPipeStorage {
+  using poll_traits_type = sys::DefaultPollTraits;
 };
-
-XSL_NE
+XSL_ASIO_NE
 XSL_ASIO_NB
 
-using AsyncPipeReadDevice = SharedStorageCompose<BaseOn<DirectAsyncReadWriteUtils>, RawOwner,
-                                                 IOSignalStorage<IOM_EVENTS::IN>, AsyncPipeStorage>;
-
-using AsyncPipeWriteDevice
-    = SharedStorageCompose<BaseOn<DirectAsyncReadWriteUtils>, RawOwner,
-                           IOSignalStorage<IOM_EVENTS::OUT>, AsyncPipeStorage>;
+using AsyncPipeReadDevice = shared_memory<
+    DefaultEpollWrapper<LocalCompose<DirectAsyncReadWriteUtils, AsyncDeviceUtil, RawOwner,
+                                     IOSignalStorage<IOM_EVENTS::IN>, AsyncPipeStorage>>>;
+using AsyncPipeWriteDevice = shared_memory<
+    DefaultEpollWrapper<LocalCompose<DirectAsyncReadWriteUtils, AsyncDeviceUtil, RawOwner,
+                                     IOSignalStorage<IOM_EVENTS::OUT>, AsyncPipeStorage>>>;
 
 /// @brief create a async pipe
-std::expected<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>, errc> async_pipe(Context& ctx);
+std::expected<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>, errc> async_pipe(
+    IOContext& ctx);
 
 /**
  * @brief splice data from a device to another device, one of the device must be a pipe
@@ -51,7 +48,6 @@ std::expected<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>, errc> async_
  */
 template <typename From, typename To>
 Task<std::optional<errc>> splice(From from, To to) {
-  // log_debug("splice from: {}, to: {}", from.raw(), to.raw());
   std::size_t offset = 0;
   do {
     ssize_t n = ::splice(from->raw(), nullptr, to->raw(), nullptr, MAX_SINGLE_FWD_SIZE,
@@ -68,7 +64,7 @@ Task<std::optional<errc>> splice(From from, To to) {
       if (offset != 0) {
         break;
       }
-      if (!co_await from.read_signal()) {
+      if (!co_await from->read_signal()) {
         co_return errc::not_connected;
       }
     } else {
@@ -106,7 +102,7 @@ Task<void> splice_bidirectional(From from, To to, AsyncPipeReadDevice pipe_in,
  * @return Task<void>
  */
 template <AsyncRead From, AsyncWrite To>
-std::expected<Task<void>, errc> splice_bidirectional(From from, To to, Context& ctx) {
+std::expected<Task<void>, errc> splice_bidirectional(From from, To to, IOContext& ctx) {
   TRVEC(pipe, async_pipe(ctx));
   auto [pipe_in, pipe_out] = std::move(pipe);
   return {splice_bidirectional(std::move(from), std::move(to), std::move(pipe_in),

@@ -11,8 +11,8 @@
 #pragma once
 #ifndef XSL_ASIO_TCP_SERVER
 #  define XSL_ASIO_TCP_SERVER
-#  include <xsl/asio/socket.h>
-#  include <xsl/asio/tcp/def.h>
+#  include <xsl/asio/net/socket.h>
+#  include <xsl/asio/net/tcp/def.h>
 #  include <xsl/io.h>
 
 XSL_ASIO_TCP_NB
@@ -29,13 +29,13 @@ class Server {
 public:
   using io_dev_type = AsyncSocket<Traits>;
 
-  constexpr Server(std::string &&host, sys::net::inet::port_t port, auto &&ctx, auto &&...args)
+  constexpr Server(std::string&& host, sys::net::inet::port_t port, auto&& ctx, auto&&... args)
       : host(host),
         port(port),
         ctx(std::forward<decltype(ctx)>(ctx)),
         _dev(std::forward<decltype(args)>(args)...) {}
-  constexpr Server(Server &&) = default;
-  constexpr Server &operator=(Server &&) = default;
+  constexpr Server(Server&&) = default;
+  constexpr Server& operator=(Server&&) = default;
 
   /**
    * @brief read data from the device
@@ -45,7 +45,7 @@ public:
    */
   Task<io::Result> read(std::span<io_dev_type> conns) noexcept {
     auto i = 0uz;
-    for (auto &conn : conns) {
+    for (auto& conn : conns) {
       auto res = co_await this->accept();
       if (!res) {
         co_return io::Result{i, res.error()};
@@ -62,7 +62,7 @@ public:
   std::string host;
   sys::net::inet::port_t port;
 
-  std::shared_ptr<Context> ctx;
+  std::shared_ptr<IOContext> ctx;
 
 private:
   io_dev_type _dev;

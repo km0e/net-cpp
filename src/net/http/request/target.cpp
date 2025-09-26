@@ -9,7 +9,9 @@
  *
  */
 #include <xsl/net/http/request/target.h>
-XSL_HTTP_NB
+
+#include <format>
+XSL_NET_HTTP_NB
 
 const std::regex AuthorityForm::regex_re(AuthorityForm::regex_str.data(),
                                          AuthorityForm::regex_str.size());
@@ -17,4 +19,4 @@ const std::regex RequestTarget::regex_re(std::format(R"({}|{}|{}|{})", OriginFor
                                                      AbsoluteForm::regex_str,
                                                      AuthorityForm::regex_str,
                                                      AsteriskForm::regex_str));
-XSL_HTTP_NE
+XSL_NET_HTTP_NE

@@ -9,3 +9,5 @@ target_sources(
     PRIVATE
     ${XSL_WHEEL_SOURCE_FILES}
 )
+
+target_link_libraries(xsl_wheel PUBLIC xsl_log)

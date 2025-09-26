@@ -20,32 +20,32 @@ std::string port = "8080";
 using namespace xsl;
 using namespace xsl::asio;
 
-Task<void> talk(std::string_view ip, std::string_view port, std::shared_ptr<Context> ctx) {
-  auto util = make_async_socket_utils<Tcp, Ip>();
-  auto creator = *util.c_creator(ctx, ip, port);
+Task<void> talk(std::string_view ip, std::string_view port) {
+  auto util = AsyncSocketCreatorCompose<Tcp, Ip>();
+  auto& ctx = co_await CurrentIOContext;
+  auto creator = *util.cl(ctx, ip, port);
   while (true) {
-    auto task = co_await creator.accept_async().and_then(
-        [&](auto &&skt) { return splice_bidirectional(skt, skt, *ctx); });
+    auto task = co_await creator->accept_async(ctx).and_then(
+        [&](auto&& skt) { return splice_bidirectional(skt, skt, ctx); });
     if (!task) {
       log_warning("splice error: {}", std::make_error_code(task.error()).message());
       break;
     }
     co_yield std::move(*task);
   }
-  ctx->shutdown();
+  ctx.shutdown();
   co_return;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   CLI::App app{"Echo server"};
   app.add_option("-i,--ip", ip, "IP address");
   app.add_option("-p,--port", port, "Port");
   CLI11_PARSE(app, argc, argv);
   log_info("Starting echo server at {}:{}", ip, port);
 
-  auto poller = std::make_shared<xsl::Context>();
-  auto executor = std::make_shared<coro::NewThreadExecutor>();
-  talk(ip, port, poller).detach(std::move(executor));
-  poller->run();
+  MUST(asio_ctx(NewThreadExecutor{}), ctx);
+  talk(ip, port).detach(ctx);
+  static_cast<sys::IOContext*>(ctx->get_reserved())->run();
   return 0;
 }

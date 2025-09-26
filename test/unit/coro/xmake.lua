@@ -1,3 +1,4 @@
+includes("signal")
 for _, file in ipairs(os.files("*.cpp")) do
     local name = path.basename(file)
 

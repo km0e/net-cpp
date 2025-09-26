@@ -15,13 +15,12 @@
 #include <xsl/asio/io.h>
 #include <xsl/asio/pipe.h>
 #include <xsl/def.h>
-#include <xsl/io/context.h>
 #include <xsl/log.h>
 
 #include <utility>
 XSL_ASIO_NB
 
-Expected<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>, errc> async_pipe(Context& ctx) {
+Expected<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>, errc> async_pipe(IOContext& ctx) {
   int fds[2];
   ENSEC(pipe2(fds, O_NONBLOCK | O_CLOEXEC) == 0);
   auto read = AsyncPipeReadDevice();

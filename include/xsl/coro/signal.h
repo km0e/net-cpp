@@ -17,6 +17,7 @@
 #  include <xsl/coro/signal/mpsc.h>
 #  include <xsl/coro/signal/spsc.h>
 #  include <xsl/coro/signal/spsc2.h>
+#  include <xsl/coro/signal/spsc4.h>
 #  include <xsl/coro/signal/unsafe.h>
 
 #  include <cassert>
@@ -31,9 +32,6 @@ using Signal = AnySignal<SignalStorage, MaxSignals>;
 
 template <std::ptrdiff_t MaxSignals = SPSCSignalStorage::max_signals::value>
 using SPSCSignal = AnySignal<SPSCSignalStorage, MaxSignals>;
-
-template <std::ptrdiff_t MaxSignals = SPSCSignalStorage::max_signals::value>
-using SPSCSignal2 = AnySignal<SPSCSignalStorage2, MaxSignals>;
 
 XSL_CORO_NE
 #endif

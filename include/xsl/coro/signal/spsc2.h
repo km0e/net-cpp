@@ -13,14 +13,17 @@
 #ifndef XSL_CORO_SIGNAL_SPSC2
 #  define XSL_CORO_SIGNAL_SPSC2
 
+#  include <xsl/compose.h>
 #  include <xsl/coro/def.h>
 #  include <xsl/coro/signal/def.h>
 
+#  include <algorithm>
 #  include <atomic>
 #  include <cassert>
 #  include <cstddef>
 #  include <functional>
 #  include <limits>
+#  include <memory>
 #  include <optional>
 XSL_CORO_NB
 const std::size_t BASE_SHIFT2 = 1;
@@ -28,87 +31,72 @@ static_assert(BASE_SHIFT2 > 0, "BASE_SHIFT must be greater than 0");
 
 const std::ptrdiff_t STOP_MASK2 = 1 << (BASE_SHIFT2 - 1);
 
-struct SPSCSignalStorage2 {
-  using max_signals
-      = std::integral_constant<std::ptrdiff_t,
-                               (std::numeric_limits<std::ptrdiff_t>::max() >> BASE_SHIFT2) - 1>;
-  SPSCSignalStorage2() : count(0), callback(nullptr), local_count(0) {}
-  std::atomic_ptrdiff_t count;
-  std::atomic<std::function<void()> *> callback;
-  std::ptrdiff_t local_count;
-};
+template <std::ptrdiff_t MaxSignals>
+struct SPSCSignalStorage2Tag {};
 
-template <>
-struct SignalAwaiterTraits<SPSCSignalStorage2> {
-  using storage_type = SPSCSignalStorage2;
+template <std::ptrdiff_t MaxSignals>
+struct SPSCSignalStorage2 {
+  using max_signals = std::integral_constant<
+      std::ptrdiff_t,
+      std::min(MaxSignals, (std::numeric_limits<std::ptrdiff_t>::max() >> BASE_SHIFT2) - 1)>;
+  std::atomic_ptrdiff_t count = 0;  /// the lower bits are used to indicate the stop flag
+  std::atomic<std::function<void()>*> callback = nullptr;
+  std::ptrdiff_t local_count = 0;  /// local count of signals
 
   /// @brief Check if the signal is ready
-  constexpr bool await_ready(this auto &self) noexcept {
-    self.storage.local_count
-        = self.storage.count.fetch_sub(1 << BASE_SHIFT2, std::memory_order_acq_rel);
-    return self.storage.local_count > 0;
+  constexpr bool await_ready(this auto& self) noexcept {
+    self.local_count = self.count.fetch_sub(1 << BASE_SHIFT2, std::memory_order_acq_rel);
+    return self.local_count > 0;
   }
   /// @brief Suspend the signal
   template <class Promise>
-  constexpr decltype(auto) await_suspend(this auto &self, std::coroutine_handle<Promise> handle) {
-    self.storage.callback.store(
-        new std::function<void()>([handle]() { handle.promise().resume(handle); }),
-        std::memory_order_release);
-    self.storage.callback.notify_one();
+  constexpr decltype(auto) await_suspend(this auto& self, std::coroutine_handle<Promise> handle) {
+    self.callback.store(new std::function<void()>([handle]() { handle.promise().resume(handle); }),
+                        std::memory_order_release);
+    self.callback.notify_one();
   }
   /// @brief Resume the signal
-  [[nodiscard("must use the result of await_resume to confirm the signal is still alive")]]
-  constexpr std::size_t await_resume(this auto &self) {
-    return self.storage.local_count >> BASE_SHIFT2;  /// return the count of signals released
+  constexpr std::size_t await_resume(this auto& self) {
+    return self.local_count >> coro::BASE_SHIFT2;  /// return the count of signals released
   }
-};
-
-template <std::ptrdiff_t MaxSignals>
-struct SignalTraits<SPSCSignalStorage2, MaxSignals> {
-public:
-  using storage_type = SPSCSignalStorage2;
-  using max_signals = std::integral_constant<std::ptrdiff_t, MaxSignals>;
-
   /**
    * @brief Release the signal
    *
    */
-  constexpr bool release(this auto &self) {
-    auto local_count = self.storage.count.load(std::memory_order_relaxed);
+  constexpr bool release(this auto& self) {
+    auto local_count = self.count.load(std::memory_order_relaxed);
     if ((local_count >> BASE_SHIFT2) == max_signals::value) {
       return false;
     }
+    bool need_wake = false;
     if (local_count < 0) {
-      self.storage.count.store(0, std::memory_order_relaxed);
-      goto wait_callback;
+      self.count.store(0, std::memory_order_relaxed);
+      need_wake = true;
+    } else if (self.count.fetch_add(1 << BASE_SHIFT2, std::memory_order_acq_rel) < 0) {
+      need_wake = true;
     }
-    if (self.storage.count.fetch_add(1 << BASE_SHIFT2, std::memory_order_acq_rel) < 0) {
-      goto wait_callback;
+    if (need_wake) {
+      self.local_count = 1 << BASE_SHIFT2;
+      self.wait_and_callback();
+      return true;
     }
     return false;
-
-  wait_callback:  /// obviously, goto is better than if-else here
-    self.storage.local_count
-        = 1 << BASE_SHIFT2;  /// set local count to 2 to indicate the signal not stopped
-    self.wait_and_callback();
-
-    return true;
   }
   /**
    * @brief Stop the signal
    *
    * @return
    */
-  constexpr bool stop(this auto &self) {
-    auto cnt = self.storage.count.fetch_or(STOP_MASK2, std::memory_order_acq_rel);
+  constexpr bool stop(this auto& self) {
+    auto cnt = self.count.fetch_or(STOP_MASK2, std::memory_order_acq_rel);
     if ((!(cnt & STOP_MASK2)) && cnt < 0) {  /// if stop flag has been set, return false
       self.wait_and_callback();
       return true;
     }
     return false;
   }
-  constexpr std::optional<std::ptrdiff_t> force_stop(this auto &self) {
-    auto cnt = self.storage.count.exchange(STOP_MASK2, std::memory_order_acq_rel);
+  constexpr std::optional<std::ptrdiff_t> force_stop(this auto& self) {
+    auto cnt = self.count.exchange(STOP_MASK2, std::memory_order_acq_rel);
     if (cnt < 0) {
       self.wait_and_callback();
       return std::nullopt;
@@ -117,14 +105,26 @@ public:
   }
 
 private:
-  constexpr void wait_and_callback(this auto &self) {
-    self.storage.callback.wait(nullptr, std::memory_order_acquire);
-    auto f = self.storage.callback.exchange(nullptr, std::memory_order_relaxed);
+  constexpr void wait_and_callback(this auto& self) {
+    self.callback.wait(nullptr, std::memory_order_acquire);
+    auto f = self.callback.exchange(nullptr, std::memory_order_relaxed);
     assert(f != nullptr && "Signal callback is null");
-    (*f)();    // call the callback function
-    delete f;  // delete the callback function
+    auto _ = std::unique_ptr<std::function<void()>>(f);  // scope guard
+    (*f)();
   }
 };
 
+
+template <std::ptrdiff_t MaxSignals
+          = (std::numeric_limits<std::ptrdiff_t>::max() >> BASE_SHIFT2) - 1>
+using SPSCSignal2 = SPSCSignalStorage2<MaxSignals>;
+
 XSL_CORO_NE
+XSL_NB
+namespace {
+  using coro::BASE_SHIFT2;
+  using coro::STOP_MASK2;
+}  // namespace
+
+XSL_NE
 #endif

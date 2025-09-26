@@ -14,7 +14,6 @@
 #  include <xsl/coro/def.h>
 #  include <xsl/coro/log.h>
 #  include <xsl/coro/signal/def.h>
-#  include <xsl/log.h>
 
 #  include <functional>
 #  include <variant>
@@ -60,6 +59,7 @@ struct SignalAwaiterTraits<UnsafeSignalStorage> {
    */
   [[nodiscard("must use the result of await_resume to confirm the signal is still alive")]]
   constexpr std::size_t await_resume(this auto&& self) {
+    if (self.storage.stop) return 0;
     auto& state = std::get<std::ptrdiff_t>(self.storage.state);
     if (state > 0) {
       state--;

@@ -9,15 +9,11 @@ project(
   LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_GENERATOR Ninja)
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS True)
-
-set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build)
 
 # ---- Include guards ----
 if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
@@ -30,32 +26,30 @@ endif()
 add_link_options(-fuse-ld=mold)
 
 # --- Logging ----
-set(LOG_LEVEL "INFO" CACHE STRING "Set the log level (NONE, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL)")
+set(XSL_LOG_LEVEL "INFO" CACHE STRING "Set the log level (NONE, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL)")
 
-set_property(CACHE LOG_LEVEL PROPERTY STRINGS OFF  TRACE  DEBUG  INFO  WARNING  ERROR  CRITICAL)
-# 打印选项值
-message(STATUS "LOG_LEVEL: ${LOG_LEVEL}")
+set_property(CACHE XSL_LOG_LEVEL PROPERTY STRINGS OFF TRACE DEBUG INFO WARNING ERROR CRITICAL)
+message(STATUS "XSL_LOG_LEVEL: ${XSL_LOG_LEVEL}")
 
-# 定义一个函数来为目标设置日志级别
-function(set_log_level target)
-  if(LOG_LEVEL STREQUAL "OFF")
-    target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=8)
-  elseif(LOG_LEVEL STREQUAL "TRACE")
-    target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_TRACE_L3)
-  elseif(LOG_LEVEL STREQUAL "DEBUG")
-    target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_DEBUG)
-  elseif(LOG_LEVEL STREQUAL "INFO")
-    target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_INFO)
-  elseif(LOG_LEVEL STREQUAL "WARNING")
-    target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_WARNING)
-  elseif(LOG_LEVEL STREQUAL "ERROR")
-    target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_ERROR)
-  elseif(LOG_LEVEL STREQUAL "CRITICAL")
-    target_compile_definitions(${target} PUBLIC QUILL_COMPILE_ACTIVE_LOG_LEVEL=QUILL_COMPILE_ACTIVE_LOG_LEVEL_CRITICAL)
-  else()
-    message(STATUS "Unknown log level: ${LOG_LEVEL}")
-  endif()
-endfunction()
+set(XSL_CORO_LOG_LEVEL "OFF" CACHE STRING "Coro log level (OFF, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL)")
+set_property(CACHE XSL_CORO_LOG_LEVEL PROPERTY STRINGS OFF TRACE DEBUG INFO WARNING ERROR CRITICAL)
+message(STATUS "XSL_CORO_LOG_LEVEL: ${XSL_CORO_LOG_LEVEL}")
+
+if(XSL_CORO_LOG_LEVEL STREQUAL "TRACE")
+  set(XSL_CORO_LOG_LEVEL_N 0)
+elseif(XSL_CORO_LOG_LEVEL STREQUAL "DEBUG")
+  set(XSL_CORO_LOG_LEVEL_N 1)
+elseif(XSL_CORO_LOG_LEVEL STREQUAL "INFO")
+  set(XSL_CORO_LOG_LEVEL_N 2)
+elseif(XSL_CORO_LOG_LEVEL STREQUAL "WARNING")
+  set(XSL_CORO_LOG_LEVEL_N 3)
+elseif(XSL_CORO_LOG_LEVEL STREQUAL "ERROR")
+  set(XSL_CORO_LOG_LEVEL_N 4)
+elseif(XSL_CORO_LOG_LEVEL STREQUAL "CRITICAL")
+  set(XSL_CORO_LOG_LEVEL_N 5)
+else()
+  set(XSL_CORO_LOG_LEVEL_N 6)  # OFF
+endif()
 
 # --- Import tools ----
 # enable compiler warnings if is debug build
@@ -69,23 +63,45 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   endif()
 endif()
 
-include_directories(${PROJECT_SOURCE_DIR}/include)
+include(cmake/deps.cmake)
 
-include(FetchContent)
+find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)
 
-add_subdirectory(third_party)
-
-add_library(xsl_prepare STATIC)
+add_library(xsl_log STATIC)
 
 target_sources(
-   xsl_prepare
+   xsl_log
     PRIVATE
     ${PROJECT_SOURCE_DIR}/src/log.cpp
 )
 
-target_link_libraries(xsl_prepare loglib)
+target_link_libraries(xsl_log loglib)
+target_include_directories(xsl_log PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
-set_log_level(xsl_prepare)
+if(XSL_LOG_LEVEL STREQUAL "OFF")
+  target_compile_definitions(xsl_log PUBLIC QUILL_COMPILE_ACTIVE_XSL_LOG_LEVEL=8)
+elseif(XSL_LOG_LEVEL STREQUAL "TRACE")
+  target_compile_definitions(xsl_log PUBLIC QUILL_COMPILE_ACTIVE_XSL_LOG_LEVEL=QUILL_COMPILE_ACTIVE_XSL_LOG_LEVEL_TRACE_L3)
+elseif(XSL_LOG_LEVEL STREQUAL "DEBUG")
+  target_compile_definitions(xsl_log PUBLIC QUILL_COMPILE_ACTIVE_XSL_LOG_LEVEL=QUILL_COMPILE_ACTIVE_XSL_LOG_LEVEL_DEBUG)
+elseif(XSL_LOG_LEVEL STREQUAL "INFO")
+  target_compile_definitions(xsl_log PUBLIC QUILL_COMPILE_ACTIVE_XSL_LOG_LEVEL=QUILL_COMPILE_ACTIVE_XSL_LOG_LEVEL_INFO)
+elseif(XSL_LOG_LEVEL STREQUAL "WARNING")
+  target_compile_definitions(xsl_log PUBLIC QUILL_COMPILE_ACTIVE_XSL_LOG_LEVEL=QUILL_COMPILE_ACTIVE_XSL_LOG_LEVEL_WARNING)
+elseif(XSL_LOG_LEVEL STREQUAL "ERROR")
+  target_compile_definitions(xsl_log PUBLIC QUILL_COMPILE_ACTIVE_XSL_LOG_LEVEL=QUILL_COMPILE_ACTIVE_XSL_LOG_LEVEL_ERROR)
+elseif(XSL_LOG_LEVEL STREQUAL "CRITICAL")
+  target_compile_definitions(xsl_log PUBLIC QUILL_COMPILE_ACTIVE_XSL_LOG_LEVEL=QUILL_COMPILE_ACTIVE_XSL_LOG_LEVEL_CRITICAL)
+else()
+  message(FATAL_ERROR "Unknown XSL_LOG_LEVEL '${XSL_LOG_LEVEL}'. Valid values: OFF, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL")
+endif()
+
+if(NOT XSL_CORO_LOG_LEVEL STREQUAL "OFF")
+  target_compile_definitions(xsl_log PUBLIC
+    XSL_CORO_LOG_ENABLED=1
+    XSL_CORO_LOG_LEVEL_N=${XSL_CORO_LOG_LEVEL_N}
+  )
+endif()
 
 add_subdirectory(src)
 

@@ -11,7 +11,7 @@
 #include <gtest/gtest.h>
 #include <xsl/error.h>
 #include <xsl/net/uri.h>
-using namespace xsl::_net;
+using namespace xsl::net;
 
 TEST(URI, PercentDecode) {
   std::string buffer;
@@ -25,7 +25,7 @@ TEST(URI, AbsoluteUri) {
   std::string_view uri_str = "http://example.com/path?query=1&another=2";
   auto _uri = AbsoluteUri::match(uri_str);
   ASSERT_TRUE(_uri.has_value());
-  const auto &uri = _uri.value();
+  const auto& uri = _uri.value();
   EXPECT_EQ(uri.scheme, "http");
   EXPECT_EQ(uri.host, "example.com");
   EXPECT_TRUE(uri.port.empty());
@@ -41,7 +41,7 @@ TEST(URI, KVQuery) {
   EXPECT_EQ(query.map["c"], "3");
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

@@ -21,7 +21,7 @@
 #  include <memory>
 #  include <type_traits>
 #  include <utility>
-XSL_ASIO_HTTP_NB
+XSL_ASIO_NB
 using namespace xsl::io;
 /**
  * @brief serve the connection
@@ -118,5 +118,5 @@ decltype(auto) serve_connection(ABIO&& _ab, std::shared_ptr<Service> service) {
   }
 }
 
-XSL_ASIO_HTTP_NE
+XSL_ASIO_NE
 #endif

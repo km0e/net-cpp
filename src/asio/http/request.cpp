@@ -11,9 +11,9 @@
 #include <xsl/asio/http/request.h>
 #include <xsl/net.h>
 
-XSL_ASIO_HTTP_NB
+XSL_ASIO_NB
 
-RequestPartBuilder& RequestPartBuilder::set_method(http::Method method) {
+RequestPartBuilder& RequestPartBuilder::set_method(Method method) {
   auto sv = method.to_string_view();
   this->append(sv);
   return *this;
@@ -25,7 +25,7 @@ RequestPartBuilder& RequestPartBuilder::set_target(std::string_view target) {
   return *this;
 }
 
-RequestPartBuilder& RequestPartBuilder::set_version(http::Version version) {
+RequestPartBuilder& RequestPartBuilder::set_version(Version version) {
   auto sv = version.to_string_view();
   this->append(' ');
   this->append(sv);
@@ -41,4 +41,4 @@ RequestPartBuilder& RequestPartBuilder::add_header(std::string_view key, std::st
   return *this;
 }
 
-XSL_ASIO_HTTP_NE
+XSL_ASIO_NE

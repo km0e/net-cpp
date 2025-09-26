@@ -9,3 +9,5 @@ target_sources(
     PRIVATE
     ${XSL_CORO_SOURCE_FILES}
 )
+
+target_link_libraries(xsl_coro PUBLIC xsl_log)

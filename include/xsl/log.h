@@ -72,16 +72,16 @@ constexpr std::string_view log_level_to_string(LogLevel level) {
 
 #  define log_critical(fmt, ...) LOG_CRITICAL(xsl::logger_xsl.logger, fmt, ##__VA_ARGS__)
 
-class LogCtl2 {
+class LogCtl {
 private:
-  constexpr LogCtl2(const LogCtl2&) = delete;
-  constexpr LogCtl2& operator=(const LogCtl2&) = delete;
+  constexpr LogCtl(const LogCtl&) = delete;
+  constexpr LogCtl& operator=(const LogCtl&) = delete;
 
 public:
   quill::Logger* logger;
 
-  LogCtl2(std::string const& logger_name, std::string const& sink_name = "console");
-  ~LogCtl2();
+  LogCtl(std::string const& logger_name, std::string const& sink_name = "console");
+  ~LogCtl();
 #  if QUILL_COMPILE_ACTIVE_LOG_LEVEL <= QUILL_COMPILE_ACTIVE_LOG_LEVEL_CRITICAL
 
   void flush_log() { logger->flush_log(); }
@@ -137,7 +137,7 @@ public:
 #  endif
 };
 
-extern LogCtl2 logger_xsl;
+extern LogCtl logger_xsl;
 
 XSL_NE
 #  include <quill/DeferredFormatCodec.h>

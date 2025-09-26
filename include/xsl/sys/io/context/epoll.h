@@ -10,20 +10,26 @@
  */
 #pragma once
 
-#ifndef XSL_IO_CONTEXT
-#  define XSL_IO_CONTEXT
+#ifndef XSL_SYS_IO_CONTEXT_EPOLL
+#  define XSL_SYS_IO_CONTEXT_EPOLL
 #  include <sys/epoll.h>
+#  include <xsl/compose.h>
 #  include <xsl/error.h>
 #  include <xsl/io/def.h>
 #  include <xsl/sync.h>
+#  include <xsl/sys/def.h>
 
 #  include <csignal>
 #  include <memory>
-XSL_IO_NB
+XSL_SYS_NB
 
 const int TIMEOUT = 100;
+
 #  define USE_EPOLL
 #  ifdef USE_EPOLL
+
+class IOContext;
+
 enum class IOM_EVENTS : std::uint32_t {
   NONE = 0,
   IN = EPOLL_EVENTS::EPOLLIN,
@@ -88,6 +94,7 @@ public:
   constexpr PollHandleHint(PollHandleHintTag tag) : tag(tag), data{IOM_EVENTS::NONE} {}
   constexpr PollHandleHint(PollHandleHintTag tag, IOM_EVENTS events) : tag(tag), data{events} {}
 };
+
 template <class T>
 concept Handler = requires(T t) {
   { t(0, IOM_EVENTS::NONE) } -> std::same_as<PollHandleHint>;
@@ -105,29 +112,41 @@ struct DefaultPollTraits {
 template <class Storage>
 struct PollHandlerTraits;
 
-using HandleProxy = std::function<PollHandleHint(std::function<PollHandleHint()>&&)>;
-class Context {
+class EpollHandler {
 public:
-  Context();
-  Context(std::shared_ptr<HandleProxy>&& proxy);
-  ~Context();
+  virtual ~EpollHandler() = default;
+
+  friend class IOContext;
+
+  virtual PollHandleHint epoll_handle(int fd, IOM_EVENTS events) = 0;
+};
+
+class IOContext {
+  IOContext(int fd);
+
+public:
+  static Expected<IOContext*, errc> create() {
+    TRVEC(fd, epoll_create1(EPOLL_CLOEXEC));
+    log_debug("Poller fd: {}", fd);
+    return {new IOContext(fd)};
+  }
+
+  ~IOContext();
   constexpr bool valid() noexcept { return this->fd != -1; }
-  Expected<void, errc> add(int fd, IOM_EVENTS events, PollHandler&& handler);
-  constexpr bool modify(int fd, IOM_EVENTS events, std::optional<PollHandler>&& handler) {
-    if (!this->valid()) {
-      return false;
-    }
+  template <class T>
+    requires std::is_same_v<std::remove_cvref_t<T>, shared_memory<EpollHandler>>
+             || std::is_constructible_v<T, T&&>
+  Expected<void, errc> add(int fd, IOM_EVENTS events, T&& handler) {
     epoll_event event;
-    event.events = (uint32_t)events;
+    event.events = static_cast<uint32_t>(events);
     event.data.fd = fd;
-    if (epoll_ctl(this->fd, EPOLL_CTL_MOD, fd, &event) == -1) {
-      log_warning("Failed to modify handler for fd: {}, {}:{}", fd, errno, strerror(errno));
-      return false;
-    }
-    if (handler.has_value()) {
-      this->handlers.lock()->insert_or_assign(fd, make_shared<PollHandler>(std::move(*handler)));
-    }
-    return true;
+    auto guard = this->handlers.lock();
+    // must be here, otherwise the handler may be not registered
+    // in time when the event comes
+    ENSEC(epoll_ctl(this->fd, EPOLL_CTL_ADD, fd, &event) == 0);
+    log_debug("Register {} for fd: {}", to_string(events), fd);
+    guard->insert_or_assign(fd, std::forward<T>(handler));
+    return {};
   }
   constexpr void run() {
     while (this->valid()) {
@@ -142,20 +161,16 @@ public:
         log_error("Failed to poll");
         continue;
       }
-      // LOG6("Polling {} events", n);
       for (int i = 0; i < n; i++) {
         auto handler = this->handlers.lock_shared()->at(events[i].data.fd);
         auto fd = events[i].data.fd;
         auto ev = static_cast<IOM_EVENTS>(events[i].events);
         log_debug("Handling {} for fd: {}", to_string(ev), fd);
-        PollHandleHint hint = (*this->proxy)(bind(std::ref(*handler), fd, ev));
+        PollHandleHint hint = handler->epoll_handle(fd, ev);
         log_debug("HandleRes {} for fd: {}", to_string_view(hint.tag), (int)events[i].data.fd);
         switch (hint.tag) {
           case PollHandleHintTag::DELETE:
             this->remove(events[i].data.fd);
-            break;
-          case PollHandleHintTag::MODIFY:
-            this->modify(events[i].data.fd, hint.data.events, std::nullopt);
             break;
           default:
             break;
@@ -171,7 +186,7 @@ public:
     }
     log_debug("call all handlers with NONE");
     for (auto& [key, value] : *this->handlers.lock()) {
-      (*value)(key, IOM_EVENTS::NONE);
+      value->epoll_handle(key, IOM_EVENTS::NONE);
     }
     log_debug("close poller");
     close(this->fd);
@@ -180,9 +195,8 @@ public:
 
 private:
   std::atomic_int fd;
-  ShardRes<std::unordered_map<int, std::shared_ptr<PollHandler>>> handlers;
-  std::shared_ptr<HandleProxy> proxy;
+  ShardRes<std::unordered_map<int, shared_memory<EpollHandler>>> handlers;
 };
 
-XSL_IO_NE
+XSL_SYS_NE
 #endif

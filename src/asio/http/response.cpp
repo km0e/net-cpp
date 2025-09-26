@@ -11,7 +11,7 @@
 #include <xsl/asio/http/response.h>
 #include <xsl/net.h>
 
-XSL_ASIO_HTTP_NB
+XSL_ASIO_NB
 
 ResponsePart::ResponsePart()
     : ResponsePart(Version::HTTP_1_1, Status::OK, Status{Status::OK}.to_reason_phrase()) {}
@@ -52,4 +52,4 @@ std::string ResponsePart::to_string() {
   res += CRLF;
   return res;
 }
-XSL_ASIO_HTTP_NE
+XSL_ASIO_NE

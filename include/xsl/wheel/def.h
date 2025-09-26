@@ -13,6 +13,12 @@
 #ifndef XSL_WHEEL_DEF
 #  define XSL_WHEEL_DEF
 
-#  define XSL_WHEEL_NB namespace xsl::wheel {
-#  define XSL_WHEEL_NE }
+#  include <xsl/def.h>
+
+#  define XSL_WHEEL_NB \
+    XSL_NB             \
+    namespace wheel {
+#  define XSL_WHEEL_NE \
+    }                  \
+    XSL_NE
 #endif  // XSL_WHEEL_DEF

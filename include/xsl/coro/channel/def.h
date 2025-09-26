@@ -41,12 +41,14 @@ struct ChannelTraits;
 
 /// @brief Signal sender
 template <class StorageType, std::size_t MaxElements>
-class AnyChannel : public ChannelTraits<StorageType, MaxElements> {
+class AnyChannel : public ChannelTraits<StorageType, MaxElements>,
+                    public ChannelAwaiterTraits<StorageType> {
 public:
   using awaiter_type = ChannelAwaiter<StorageType>;
 
 private:
   friend struct ChannelTraits<StorageType, MaxElements>;
+  friend struct ChannelAwaiterTraits<StorageType>;
   StorageType storage = {MaxElements};
 
 public:

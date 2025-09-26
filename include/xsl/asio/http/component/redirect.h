@@ -17,8 +17,7 @@
 
 #  include <optional>
 
-XSL_ASIO_HTTP_NB
-using namespace xsl::io;
+XSL_ASIO_NB
 
 template <AsyncRead ABI, AsyncWrite ABO>
 constexpr Handler<ABI, ABO> create_redirect_handler(std::string_view path) {
@@ -30,5 +29,5 @@ constexpr Handler<ABI, ABO> create_redirect_handler(std::string_view path) {
     co_return std::nullopt;
   };
 }
-XSL_ASIO_HTTP_NE
+XSL_ASIO_NE
 #endif

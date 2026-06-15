@@ -226,9 +226,6 @@ struct TlsTx {
 };
 
 template <class... Utils>
-struct TLSUtil : Utils..., TLSRx, TlsTx {};
-
-template <class... Utils>
 struct TLSStorage : Utils..., std::unique_ptr<SSL, decltype(&SSL_free)>, asio::TLSRx, asio::TlsTx {
   constexpr bool set_tls_ext_hostname(this auto&& self, const char* hostname) {
     return SSL_set_tlsext_host_name(self.ssl(), hostname) == 1;

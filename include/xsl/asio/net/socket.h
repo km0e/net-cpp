@@ -100,7 +100,6 @@ Task<Expected<void, errc>> async_connect2(auto& skt, RawOwner&& o, const sockadd
       log_debug("Connecting to fd: {}", fd);
       CO_ENSEC(init_async_device(skt, std::move(o), co_await CurrentIOContext));
       if (!co_await skt->write_signal()) {
-        // skt = std::move(async_skt).sync(poller);
         co_return std::unexpected{errc::not_connected};
       }
       auto check = [](int fd) {
@@ -118,7 +117,6 @@ Task<Expected<void, errc>> async_connect2(auto& skt, RawOwner&& o, const sockadd
       };
       int res = check(fd);
       if (res != 0) [[unlikely]] {
-        // skt = std::move(async_skt).sync(poller);
         co_return std::unexpected{errc{res}};
       }
       log_debug("Connected to fd: {}", fd);

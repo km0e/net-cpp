@@ -1,7 +1,7 @@
 /**
  * @file net.cpp
  * @author Haixin Pang (kmdr.error@gmail.com)
- * @brief Unit tests for asio net module (AsyncSocket, async_connect2, etc.)
+ * @brief Unit tests for asio net module (AsyncSocket, async_connect, etc.)
  * @version 0.1.0
  * @date 2026-06-15
  *

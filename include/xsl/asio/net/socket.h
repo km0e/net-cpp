@@ -87,7 +87,7 @@ constexpr Expected<AsyncSocket<Traits>, errc> make_async_socket(IOContext& ctx,
 template <class... Flags>
 using AsyncSocketCompose = AsyncSocket<sys::net::SocketTraits<Flags...>>;
 
-Task<Expected<void, errc>> async_connect2(auto& skt, RawOwner&& o, const sockaddr* sa,
+Task<Expected<void, errc>> async_connect(auto& skt, RawOwner&& o, const sockaddr* sa,
                                           socklen_t len) {
   auto ec = errc{};
   auto fd = o.raw();
@@ -148,14 +148,14 @@ struct AsyncSocketCreator<Traits> : public Traits {
   Task<Expected<void, errc>> a2(AsyncSocket& asock, const SockAddr<_Traits>& addr) noexcept {
     CO_TRVEC(sock, sys::net::socket(addr));
     CO_ENSEC(
-        co_await asio::async_connect2(asock, std::move(sock).into_raw(), &addr.addr(), addr.len()));
+        co_await asio::async_connect(asock, std::move(sock).into_raw(), &addr.addr(), addr.len()));
   }
   template <sys::net::SocketTraitsCompatible<Traits> _Traits>
   decltype(auto) ca2(const SockAddr<_Traits>& addr) noexcept {
     AsyncSocket<_Traits> asock;
     CO_TRVEC(sock, sys::net::socket(addr));
     CO_ENSEC(
-        co_await asio::async_connect2(asock, std::move(sock).into_raw(), &addr.addr(), addr.len()));
+        co_await asio::async_connect(asock, std::move(sock).into_raw(), &addr.addr(), addr.len()));
     co_return std::move(asock);
   }
   template <class... Flags, class... Args, class _Traits = sys::net::SocketTraits<Traits, Flags...>>
@@ -167,7 +167,7 @@ struct AsyncSocketCreator<Traits> : public Traits {
     CO_TRVEC(sa, sys::net::make_sockaddr<_Traits>(std::forward<Args>(args)...));
     CO_TRVEC(sock, sys::net::socket(sa));
     CO_ENSEC(
-        co_await asio::async_connect2(asock, std::move(sock).into_raw(), &sa.addr(), sa.len()));
+        co_await asio::async_connect(asock, std::move(sock).into_raw(), &sa.addr(), sa.len()));
     co_return std::move(asock);
   }
 
@@ -194,7 +194,7 @@ private:
       CONTV(sock, sys::net::socket<_Traits>(ai));
       CO_TRVEC(addr, sys::net::inet_n2p(reinterpret_cast<sockaddr_storage&>(*ai.ai_addr)));
       log_debug("Trying to connect to {}", addr);
-      auto res = co_await asio::async_connect2(asock, std::move(sock).into_raw(), ai.ai_addr,
+      auto res = co_await asio::async_connect(asock, std::move(sock).into_raw(), ai.ai_addr,
                                                ai.ai_addrlen);
       if (res) {
         ec = errc{};

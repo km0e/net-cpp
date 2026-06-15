@@ -310,7 +310,7 @@ private:
     errc ec = {};
     for (addrinfo& ai : ais) {
       CONTV(sock, sys::net::socket<SockTraits>(ai));
-      auto res = co_await asio::async_connect2(tls_sock, std::move(sock).into_raw(), ai.ai_addr,
+      auto res = co_await asio::async_connect(tls_sock, std::move(sock).into_raw(), ai.ai_addr,
                                                ai.ai_addrlen);
       if (res) {
         ec = errc{};

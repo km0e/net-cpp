@@ -13,5 +13,7 @@
 #  define XSL_ASIO_NET
 #  include <xsl/asio/def.h>
 #  include <xsl/asio/net/socket.h>
+#  include <xsl/asio/net/tcp/def.h>
+#  include <xsl/asio/net/tcp/server.h>
 
 #endif

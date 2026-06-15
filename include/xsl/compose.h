@@ -130,16 +130,16 @@ public:
 };
 
 template <class Alloc, class... S>
-class LocalComosite : public S... {
+class LocalComposite : public S... {
 public:
-  LocalComosite() {
+  LocalComposite() {
     static_assert((... && std::is_default_constructible_v<S>),
                   "All base classes must be default constructible");
   }
-  LocalComosite(const LocalComosite&) = default;
-  LocalComosite(LocalComosite&&) noexcept = default;
-  LocalComosite& operator=(const LocalComosite&) = default;
-  LocalComosite& operator=(LocalComosite&&) noexcept = default;
+  LocalComposite(const LocalComposite&) = default;
+  LocalComposite(LocalComposite&&) noexcept = default;
+  LocalComposite& operator=(const LocalComposite&) = default;
+  LocalComposite& operator=(LocalComposite&&) noexcept = default;
 
   template <class Part, class... Args>
   decltype(auto) emplace(Args&&... args) {
@@ -171,7 +171,7 @@ namespace _detail {
 
 template <class... S>
 using LocalCompose = select_feature_flags_t<
-    LocalComosite<Item<_detail::is_allocator<std::allocator<void>>>, Rest>, S...>;
+    LocalComposite<Item<_detail::is_allocator<std::allocator<void>>>, Rest>, S...>;
 
 XSL_NE
 #endif

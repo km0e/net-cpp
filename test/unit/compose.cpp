@@ -148,10 +148,10 @@ TEST(SharedMemory, DestroyDtorCount) {
 
 // ---------------------------------------------------------------------------
 // LocalCompose: multi-part inline composition
-// LocalComosite<S...> inherits directly from all S, so members are accessed
+// LocalComposite<S...> inherits directly from all S, so members are accessed
 // directly without get() or operator->
 // ---------------------------------------------------------------------------
-using LC2Direct = LocalComosite<std::allocator<void>, TestFd, Widget>;
+using LC2Direct = LocalComposite<std::allocator<void>, TestFd, Widget>;
 using LC2Alias = LocalCompose<TestFd, Widget>;
 
 TEST(LocalCompose, DefaultConstructionDirect) {
@@ -216,11 +216,11 @@ TEST(LocalCompose, AbandonThenReemplace) {
 }
 
 TEST(LocalCompose, SharedMemoryWrapper) {
-  // shared_memory + LocalCompose — access via -> goes to LocalComosite*
-  // (no operator->() on LocalComosite, so shared_memory::op-> returns T*)
+  // shared_memory + LocalCompose — access via -> goes to LocalComposite*
+  // (no operator->() on LocalComposite, so shared_memory::op-> returns T*)
   using T = shared_memory<LC2Direct>;
   T sm;
-  // sm-> chains through shared_memory::op-> → LocalComosite*
+  // sm-> chains through shared_memory::op-> → LocalComposite*
   EXPECT_EQ(sm->raw(), -1);
   EXPECT_EQ(sm->value, 0);
   // emplace via get()

@@ -1,4 +1,5 @@
 # ---- Add Subdirectories ----
+add_subdirectory(asio)
 add_subdirectory(coro)
 add_subdirectory(dns)
 add_subdirectory(feature)

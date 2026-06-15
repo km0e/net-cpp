@@ -3,8 +3,10 @@ add_executable(it_bind bind.cpp)
 target_link_libraries(it_bind PRIVATE xsl_asio clilib GTest::gtest_main)
 add_test(NAME it_bind COMMAND it_bind)
 
-# connect.cpp needs API migration (read/write on shared_memory<AsyncSocket>),
-# see: https://github.com/... (TODO: fix connect.cpp for current compose2 API)
+# connect.cpp needs Python echo server + library fix:
+# io.h:198 — imm_recv span overload missing; UDP read(span) path is
+# broken for connection-less sockets.
+# Once io.h is fixed, uncomment below:
 #
 # find_package(Python3 QUIET)
 # if(Python3_FOUND)

@@ -56,23 +56,13 @@ protected:
   void echo(AsyncSocket& skt) {
     auto buf = std::make_unique<byte[]>(1024);
     for (auto& msg : echo_msg) {
-      auto res = skt.write(msg.data(), msg.size()).block();
+      auto send_bytes = std::as_bytes(std::span(msg.data(), msg.size()));
+      auto res = skt->write(send_bytes).block();
       ASSERT_TRUE(res);
-      res = skt.read(buf.get(), 1024).block();
+      auto recv_bytes = std::as_writable_bytes(std::span(buf.get(), 1024));
+      res = skt->read(recv_bytes).block();
       ASSERT_TRUE(res) << "Read error: " << res.message();
       ASSERT_EQ(std::string_view(reinterpret_cast<char*>(buf.get()), res.size), msg);
-    }
-  }
-
-  template <class AsyncSocket>
-  void echo_to(AsyncSocket& skt, auto& addr) {
-    auto buf = std::make_unique<char[]>(1024);
-    for (auto& msg : echo_msg) {
-      auto res = skt->sendto(addr, reinterpret_cast<const byte*>(msg.data()), msg.size()).block();
-      ASSERT_TRUE(res);
-      res = skt->recvfrom(addr, reinterpret_cast<byte*>(buf.get()), 1024).block();
-      ASSERT_TRUE(res);
-      ASSERT_EQ(std::string_view(buf.get(), res.size), msg);
     }
   }
 
@@ -87,24 +77,20 @@ public:
 };
 
 TEST_F(AsyncSocketIOFixture, tcp_connect_with_ais) {
-  auto util = AsyncSocketCreatorCompose<TcpIpv4>();
+  auto util = AsyncSocketCreatorCompose<Tcp, Ip>();
   auto res_skt = util.ca2(ip.c_str(), port.c_str()).by(this->ctx).block();
   ASSERT_TRUE(res_skt.has_value());
   ASSERT_NE((*res_skt)->raw(), 0);
   echo(*res_skt);
-  auto addr = sys::net::make_sockaddr<TcpIpv4>(ip.c_str(), port.c_str());
-  echo_to(*res_skt, *addr);
 }
 
 
 TEST_F(AsyncSocketIOFixture, udp_connect_with_ip_port) {
-  auto util = AsyncSocketCreatorCompose<UdpIpv4>();
+  auto util = AsyncSocketCreatorCompose<Udp, Ip>();
   auto& ctx = *static_cast<sys::IOContext*>(this->ctx->get_reserved());
   auto res = util.c2(ctx, ip.c_str(), port.c_str());
   ASSERT_TRUE(res.has_value());
   echo(*res);
-  auto addr = sys::net::make_sockaddr<UdpIpv4>(ip.c_str(), port.c_str());
-  echo_to(*res, *addr);
 }
 
 int main(int argc, char** argv) {

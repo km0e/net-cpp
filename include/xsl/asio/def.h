@@ -32,10 +32,8 @@
 
 XSL_ASIO_NB
 
-namespace {
-  using sys::IOContext;
-  using sys::IOM_EVENTS;
-}  // namespace
+using sys::IOContext;
+using sys::IOM_EVENTS;
 
 using io::Result;
 using IOSignal = SPSCSignal4;

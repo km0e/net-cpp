@@ -30,12 +30,10 @@
 #  include <span>
 XSL_ASIO_NB
 
-namespace {
-  using sys::IOContext;
-  using sys::IOM_EVENTS;
-  using sys::PollHandleHint;
-  using sys::PollHandleHintTag;
-}  // namespace
+using sys::IOContext;
+using sys::IOM_EVENTS;
+using sys::PollHandleHint;
+using sys::PollHandleHintTag;
 
 template <IOM_EVENTS... Events>
 using IOSignalStorage = StaticExactPubSubStorage<IOM_EVENTS, IOSignal, Events...>;

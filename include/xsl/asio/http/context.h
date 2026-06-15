@@ -20,7 +20,8 @@
 #  include <chrono>
 #  include <optional>
 XSL_ASIO_NB
-using namespace xsl::io;
+using xsl::http::Status;
+using xsl::http::to_date_string;
 template <AsyncRead R, AsyncWrite W>
 class HandleContext {
 public:

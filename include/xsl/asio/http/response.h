@@ -18,7 +18,8 @@
 
 #  include <cstdint>
 XSL_ASIO_NB
-using namespace xsl::http;
+using xsl::http::Status;
+using xsl::http::Version;
 
 struct StatusLineView {
   std::string_view version = {};         ///< the HTTP version

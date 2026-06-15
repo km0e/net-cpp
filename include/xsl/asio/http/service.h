@@ -23,12 +23,14 @@
 
 #  include <utility>
 XSL_ASIO_NB
-using namespace xsl::io;
-using namespace xsl::http;
+using xsl::http::Method;
+using xsl::http::RouteContext;
+using xsl::http::Router;
+using xsl::http::RouterLike;
+using xsl::http::Status;
 
 namespace _detail {
-  using namespace xsl::http;
-  struct Id {
+struct Id {
     std::size_t value;
     constexpr Id() : value(0) {}  ///< Default constructor, initializes to 0
     constexpr Id(std::size_t v) : value(v) {}
@@ -182,11 +184,11 @@ private:
 XSL_ASIO_NE
 namespace std {
   template <>
-  struct hash<std::pair<xsl::asio::_detail::Id, Method>> {
+  struct hash<std::pair<xsl::asio::_detail::Id, xsl::http::Method>> {
     std::size_t operator()(
-        const std::pair<xsl::asio::_detail::Id, Method>& p) const noexcept {
+        const std::pair<xsl::asio::_detail::Id, xsl::http::Method>& p) const noexcept {
       return std::hash<std::size_t>()(p.first.value)
-             ^ std::hash<decltype(Method::_method)>()(p.second._method);
+             ^ std::hash<decltype(xsl::http::Method::_method)>()(p.second._method);
     }
   };
 }  // namespace std

@@ -46,7 +46,7 @@ public:
   ~HttpClient() = default;
 
   void set_tls_context(TLSContext&& ctx) { this->tls_ctx_ = std::move(ctx); }
-  Task<Expected<std::tuple<std::unique_ptr<Response>, std::shared_ptr<AsyncReadWriteBase>>>> get(
+  Task<Expected<std::tuple<std::unique_ptr<Response>, shared_memory<AsyncReadWriteBase>>>> get(
       std::string_view url);
 
 private:

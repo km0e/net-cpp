@@ -245,18 +245,18 @@ struct TLSStorage : Utils..., std::unique_ptr<SSL, decltype(&SSL_free)>, asio::T
   SSL* ssl() { return std::unique_ptr<SSL, decltype(&SSL_free)>::get(); }
 };
 
-template <class... Utils>
-using TLSLayer = shared_memory<LocalCompose<DirectAsyncReadWriteUtils, RawOwner,
-                                            IOSignalStorage<IOM_EVENTS::IN, IOM_EVENTS::OUT>,
-                                            TLSStorage<AsyncDeviceUtil, Utils...>>>;
+// template <class... Utils>
+// using TLSLayer = shared_memory<LocalCompose<DirectAsyncReadWriteUtils, RawOwner,
+//                                             IOSignalStorage<IOM_EVENTS::IN, IOM_EVENTS::OUT>,
+//                                             TLSStorage<AsyncDeviceUtil, Utils...>>>;
 
-template <class... Utils>
-using DynTLSLayer
-    = shared_memory<LocalCompose<DirectAsyncReadWriteUtils, AsyncReadWriteBase, RawOwner,
-                                 IOSignalStorage<IOM_EVENTS::IN, IOM_EVENTS::OUT>,
-                                 TLSStorage<AsyncDeviceUtil, Utils...>>>;
-template <class... Flags>
-using TLSAsyncSocket = TLSLayer<sys::net::SocketTraits<Flags...>>;
+// template <class... Utils>
+// using DynTLSLayer
+//     = shared_memory<LocalCompose<DirectAsyncReadWriteUtils, AsyncReadWriteBase, RawOwner,
+//                                  IOSignalStorage<IOM_EVENTS::IN, IOM_EVENTS::OUT>,
+//                                  TLSStorage<AsyncDeviceUtil, Utils...>>>;
+// template <class... Flags>
+// using TLSAsyncSocket = TLSLayer<sys::net::SocketTraits<Flags...>>;
 
 XSL_ASIO_NE
 XSL_ASIO_NB
@@ -266,66 +266,66 @@ struct TLSTraits : public SockTraits {
   using sock_traits_type = SockTraits;
 };
 
-struct TLSUtils {
-  template <sys::net::SocketTraitsCompatible<sys::net::SocketTraits<TcpIp>> Traits>
-  Task<Expected<TLSAsyncSocket<Traits>>> ca2(TLSContext& tls_ctx,
-                                             const SockAddr<Traits>& addr) noexcept {
-    TLSLayer<Traits> tls_sock;
-    co_await AsyncSocketCreatorCompose<Traits>{}.a2(tls_sock, addr);
-    CO_TRV(ssl, tls_ctx.new_ssl());
-    CO_ENSURE(SSL_set_fd(ssl, tls_sock->raw()), tls_err_gen()());
-    std::construct_at<std::unique_ptr<SSL, decltype(&SSL_free)>>(
-        static_cast<std::unique_ptr<SSL, decltype(&SSL_free)>*>(tls_sock.get()), ssl, SSL_free);
-    co_return tls_sock;
-  }
-  template <class... Flags, class... Args,
-            sys::net::SocketTraitsCompatible<TcpIp> Traits = sys::net::SocketTraits<Flags...>>
-    requires requires(Args&&... args) {
-      sys::net::make_sockaddr<Traits>(std::forward<Args>(args)...);
-    }
-  Task<Expected<TLSAsyncSocket<Traits>>> ca2(TLSContext& tls_ctx, Args&&... args) noexcept {
-    CO_TRV(addr, sys::net::make_sockaddr<Traits>(std::forward<Args>(args)...));
-    TLSLayer<Traits> tls_sock;
-    co_await AsyncSocketCreatorCompose<Traits>{}.a2(tls_sock, addr);
-    CO_TRV(ssl, tls_ctx.new_ssl());
-    CO_ENSURE(SSL_set_fd(ssl, tls_sock->raw()), tls_err_gen()());
-    std::construct_at<std::unique_ptr<SSL, decltype(&SSL_free)>>(
-        static_cast<std::unique_ptr<SSL, decltype(&SSL_free)>*>(tls_sock.get()), ssl, SSL_free);
-    co_return tls_sock;
-  }
-  template <class SockTraits>
-  static decltype(auto) ca2(TLSContext& tls_ctx, sys::net::AddrInfos<SockTraits>& ais) {
-    return ac2_impl<TLSLayer<SockTraits>>(ais, tls_ctx);
-  }
-  template <class SockTraits>
-  static decltype(auto) ca2_dyn(TLSContext& tls_ctx, sys::net::AddrInfos<SockTraits>& ais) {
-    return ac2_impl<DynTLSLayer<SockTraits>>(ais, tls_ctx);
-  }
+// struct TLSUtils {
+//   template <sys::net::SocketTraitsCompatible<sys::net::SocketTraits<TcpIp>> Traits>
+//   Task<Expected<TLSAsyncSocket<Traits>>> ca2(TLSContext& tls_ctx,
+//                                              const SockAddr<Traits>& addr) noexcept {
+//     TLSLayer<Traits> tls_sock;
+//     co_await AsyncSocketCreatorCompose<Traits>{}.a2(tls_sock, addr);
+//     CO_TRV(ssl, tls_ctx.new_ssl());
+//     CO_ENSURE(SSL_set_fd(ssl, tls_sock->raw()), tls_err_gen()());
+//     std::construct_at<std::unique_ptr<SSL, decltype(&SSL_free)>>(
+//         static_cast<std::unique_ptr<SSL, decltype(&SSL_free)>*>(tls_sock.get()), ssl, SSL_free);
+//     co_return tls_sock;
+//   }
+//   template <class... Flags, class... Args,
+//             sys::net::SocketTraitsCompatible<TcpIp> Traits = sys::net::SocketTraits<Flags...>>
+//     requires requires(Args&&... args) {
+//       sys::net::make_sockaddr<Traits>(std::forward<Args>(args)...);
+//     }
+//   Task<Expected<TLSAsyncSocket<Traits>>> ca2(TLSContext& tls_ctx, Args&&... args) noexcept {
+//     CO_TRV(addr, sys::net::make_sockaddr<Traits>(std::forward<Args>(args)...));
+//     TLSLayer<Traits> tls_sock;
+//     co_await AsyncSocketCreatorCompose<Traits>{}.a2(tls_sock, addr);
+//     CO_TRV(ssl, tls_ctx.new_ssl());
+//     CO_ENSURE(SSL_set_fd(ssl, tls_sock->raw()), tls_err_gen()());
+//     std::construct_at<std::unique_ptr<SSL, decltype(&SSL_free)>>(
+//         static_cast<std::unique_ptr<SSL, decltype(&SSL_free)>*>(tls_sock.get()), ssl, SSL_free);
+//     co_return tls_sock;
+//   }
+//   template <class SockTraits>
+//   static decltype(auto) ca2(TLSContext& tls_ctx, sys::net::AddrInfos<SockTraits>& ais) {
+//     return ac2_impl<TLSLayer<SockTraits>>(ais, tls_ctx);
+//   }
+//   template <class SockTraits>
+//   static decltype(auto) ca2_dyn(TLSContext& tls_ctx, sys::net::AddrInfos<SockTraits>& ais) {
+//     return ac2_impl<DynTLSLayer<SockTraits>>(ais, tls_ctx);
+//   }
 
-private:
-  template <class TLSSocket, class SockTraits>
-  static Task<Expected<TLSSocket>> ac2_impl(sys::net::AddrInfos<SockTraits>& ais,
-                                            TLSContext& tls_ctx) {
-    TLSSocket tls_sock;
-    errc ec = {};
-    for (addrinfo& ai : ais) {
-      CONTV(sock, sys::net::socket<SockTraits>(ai));
-      auto res = co_await asio::async_connect(tls_sock, std::move(sock).into_raw(), ai.ai_addr,
-                                               ai.ai_addrlen);
-      if (res) {
-        ec = errc{};
-        break;
-      }
-      ec = res.error();
-    }
-    CO_ENSURE(ec, "Failed to connect to any address");
-    CO_TRV(ssl, tls_ctx.new_ssl());
-    CO_ENSURE(SSL_set_fd(ssl, tls_sock->raw()), tls_err_gen()());
-    std::construct_at<std::unique_ptr<SSL, decltype(&SSL_free)>>(
-        static_cast<std::unique_ptr<SSL, decltype(&SSL_free)>*>(tls_sock.get()), ssl, SSL_free);
-    co_return tls_sock;
-  }
-};
+// private:
+//   template <class TLSSocket, class SockTraits>
+//   static Task<Expected<TLSSocket>> ac2_impl(sys::net::AddrInfos<SockTraits>& ais,
+//                                             TLSContext& tls_ctx) {
+//     TLSSocket tls_sock;
+//     errc ec = {};
+//     for (addrinfo& ai : ais) {
+//       CONTV(sock, sys::net::socket<SockTraits>(ai));
+//       auto res = co_await asio::async_connect(tls_sock, std::move(sock).into_raw(), ai.ai_addr,
+//                                               ai.ai_addrlen);
+//       if (res) {
+//         ec = errc{};
+//         break;
+//       }
+//       ec = res.error();
+//     }
+//     CO_ENSURE(ec, "Failed to connect to any address");
+//     CO_TRV(ssl, tls_ctx.new_ssl());
+//     CO_ENSURE(SSL_set_fd(ssl, tls_sock->raw()), tls_err_gen()());
+//     std::construct_at<std::unique_ptr<SSL, decltype(&SSL_free)>>(
+//         static_cast<std::unique_ptr<SSL, decltype(&SSL_free)>*>(tls_sock.get()), ssl, SSL_free);
+//     co_return tls_sock;
+//   }
+// };
 
 XSL_ASIO_NE
 #endif

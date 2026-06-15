@@ -26,12 +26,10 @@ struct AsyncPipeStorage {
 XSL_ASIO_NE
 XSL_ASIO_NB
 
-using AsyncPipeReadDevice = shared_memory<
-    DefaultEpollWrapper<LocalCompose<DirectAsyncReadWriteUtils, AsyncDeviceUtil, RawOwner,
-                                     IOSignalStorage<IOM_EVENTS::IN>, AsyncPipeStorage>>>;
-using AsyncPipeWriteDevice = shared_memory<
-    DefaultEpollWrapper<LocalCompose<DirectAsyncReadWriteUtils, AsyncDeviceUtil, RawOwner,
-                                     IOSignalStorage<IOM_EVENTS::OUT>, AsyncPipeStorage>>>;
+using AsyncPipeReadDevice = DirectAsyncReadWrapper<shared_memory<DefaultEpollWrapper<
+    LocalCompose<AsyncDeviceUtil, RawOwner, IOSignalStorage<IOM_EVENTS::IN>, AsyncPipeStorage>>>>;
+using AsyncPipeWriteDevice = DirectAsyncWriteWrapper<shared_memory<DefaultEpollWrapper<
+    LocalCompose<AsyncDeviceUtil, RawOwner, IOSignalStorage<IOM_EVENTS::OUT>, AsyncPipeStorage>>>>;
 
 /// @brief create a async pipe
 std::expected<std::pair<AsyncPipeReadDevice, AsyncPipeWriteDevice>, errc> async_pipe(

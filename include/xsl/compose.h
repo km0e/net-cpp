@@ -127,6 +127,13 @@ public:
   unsigned use_count() const noexcept {
     return _ref_count ? _ref_count->load(std::memory_order_relaxed) : 0;
   }
+
+  /// @brief Convert to std::shared_ptr<U> where U is a base of T
+  template <class U>
+    requires std::is_base_of_v<U, T>
+  shared_memory<U> into_dyn(this auto&& self) {
+    return std::move(self);
+  }
 };
 
 template <class Alloc, class... S>

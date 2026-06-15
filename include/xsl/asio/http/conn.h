@@ -22,7 +22,6 @@
 #  include <type_traits>
 #  include <utility>
 XSL_ASIO_NB
-using namespace xsl::io;
 /**
  * @brief serve the connection
  *

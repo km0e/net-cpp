@@ -42,10 +42,11 @@ namespace _detail {
 };  // namespace _detail
 
 template <class Traits>
-using AsyncSocket = shared_memory<_detail::AsyncSocketInner<Traits>>;
+using AsyncSocket = DirectAsyncReadWriteWrapper<shared_memory<_detail::AsyncSocketInner<Traits>>>;
 
 template <class Traits>
-using DynAsyncSocket = shared_memory<AsyncReadWriteWrapper<_detail::AsyncSocketInner<Traits>>>;
+using DynAsyncSocket = DirectAsyncReadWriteWrapper<
+    shared_memory<AsyncReadWriteWrapper<_detail::AsyncSocketInner<Traits>>>>;
 
 template <class Traits>
 constexpr Expected<AsyncSocket<Traits>, errc> make_async_socket(IOContext& ctx,
@@ -88,7 +89,7 @@ template <class... Flags>
 using AsyncSocketCompose = AsyncSocket<sys::net::SocketTraits<Flags...>>;
 
 Task<Expected<void, errc>> async_connect(auto& skt, RawOwner&& o, const sockaddr* sa,
-                                          socklen_t len) {
+                                         socklen_t len) {
   auto ec = errc{};
   auto fd = o.raw();
   if (sys::filter_interrupt(::connect, fd, sa, len) != 0) {
@@ -166,8 +167,7 @@ struct AsyncSocketCreator<Traits> : public Traits {
     AsyncSocket<_Traits> asock;
     CO_TRVEC(sa, sys::net::make_sockaddr<_Traits>(std::forward<Args>(args)...));
     CO_TRVEC(sock, sys::net::socket(sa));
-    CO_ENSEC(
-        co_await asio::async_connect(asock, std::move(sock).into_raw(), &sa.addr(), sa.len()));
+    CO_ENSEC(co_await asio::async_connect(asock, std::move(sock).into_raw(), &sa.addr(), sa.len()));
     co_return std::move(asock);
   }
 
@@ -195,7 +195,7 @@ private:
       CO_TRVEC(addr, sys::net::inet_n2p(reinterpret_cast<sockaddr_storage&>(*ai.ai_addr)));
       log_debug("Trying to connect to {}", addr);
       auto res = co_await asio::async_connect(asock, std::move(sock).into_raw(), ai.ai_addr,
-                                               ai.ai_addrlen);
+                                              ai.ai_addrlen);
       if (res) {
         ec = errc{};
         break;

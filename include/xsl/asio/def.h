@@ -45,8 +45,8 @@ inline const Reserved<IOContext> CurrentIOContext{};
  */
 template <class Device>
 concept AsyncRead = requires(Device t, xsl::byte* data, std::size_t size) {
-  { t->read(data, size) } -> coro::Awaitable;
-  requires std::same_as<typename decltype(t->read(data, size))::result_type, Result>;
+  { t.read(data, size) } -> coro::Awaitable;
+  requires std::same_as<typename decltype(t.read(data, size))::result_type, Result>;
 };
 
 /**
@@ -54,8 +54,8 @@ concept AsyncRead = requires(Device t, xsl::byte* data, std::size_t size) {
  */
 template <class Device>
 concept AsyncWrite = requires(Device t, const byte* data, std::size_t size) {
-  { t->write(data, size) } -> coro::Awaitable;
-  requires std::same_as<typename decltype(t->write(data, size))::result_type, Result>;
+  { t.write(data, size) } -> coro::Awaitable;
+  requires std::same_as<typename decltype(t.write(data, size))::result_type, Result>;
 };
 
 /**
@@ -80,35 +80,39 @@ struct AsyncReadWriteBase : AsyncReadBase, AsyncWriteBase {
 };
 
 template <AsyncReadWrite Inner>
-class AsyncReadWriteWrapper : public AsyncReadWriteBase {
-  Inner inner_;
-
+class AsyncReadWriteWrapper : public Inner, public AsyncReadWriteBase {
 public:
-  explicit AsyncReadWriteWrapper(Inner&& inner) : inner_(std::move(inner)) {}
+  explicit AsyncReadWriteWrapper(Inner&& inner) : Inner(std::forward<Inner>(inner)) {}
+  AsyncReadWriteWrapper() = default;
   ~AsyncReadWriteWrapper() override = default;
   coro::Task<io::Result> read(byte* data, std::size_t size) override {
-    return inner_.read(data, size);
+    return this->Inner::read(data, size);
   }
   coro::Task<io::Result> write(const byte* data, std::size_t size) override {
-    return inner_.write(data, size);
+    return this->Inner::write(data, size);
   }
-  Inner* get() { return &inner_; }
 };
 
-class DirectAsyncReadWriteUtils {
+template <class Inner>
+  requires AsyncReadWrite<std::decay_t<decltype(*std::declval<Inner>())>>
+class DirectAsyncReadWriteWrapper : public Inner {
 public:
-  coro::Task<io::Result> read(this auto&& self, byte* data, std::size_t size) {
-    return self->read(data, size);
-  }
-  coro::Task<io::Result> write(this auto&& self, const byte* data, std::size_t size) {
-    return self->write(data, size);
-  }
-  coro::Task<io::Result> write(this auto&& self, const char* data, std::size_t size) {
-    return self->write(reinterpret_cast<const byte*>(data), size);
-  }
-  coro::Task<io::Result> write_file(this auto&& self, WriteFileHint&& hint) {
-    return self->write_file(std::move(hint));
-  }
+  decltype(auto) read(byte* data, std::size_t size) { return (*this)->read(data, size); }
+  decltype(auto) write(const byte* data, std::size_t size) { return (*this)->write(data, size); }
+};
+
+template <class Inner>
+// requires AsyncRead<std::decay_t<decltype(*std::declval<Inner>())>>
+class DirectAsyncReadWrapper : public Inner {
+public:
+  decltype(auto) read(byte* data, std::size_t size) { return (*this)->read(data, size); }
+};
+
+template <class Inner>
+// requires AsyncWrite<std::decay_t<decltype(*std::declval<Inner>())>>
+class DirectAsyncWriteWrapper : public Inner {
+public:
+  decltype(auto) write(const byte* data, std::size_t size) { return (*this)->write(data, size); }
 };
 
 template <class E>

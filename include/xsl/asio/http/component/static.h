@@ -28,8 +28,12 @@
 #  include <system_error>
 
 XSL_ASIO_NB
-using namespace xsl::io;
-using namespace xsl::http;
+using xsl::http::from_date_string;
+using xsl::http::MediaTypeView;
+using xsl::http::Status;
+using xsl::http::parse_accept;
+using xsl::http::parse_accept_encoding;
+using xsl::http::to_date_string;
 /// @brief the static file configuration
 struct StaticFileConfig {
   std::filesystem::path path;

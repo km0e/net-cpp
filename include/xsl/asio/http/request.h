@@ -16,7 +16,9 @@
 #  include <xsl/net.h>
 
 XSL_ASIO_NB
-using namespace xsl::net::http;
+using xsl::net::http::Method;
+using xsl::net::http::RequestLine;
+using xsl::net::http::Version;
 
 /// @brief the request
 class Request : public Message {  // TODO: abstract the ard
@@ -101,14 +103,14 @@ public:
     }
     this->append(CRLF);  // Append CRLF to indicate the end of the request part
     for (const auto& block : this->_raw | std::views::take(this->_raw.size() - 1)) {
-      auto res = co_await awd->write(block.get(), HTTP_BUFFER_BLOCK_SIZE);
+      auto res = co_await awd.write(block.get(), HTTP_BUFFER_BLOCK_SIZE);
       if (!res) {
         log_error("Failed to write request part: {}", res.message());
         co_return std::move(res.ec);
       }
     }
     if (this->offset > 0) {
-      auto res = co_await awd->write(this->_raw.back().get(), this->offset);
+      auto res = co_await awd.write(this->_raw.back().get(), this->offset);
       if (!res) {
         log_error("Failed to write request part: {}", res.message());
         co_return std::move(res.ec);

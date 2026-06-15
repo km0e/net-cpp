@@ -1,14 +1,12 @@
-file(GLOB_RECURSE XSL_SYS_SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/net/*.cpp
-)
-
 add_library(xsl_sys STATIC)
 
 target_sources(
     xsl_sys
     PRIVATE
-    ${XSL_SYS_SOURCE_FILES}
+    io.cpp
+    raw.cpp
+    io/context/epoll.cpp
+    net/sockaddr.cpp
 )
 
 target_link_libraries(xsl_sys PUBLIC xsl_log)

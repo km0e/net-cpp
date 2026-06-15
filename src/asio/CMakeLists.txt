@@ -3,7 +3,6 @@ add_library(xsl_asio STATIC)
 target_sources(
     xsl_asio
     PRIVATE
-    def.cpp
     http.cpp
     pipe.cpp
     http/request.cpp

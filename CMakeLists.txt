@@ -23,7 +23,10 @@ if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
   )
 endif()
 
-add_link_options(-fuse-ld=mold)
+find_program(MOLD_EXECUTABLE mold)
+if(MOLD_EXECUTABLE)
+  add_link_options(-fuse-ld=mold)
+endif()
 
 # --- Logging ----
 set(XSL_LOG_LEVEL "INFO" CACHE STRING "Set the log level (NONE, TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL)")

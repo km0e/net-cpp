@@ -27,6 +27,8 @@
 
 XSL_ASIO_NB
 
+using xsl::net::SockAddr;
+
 enum class TLSVersion : long {
   TLS1_0 = TLS1_VERSION,
   TLS1_1 = TLS1_1_VERSION,

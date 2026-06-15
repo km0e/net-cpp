@@ -16,8 +16,6 @@
 #  include <xsl/io.h>
 
 XSL_ASIO_TCP_NB
-using namespace xsl::io;
-using namespace xsl::net;
 
 /**
  * @brief TcpServer

@@ -26,7 +26,7 @@ XSL_ASIO_NB
 using sys::IOContext;
 using sys::IOM_EVENTS;
 
-using namespace xsl::net;
+using xsl::net::SockAddr;
 
 template <class Traits>
 struct AsyncConnectionUtils : public sys::net::ConnectionUtils<Traits> {

@@ -2,6 +2,7 @@
 add_executable(it_bind bind.cpp)
 target_link_libraries(it_bind PRIVATE xsl_asio clilib GTest::gtest_main)
 add_test(NAME it_bind COMMAND it_bind)
+set_tests_properties(it_bind PROPERTIES TIMEOUT 60)
 
 # connect.cpp needs Python echo server + library fix:
 # io.h:198 — imm_recv span overload missing; UDP read(span) path is

@@ -59,6 +59,21 @@ template <class Inner>
 class DefaultEpollWrapper : public Inner, public sys::EpollHandler {
 public:
   ~DefaultEpollWrapper() override = default;
+  /// @brief remember the IOContext this device is registered in
+  void bind_context(IOContext& ctx) noexcept { this->ctx_ = &ctx; }
+  /// @brief whether the bound IOContext has been shut down
+  bool stopped() const noexcept { return this->ctx_ != nullptr && this->ctx_->stopped(); }
+  /// @brief deregister this device from its IOContext
+  /// @note must be called while the caller still holds a reference to this
+  ///       handler: the IOContext map keeps its own reference, so as long as
+  ///       the entry exists this object can never be destroyed and the file
+  ///       descriptor stays open
+  void deregister() {
+    if (this->ctx_ != nullptr) {
+      this->ctx_->remove(this->raw());
+      this->ctx_ = nullptr;
+    }
+  }
   PollHandleHint epoll_handle(int, IOM_EVENTS events) override {
     if (((!events) || !!(events & IOM_EVENTS::HUP))) {
       return PollHandleHintTag::DELETE;
@@ -67,6 +82,11 @@ public:
       return PollHandleHintTag::NONE;
     }
   }
+  /// @brief wake all subscribers (poller shutdown)
+  void shutdown_notify() override { this->publish([](IOM_EVENTS) { return true; }); }
+
+private:
+  IOContext* ctx_ = nullptr;
 };
 
 template <class Traits, class Accessor>
@@ -106,6 +126,9 @@ constexpr Expected<void, errc> init_async_device(shared_memory<T>& s, RawOwner&&
                                                  IOContext& ctx) {
   s->template emplace<RawOwner>(std::move(o));
   s->template emplace<_detail::extract_io_signal_storage_t<T>>();
+  if constexpr (requires { s->bind_context(ctx); }) {
+    s->bind_context(ctx);
+  }
   IOM_EVENTS ev = _detail::or_(&*s);
   ENSEC(ctx.add(s->raw(), ev, s));
   return {};

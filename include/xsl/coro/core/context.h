@@ -46,7 +46,9 @@ public:
     co_trace("Context dispatching");
     _e->schedule(std::move(func));
   }
-  decltype(auto) new_child_context() { return CoroContext(_e); }
+  /// @brief create a child context sharing the executor and the reserved object
+  /// @note must return by value; returning a reference would dangle
+  CoroContext new_child_context() { return CoroContext(_e, _reserved); }
 
   constexpr auto get_reserved() { return _reserved.get(); }
 
@@ -89,6 +91,13 @@ struct Reserved {
   constexpr void await_suspend(std::coroutine_handle<Promise> handle) const noexcept {
     _ptr = handle.promise().ctx()->get_reserved();
     assert(_ptr != nullptr);
+  }
+  /// @brief resume with the reserved object of the current coroutine context
+  /// @note await_transform wraps this awaiter with the promise's CoroContext,
+  ///       so the context-aware overload is preferred; the no-argument overload
+  ///       only works when await_suspend actually ran
+  constexpr T& await_resume(CoroContext& ctx) const noexcept {
+    return *static_cast<T*>(ctx.get_reserved());
   }
   constexpr T& await_resume() const noexcept { return *static_cast<T*>(_ptr); }
 };

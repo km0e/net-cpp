@@ -57,14 +57,25 @@ struct AsyncConnectionUtils<Traits> : public sys::net::ConnectionUtils<Traits> {
   using Base = sys::net::ConnectionUtils<Traits>;
 
   /// @brief Accept a connection
+  /// @note the loop stops when the device reports that its IOContext has been
+  ///       shut down, otherwise a dead poller would make this loop hang forever
   Task<Expected<net::Socket<Traits>, errc>> accept(this auto& self,
                                                    sys::net::SockAddr<Traits>* addr = nullptr) {
     while (true) {
       auto res = Base::accept(self.raw(), addr);
       if (res) {
+        // low-latency default for accepted connections (see no_delay notes)
+        if constexpr (requires { res->no_delay(); }) {
+          (void)res->no_delay();
+        }
         co_return std::move(*res);
       } else if (res.error() == errc::resource_unavailable_try_again
                  || res.error() == errc::operation_would_block) {
+        if constexpr (requires { self.stopped(); }) {
+          if (self.stopped()) {
+            co_return std::unexpected{errc::operation_canceled};
+          }
+        }
         CO_ENSEC(co_await self.read_signal());
       } else {
         co_return std::unexpected{res.error()};

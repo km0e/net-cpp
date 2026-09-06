@@ -105,7 +105,7 @@ LocalComosite2<Alloc, S...> : public S...  — 直接继承所有 Parts
   └── abandon<Parts...>()          — 批量析构
 ```
 
-外部调用统一用 `dev->method()`。`into_dyn()` 已废弃。详见 `docs/migration-compose2-progress.md`。
+外部调用统一用 `dev->method()`。`into_dyn()` 已废弃。详见 `docs/migration-compose2-progress.md`（迁移历史与未完成项）、`docs/architecture.md`（协程运行时/IO/线程模型总览）。
 
 ## Code Conventions
 

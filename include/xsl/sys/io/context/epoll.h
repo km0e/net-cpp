@@ -119,6 +119,8 @@ public:
   friend class IOContext;
 
   virtual PollHandleHint epoll_handle(int fd, IOM_EVENTS events) = 0;
+  /// @brief wake all subscribers of this handler (used on shutdown)
+  virtual void shutdown_notify() {}
 };
 
 class IOContext {
@@ -133,6 +135,10 @@ public:
 
   ~IOContext();
   constexpr bool valid() noexcept { return this->fd != -1; }
+  /// @brief whether shutdown has been initiated
+  constexpr bool stopped() const noexcept {
+    return this->stopped_.load(std::memory_order_acquire);
+  }
   template <class T>
     requires std::is_same_v<std::remove_cvref_t<T>, shared_memory<EpollHandler>>
              || std::is_constructible_v<T, T&&>
@@ -162,11 +168,22 @@ public:
         continue;
       }
       for (int i = 0; i < n; i++) {
-        auto handler = this->handlers.lock_shared()->at(events[i].data.fd);
+        // pin the handler: it may be deregistered concurrently (e.g. the
+        // connection closed while this event batch was in flight)
+        std::optional<shared_memory<EpollHandler>> handler;
+        {
+          auto guard = this->handlers.lock_shared();
+          if (auto iter = guard->find(events[i].data.fd); iter != guard->end()) {
+            handler.emplace(iter->second);
+          }
+        }
+        if (!handler) {
+          continue;
+        }
         auto fd = events[i].data.fd;
         auto ev = static_cast<IOM_EVENTS>(events[i].events);
         log_debug("Handling {} for fd: {}", to_string(ev), fd);
-        PollHandleHint hint = handler->epoll_handle(fd, ev);
+        PollHandleHint hint = (*handler)->epoll_handle(fd, ev);
         log_debug("HandleRes {} for fd: {}", to_string_view(hint.tag), (int)events[i].data.fd);
         switch (hint.tag) {
           case PollHandleHintTag::DELETE:
@@ -184,10 +201,17 @@ public:
     if (!this->valid()) {
       return;
     }
-    log_debug("call all handlers with NONE");
-    for (auto& [key, value] : *this->handlers.lock()) {
-      value->epoll_handle(key, IOM_EVENTS::NONE);
+    // mark stopped BEFORE waking tasks: any task that resumes from this point
+    // on must observe the shutdown and stop re-arming its suspension
+    this->stopped_.store(true, std::memory_order_release);
+    // wake every subscriber, otherwise tasks suspended on their signals would
+    // never resume (a NONE event matches no IOM_EVENTS key)
+    for (auto& [key, value] : *this->handlers.lock_shared()) {
+      value->shutdown_notify();
     }
+    // drop all handlers so their fds are closed; tasks still owning their own
+    // references keep the objects alive until they finish
+    this->handlers.lock()->clear();
     log_debug("close poller");
     close(this->fd);
     this->fd = -1;
@@ -195,6 +219,7 @@ public:
 
 private:
   std::atomic_int fd;
+  std::atomic_bool stopped_{false};
   ShardRes<std::unordered_map<int, shared_memory<EpollHandler>>> handlers;
 };
 

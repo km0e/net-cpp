@@ -102,6 +102,8 @@ public:
     co_trace("Promise by");
     self._ctx = Rc<CoroContext>(std::forward<Args>(args)...);
   }
+  /// @brief check whether a context has been attached to this promise
+  constexpr bool has_ctx(this auto&& self) noexcept { return static_cast<bool>(self._ctx); }
 
   template <class Promise>
   constexpr void next(this auto&& self, std::coroutine_handle<Promise> handle) {
@@ -210,7 +212,10 @@ public:
     requires(std::is_rvalue_reference_v<decltype(self)>)
   {
     co_trace("Task block");
-    self._handle.promise().by(CoroContext{});
+    // only fall back to an empty context, never clobber one set via .by(ctx)
+    if (!self._handle.promise().has_ctx()) {
+      self._handle.promise().by(CoroContext{});
+    }
     return coro::block(std::move(self));
   }
   /**
@@ -227,11 +232,16 @@ public:
     return std::forward<decltype(self)>(self);
   }
   /// @brief Detach the task with executor
+  /// @note at least one argument is required: without a CoroContext the
+  ///       detached task would dispatch on a null context and crash
   template <class... Args>
     requires std::constructible_from<Rc<CoroContext>, Args&&...>
   constexpr void detach(this auto&& self, Args&&... args)
     requires(std::is_rvalue_reference_v<decltype(self)>)
   {
+    static_assert(sizeof...(Args) != 0,
+                  "Task::detach requires a CoroContext (e.g. detach(ctx)); "
+                  "detaching without a context would crash at runtime");
     coro::detach(std::move(self), Rc<CoroContext>(std::forward<Args>(args)...));
     co_debug("Task detached");
   }

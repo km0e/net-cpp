@@ -23,3 +23,5 @@ out/
 
 # Claude
 .claude/
+# ASan build dir
+build-asan/

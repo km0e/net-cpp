@@ -64,6 +64,12 @@ Task<void> imm_serve_connection(R& ard, W& awd, Service& service) {
       break;  // if the client requested to close the connection, break the loop
     }
   }
+  // the IOContext map holds its own reference to the connection handler, so
+  // the fd would never be closed unless the handler is deregistered while the
+  // connection still owns a reference
+  if constexpr (requires { ard->deregister(); }) {
+    ard->deregister();
+  }
 }
 
 /**

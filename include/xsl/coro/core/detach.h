@@ -35,8 +35,9 @@ public:
 
   constexpr std::suspend_always initial_suspend() noexcept { return {}; }
   constexpr std::suspend_never final_suspend() noexcept {
-    assert(_self.done());
-    _self.destroy();
+    // @note must NOT destroy the frame here: with suspend_never the runtime
+    //       destroys the coroutine state after final_suspend completes, so a
+    //       manual destroy would double-free the frame
     return {};
   }
 

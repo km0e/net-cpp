@@ -12,6 +12,22 @@ CPMAddPackage(
 )
 add_library(loglib ALIAS quill)
 
+# ---- standalone asio (HTTP server vs asio comparison, see test/benches/http) ----
+CPMAddPackage(
+  NAME asio
+  GITHUB_REPOSITORY chriskohlhoff/asio
+  GIT_TAG asio-1-36-0
+  SYSTEM YES
+  EXCLUDE_FROM_ALL YES
+  DOWNLOAD_ONLY YES
+)
+if(asio_ADDED)
+  add_library(asio INTERFACE)
+  target_include_directories(asio SYSTEM INTERFACE ${asio_SOURCE_DIR}/asio/include)
+  target_compile_definitions(asio INTERFACE ASIO_STANDALONE ASIO_NO_DEPRECATED)
+  add_library(asio::asio ALIAS asio)
+endif()
+
 CPMAddPackage(
   NAME CLI11
   GITHUB_REPOSITORY CLIUtils/CLI11

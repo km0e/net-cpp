@@ -12,6 +12,8 @@
 #ifndef XSL_SYS_NET_SOCKET
 #  define XSL_SYS_NET_SOCKET
 #  include <netdb.h>
+#  include <netinet/in.h>
+#  include <netinet/tcp.h>
 #  include <sys/socket.h>
 #  include <xsl/def.h>
 #  include <xsl/error.h>
@@ -116,6 +118,18 @@ struct SocketOptions {  /// TODO: add more socket options
   Expected<void, errc> reuse_addr(this auto&& self, bool reuse = true) noexcept {
     int opt = reuse ? 1 : 0;
     ENSEC(setsockopt(self.raw(), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == 0);
+    return {};
+  }
+  /// @brief Toggle TCP_NODELAY (disable Nagle's algorithm); no-op on non-TCP
+  /// @note keep-alive request/response servers want this on, otherwise the
+  ///       client's delayed ACK stalls the next response for up to 40ms
+  Expected<void, errc> no_delay(this auto&& self, bool enable = true) noexcept {
+    if constexpr (requires { self.is_tcp; }) {
+      if constexpr (self.is_tcp) {
+        int opt = enable ? 1 : 0;
+        ENSEC(setsockopt(self.raw(), IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt)) == 0);
+      }
+    }
     return {};
   }
 };

@@ -63,6 +63,8 @@ public:
 
   T* operator->() { return &inner_->value; }
   T& operator*() { return inner_->value; }
+  /// @brief check whether this Rc actually owns an object
+  constexpr explicit operator bool() const noexcept { return this->inner_ != nullptr; }
 };
 
 template <class T>

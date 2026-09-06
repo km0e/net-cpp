@@ -51,10 +51,18 @@ public:
   Task<void> serve_connection(auto&& service) {
     auto service_ptr = std::make_shared<std::remove_reference_t<decltype(service)>>(
         std::forward<decltype(service)>(service));
+    auto& io = co_await CurrentIOContext;
     while (true) {
-      auto res = co_await this->server->accept_async(co_await CurrentIOContext);
+      auto res = co_await this->server->accept_async(io);
       if (!res) {
-        log_error("accept error: {}", std::make_error_code(res.error()).message());
+        if (io.stopped()
+            || (res.error() != errc::operation_would_block
+                && res.error() != errc::resource_unavailable_try_again
+                && res.error() != errc::connection_aborted)) {
+          // poller shut down or a persistent accept error, stop serving
+          log_info("accept stopped: {}", std::make_error_code(res.error()).message());
+          co_return;
+        }
         continue;
       }
       co_yield asio::serve_connection(std::move(*res), service_ptr);

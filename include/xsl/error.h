@@ -18,6 +18,7 @@
 #  include <xsl/type_traits.h>
 
 #  include <memory>
+#  include <format>
 
 XSL_NB
 

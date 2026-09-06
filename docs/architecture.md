@@ -1,0 +1,162 @@
+# Xsl 架构总览
+
+本文描述代码的**实际结构**(以本仓库当前实现为准),重点是协程运行时的控制流、
+所有权模型与线程模型。模块依赖图见 `CLAUDE.md`;性能数据见
+[benches/http.md](benches/http.md);compose2 迁移历史与未完成项见
+[migration-compose2-progress.md](migration-compose2-progress.md)。
+
+## 1. 分层
+
+```
+xsl_asio   异步 I/O：HTTP 服务/客户端、TLS、pipe
+  └── xsl_coro    协程运行时：Task/Promise/Executor/CoroContext/Signal/Channel
+        └── xsl_sys     系统封装：epoll IOContext、socket、sockaddr
+              └── xsl_wheel   基础设施：Rc、类型工具、字符串
+xsl_net    协议解析（无 I/O）：HTTP proto、DNS、URI、router
+```
+
+依赖方向严格向下；`xsl_net` 不依赖 `xsl_coro`/`xsl_sys`，可独立测试。
+
+## 2. 组合模型（compose2）
+
+异步设备不是类继承树，而是** Parts 的运行时组合**：
+
+```
+AsyncSocket<Traits>
+  = DirectAsyncReadWriteWrapper<shared_memory<DefaultEpollWrapper<LocalComposite<
+        std::allocator<void>, sys::RawOwner, StaticExactPubSubStorage<IOM_EVENTS, IOSignal, IN, OUT>,
+        AsyncConnectionUtils<Traits>, AsyncDeviceUtil, NetAsyncRx, NetAsyncTx>>>>
+```
+
+- `shared_memory<T>`：原子引用计数的堆对象；`operator->` 在 T 也有
+  `operator->` 时返回链式代理（`dev->read()` 穿透到最内层 Part）
+- `LocalComposite::emplace<Part>(args...)`：只重建一个 Part 的存储，
+  其余 Part 的成员不受影响（`init_async_device` 依赖此语义先建 fd 再绑上下文）
+- 生命周期铁律：**IOContext 的 handlers map 持有 handler 的一份引用**，
+  引用计数不归零则 fd 不关闭。连接式设备结束服务时必须显式
+  `deregister()`（`DefaultEpollWrapper`），否则 fd 泄漏
+
+`Rc<T>`（wheel/rc.h）是另一个引用计数指针，用于协程上下文（见 §4），
+其 `ref_count` 当前是**非原子**的；`shared_memory` 的计数是原子的。两者不要混淆。
+
+## 3. 协程运行时（xsl_coro）
+
+### 3.1 三种协程 promise
+
+| 类型 | initial_suspend | final_suspend | 用途 |
+|------|-----------------|---------------|------|
+| `Promise<TaskPromiseBase<T>>` | always | `final_awaiter` → 对称转移回 `_next` | `Task<T>`，可 co_await |
+| `DetachPromiseBase<T>` | always | **never**（帧在完成时由 runtime 销毁） | fire-and-forget（`detach()`） |
+| `BlockPromise` | never | never | （已移除）旧 `block()` 实现，现由 `_detail::BlockShell` 取代，见 §3.4 |
+
+关键机制：
+
+- **ctx 传播**：`Promise::await_transform` 把所有 awaiter 包进
+  `AwaiterWrapper(awaiter, ctx)`；Task→Task await 时 `NextBase::next()`
+  把父协程的 `Rc<CoroContext>` 拷贝进子任务 promise（`_next` 记录续体）
+- **`Reserved<T>`**：`co_await CurrentIOContext` 取 promise ctx 的
+  `_reserved`（即 IOContext），经 `await_resume(CoroContext&)` 同步返回，
+  不挂起
+- **对称转移**：Task 完成时 `final_awaiter::await_suspend` 返回 `_next`，
+  不经过调度器直接恢复等待者 —— 同一等待链的恢复是 O(1) 栈展开
+
+### 3.4 `block()`：手动驱动 + Shell 协程
+
+`block()` 需要在普通线程上同步等待一个 Task。实现（`coro/core/block.h`）：
+
+1. Task 移入 `block()` 自身帧（所有权在调用方，shell 经引用读结果）；
+2. 创建 `BlockShell` 协程（`initial_suspend = suspend_always`，不自动运行）；
+3. 手动调用 `task.await_suspend(shell.handle)`（把 shell 记为续体）并
+   `resume()` 返回的句柄 —— Task 在当前线程内联运行至挂起；
+4. Task 完成时经对称转移进入 shell，shell 体为空（**无 await 表达式**，
+   规避 GCC 16 协程临时量生命周期缺陷），其 `final_suspend` 的
+   `await_suspend` 释放信号量（此时 shell 已完全挂起，阻塞方销毁帧是安全的）；
+5. 调用方 `sem.acquire()` 后直接 `task.await_resume()` 读结果。
+
+若 Task 在首次内联运行中抛出异常（未达 final suspend，shell 未运行），
+异常在调用线程重抛，信号量跳过 acquire。
+
+### 3.2 执行器与线程模型
+
+```
+CoroContext::dispatch(f) → ExecutorBase::schedule(f)
+  NoopExecutor        f() 直接调用（在唤醒者线程内联执行）
+  NewThreadExecutor   std::thread(f).detach()   // 每次唤醒一个新线程
+  ThreadPoolExecutor  任务队列 + N worker（已实现，未启用）
+```
+
+- detached 任务的 promise 持有 `Rc<CoroContext>`，其完成线程与创建线程
+  由信号握手（`SPSCSignal4` 的 acq_rel exchange）+ 线程创建同步排序
+- `IOContext::shutdown()` 唤醒全部等待者并清理 handlers，但**不等待
+  detached 任务帧销毁**（thread-per-dispatch 的派发线程无人 join）——
+  拆除时对同一上下文的 Rc 计数操作在边缘情况下无序，见迁移文档 #2/#6
+
+### 3.3 信号（唤醒原语）
+
+`SPSCSignal4`：单个 `atomic<uintptr_t>` 状态机（0=idle, 1=signaled,
+ptr=等待者续体）。
+
+- `await_ready`：CAS(1→0) 消费已就绪信号
+- `await_suspend`：装入续体指针；若竞态中发现已 signaled 立即返回 false
+- `release`：exchange(1)；若旧值是续体指针则调用（续体经
+  `promise.resume` → `ctx->dispatch` 恢复协程）
+
+`Cancellable<SPSCSignal4>` 包装器额外经 `ctx->set_cc()` 注册取消续体。
+**acq_rel 语义使"await 挂起前的副作用（如 Rc 计数 ++）对恢复线程可见"**，
+这是热路径上引用计数操作无需额外同步的原因。
+
+## 4. I/O 层（xsl_sys + xsl_asio）
+
+`IOContext`（每个对应一个 epoll fd）：
+
+- `run()`：`epoll_pwait`（100ms 超时 + 屏蔽 SIGINT/TERM/QUIT），事件派发时
+  **先 pin 住 handler 的 shared_memory 再释放锁**（handler 可能在派发期间
+  被注销），DELETE hint → `remove(fd)`
+- `add/remove`：epoll_ctl + `ShardRes` 分片锁保护的 handler map
+- `shutdown()`：置 `stopped` 标志 → `shutdown_notify()` 唤醒全部订阅者
+  （`NONE` 事件匹配不到任何 key，必须用恒真谓词）→ 清空 map → 关闭 epoll
+
+读写路径（`asio/io.h`）：先试 syscall（`recv/send`），`EAGAIN` 时
+`co_await read_signal()/write_signal()` 挂起，epoll 就绪后由信号恢复重试。
+连接式设备的 `accept()` 循环内检查 `stopped()`，poller 关闭后不会永久挂起。
+
+## 5. HTTP 服务器栈与每请求控制流
+
+```
+HttpServer::serve_connection        accept 循环（Task，detached）
+  └─ co_yield per-connection        yield_value → detach 到子上下文
+       └─ imm_serve_connection      keep-alive 循环：Request::read → HttpService → ResponseBuilder::sendto
+            └─ HttpService          router 查路由 → handler（Task）→ HandleContext
+```
+
+一次请求（NoopExecutor 语义下全部发生在 poller 线程内联；NewThreadExecutor
+下每次唤醒派发新线程）：
+
+```
+connect/read 就绪 → epoll → handler → publish(IN) → 信号 release
+  → 续体 → dispatch → 协程恢复 → recv → 解析（Message::read → us_map）
+  → HttpService::operator()（路由 → handler）→ easy_resp（string body + Content-Length）
+  → checkout（补 Date）→ to_string → write 头 + write 体 → 循环等待下一请求
+```
+
+## 6. 已知设计权衡（基准实证，详见 benches/http.md）
+
+- **每请求固定成本 ~50µs**：响应 head/body 两次 `write`、`to_string()` 的
+  1024 字节拼接、`us_map` 构造、每请求 `std::format` 日期 —— dispatch 模型
+  （Noop vs NewThread）实测不是瓶颈（19K vs 20K RPS 持平）
+- **TCP_NODELAY 必须开启**：accepted socket 缺省 Nagle 时 keep-alive 响应被
+  delayed ACK 卡住 ~40ms（已修复：accept 流程默认 `no_delay()`）
+- **线程内联 vs 并行**：NoopExecutor 把整个服务器钉在一个核（4×4 反而
+  -20%）；NewThreadExecutor 用线程创建换来并行。多核扩展需池化或多 poller
+- **GCC 16 协程代码gen**：await 表达式临时量的生命周期标记有缺陷（协程帧
+  清理时双重析构），`block()` 为此采用手动驱动 + 无 await 表达式的 shell
+  协程；协程体内没有 `co_return`/`co_await` 时 GCC 不按协程编译（静默内联）
+
+## 7. 测试与验证入口
+
+| 内容 | 位置 |
+|------|------|
+| 两个 HTTP 实现的行为一致性 | `test/integration/http_compare/`（ctest: it_http_compare） |
+| xsl vs asio 吞吐/延迟 | `test/benches/http/bench.sh`（数据: benches/http.md） |
+| TCP accept/echo | `test/integration/asio/bind.cpp`（ctest: it_bind） |
+| 协程原语单元测试 | `test/unit/coro/` |

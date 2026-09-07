@@ -2,7 +2,7 @@
  * @file context.h
  * @author Haixin Pang (kmdr.error@gmail.com)
  * @brief Coroutine context
- * @version 0.1.0
+ * @version 0.2.0
  * @date 2025-09-14
  *
  * @copyright Copyright (c) 2025
@@ -16,72 +16,65 @@
 #  include <xsl/coro/def.h>
 #  include <xsl/coro/log.h>
 
-#  include <atomic>
 #  include <cassert>
-#  include <functional>
 #  include <memory>
+#  include <stop_token>
 
 XSL_CORO_NB
 
-enum class CancelState { None, Yes };
-using Continuation = std::function<void()>;
-
+/// @brief Coroutine context: executor + reserved object + cancellation domain
+///
+/// Cancellation is a std::stop_source: copies of a CoroContext share the stop
+/// state (atomic refcount inside), so all chains detached with copies of one
+/// context form ONE cancellation domain with multi-callback support.
 class CoroContext {
   std::shared_ptr<ExecutorBase> _e = std::make_shared<NoopExecutor>();
   std::shared_ptr<void> _reserved;
+  std::stop_source _stop;
 
   CoroContext(const std::shared_ptr<ExecutorBase>& e,
               const std::shared_ptr<void>& reserved = {})
-      : _e(e), _reserved(reserved) {}
+      : _e(e), _reserved(reserved), _stop() {}
+
+  CoroContext(const std::shared_ptr<ExecutorBase>& e,
+              const std::shared_ptr<void>& reserved, std::stop_source stop)
+      : _e(e), _reserved(reserved), _stop(std::move(stop)) {}
 
 public:
   CoroContext() = default;
   template <Executor E>
   CoroContext(E&& executor, void* reserved = nullptr, void (*deleter)(void*) = nullptr)
       : _e(std::make_shared<E>(std::forward<E>(executor)))
-      , _reserved(reserved, deleter ? deleter : [](void*) {}) {}
+      , _reserved(reserved, deleter ? deleter : [](void*) {})
+      , _stop() {}
   ~CoroContext() = default;
 
   void dispatch(move_only_function<void()>&& func) {
     co_trace("Context dispatching");
     _e->schedule(std::move(func));
   }
-  /// @brief create a child context sharing the executor and the reserved object
-  /// @note must return by value; returning a reference would dangle
-  CoroContext new_child_context() { return CoroContext(_e, _reserved); }
+  /// @brief child context sharing executor, reserved object AND cancellation
+  ///        domain — co_yield fan-out uses this, so cancelling the parent
+  ///        also cancels fanned-out children (e.g. per-connection tasks)
+  CoroContext new_child_context() { return CoroContext(_e, _reserved, _stop); }
+  /// @brief child context with an INDEPENDENT cancellation domain
+  CoroContext new_independent_context() { return CoroContext(_e, _reserved, {}); }
 
   constexpr auto get_reserved() { return _reserved.get(); }
 
-  constexpr auto& cc() noexcept { return _cc; }
-  constexpr auto& cs() noexcept { return _cs; }
-
-  constexpr Continuation* set_cc(Continuation* cc) noexcept {
-    return _cc->exchange(cc, std::memory_order_acq_rel);
-  }
-
-  /// Cancel all operations on this context — sets CancelState and wakes suspended coroutines
-  void cancel() {
-    _cs->store(CancelState::Yes, std::memory_order_release);
-    auto c = _cc->exchange(nullptr, std::memory_order_acq_rel);
-    if (c) {
-      (*c)();
-      delete c;
-    }
-  }
-
-private:
-  std::shared_ptr<std::atomic<Continuation*>> _cc
-      = std::make_shared<std::atomic<Continuation*>>(nullptr);
-  std::shared_ptr<std::atomic<CancelState>> _cs
-      = std::make_shared<std::atomic<CancelState>>(CancelState::None);
-
+  /// @brief request cancellation of every chain in this domain: all
+  ///        stop_callbacks registered by cancellable awaits fire
+  ///        synchronously on the calling thread
+  void cancel() { _stop.request_stop(); }
+  bool stop_requested() const noexcept { return _stop.stop_requested(); }
+  std::stop_token stop_token() const noexcept { return _stop.get_token(); }
 };
 
 template <typename Signal>
 struct Cancellable { Signal& _sig; };
 
 template <typename Signal>
-Cancellable<Signal> cancellable(Signal& sig) { return {sig}; }
+Cancellable<Signal> cancellable(Signal& sig) { return Cancellable<Signal>(sig); }
 
 /// @brief awaiter yielding the reserved object of the current coroutine context
 /// @note never suspends; only valid inside coroutines whose await_transform

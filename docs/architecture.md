@@ -114,10 +114,25 @@ CoroContext::dispatch(f) → ExecutorBase::schedule(f)
 - `UnsafeSignal` 的续体是内联成员（无堆分配），调用前**先移出**——回调
   会内联恢复消费者，可能立即重新 await 并改写该成员
 
-`Cancellable<MPSCSignal>` 包装器经 `ctx->set_cc()` 注册取消续体（此处仍
-为每 await 一次堆 `Continuation`，待 stop_token 化消除），并在
-**每次完成（含正常路径）时注销**，不再按 await 泄漏；仅原子档可取消
-（取消线程相当于额外生产者）。
+### 3.6 取消模型（std::stop_token）
+
+`CoroContext` 持 `std::stop_source`；其拷贝（detach/by 时产生）共享 stop
+状态（内部原子引用计数），因此**同一 CoroContext 拷贝族 = 一个取消域**，
+天然支持多回调。`ctx.cancel()` = `request_stop()`：所有已注册的
+stop_callback 在调用线程同步执行。
+
+- `Cancellable<MPSCSignal>`：`await_suspend` 经 `std::stop_callback` 注册
+  "release 信号"的唤醒（RAII，每次完成自动注销——不存在泄漏路径）；
+  `await_resume` 先注销再查 `stop_requested()`。注销仅在回调正在
+  **别的线程**执行时阻塞——NoopExecutor 内联恢复时回调就在本线程，
+  不会自我死锁（有测试钉死）
+- **D1（取消域继承）**：`co_yield` 分叉用 `new_child_context()`，**共享**
+  父域（父取消 → 连接级子任务一并取消）；逃逸口为
+  `new_independent_context()`（独立取消域）
+- **D2（传播风格）**：取消经返回值传播（signal await 返 false、IO 返
+  `errc::operation_canceled`），不抛异常
+
+仅原子档可取消（取消线程相当于额外生产者）。
 **acq_rel 语义使"await 挂起前的副作用（如 Rc 计数 ++）对恢复线程可见"**，
 这是热路径上引用计数操作无需额外同步的原因。
 
@@ -138,10 +153,10 @@ CoroContext::dispatch(f) → ExecutorBase::schedule(f)
   计数操作对恢复线程可见（§3.3）；
 - **线程创建**：`NewThreadExecutor` 派发经 `std::thread` 启动，自带同步。
 
-`CoroContext` 的四个成员（`_e`、`_reserved`、`_cc`、`_cs`）均为
-`shared_ptr`，**拷贝 CoroContext 与共享 Inner 在功能上等价**（执行器、
-IOContext、取消状态照常共享，且引用计数原子）——传 `CoroContext`
-不损失任何能力，只是每条链拿到独立 Inner。
+`CoroContext` 的共享状态（`_e`、`_reserved` 为 `shared_ptr`，`_stop`
+内部亦为原子引用计数句柄）在拷贝时全部共享——**拷贝 CoroContext 与共享
+Inner 在功能上等价**（执行器、IOContext、取消状态照常共享），
+传 `CoroContext` 不损失任何能力，只是每条链拿到独立 Inner。
 
 **API 规则**：
 

@@ -83,9 +83,10 @@ TEST(CancellableMPSC, CancelBeforeAwait) {
   ASSERT_EQ(count, 0);  // cancelled — never consumed
 }
 
-TEST(CancellableMPSC, RepeatedAwaitsDoNotLeakRegistrations) {
-  // regression for A3: each normal (non-cancelled) await must unregister its
-  // wakeup continuation; after the loop the ctx continuation slot must be null
+TEST(CancellableMPSC, RepeatedAwaitsDoNotLeak) {
+  // regression for A3: wakeup registration is RAII (std::stop_callback) —
+  // N normal completions must leave nothing behind (ASan builds verify
+  // absence of leaks; here we verify the flow completes)
   auto ctx = CoroContext(NewThreadExecutor{});
   MPSCSignal sig;
   const int N = 50;
@@ -110,6 +111,51 @@ TEST(CancellableMPSC, RepeatedAwaitsDoNotLeakRegistrations) {
   }
   done.acquire();
   ASSERT_EQ(count.load(), N);
-  EXPECT_EQ(ctx.cc()->load(std::memory_order_acquire), nullptr)
-      << "wakeup continuation leaked after normal completion";
+}
+
+TEST(CancellableMPSC, ChildContextInheritsCancellation) {
+  // D1: a task fanned out via co_yield shares the parent's cancellation
+  // domain — ctx.cancel() must reach it (no timing dependency: whenever the
+  // child first awaits, the cancellation is already visible)
+  auto ctx = CoroContext(NewThreadExecutor{});
+  MPSCSignal sig;
+  std::atomic<int> count{0};
+  std::binary_semaphore done{0};
+
+  [](auto& sig, auto& count, auto& done) -> Task<void> {
+    co_yield [](auto& sig, auto& count, auto& done) -> Task<void> {
+      auto csig = cancellable(sig);
+      while (co_await csig) count.fetch_add(1);
+      done.release();
+    }(sig, count, done);
+    co_return;
+  }(sig, count, done)
+                                                                                .detach(ctx);
+
+  ctx.cancel();
+  done.acquire();
+  ASSERT_EQ(count.load(), 0);
+}
+
+TEST(CancellableMPSC, InlineCancelDoesNotDeadlock) {
+  // NoopExecutor: cancel() runs the stop_callback inline on this thread,
+  // which releases the signal and resumes the consumer INLINE; its
+  // await_resume unregisters the very stop_callback whose execution is still
+  // on the stack — the same-thread destructor must not block
+  auto ctx = CoroContext{};  // NoopExecutor
+  MPSCSignal sig;
+  std::atomic<int> count{0};
+  std::binary_semaphore done{0};
+
+  [](auto& sig, auto& count, auto& done) -> Task<void> {
+    auto csig = cancellable(sig);
+    while (co_await csig) count.fetch_add(1);
+    done.release();
+  }(sig, count, done)
+                                                       .by(ctx)
+                                                       .detach(ctx);
+  // consumer is suspended (NoopExecutor ran it inline up to the first await)
+  ctx.cancel();  // inline wakeup + inline resume + inline unregister
+  done.acquire();
+  ASSERT_EQ(count.load(), 0);
 }

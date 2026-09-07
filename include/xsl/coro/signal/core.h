@@ -40,8 +40,8 @@
 #  include <atomic>
 #  include <coroutine>
 #  include <cstdint>
-#  include <functional>
-#  include <memory>
+#  include <optional>
+#  include <stop_token>
 #  include <utility>
 
 XSL_CORO_NB
@@ -184,43 +184,42 @@ public:
 XSL_CORO_NE
 XSL_CORO_NB
 
-/// @brief Cancellation wrapper for the atomic tier: ctx.cancel() releases the
-///        signal, await_resume reports false. The wakeup continuation is
-///        unregistered on normal completion so nothing leaks per await.
+/// @brief Cancellation wrapper for the atomic tier: on ctx.cancel() the
+///        registered std::stop_callback releases the signal and await_resume
+///        reports false. Registration is RAII — unregistered on every
+///        completion, cancelled or not, so nothing leaks per await.
 template <>
 struct Cancellable<MPSCSignal> {
   MPSCSignal& _sig;
-  std::shared_ptr<std::atomic<coro::CancelState>> _cs
-      = std::make_shared<std::atomic<coro::CancelState>>(coro::CancelState::None);
 
+private:
+  struct Release {
+    void operator()() const { sig->release(); }
+    MPSCSignal* sig;
+  };
+  std::optional<std::stop_callback<Release>> _cb;
+
+public:
+  explicit Cancellable(MPSCSignal& sig) noexcept : _sig(sig) {}
   bool await_ready() noexcept { return _sig.await_ready(); }
 
   template <class Promise>
   bool await_suspend(std::coroutine_handle<Promise> handle) {
-    Rc<coro::CoroContext>& ctx = handle.promise().ctx();
-
-    auto cs = _cs;
-    auto& sig = _sig;
-    auto* wakeup = new coro::Continuation([cs, &sig]() {
-      cs->store(coro::CancelState::Yes, std::memory_order_release);
-      sig.release();
-    });
-    // reclaim any previous registration instead of leaking it
-    delete ctx->set_cc(wakeup);
-
-    if (ctx->cs()->load(std::memory_order_acquire) == coro::CancelState::Yes) {
-      _cs->store(coro::CancelState::Yes, std::memory_order_release);
-      delete ctx->set_cc(nullptr);
-      return false;
-    }
+    auto token = handle.promise().ctx()->stop_token();
+    if (token.stop_requested()) return false;  // already cancelled
+    // registering on an already-stopped token invokes the callback inline,
+    // releasing the signal — await_suspend below then refuses to suspend
+    _cb.emplace(std::move(token), Release{&_sig});
     return _sig.await_suspend(handle);
   }
 
-  /// @note the AwaiterWrapper prefers this ctx overload: it unregisters the
-  ///       wakeup continuation on every completion, cancelled or not
+  /// @note the AwaiterWrapper prefers this ctx overload. Unregistering blocks
+  ///       only while the callback executes on ANOTHER thread — an
+  ///       inline-resumed (NoopExecutor) consumer executes it on THIS
+  ///       thread, so cancellation can never self-deadlock
   bool await_resume(coro::CoroContext& ctx) {
-    delete ctx.set_cc(nullptr);
-    if (_cs->load(std::memory_order_acquire) == coro::CancelState::Yes) return false;
+    _cb.reset();
+    if (ctx.stop_requested()) return false;
     return _sig.await_resume();
   }
 };

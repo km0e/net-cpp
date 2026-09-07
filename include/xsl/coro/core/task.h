@@ -269,10 +269,6 @@ public:
     coro::detach(std::move(self), Rc<CoroContext>(std::forward<Args>(args)...));
     co_debug("Task detached");
   }
-  constexpr std::shared_ptr<std::atomic<Continuation*>>& cc() noexcept {
-    return this->_handle.promise().ctx()->cc();
-  }
-
   constexpr bool await_ready() const { return false; }
 
   template <class _Promise>

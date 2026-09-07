@@ -115,11 +115,15 @@ public:
   decltype(auto) write(const byte* data, std::size_t size) { return (*this)->write(data, size); }
 };
 
+/// @brief create a coroutine context bound to a fresh IOContext: the poller
+///        becomes the reserved object, and the poller's stop source becomes
+///        the context's cancellation domain — IOContext::shutdown() then
+///        cancels every auto-cancellable IO await in the domain
 template <class E>
-  requires std::is_constructible_v<CoroContext, E>
+  requires std::is_constructible_v<CoroContext, std::stop_source, E, void*, void (*)(void*)>
 Expected<Rc<CoroContext>, errc> asio_ctx(E&& e) noexcept {
   TRVEC(ctx, IOContext::create());
-  return Rc<CoroContext>(std::forward<E>(e), ctx,
+  return Rc<CoroContext>(ctx->stop_source(), std::forward<E>(e), ctx,
                          [](void* p) { delete reinterpret_cast<IOContext*>(p); });
 }
 

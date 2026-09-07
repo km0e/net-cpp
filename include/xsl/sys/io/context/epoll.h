@@ -21,6 +21,7 @@
 
 #  include <csignal>
 #  include <memory>
+#  include <stop_token>
 XSL_SYS_NB
 
 const int TIMEOUT = 100;
@@ -139,6 +140,9 @@ public:
   constexpr bool stopped() const noexcept {
     return this->stopped_.load(std::memory_order_acquire);
   }
+  /// @brief request cancellation of every coroutine context bound to this
+  ///        poller WITHOUT tearing the poller down
+  void cancel_contexts() noexcept { this->_stop.request_stop(); }
   template <class T>
     requires std::is_same_v<std::remove_cvref_t<T>, shared_memory<EpollHandler>>
              || std::is_constructible_v<T, T&&>
@@ -196,6 +200,11 @@ public:
     }
   }
   void remove(int fd);
+  /// @brief stop source bound to this poller's lifetime: shutdown() requests
+  ///        stop, so coroutine contexts created with it (asio_ctx) are
+  ///        cancelled domain-wide on poller shutdown
+  std::stop_source stop_source() const noexcept { return this->_stop; }
+  std::stop_token stop_token() const noexcept { return this->_stop.get_token(); }
   /// @brief shutdown the poller
   constexpr void shutdown() {
     if (!this->valid()) {
@@ -204,6 +213,8 @@ public:
     // mark stopped BEFORE waking tasks: any task that resumes from this point
     // on must observe the shutdown and stop re-arming its suspension
     this->stopped_.store(true, std::memory_order_release);
+    // cancel every auto-cancellable IO await in the bound coroutine contexts
+    this->_stop.request_stop();
     // wake every subscriber, otherwise tasks suspended on their signals would
     // never resume (a NONE event matches no IOM_EVENTS key)
     for (auto& [key, value] : *this->handlers.lock_shared()) {
@@ -220,6 +231,7 @@ public:
 private:
   std::atomic_int fd;
   std::atomic_bool stopped_{false};
+  std::stop_source _stop;
   ShardRes<std::unordered_map<int, shared_memory<EpollHandler>>> handlers;
 };
 

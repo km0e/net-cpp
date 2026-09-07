@@ -61,6 +61,10 @@ AsyncSocket<Traits>
   不挂起
 - **对称转移**：Task 完成时 `final_awaiter::await_suspend` 返回 `_next`，
   不经过调度器直接恢复等待者 —— 同一等待链的恢复是 O(1) 栈展开
+- **Channel**：`co_await ch` 返回 `std::optional<T>`（nullopt = 已关闭）；
+  `close()` 粘性——拒绝后续 push、唤醒挂起的 consumer、剩余元素先排空；
+  push 与 close 共用同一回调槽的 exchange 所有权协议（见 §3.3 同样的
+  “拿到指针者拥有”规则），close 的 store→exchange 间同样有 seq_cst fence
 
 ### 3.4 `block()`：手动驱动 + Shell 协程
 

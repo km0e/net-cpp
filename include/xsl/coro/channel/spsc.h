@@ -19,6 +19,7 @@
 #  include <coroutine>
 #  include <functional>
 #  include <memory>
+#  include <optional>
 #  include <utility>
 
 XSL_CORO_NB
@@ -86,6 +87,7 @@ public:
   alignas(64) Snapshot<value_type> _tail;
   std::function<void(std::size_t, std::size_t)> _destructor_callback;
   std::atomic<std::function<void()> *> _callback = {};
+  std::atomic_bool _closed = false;
 };
 
 template <class ValueType>
@@ -95,7 +97,8 @@ struct ChannelAwaiterTraits<SPSCChannelStorage<ValueType>> {
     std::size_t const head = ep._ctl.load(std::memory_order_relaxed);
     if (head == ep._local
         && head == (ep._local = self.storage._tail._ctl.load(std::memory_order_acquire))) {
-      return false;
+      // queue empty: still ready if the channel was closed (reports nullopt)
+      return self.storage._closed.load(std::memory_order_acquire);
     }
     return true;  // if the queue is not empty, return true
   }
@@ -114,33 +117,41 @@ struct ChannelAwaiterTraits<SPSCChannelStorage<ValueType>> {
       handle.promise().resume(handle);
     });
     self.storage._callback.store(f, std::memory_order_release);
-    std::atomic_thread_fence(std::memory_order_seq_cst);  // store cb before load tail
+    std::atomic_thread_fence(std::memory_order_seq_cst);  // store cb before load tail/closed
     std::size_t const head = ep._ctl.load(std::memory_order_relaxed);
     std::size_t const tail = self.storage._tail._ctl.load(std::memory_order_acquire);
-    if (head != tail) {
-      // an item arrived between await_ready and callback registration
+    if (head != tail || self.storage._closed.load(std::memory_order_acquire)) {
+      // an item arrived (or the channel closed) between await_ready and
+      // callback registration
       if (auto *g = self.storage._callback.exchange(nullptr, std::memory_order_acq_rel)) {
         delete g;          // reclaimed: no push owns it, nobody will resume us
         ep._local = tail;  // keep the snapshot in sync
-        return false;      // do not suspend; await_resume pops the item
+        return false;      // do not suspend; await_resume handles it
       }
-      // a push already owns the callback and will resume us -> suspend
+      // a push/close already owns the callback and will resume us -> suspend
     }
     return true;
   }
 
-  [[nodiscard("must use the result of await_resume to confirm the signal is still alive")]]
-  constexpr ValueType await_resume(this auto &&self) {
+  /// @brief pop one item; nullopt once the channel is closed and drained
+  [[nodiscard("nullopt means the channel was closed")]]
+  constexpr std::optional<ValueType> await_resume(this auto &&self) {
     Snapshot<ValueType> &ep = self.storage._head;
     std::size_t const head = ep._ctl.load(std::memory_order_relaxed);
-    auto p = ep._buffer + head;
-    auto result = std::move(*p);
-    std::destroy_at(p);
-    // publish the free slot only AFTER the item is gone: push's acquire load
-    // of head._ctl pairs with this release, so it can never construct into a
-    // slot whose item is still being moved out
-    ep._ctl.store((head + 1) & ep._size_mask, std::memory_order_release);
-    return result;
+    std::size_t const tail = self.storage._tail._ctl.load(std::memory_order_acquire);
+    if (head != tail) {  // drain remaining items first, closed or not
+      auto p = ep._buffer + head;
+      auto result = std::move(*p);
+      std::destroy_at(p);
+      // publish the free slot only AFTER the item is gone: push's acquire load
+      // of head._ctl pairs with this release, so it can never construct into a
+      // slot whose item is still being moved out
+      ep._ctl.store((head + 1) & ep._size_mask, std::memory_order_release);
+      return std::optional<ValueType>(std::move(result));
+    }
+    // empty: only a close() can have woken us
+    assert(self.storage._closed.load(std::memory_order_acquire) && "spurious wakeup");
+    return std::nullopt;
   }
 };
 
@@ -156,6 +167,9 @@ struct ChannelTraits<SPSCChannelStorage<ValueType>, MaxElements> {
    * @return true if the value is pushed successfully, false if the channel is full
    */
   constexpr bool push(this auto &&self, auto &&...args) {
+    if (self.storage._closed.load(std::memory_order_acquire)) {
+      return false;  // closed channel rejects pushes
+    }
     Snapshot<ValueType> &ep = self.storage._tail;
     const std::size_t tail = ep._ctl.load(std::memory_order_relaxed);
     const std::size_t n_tail = (tail + 1) & ep._size_mask;
@@ -171,6 +185,23 @@ struct ChannelTraits<SPSCChannelStorage<ValueType>, MaxElements> {
       return true;
     }
     return false;  // queue is full
+  }
+
+  /**
+   * @brief Close the channel (sticky): rejects further pushes; a suspended
+   *        consumer is woken and its await_resume yields nullopt once the
+   *        remaining items are drained
+   * @return true if a suspended consumer was woken
+   */
+  constexpr bool close(this auto &&self) {
+    self.storage._closed.store(true, std::memory_order_release);
+    std::atomic_thread_fence(std::memory_order_seq_cst);  // store closed before exchange cb
+    if (auto func = self.storage._callback.exchange(nullptr, std::memory_order_acq_rel); func) {
+      auto _ = std::unique_ptr<std::function<void()>>(func);
+      (*func)();
+      return true;
+    }
+    return false;
   }
 };
 XSL_CORO_NE

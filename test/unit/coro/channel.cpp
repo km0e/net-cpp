@@ -41,7 +41,7 @@ protected:
       ASSERT_TRUE(sig.push(i % 2 ? 1 : 0));
     }
     for (int i = 0; i < N; i++) {
-      count += [&] -> Task<int> { co_return co_await sig; }().block();
+      count += [&] -> Task<int> { co_return *co_await sig; }().block();
     }
     ASSERT_EQ(count, N / 2);
   }
@@ -56,7 +56,7 @@ protected:
 
     std::jthread consumer([&] {
       [](Channel& c, int& count) -> Task<void> {
-        for (int i = 0; i < N; i++) count += co_await c;
+        for (int i = 0; i < N; i++) count += *co_await c;
       }(sig, count).detach(CoroContext{});
     });
     std::jthread producer([&] {
@@ -131,7 +131,7 @@ TEST(ChannelWakeup, PushBetweenReadyAndSuspendIsNotLost) {
   ASSERT_TRUE(ch.push(42));                      // push lands in the window
   EXPECT_FALSE(awaiter.await_suspend(probe.h))   // must NOT suspend
       << "push between await_ready and await_suspend was lost";
-  EXPECT_EQ(awaiter.await_resume(), 42);         // item consumed inline
+  EXPECT_EQ(*awaiter.await_resume(), 42);         // item consumed inline
 }
 
 TEST(ChannelWakeup, EmptyQueueSuspendsAndPushWakes) {
@@ -142,7 +142,56 @@ TEST(ChannelWakeup, EmptyQueueSuspendsAndPushWakes) {
   ASSERT_TRUE(awaiter.await_suspend(probe.h));   // genuinely empty -> suspend
   ASSERT_TRUE(ch.push(7));
   EXPECT_TRUE(probe.h.promise().resumed);        // callback fired
-  EXPECT_EQ(awaiter.await_resume(), 7);
+  EXPECT_EQ(*awaiter.await_resume(), 7);
+}
+
+// --- close() semantics ---
+
+TEST(ChannelClose, WakesSuspendedConsumer) {
+  coro::SPSCChannel<int, 8> ch;
+  auto probe = probe_coro();
+  auto awaiter = ch.operator co_await();
+  ASSERT_FALSE(awaiter.await_ready());
+  ASSERT_TRUE(awaiter.await_suspend(probe.h));
+  ASSERT_TRUE(ch.close());                       // wakes the suspended consumer
+  EXPECT_EQ(awaiter.await_resume(), std::nullopt);
+  // close is sticky and idempotent
+  ASSERT_FALSE(ch.close());                      // no consumer left to wake
+  EXPECT_TRUE(awaiter.await_ready());            // closed: never suspends again
+  EXPECT_EQ(awaiter.await_resume(), std::nullopt);
+}
+
+TEST(ChannelClose, RejectsPushAndDrainsRemaining) {
+  coro::SPSCChannel<int, 8> ch;
+  ASSERT_TRUE(ch.push(1));
+  ch.close();  // no suspended consumer yet -> returns false (nothing woken)
+  ASSERT_FALSE(ch.push(2));                      // closed channel rejects pushes
+  auto awaiter = ch.operator co_await();
+  ASSERT_TRUE(awaiter.await_ready());            // remaining item drains first
+  EXPECT_EQ(*awaiter.await_resume(), 1);
+  ASSERT_TRUE(awaiter.await_ready());            // then reports closure
+  EXPECT_EQ(awaiter.await_resume(), std::nullopt);
+}
+
+TEST(ChannelClose, ConsumerLoopExits) {
+  coro::SPSCChannel<int, 8> ch;
+  std::atomic<int> count{0};
+  std::binary_semaphore done{0};
+
+  [](auto& ch, auto& count, auto& done) -> Task<void> {
+    while (auto v = co_await ch) {
+      count.fetch_add(*v);
+    }
+    done.release();
+  }(ch, count, done)
+                                 .detach(CoroContext{});
+
+  ch.push(1);
+  ch.push(2);
+  ch.push(3);
+  ch.close();
+  done.acquire();
+  EXPECT_EQ(count.load(), 6);
 }
 
 int main(int argc, char** argv) {

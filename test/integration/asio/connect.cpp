@@ -78,7 +78,7 @@ public:
 
 TEST_F(AsyncSocketIOFixture, tcp_connect_with_ais) {
   auto util = AsyncSocketCreatorCompose<Tcp, Ip>();
-  auto res_skt = util.ca2(ip.c_str(), port.c_str()).by(this->ctx).block();
+  auto res_skt = util.ca2(ip.c_str(), port.c_str()).by(*this->ctx).block();
   ASSERT_TRUE(res_skt.has_value());
   ASSERT_NE((*res_skt)->raw(), 0);
   echo(*res_skt);

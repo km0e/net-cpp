@@ -48,7 +48,7 @@ inline xsl::asio::HandleResult hello_handler(auto& ctx) {
  *       reserved IOContext, e.g.
  *       @code
  *         MUST(asio_ctx(NewThreadExecutor{}), ctx);
- *         http_bench::run_xsl_hello_server(ip, port).detach(ctx);
+ *         http_bench::run_xsl_hello_server(ip, port).detach(*ctx);  // §3.5: pass CoroContext, not Rc
  *         static_cast<xsl::sys::IOContext*>(ctx->get_reserved())->run();
  *       @endcode
  */

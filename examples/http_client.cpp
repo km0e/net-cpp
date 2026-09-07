@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
   CLI11_PARSE(app, argc, argv);
 
   MUST(asio_ctx(NewThreadExecutor{}), ctx);
-  run(url).detach(ctx);
+  run(url).detach(*ctx);
   static_cast<sys::IOContext*>(ctx->get_reserved())->run();
   return 0;
 }

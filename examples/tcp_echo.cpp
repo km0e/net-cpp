@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
   log_info("Starting echo server at {}:{}", ip, port);
 
   MUST(asio_ctx(NewThreadExecutor{}), ctx);
-  talk(ip, port).detach(ctx);
+  talk(ip, port).detach(*ctx);
   static_cast<sys::IOContext*>(ctx->get_reserved())->run();
   return 0;
 }

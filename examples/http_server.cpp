@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
   CLI11_PARSE(app, argc, argv);
   log_info("Start http server at {}:{}", ip, port);
   MUST(asio_ctx(NewThreadExecutor{}), ctx);
-  run(ip, port).detach(ctx);
+  run(ip, port).detach(*ctx);
   static_cast<sys::IOContext*>(ctx->get_reserved())->run();
   return 0;
 }

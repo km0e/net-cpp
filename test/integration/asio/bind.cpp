@@ -98,7 +98,7 @@ TEST_F(AsyncSocketIOFixture, tcp_bind) {
   auto res = util.cb(ctx, "0.0.0.0", port);  // to init the util
   ASSERT_TRUE(res.has_value());
   ASSERT_TRUE((*res)->listen()) << "Failed to listen";
-  echo(*res).detach(this->ctx);
+  echo(*res).detach(*this->ctx);
   // @note the client side uses plain blocking sockets: the coroutine-based
   //       client path (Task::block on client sockets) is still unreliable
   //       under GCC 16 coroutine codegen, see the task/block refactoring notes

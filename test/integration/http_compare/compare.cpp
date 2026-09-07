@@ -147,7 +147,7 @@ protected:
     this->poller = std::thread([this] {
       static_cast<xsl::sys::IOContext*>(this->ctx->get_reserved())->run();
     });
-    http_bench::run_xsl_hello_server("127.0.0.1", kXslPort).detach(ctx);
+    http_bench::run_xsl_hello_server("127.0.0.1", kXslPort).detach(*ctx);
 
     // standalone asio server
     this->guard.emplace(asio::make_work_guard(this->ioc));

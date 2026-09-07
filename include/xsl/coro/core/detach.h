@@ -67,6 +67,13 @@ public:
 
   constexpr void operator()(this auto self, Rc<CoroContext>&& ctx) noexcept {
     co_trace("detach");
+    // A detached task starts a NEW coroutine chain: the chain root must own its
+    // context exclusively (Rc ref_count is non-atomic by design, see
+    // docs/architecture.md §3.5). Checked here in debug builds; at this point
+    // the task has not been dispatched yet, so reading the count is race-free.
+    assert(ctx.use_count() == 1
+           && "detach: ctx must be uniquely owned — pass a CoroContext or an "
+              "exclusively-owned Rc (docs/architecture.md §3.5)");
     self._handle.promise().by(std::forward<decltype(ctx)>(ctx), self._handle);
     self._handle.promise().ctx()->dispatch([handle = self._handle]() mutable {
       co_trace("detach resume {}", (uint64_t)handle.address());
@@ -78,6 +85,17 @@ private:
   std::coroutine_handle<promise_type> _handle;
 };
 
+/**
+ * @brief Detach an awaiter to run independently (fire-and-forget)
+ * @param awaiter the awaiter to detach (moved into the detached frame)
+ * @param ctx context for the new chain root — executor, reserved object and
+ *        cancellation state all reach the chain through it
+ * @pre `ctx` must be uniquely owned (`ctx.unique()`): the Rc ref_count is
+ *      non-atomic by design, sharing the inner context with anything outside
+ *      the new chain is a data race (docs/architecture.md §3.5). Pass a
+ *      CoroContext (a fresh Rc is built) or an exclusively-owned Rc.
+ *      Checked by assertion in debug builds.
+ */
 template <class Awaiter>
   requires Awaitable<Awaiter, Detach<typename Awaiter::result_type>>
            && (!std::is_reference_v<Awaiter>)

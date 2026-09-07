@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
   CLI11_PARSE(app, argc, argv);
   MUST(xsl::asio::asio_ctx(xsl::coro::NewThreadExecutor{}), ctx);
   http_bench::run_xsl_hello_server(ip, static_cast<std::uint16_t>(std::atoi(port.c_str())))
-      .detach(ctx);
+      .detach(*ctx);
   static_cast<xsl::sys::IOContext*>(ctx->get_reserved())->run();
   return 0;
 }

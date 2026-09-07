@@ -36,8 +36,9 @@ AsyncSocket<Traits>
   引用计数不归零则 fd 不关闭。连接式设备结束服务时必须显式
   `deregister()`（`DefaultEpollWrapper`），否则 fd 泄漏
 
-`Rc<T>`（wheel/rc.h）是另一个引用计数指针，用于协程上下文（见 §4），
-其 `ref_count` 当前是**非原子**的；`shared_memory` 的计数是原子的。两者不要混淆。
+`Rc<T>`（wheel/rc.h）是另一个引用计数指针，用于协程上下文，
+其 `ref_count` 是**有意非原子**的（安全性由 §3.5 的所有权不变量保证）；
+`shared_memory` 的计数是原子的。两者不要混淆。
 
 ## 3. 协程运行时（xsl_coro）
 
@@ -104,6 +105,54 @@ ptr=等待者续体）。
 `Cancellable<SPSCSignal4>` 包装器额外经 `ctx->set_cc()` 注册取消续体。
 **acq_rel 语义使"await 挂起前的副作用（如 Rc 计数 ++）对恢复线程可见"**，
 这是热路径上引用计数操作无需额外同步的原因。
+
+### 3.5 `Rc<CoroContext>` 所有权不变量（线程安全契约）
+
+`Rc` 的 `ref_count` 非原子，其线程安全不依赖原子操作，而依赖以下设计原则：
+
+> **一个 `Rc<CoroContext>` 的 Inner 同一时刻只属于一条协程链。**
+> 跨任务/跨链传递上下文必须传 `CoroContext`（拷贝 → 生成新 Inner），
+> 禁止把 `Rc<CoroContext>` 本体传给另一个任务的 `detach()`/`by()`。
+
+链内跨线程迁移时，计数 ++/-- 全部有序，无需原子化：
+
+- **对称转移**：Task 完成经 `final_awaiter` 直接恢复等待者，一条链上任意
+  时刻只有一个线程在执行，计数增减由程序序排序；
+- **信号握手**：链经 `SPSCSignal4` 挂起/唤醒时，`release` 与
+  `await_suspend` 之间的 acq_rel exchange 建立 happens-before，挂起前的
+  计数操作对恢复线程可见（§3.3）；
+- **线程创建**：`NewThreadExecutor` 派发经 `std::thread` 启动，自带同步。
+
+`CoroContext` 的四个成员（`_e`、`_reserved`、`_cc`、`_cs`）均为
+`shared_ptr`，**拷贝 CoroContext 与共享 Inner 在功能上等价**（执行器、
+IOContext、取消状态照常共享，且引用计数原子）——传 `CoroContext`
+不损失任何能力，只是每条链拿到独立 Inner。
+
+**API 规则**：
+
+```cpp
+MUST(asio_ctx(NewThreadExecutor{}), ctx);   // ctx: Rc<CoroContext>
+task.detach(*ctx);   // ✓ 传 CoroContext：拷贝 → 新 Inner，遵守不变量
+task.detach(ctx);    // ✗ 传 Rc：共享 Inner，两条链并发 ++/-- → 数据竞争
+```
+
+- `asio_ctx()` 返回 `Rc<CoroContext>` 是让 main 线程持有 ctx 以
+  `run()`/`cancel()`；注入任务链时**必须解引用**（或 `std::move` 一个独占的 Rc）。
+- **落实方式：契约 + debug 断言，不做编译期约束**。`detach()`/`by()` 在
+  契约注释中要求传入独占所有的 ctx；debug 构建下 `Detach::operator()` 与
+  `NextBase::by()` 断言 `Rc::use_count() == 1`（`Rc::unique()`，检查点在
+  dispatch 之前，读取计数本身无竞争）。
+- 违反后果：两条并发执行的链对同一 Inner 做非原子 ++/-- → 丢失更新
+  （泄漏）或提前归零（UAF）。
+- 曾违反该契约的调用点（传 Rc 本体）已全部修正为 `detach(*ctx)`/
+  `by(*ctx)`：5 个 examples、`test/benches/http/server_xsl.cpp`、
+  `test/integration/http_compare/compare.cpp`、`test/integration/asio/bind.cpp`、
+  `test/integration/asio/connect.cpp`（`.by(*this->ctx)`）。
+
+与迁移文档的关系：本不变量确立后，迁移文档 #6（Rc 原子化）**转为不实施**
+（保留非原子换热路径零开销）；#2 中"对同一上下文的 Rc 计数无序 --"仅在
+违反本不变量时发生，修正上述调用点后该 Rc 风险消除（#2 的剩余部分是
+执行器生命周期本身）。
 
 ## 4. I/O 层（xsl_sys + xsl_asio）
 

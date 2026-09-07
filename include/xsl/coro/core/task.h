@@ -96,11 +96,16 @@ public:
     return self._ctx;
   }
 
+  /// @pre if an Rc<CoroContext> is passed it must be uniquely owned — the
+  ///      ref_count is non-atomic by design (docs/architecture.md §3.5);
+  ///      checked by assertion in debug builds
   template <class... Args>
     requires std::constructible_from<Rc<CoroContext>, Args&&...>
   constexpr void by(this auto&& self, Args&&... args) {
     co_trace("Promise by");
     self._ctx = Rc<CoroContext>(std::forward<Args>(args)...);
+    assert(self._ctx.unique()
+           && "by: ctx must be uniquely owned (docs/architecture.md §3.5)");
   }
   /// @brief check whether a context has been attached to this promise
   constexpr bool has_ctx(this auto&& self) noexcept { return static_cast<bool>(self._ctx); }
@@ -219,11 +224,13 @@ public:
     return coro::block(std::move(self));
   }
   /**
-   * @brief Block the task
+   * @brief Attach a context to the task
    *
    * @param self
-   * @param executor the executor
+   * @param args forwarded to construct the Rc<CoroContext>
    * @return auto&&
+   * @pre if an Rc<CoroContext> is passed it must be uniquely owned
+   *      (docs/architecture.md §3.5); checked by assertion in debug builds
    */
   template <class... Args>
     requires std::constructible_from<Rc<CoroContext>, Args&&...>
@@ -231,9 +238,13 @@ public:
     self._handle.promise().by(Rc<CoroContext>(std::forward<Args>(args)...));
     return std::forward<decltype(self)>(self);
   }
-  /// @brief Detach the task with executor
+  /// @brief Detach the task with a context (executor / reserved / cancellation)
   /// @note at least one argument is required: without a CoroContext the
   ///       detached task would dispatch on a null context and crash
+  /// @pre if an Rc<CoroContext> is passed it must be uniquely owned — a
+  ///      detached task starts a new chain and the ref_count is non-atomic
+  ///      by design (docs/architecture.md §3.5); checked by assertion in
+  ///      debug builds
   template <class... Args>
     requires std::constructible_from<Rc<CoroContext>, Args&&...>
   constexpr void detach(this auto&& self, Args&&... args)

@@ -65,6 +65,12 @@ public:
   T& operator*() { return inner_->value; }
   /// @brief check whether this Rc actually owns an object
   constexpr explicit operator bool() const noexcept { return this->inner_ != nullptr; }
+  /// @brief current ref count — only meaningful single-threaded (ref_count is
+  ///        deliberately non-atomic); intended for debug assertions, see
+  ///        docs/architecture.md §3.5
+  std::size_t use_count() const noexcept { return inner_ ? inner_->ref_count : 0; }
+  /// @brief true if this is the only Rc owning the object
+  bool unique() const noexcept { return inner_ && inner_->ref_count == 1; }
 };
 
 template <class T>

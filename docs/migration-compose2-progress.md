@@ -119,6 +119,7 @@ ctest 26-27/27 通过（残留项见下文"未完成"）。
 - `wheel/rc.h` 的 `ref_count` 是普通 `size_t`；await 链（`NextBase::next`）会把父协程的 `Rc<CoroContext>` 拷贝进子任务 promise，增减发生在不同线程
 - 实测热路径上这些操作被信号握手链（acq_rel exchange）+ 线程创建同步排序，**未观察到竞争**；但 detached 任务与持有者的销毁顺序无同步（见 #2），边缘场景存在丢失更新 → 泄漏 / UAF
 - `fetch_add(relaxed)` / `fetch_sub(acq_rel)` + fence，几行改动
+- **已决议：不原子化**。安全性由"单 Inner 单链"所有权不变量保证（`docs/architecture.md` §3.5）；`detach()`/`by()` 以契约注释 + debug 断言（`Rc::unique()`）落实，违规调用点已修正为 `detach(*ctx)`
 
 ### 7. 已知残留测试问题
 - `it_bind` 偶发慢启动（~25% @ 并行 ctest）：echo 任务 thread-per-dispatch 启动延迟；客户端已加 15s SO_RCVTIMEO 防挂死，注释标注 KNOWN ISSUE（`test/integration/asio/bind.cpp`）

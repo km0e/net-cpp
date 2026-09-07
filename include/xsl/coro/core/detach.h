@@ -41,6 +41,20 @@ public:
     return {};
   }
 
+  /// @brief a detached task's exception is unobservable — at least log it
+  ///        instead of dropping it silently
+  void unhandled_exception() noexcept {
+    auto eptr = std::current_exception();
+    try {
+      if (eptr) std::rethrow_exception(eptr);
+    } catch (const std::exception &e) {
+      co_error("detached task died with exception: {}", e.what());
+    } catch (...) {
+      co_error("detached task died with unknown exception");
+    }
+    this->_result = std::move(eptr);
+  }
+
   constexpr void by(this auto&& self, auto&& ctx, std::coroutine_handle<> self_handle) noexcept(
       std::is_nothrow_assignable_v<Rc<CoroContext>, decltype(ctx)>) {
     self._ctx = std::forward<decltype(ctx)>(ctx);
@@ -65,6 +79,15 @@ public:
 
   constexpr Detach(Detach&& ano) noexcept : _handle(std::exchange(ano._handle, {})) {}
 
+  constexpr ~Detach() {
+    assert(!_handle && "Detach dropped without being invoked");
+    if (_handle) {
+      // never invoked: reclaim the never-started frame (still suspended at
+      // initial_suspend) instead of leaking it
+      _handle.destroy();
+    }
+  }
+
   constexpr void operator()(this auto self, Rc<CoroContext>&& ctx) noexcept {
     co_trace("detach");
     // A detached task starts a NEW coroutine chain: the chain root must own its
@@ -79,6 +102,9 @@ public:
       co_trace("detach resume {}", (uint64_t)handle.address());
       handle.resume();
     });
+    // ownership transferred to the frame itself (final_suspend = suspend_never
+    // destroys it); release it so ~Detach does not reclaim a RUNNING frame
+    self._handle = nullptr;
   }
 
 private:

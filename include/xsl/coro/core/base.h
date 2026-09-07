@@ -68,6 +68,15 @@ public:
     co_trace("Promise return_value");
     _result.template emplace<result_type>(std::move(value));
   }
+  /// @brief lvalue overload: without it `co_return x` fails to compile for
+  ///        references/members (no implicit-move fallback applies)
+  constexpr void return_value(const result_type &value) noexcept(
+      std::is_nothrow_copy_constructible_v<result_type>)
+    requires std::copy_constructible<result_type>
+  {
+    co_trace("Promise return_value (copy)");
+    _result.template emplace<result_type>(value);
+  }
 };
 
 template <class Base>

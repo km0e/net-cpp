@@ -160,7 +160,11 @@ public:
     self._next = handle;
     if constexpr (requires { handle.promise().ctx(); }) {
       co_trace("set executor");
-      self._ctx = handle.promise().ctx();
+      // inherit the parent's context only when none was attached explicitly
+      // (consistent with block(), which never clobbers a .by(ctx))
+      if (!self.has_ctx()) {
+        self._ctx = handle.promise().ctx();
+      }
     }
   }
 
@@ -208,6 +212,9 @@ public:
     _handle = task.move_handle();
     return *this;
   }
+  /// @note a Task MUST be awaited, blocked or detached before destruction:
+  ///       dropping a live Task aborts in debug builds (the frame would leak
+  ///       and its continuation chain would dangle)
   constexpr ~Task() {
     if (_handle) {
       assert(_handle.done() && "Task destroyed before co_return/co_yield");
@@ -227,6 +234,16 @@ public:
     requires(!std::is_reference_v<Self>) && is_same_pack_v<Res, std::expected<void, void>>
   constexpr decltype(auto) and_then(this Self&& self,
                                     std::invocable<typename Res::value_type> auto&& f) {
+    return std::move(self).then([f = std::forward<decltype(f)>(f)](auto&& res) {
+      return std::forward<decltype(res)>(res).and_then(f);
+    });
+  }
+
+  /// @brief Expected<void, E> overload (f takes no argument), mirroring map()
+  template <class Self, class Res = Self::result_type>
+    requires(!std::is_reference_v<Self>) && is_same_pack_v<Res, std::expected<void, void>>
+            && std::is_void_v<typename Res::value_type>
+  constexpr decltype(auto) and_then(this Self&& self, std::invocable<> auto&& f) {
     return std::move(self).then([f = std::forward<decltype(f)>(f)](auto&& res) {
       return std::forward<decltype(res)>(res).and_then(f);
     });

@@ -54,7 +54,8 @@ AsyncSocket<Traits>
 
 - **ctx 传播**：`Promise::await_transform` 把所有 awaiter 包进
   `AwaiterWrapper(awaiter, ctx)`；Task→Task await 时 `NextBase::next()`
-  把父协程的 `Rc<CoroContext>` 拷贝进子任务 promise（`_next` 记录续体）
+  把父协程的 `Rc<CoroContext>` 拷贝进子任务 promise（`_next` 记录续体）——
+  **仅当子任务未显式 `.by(ctx)`**（与 `block()` 的“不覆盖”策略一致）
 - **`Reserved<T>`**：`co_await CurrentIOContext` 取 promise ctx 的
   `_reserved`（即 IOContext），经 `await_resume(CoroContext&)` 同步返回，
   不挂起

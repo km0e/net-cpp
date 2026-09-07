@@ -1,6 +1,6 @@
 /**
  * @file cancellable.cpp
- * @brief Tests for MPSCSignal and Cancellable<MPSCSignal>
+ * @brief Auto-cancellation tests: plain co_await on MPSCSignal is cancellable via ctx.cancel()
  */
 #include <gtest/gtest.h>
 #include <xsl/coro.h>
@@ -42,8 +42,7 @@ TEST(CancellableMPSC, CancelWakesConsumer) {
 
   [](auto& sig, auto& count, auto& ready, auto& consumed, auto& done) -> Task<void> {
     ready.release();
-    auto csig = cancellable(sig);
-    while (co_await csig) {
+    while (co_await sig) {
       count.fetch_add(1);
       consumed.release();
     }
@@ -72,8 +71,7 @@ TEST(CancellableMPSC, CancelBeforeAwait) {
   ctx.cancel();  // cancel before consumer starts
 
   [](auto& sig, int& count, auto& done) -> Task<void> {
-    auto csig = cancellable(sig);
-    if (co_await csig) count++;
+    if (co_await sig) count++;
     done.release();
   }(sig, count, done)
                                                .by(ctx)
@@ -94,9 +92,9 @@ TEST(CancellableMPSC, RepeatedAwaitsDoNotLeak) {
   std::binary_semaphore consumed{0}, done{0};
 
   [](auto& sig, int n, auto& count, auto& consumed, auto& done) -> Task<void> {
-    auto csig = cancellable(sig);
+    
     for (int i = 0; i < n; i++) {
-      if (!co_await csig) break;
+      if (!co_await sig) break;
       count.fetch_add(1);
       consumed.release();
     }
@@ -124,8 +122,7 @@ TEST(CancellableMPSC, ChildContextInheritsCancellation) {
 
   [](auto& sig, auto& count, auto& done) -> Task<void> {
     co_yield [](auto& sig, auto& count, auto& done) -> Task<void> {
-      auto csig = cancellable(sig);
-      while (co_await csig) count.fetch_add(1);
+      while (co_await sig) count.fetch_add(1);
       done.release();
     }(sig, count, done);
     co_return;
@@ -148,8 +145,7 @@ TEST(CancellableMPSC, InlineCancelDoesNotDeadlock) {
   std::binary_semaphore done{0};
 
   [](auto& sig, auto& count, auto& done) -> Task<void> {
-    auto csig = cancellable(sig);
-    while (co_await csig) count.fetch_add(1);
+    while (co_await sig) count.fetch_add(1);
     done.release();
   }(sig, count, done)
                                                        .by(ctx)

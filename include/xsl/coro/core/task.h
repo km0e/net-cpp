@@ -24,15 +24,31 @@
 #  include <cassert>
 #  include <concepts>
 #  include <coroutine>
+#  include <optional>
+#  include <stop_token>
 #  include <type_traits>
 #  include <utility>
 
 XSL_CORO_NB
 
+/// @brief awaiters that can be force-released from another thread are
+///        auto-cancellable: the wrapper registers a stop_callback releasing
+///        them and reports cancellation (cancel wins races, D2)
+template <class A>
+concept ForceReleasable = requires(A& a) { a.release(); };
+
 template <class Awaiter>
 struct AwaiterWrapper {
   Awaiter awaiter;
   CoroContext& ctx;
+
+  /// @brief RAII stop registration: engaged only for ForceReleasable awaiters,
+  ///        unregistered on every completion so nothing leaks per await
+  struct Release {
+    void operator()() const { awaiter->release(); }
+    std::remove_reference_t<Awaiter>* awaiter;
+  };
+  std::optional<std::stop_callback<Release>> _cb;
 
   template <class _Awaiter>
   explicit AwaiterWrapper(_Awaiter&& awaiter, CoroContext& ctx) noexcept
@@ -42,10 +58,16 @@ struct AwaiterWrapper {
     return awaiter.await_ready();
   }
   template <class Promise>
-  constexpr auto await_suspend(std::coroutine_handle<Promise> handle) noexcept(
-      noexcept(std::declval<Awaiter>().await_suspend(handle)))
+  constexpr auto await_suspend(std::coroutine_handle<Promise> handle)
     requires(requires { awaiter.await_suspend(handle); })
   {
+    if constexpr (ForceReleasable<Awaiter>
+                  && std::same_as<decltype(awaiter.await_suspend(handle)), bool>) {
+      if (ctx.stop_requested()) return false;  // already cancelled
+      // registering on an already-stopped token invokes the callback inline,
+      // releasing the awaiter — its await_suspend below then refuses to suspend
+      _cb.emplace(ctx.stop_token(), Release{&this->awaiter});
+    }
     return awaiter.await_suspend(handle);
   }
   /// @brief fallback for awaiters that cannot suspend (e.g. Reserved):
@@ -55,8 +77,17 @@ struct AwaiterWrapper {
     return false;
   }
   constexpr decltype(auto) await_resume() {
+    _cb.reset();
     if constexpr (requires { awaiter.await_resume(ctx); }) {
+      if constexpr (ForceReleasable<Awaiter>
+                    && std::same_as<decltype(awaiter.await_resume(ctx)), bool>) {
+        if (ctx.stop_requested()) return false;  // cancel wins races (D2)
+      }
       return awaiter.await_resume(ctx);
+    } else if constexpr (ForceReleasable<Awaiter>
+                         && std::same_as<decltype(awaiter.await_resume()), bool>) {
+      if (ctx.stop_requested()) return false;  // cancel wins races (D2)
+      return awaiter.await_resume();
     } else {
       return awaiter.await_resume();
     }

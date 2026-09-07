@@ -47,6 +47,14 @@ public:
       : _e(std::make_shared<E>(std::forward<E>(executor)))
       , _reserved(reserved, deleter ? deleter : [](void*) {})
       , _stop() {}
+  /// @brief bind this context to an EXISTING stop source (e.g. a poller's):
+  ///        requesting stop on that source cancels every chain in this domain
+  template <Executor E>
+  CoroContext(std::stop_source stop, E&& executor, void* reserved = nullptr,
+              void (*deleter)(void*) = nullptr)
+      : _e(std::make_shared<E>(std::forward<E>(executor)))
+      , _reserved(reserved, deleter ? deleter : [](void*) {})
+      , _stop(std::move(stop)) {}
   ~CoroContext() = default;
 
   void dispatch(move_only_function<void()>&& func) {
@@ -69,12 +77,6 @@ public:
   bool stop_requested() const noexcept { return _stop.stop_requested(); }
   std::stop_token stop_token() const noexcept { return _stop.get_token(); }
 };
-
-template <typename Signal>
-struct Cancellable { Signal& _sig; };
-
-template <typename Signal>
-Cancellable<Signal> cancellable(Signal& sig) { return Cancellable<Signal>(sig); }
 
 /// @brief awaiter yielding the reserved object of the current coroutine context
 /// @note never suspends; only valid inside coroutines whose await_transform

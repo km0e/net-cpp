@@ -40,8 +40,6 @@
 #  include <atomic>
 #  include <coroutine>
 #  include <cstdint>
-#  include <optional>
-#  include <stop_token>
 #  include <utility>
 
 XSL_CORO_NB
@@ -181,47 +179,5 @@ public:
   bool stopped() const noexcept { return _state.load(std::memory_order_acquire) == STOPPED; }
 };
 
-XSL_CORO_NE
-XSL_CORO_NB
-
-/// @brief Cancellation wrapper for the atomic tier: on ctx.cancel() the
-///        registered std::stop_callback releases the signal and await_resume
-///        reports false. Registration is RAII — unregistered on every
-///        completion, cancelled or not, so nothing leaks per await.
-template <>
-struct Cancellable<MPSCSignal> {
-  MPSCSignal& _sig;
-
-private:
-  struct Release {
-    void operator()() const { sig->release(); }
-    MPSCSignal* sig;
-  };
-  std::optional<std::stop_callback<Release>> _cb;
-
-public:
-  explicit Cancellable(MPSCSignal& sig) noexcept : _sig(sig) {}
-  bool await_ready() noexcept { return _sig.await_ready(); }
-
-  template <class Promise>
-  bool await_suspend(std::coroutine_handle<Promise> handle) {
-    auto token = handle.promise().ctx()->stop_token();
-    if (token.stop_requested()) return false;  // already cancelled
-    // registering on an already-stopped token invokes the callback inline,
-    // releasing the signal — await_suspend below then refuses to suspend
-    _cb.emplace(std::move(token), Release{&_sig});
-    return _sig.await_suspend(handle);
-  }
-
-  /// @note the AwaiterWrapper prefers this ctx overload. Unregistering blocks
-  ///       only while the callback executes on ANOTHER thread — an
-  ///       inline-resumed (NoopExecutor) consumer executes it on THIS
-  ///       thread, so cancellation can never self-deadlock
-  bool await_resume(coro::CoroContext& ctx) {
-    _cb.reset();
-    if (ctx.stop_requested()) return false;
-    return _sig.await_resume();
-  }
-};
 XSL_CORO_NE
 #endif

@@ -86,6 +86,14 @@ CoroContext::dispatch(f) → ExecutorBase::schedule(f)
   ThreadPoolExecutor  任务队列 + N worker（已实现，未启用）
 ```
 
+**恢复时机规则（resume-before-suspend）**：`await_suspend` 返回 true 与
+协程真正挂起之间有编译器收尾窗口；跨线程在此窗口内 resume 是 UB。
+因此：**NoopExecutor 的唤醒必须与挂起协程在同一线程发生**（单线程模型
+下程序序天然保证）；**跨线程唤醒（含 `ctx.cancel()`、跨线程
+`signal.release()`）必须配合延迟执行器**（NewThreadExecutor / 队列）。
+意图内使用（单线程 poller、NewThreadExecutor）不可达该竞态；组合
+"跨线程 producer + NoopExecutor"属于未定义用法。
+
 - detached 任务的 promise 持有 `Rc<CoroContext>`，其完成线程与创建线程
   由信号握手（`SPSCSignal4` 的 acq_rel exchange）+ 线程创建同步排序
 - `IOContext::shutdown()` 唤醒全部等待者并清理 handlers，但**不等待
@@ -114,25 +122,32 @@ CoroContext::dispatch(f) → ExecutorBase::schedule(f)
 - `UnsafeSignal` 的续体是内联成员（无堆分配），调用前**先移出**——回调
   会内联恢复消费者，可能立即重新 await 并改写该成员
 
-### 3.6 取消模型（std::stop_token）
+### 3.6 取消模型（std::stop_token + 自动取消）
 
 `CoroContext` 持 `std::stop_source`；其拷贝（detach/by 时产生）共享 stop
 状态（内部原子引用计数），因此**同一 CoroContext 拷贝族 = 一个取消域**，
 天然支持多回调。`ctx.cancel()` = `request_stop()`：所有已注册的
 stop_callback 在调用线程同步执行。
 
-- `Cancellable<MPSCSignal>`：`await_suspend` 经 `std::stop_callback` 注册
-  "release 信号"的唤醒（RAII，每次完成自动注销——不存在泄漏路径）；
-  `await_resume` 先注销再查 `stop_requested()`。注销仅在回调正在
-  **别的线程**执行时阻塞——NoopExecutor 内联恢复时回调就在本线程，
-  不会自我死锁（有测试钉死）
-- **D1（取消域继承）**：`co_yield` 分叉用 `new_child_context()`，**共享**
-  父域（父取消 → 连接级子任务一并取消）；逃逸口为
-  `new_independent_context()`（独立取消域）
-- **D2（传播风格）**：取消经返回值传播（signal await 返 false、IO 返
-  `errc::operation_canceled`），不抛异常
+**自动取消**：`AwaiterWrapper`（await_transform 拦截点）对满足
+`ForceReleasable`（有跨线程 `release()`）且 `await_suspend`/`await_resume`
+返回 bool 的 awaiter 自动注册 stop_callback——**plain `co_await sig` 即可
+取消**，不再需要 `cancellable()` 包装（已删除）：
 
-仅原子档可取消（取消线程相当于额外生产者）。
+- 注册发生在 `await_suspend`（真正挂起才付出，`await_ready` 快路径零成本；
+  注册+注销 ≈ 22ns @ libstdc++）；注销 RAII，不存在泄漏路径
+- `await_resume`：先注销，再查 `stop_requested()`——**取消赢竞态**（D2：
+  返回值传播，不抛异常）
+- 注销仅在回调正在**别的线程**执行时阻塞——NoopExecutor 内联恢复时回调
+  就在本线程，不会自我死锁（有测试钉死）
+
+**D1（取消域继承）**：`co_yield` 分叉用 `new_child_context()`，**共享**父域
+（父取消 → 连接级子任务一并取消）；逃逸口为 `new_independent_context()`。
+
+**IO 绑定（Phase 4）**：`IOContext` 持 stop_source；`asio_ctx()` 把它绑进
+CoroContext ⇒ `IOContext::shutdown()` 域级取消所有自动可取消的 IO await
+（与信号的粘性 stop 双保险）；`IOContext::cancel_contexts()` 可单独取消
+而不拆除 poller。仅原子档可取消（取消线程相当于额外生产者）。
 **acq_rel 语义使"await 挂起前的副作用（如 Rc 计数 ++）对恢复线程可见"**，
 这是热路径上引用计数操作无需额外同步的原因。
 

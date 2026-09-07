@@ -24,13 +24,11 @@ protected:
     std::atomic<int> count = 0;
     auto ctx = CoroContext(NewThreadExecutor{});
     std::binary_semaphore ready{0}, done{0};
-
-    auto csig = cancellable(sig);
-    auto task = [](auto& csig, auto& count, auto& ready, auto& done) -> Task<void> {
+    auto task = [](auto& sig, auto& count, auto& ready, auto& done) -> Task<void> {
       ready.release();  // signal: consumer is suspended
-      while (co_await csig) count.fetch_add(1);
+      while (co_await sig) count.fetch_add(1);
       done.release();  // signal: consumer exited
-    }(csig, count, ready, done);
+    }(sig, count, ready, done);
     std::move(task).detach(ctx);
 
     ready.acquire();  // wait for consumer to enter first await
@@ -66,12 +64,10 @@ TEST_F(SignalCancelTest, MPSC_CancelRace) {
     MPSCSignal sig;
     std::atomic<int> count = 0;
     std::binary_semaphore done{0};
-
-    auto csig = cancellable(sig);
-    auto task = [](auto& csig, auto& count, auto& done) -> Task<void> {
-      while (co_await csig) count.fetch_add(1);
+    auto task = [](auto& sig, auto& count, auto& done) -> Task<void> {
+      while (co_await sig) count.fetch_add(1);
       done.release();
-    }(csig, count, done);
+    }(sig, count, done);
     std::move(task).detach(ctx);
 
     std::jthread producer([&] {
@@ -99,12 +95,10 @@ TEST_F(SignalCancelTest, CancelBeforeSetCc) {
     std::binary_semaphore done{0};
 
     ctx.cancel();  // cancel BEFORE consumer enters await_suspend
-
-    auto csig = cancellable(sig);
-    auto task = [](auto& csig, auto& count, auto& done) -> Task<void> {
-      while (co_await csig) count.fetch_add(1);
+    auto task = [](auto& sig, auto& count, auto& done) -> Task<void> {
+      while (co_await sig) count.fetch_add(1);
       done.release();
-    }(csig, count, done);
+    }(sig, count, done);
     std::move(task).detach(ctx);
 
     done.acquire();
@@ -121,13 +115,13 @@ TEST_F(SignalCancelTest, CancelRaceSetCc) {
     std::atomic<int> count = 0;
     std::binary_semaphore started{0}, done{0};
 
-    auto csig = cancellable(sig);
+    
     std::jthread consumer([&] {
-      auto task = [](auto& csig, auto& count, auto& started, auto& done) -> Task<void> {
+      auto task = [](auto& sig, auto& count, auto& started, auto& done) -> Task<void> {
         started.release();
-        while (co_await csig) count.fetch_add(1);
+        while (co_await sig) count.fetch_add(1);
         done.release();
-      }(csig, count, started, done);
+      }(sig, count, started, done);
       std::move(task).detach(ctx);
     });
 

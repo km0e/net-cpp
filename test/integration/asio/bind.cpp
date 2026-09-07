@@ -47,7 +47,7 @@ protected:
   std::thread poller_thread;
 
   void start_poller() {
-    MUST(asio_ctx(NewThreadExecutor{}), ctx);
+    MUST(asio_ctx(ThreadPoolExecutor{4}), ctx);
     this->ctx = ctx;
     poller_thread = std::thread([this] {
       static_cast<sys::IOContext*>(this->ctx->get_reserved())->run();
@@ -127,9 +127,11 @@ TEST_F(AsyncSocketIOFixture, tcp_bind) {
       ASSERT_EQ(std::string_view(buf.get(), static_cast<std::size_t>(n)), msg);
     }
     ::close(fd);
-    // KNOWN ISSUE: under heavy parallel test load the echo task occasionally
-    // starts late (thread-per-dispatch scheduling); the generous recv timeout
-    // above keeps this from hanging, but a rare slow run can still be observed.
+    // NOTE: an earlier flaky failure here (recv timeout under parallel load)
+    // was NOT a scheduling delay: the listen socket was registered with the
+    // poller before listen(), and the pre-listen EPOLLOUT|EPOLLHUP event made
+    // the handler DELETE the device. Fixed by listening before registration
+    // (AsyncSocketCreator::cb). Kept the generous timeout as a safety net.
   }
 }
 

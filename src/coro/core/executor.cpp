@@ -68,14 +68,19 @@ ThreadPoolExecutor::ThreadPoolExecutor(size_t n) : _state(std::make_shared<State
   }
 }
 
-ThreadPoolExecutor::~ThreadPoolExecutor() {
-  // the handle only signals stop; workers drain remaining tasks and the
-  // State is destroyed (and workers joined) by whichever thread exits last
+void ThreadPoolExecutor::_signal_stop() noexcept {
+  if (!_state) return;  // moved-from
   {
     std::lock_guard lock(_state->mtx);
     _state->stop = true;
   }
   _state->cv.notify_all();
+}
+
+ThreadPoolExecutor::~ThreadPoolExecutor() {
+  // the handle only signals stop; workers drain remaining tasks and the
+  // State is destroyed (and workers joined) by whichever thread exits last
+  _signal_stop();
 }
 
 void ThreadPoolExecutor::schedule(move_only_function<void()> &&func) {

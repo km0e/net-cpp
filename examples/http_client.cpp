@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
       ->check(CLI::ExistingFile | CLI::NonexistentPath);
   CLI11_PARSE(app, argc, argv);
 
-  MUST(asio_ctx(NewThreadExecutor{}), ctx);
+  MUST(asio_ctx(ThreadPoolExecutor{4}), ctx);
   run(url).detach(*ctx);
   static_cast<sys::IOContext*>(ctx->get_reserved())->run();
   return 0;

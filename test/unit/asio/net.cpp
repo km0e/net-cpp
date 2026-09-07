@@ -26,7 +26,7 @@ using namespace xsl::asio;
 class AsyncSocketTest : public ::testing::Test {
 protected:
   void SetUp() override {
-    MUST(asio_ctx(NewThreadExecutor{}), c);
+    MUST(asio_ctx(ThreadPoolExecutor{4}), c);
     ctx = std::move(c);
     poller = std::thread([this] {
       static_cast<sys::IOContext*>(ctx->get_reserved())->run();

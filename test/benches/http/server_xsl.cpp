@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
   app.add_option("-i,--ip", ip, "Listen address")->capture_default_str();
   app.add_option("-p,--port", port, "Listen port")->check(CLI::Range(1, 65535))->capture_default_str();
   CLI11_PARSE(app, argc, argv);
-  MUST(xsl::asio::asio_ctx(xsl::coro::NewThreadExecutor{}), ctx);
+  MUST(xsl::asio::asio_ctx(xsl::coro::ThreadPoolExecutor{4}), ctx);
   http_bench::run_xsl_hello_server(ip, static_cast<std::uint16_t>(std::atoi(port.c_str())))
       .detach(*ctx);
   static_cast<xsl::sys::IOContext*>(ctx->get_reserved())->run();

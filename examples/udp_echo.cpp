@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
   app.add_option("-p,--port", port, "Port");
   CLI11_PARSE(app, argc, argv);
 
-  MUST(asio_ctx(NewThreadExecutor{}), ctx);
+  MUST(asio_ctx(ThreadPoolExecutor{4}), ctx);
   talk(ip, port).detach(*ctx);
   static_cast<sys::IOContext*>(ctx->get_reserved())->run();
   return 0;

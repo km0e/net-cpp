@@ -142,7 +142,7 @@ class HttpCompare : public ::testing::Test {
 protected:
   void SetUp() override {
     // xsl server: coroutine context + poller thread, same pattern as examples
-    MUST(xsl::asio::asio_ctx(xsl::coro::NewThreadExecutor{}), ctx);
+    MUST(xsl::asio::asio_ctx(xsl::coro::ThreadPoolExecutor{4}), ctx);
     this->ctx = ctx;
     this->poller = std::thread([this] {
       static_cast<xsl::sys::IOContext*>(this->ctx->get_reserved())->run();

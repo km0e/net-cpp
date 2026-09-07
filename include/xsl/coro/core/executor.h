@@ -59,19 +59,32 @@ public:
  * executor reference and run ~ThreadPoolExecutor on that worker, where
  * join()-ing itself throws EDEADLK and terminates the process.
  *
- * Copies share the same pool. Remaining tasks are still drained (workers
- * exit only when stop is set AND the queue is empty), just asynchronously
- * with respect to the handle's destruction.
+ * The handle is move-only: copies would make the stopping destructor
+ * ambiguous (destroying one copy must not stop the pool others still use);
+ * sharing goes through shared_ptr<ExecutorBase> instead. Remaining tasks are
+ * still drained (workers exit only when stop is set AND the queue is empty),
+ * just asynchronously with respect to the handle's destruction.
  */
 class ThreadPoolExecutor : public ExecutorBase {
 public:
   explicit ThreadPoolExecutor(size_t n = std::thread::hardware_concurrency());
+  ThreadPoolExecutor(ThreadPoolExecutor &&) noexcept = default;
+  ThreadPoolExecutor &operator=(ThreadPoolExecutor &&ano) noexcept {
+    if (this != &ano) {
+      _signal_stop();  // the outgoing pool must not leak (its handle is gone)
+      _state = std::move(ano._state);
+    }
+    return *this;
+  }
+  ThreadPoolExecutor(const ThreadPoolExecutor &) = delete;
+  ThreadPoolExecutor &operator=(const ThreadPoolExecutor &) = delete;
   ~ThreadPoolExecutor();
   void schedule(move_only_function<void()> &&func) override;
 
 private:
   struct State;
   std::shared_ptr<State> _state;
+  void _signal_stop() noexcept;
 };
 
 XSL_CORO_NE

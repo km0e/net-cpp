@@ -44,7 +44,7 @@ protected:
   std::thread poller_thread;
 
   void start_poller() {
-    MUST(asio_ctx(NewThreadExecutor{}), c);
+    MUST(asio_ctx(ThreadPoolExecutor{4}), c);
     ctx = std::move(c);
     poller_thread = std::thread([this] {
       static_cast<IOContext*>(ctx->get_reserved())->run();

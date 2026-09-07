@@ -94,6 +94,57 @@ TEST(ChannelMove, IsDeleted) {
   static_assert(!std::is_move_assignable_v<coro::SPSCChannel<int, 16>>);
 }
 
+// Regression for the lost-wakeup race: await_ready() and await_suspend() are
+// two separate calls; a push landing in the window used to leave the consumer
+// suspended forever (the producer saw _callback == nullptr and skipped the
+// notification). Driven manually through the awaiter protocol so the
+// interleaving is deterministic.
+namespace {
+  struct ProbePromise {
+    bool resumed = false;
+    template <class P>
+    void resume(std::coroutine_handle<P>) {
+      resumed = true;
+    }
+  };
+  struct ProbeCoro {
+    struct promise_type : ProbePromise {
+      ProbeCoro get_return_object() {
+        return {std::coroutine_handle<promise_type>::from_promise(*this)};
+      }
+      std::suspend_always initial_suspend() { return {}; }
+      std::suspend_always final_suspend() noexcept { return {}; }
+      void return_void() {}
+      void unhandled_exception() {}
+    };
+    std::coroutine_handle<promise_type> h;
+    ~ProbeCoro() { h.destroy(); }
+  };
+  ProbeCoro probe_coro() { co_return; }
+}  // namespace
+
+TEST(ChannelWakeup, PushBetweenReadyAndSuspendIsNotLost) {
+  coro::SPSCChannel<int, 8> ch;
+  auto probe = probe_coro();
+  auto awaiter = ch.operator co_await();
+  ASSERT_FALSE(awaiter.await_ready());           // queue is empty
+  ASSERT_TRUE(ch.push(42));                      // push lands in the window
+  EXPECT_FALSE(awaiter.await_suspend(probe.h))   // must NOT suspend
+      << "push between await_ready and await_suspend was lost";
+  EXPECT_EQ(awaiter.await_resume(), 42);         // item consumed inline
+}
+
+TEST(ChannelWakeup, EmptyQueueSuspendsAndPushWakes) {
+  coro::SPSCChannel<int, 8> ch;
+  auto probe = probe_coro();
+  auto awaiter = ch.operator co_await();
+  ASSERT_FALSE(awaiter.await_ready());
+  ASSERT_TRUE(awaiter.await_suspend(probe.h));   // genuinely empty -> suspend
+  ASSERT_TRUE(ch.push(7));
+  EXPECT_TRUE(probe.h.promise().resumed);        // callback fired
+  EXPECT_EQ(awaiter.await_resume(), 7);
+}
+
 int main(int argc, char** argv) {
   CLI::App app{"Channel Test"};
   app.add_option("-c,--count", TEST_COUNT, "Test count");

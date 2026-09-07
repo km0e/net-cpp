@@ -100,29 +100,46 @@ struct ChannelAwaiterTraits<SPSCChannelStorage<ValueType>> {
     return true;  // if the queue is not empty, return true
   }
 
+  // Register the wakeup callback, THEN re-check the queue: a push landing in
+  // the window between await_ready and this call is caught here. The seq_cst
+  // fence pairs with the one in push (Dekker): it is impossible that both the
+  // push misses our callback AND we miss its item. Retraction via exchange
+  // keeps callback ownership exclusive — whoever obtains the pointer owns it.
   template <class Promise>
-  constexpr decltype(auto) await_suspend(this auto &&self, std::coroutine_handle<Promise> handle) {
-    auto* ctl = &self.storage._tail._ctl;
-    auto* local = &self.storage._head._local;
-    self.storage._callback.store(new std::function<void()>([handle, ctl, local]() {
-                                   /// NOTE: update the head's local tail pointer to the tail's ctl
-                                   /// value
-                                   *local = ctl->load(std::memory_order_relaxed);
-                                   handle.promise().resume(handle);
-                                 }),
-                                 std::memory_order_release);
-    self.storage._callback.notify_one();
+  constexpr bool await_suspend(this auto &&self, std::coroutine_handle<Promise> handle) {
+    Snapshot<ValueType> &ep = self.storage._head;
+    auto *f = new std::function<void()>([handle, storage = &self.storage]() {
+      /// NOTE: update the head's local tail pointer to the tail's ctl value
+      storage->_head._local = storage->_tail._ctl.load(std::memory_order_relaxed);
+      handle.promise().resume(handle);
+    });
+    self.storage._callback.store(f, std::memory_order_release);
+    std::atomic_thread_fence(std::memory_order_seq_cst);  // store cb before load tail
+    std::size_t const head = ep._ctl.load(std::memory_order_relaxed);
+    std::size_t const tail = self.storage._tail._ctl.load(std::memory_order_acquire);
+    if (head != tail) {
+      // an item arrived between await_ready and callback registration
+      if (auto *g = self.storage._callback.exchange(nullptr, std::memory_order_acq_rel)) {
+        delete g;          // reclaimed: no push owns it, nobody will resume us
+        ep._local = tail;  // keep the snapshot in sync
+        return false;      // do not suspend; await_resume pops the item
+      }
+      // a push already owns the callback and will resume us -> suspend
+    }
+    return true;
   }
 
   [[nodiscard("must use the result of await_resume to confirm the signal is still alive")]]
   constexpr ValueType await_resume(this auto &&self) {
     Snapshot<ValueType> &ep = self.storage._head;
     std::size_t const head = ep._ctl.load(std::memory_order_relaxed);
-    ep._ctl.store((head + 1) & ep._size_mask,
-                  std::memory_order_relaxed);  // first, update the head pointer
     auto p = ep._buffer + head;
     auto result = std::move(*p);
     std::destroy_at(p);
+    // publish the free slot only AFTER the item is gone: push's acquire load
+    // of head._ctl pairs with this release, so it can never construct into a
+    // slot whose item is still being moved out
+    ep._ctl.store((head + 1) & ep._size_mask, std::memory_order_release);
     return result;
   }
 };
@@ -146,6 +163,7 @@ struct ChannelTraits<SPSCChannelStorage<ValueType>, MaxElements> {
         || n_tail != (ep._local = self.storage._head._ctl.load(std::memory_order_acquire))) {
       std::construct_at(ep._buffer + tail, std::forward<decltype(args)>(args)...);
       ep._ctl.store(n_tail, std::memory_order_release);
+      std::atomic_thread_fence(std::memory_order_seq_cst);  // store tail before exchange cb
       if (auto func = self.storage._callback.exchange(nullptr, std::memory_order_acquire); func) {
         auto _ = std::unique_ptr<std::function<void()>>(func);  // scope guard
         (*func)();    // call the callback to notify the receiver

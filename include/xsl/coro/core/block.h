@@ -108,6 +108,8 @@ inline decltype(auto) block(Awaiter&& awaiter) {
   } catch (...) {
     // the task failed during its first (inline) run; it never reached its
     // final suspend, so the shell never ran and the semaphore stays unreleased
+    // (e.g. ctx->dispatch throwing from inside await_suspend). The rethrow
+    // below destroys the never-started frame via ~Task — no leak.
     eptr = std::current_exception();
   }
   if (!eptr) {

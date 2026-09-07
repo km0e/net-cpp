@@ -123,8 +123,7 @@ private:
  *      Checked by assertion in debug builds.
  */
 template <class Awaiter>
-  requires Awaitable<Awaiter, Detach<typename Awaiter::result_type>>
-           && (!std::is_reference_v<Awaiter>)
+  requires Awaitable<Awaiter> && (!std::is_reference_v<Awaiter>)
 constexpr void detach(Awaiter&& awaiter, Rc<CoroContext>&& ctx) {
   auto d = [](Awaiter awaiter) -> Detach<typename awaiter_traits<Awaiter>::result_type> {
     co_trace("detach");

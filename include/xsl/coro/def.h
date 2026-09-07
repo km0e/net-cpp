@@ -41,8 +41,17 @@ struct noop_coroutine {
   using promise_type = promise_type;
 };
 
-template <class Awaiter, class Coroutine = noop_coroutine>
-concept Awaitable = requires() { [](Awaiter a) -> Coroutine { co_await std::move(a); }; };
+/// @brief real awaiter-protocol check ([expr.await]): the lambda-body trick
+///        used before never instantiated, so it accepted anything movable
+/// @note probes await_suspend with coroutine_handle<> — member templates
+///       deduce Promise=void, which is fine because a requires-expression
+///       never instantiates the body
+template <class Awaiter>
+concept Awaitable = requires(Awaiter a) {
+  { a.await_ready() } -> std::convertible_to<bool>;
+  a.await_suspend(std::declval<std::coroutine_handle<>>());
+  a.await_resume();
+};
 
 template <class Awaiter>
 class awaiter_traits {

@@ -130,7 +130,14 @@ public:
   template <class Awaiter, class... _Args>
     requires(!std::is_reference_v<Awaiter>)
   constexpr std::suspend_never yield_value(Awaiter&& awaiter) {
-    coro::detach(std::forward<Awaiter>(awaiter), Rc(this->_ctx->new_child_context()));
+    if constexpr (requires { std::forward<Awaiter>(awaiter).operator co_await(); }) {
+      // awaiter FACTORY (e.g. ArgGuard): materialize the real awaiter first —
+      // detach() owns it by value, so the factory temporary's lifetime is fine
+      coro::detach(std::forward<Awaiter>(awaiter).operator co_await(),
+                   Rc(this->_ctx->new_child_context()));
+    } else {
+      coro::detach(std::forward<Awaiter>(awaiter), Rc(this->_ctx->new_child_context()));
+    }
     return {};
   }
 

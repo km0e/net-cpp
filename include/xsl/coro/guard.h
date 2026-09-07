@@ -41,8 +41,9 @@ protected:
   std::unique_ptr<std::tuple<Args...>> _tmp;
 };
 
-template <class... Args>
-ArgGuardAwaiter(Args &&...) -> ArgGuardAwaiter<std::decay_t<Args>...>;
+// NOTE: ArgGuardAwaiter has no explicit deduction guide — an earlier one was
+// wrong (it decayed the unique_ptr into the Args pack) and was always
+// shadowed by the more-specialized constructor-generated implicit guide.
 
 template <class AwaiterGen, class... Args>
 class ArgGuard {
@@ -64,6 +65,9 @@ private:
   std::unique_ptr<std::tuple<Args...>> _tmp_tuple;
 };
 
+// required: the constructor is a template whose parameters (_AwaiterGen/_Args)
+// differ from the class parameters, so the implicit guides cannot deduce the
+// class arguments — this guide performs the mapping (and decays them)
 template <class... Args>
 ArgGuard(Args &&...) -> ArgGuard<std::decay_t<Args>...>;
 

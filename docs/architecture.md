@@ -87,13 +87,20 @@ CoroContext::dispatch(f) → ExecutorBase::schedule(f)
   ThreadPoolExecutor  任务队列 + N worker（已实现，未启用）
 ```
 
-**恢复时机规则（resume-before-suspend）**：`await_suspend` 返回 true 与
-协程真正挂起之间有编译器收尾窗口；跨线程在此窗口内 resume 是 UB。
-因此：**NoopExecutor 的唤醒必须与挂起协程在同一线程发生**（单线程模型
-下程序序天然保证）；**跨线程唤醒（含 `ctx.cancel()`、跨线程
-`signal.release()`）必须配合延迟执行器**（NewThreadExecutor / 队列）。
-意图内使用（单线程 poller、NewThreadExecutor）不可达该竞态；组合
-"跨线程 producer + NoopExecutor"属于未定义用法。
+**并发恢复义务（[expr.await]、cppreference 原文核对）**：协程在**进入**
+`await_suspend` 之前即"被视为已挂起"，因此另一线程在 `await_suspend`
+仍在执行时 resume 它是**标准明确允许的场景**（不是 UB），代价是四条义务：
+① await_suspend 在把 handle 发布给其他线程后**不得再访问 awaiter 成员**
+（协程可能已被恢复并销毁 awaiter）；② handle 发布用 release、恢复用
+acquire；③ 同一协程不得被并发 resume（恢复权须原子独占）；④ 跨执行代理
+恢复仅在代理为 `std::thread`/`jthread`/main 时良定义。本库原语已落实全部
+义务（发布仅经 exchange、发布后不碰帧内成员、WAITING 槽 exchange 转移
+恢复权、恢复均发生于 std::thread），并在代码中以 RULE 注释钉死①。
+
+**执行器选择**：`ThreadPoolExecutor` 是当前推荐的多线程执行器（经
+`shared_ptr` 注入）；`NewThreadExecutor` 仅测试/调试（每 dispatch 一个
+无界 detached 线程）；串行化执行器（strand 语义，有序性保证与进一步
+降开销）列为后续可选优化，非正确性必需。
 
 - detached 任务的 promise 持有 `Rc<CoroContext>`，其完成线程与创建线程
   由信号握手（`SPSCSignal4` 的 acq_rel exchange）+ 线程创建同步排序

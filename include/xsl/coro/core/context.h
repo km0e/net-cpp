@@ -28,17 +28,16 @@ XSL_CORO_NB
 /// state (atomic refcount inside), so all chains detached with copies of one
 /// context form ONE cancellation domain with multi-callback support.
 class CoroContext {
-  std::shared_ptr<ExecutorBase> _e = std::make_shared<NoopExecutor>();
+  std::shared_ptr<ExecutorBase> _e = noop_executor();  // shared stateless instance
   std::shared_ptr<void> _reserved;
   std::stop_source _stop;
 
-  CoroContext(const std::shared_ptr<ExecutorBase>& e,
-              const std::shared_ptr<void>& reserved = {})
-      : _e(e), _reserved(reserved), _stop() {}
-
-  CoroContext(const std::shared_ptr<ExecutorBase>& e,
-              const std::shared_ptr<void>& reserved, std::stop_source stop)
-      : _e(e), _reserved(reserved), _stop(std::move(stop)) {}
+  struct share_t {
+    explicit share_t() = default;
+  };
+  CoroContext(share_t, std::shared_ptr<ExecutorBase> e, std::shared_ptr<void> reserved,
+              std::stop_source stop)
+      : _e(std::move(e)), _reserved(std::move(reserved)), _stop(std::move(stop)) {}
 
 public:
   CoroContext() = default;
@@ -47,12 +46,26 @@ public:
       : _e(std::make_shared<E>(std::forward<E>(executor)))
       , _reserved(reserved, deleter ? deleter : [](void*) {})
       , _stop() {}
+  /// @brief construct from a shared executor — the entry point for executors
+  ///        that are not move-constructible (e.g. ThreadPoolExecutor, which
+  ///        holds a mutex)
+  CoroContext(std::shared_ptr<ExecutorBase> executor, void* reserved = nullptr,
+              void (*deleter)(void*) = nullptr)
+      : _e(std::move(executor))
+      , _reserved(reserved, deleter ? deleter : [](void*) {})
+      , _stop() {}
   /// @brief bind this context to an EXISTING stop source (e.g. a poller's):
   ///        requesting stop on that source cancels every chain in this domain
   template <Executor E>
   CoroContext(std::stop_source stop, E&& executor, void* reserved = nullptr,
               void (*deleter)(void*) = nullptr)
       : _e(std::make_shared<E>(std::forward<E>(executor)))
+      , _reserved(reserved, deleter ? deleter : [](void*) {})
+      , _stop(std::move(stop)) {}
+  /// @brief stop-source + shared-executor overload (see the notes above)
+  CoroContext(std::stop_source stop, std::shared_ptr<ExecutorBase> executor,
+              void* reserved = nullptr, void (*deleter)(void*) = nullptr)
+      : _e(std::move(executor))
       , _reserved(reserved, deleter ? deleter : [](void*) {})
       , _stop(std::move(stop)) {}
   ~CoroContext() = default;
@@ -64,9 +77,9 @@ public:
   /// @brief child context sharing executor, reserved object AND cancellation
   ///        domain — co_yield fan-out uses this, so cancelling the parent
   ///        also cancels fanned-out children (e.g. per-connection tasks)
-  CoroContext new_child_context() { return CoroContext(_e, _reserved, _stop); }
+  CoroContext new_child_context() { return CoroContext(share_t{}, _e, _reserved, _stop); }
   /// @brief child context with an INDEPENDENT cancellation domain
-  CoroContext new_independent_context() { return CoroContext(_e, _reserved, {}); }
+  CoroContext new_independent_context() { return CoroContext(share_t{}, _e, _reserved, {}); }
 
   constexpr auto get_reserved() { return _reserved.get(); }
 

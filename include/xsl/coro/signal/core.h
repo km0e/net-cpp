@@ -142,6 +142,11 @@ public:
       h.promise().resume(h);
     };
     _handle = handle.address();
+    // RULE (cppreference, [expr.await]): once the handle is published here,
+    // another thread may resume (and even complete/destroy) the coroutine
+    // while await_suspend is still executing — that scenario is NOT UB, but
+    // this function must not touch anything owned by the coroutine frame
+    // afterwards (the exchange below only touches this signal's own state).
     auto old = _state.exchange(WAITING, std::memory_order_acq_rel);
     if (old == IDLE) return true;  // registered, waiting
     // old was SIGNALED or STOPPED: consume it, restoring STOPPED (sticky),

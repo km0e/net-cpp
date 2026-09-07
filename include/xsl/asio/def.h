@@ -37,6 +37,7 @@ using sys::IOM_EVENTS;
 
 using io::Result;
 using IOSignal = MPSCSignal;
+using coro::ExecutorBase;
 
 inline const Reserved<IOContext> CurrentIOContext{};
 
@@ -124,6 +125,14 @@ template <class E>
 Expected<Rc<CoroContext>, errc> asio_ctx(E&& e) noexcept {
   TRVEC(ctx, IOContext::create());
   return Rc<CoroContext>(ctx->stop_source(), std::forward<E>(e), ctx,
+                         [](void* p) { delete reinterpret_cast<IOContext*>(p); });
+}
+
+/// @brief shared-executor overload — for executors that are not
+///        move-constructible (e.g. ThreadPoolExecutor)
+inline Expected<Rc<CoroContext>, errc> asio_ctx(std::shared_ptr<ExecutorBase> e) noexcept {
+  TRVEC(ctx, IOContext::create());
+  return Rc<CoroContext>(ctx->stop_source(), std::move(e), ctx,
                          [](void* p) { delete reinterpret_cast<IOContext*>(p); });
 }
 

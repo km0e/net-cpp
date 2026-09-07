@@ -68,6 +68,9 @@ struct AwaiterWrapper {
       // releasing the awaiter — its await_suspend below then refuses to suspend
       _cb.emplace(ctx.stop_token(), Release{&this->awaiter});
     }
+    // NOTE: the inner await_suspend PUBLISHES the handle; afterwards another
+    // thread may resume/destroy this coroutine (and this wrapper with it)
+    // while we are still returning here — so no member access past this point
     return awaiter.await_suspend(handle);
   }
   /// @brief fallback for awaiters that cannot suspend (e.g. Reserved):

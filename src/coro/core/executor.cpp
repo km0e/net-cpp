@@ -22,17 +22,45 @@ void NewThreadExecutor::schedule(move_only_function<void()> &&func) {
   std::thread(std::move(func)).detach();
 }
 
-ThreadPoolExecutor::ThreadPoolExecutor(size_t n) {
+struct ThreadPoolExecutor::State {
+  std::vector<std::thread> workers;
+  std::queue<move_only_function<void()>> tasks;
+  std::mutex mtx;
+  std::condition_variable cv;
+  bool stop = false;
+
+  // Runs on whichever thread drops the last reference — possibly a pool
+  // worker (its captured `state` being the last one). Join every worker
+  // except the current thread, which cannot join itself.
+  ~State() {
+    {
+      std::lock_guard lock(mtx);
+      stop = true;
+    }
+    cv.notify_all();
+    for (auto& w : workers) {
+      if (!w.joinable()) continue;
+      if (w.get_id() == std::this_thread::get_id()) {
+        w.detach();
+      } else {
+        w.join();
+      }
+    }
+  }
+};
+
+ThreadPoolExecutor::ThreadPoolExecutor(size_t n) : _state(std::make_shared<State>()) {
+  auto state = _state;
   for (size_t i = 0; i < n; i++) {
-    _workers.emplace_back([this] {
+    state->workers.emplace_back([state] {
       for (;;) {
         move_only_function<void()> task;
         {
-          std::unique_lock lock(_mtx);
-          _cv.wait(lock, [this] { return _stop || !_tasks.empty(); });
-          if (_stop && _tasks.empty()) return;
-          task = std::move(_tasks.front());
-          _tasks.pop();
+          std::unique_lock lock(state->mtx);
+          state->cv.wait(lock, [&] { return state->stop || !state->tasks.empty(); });
+          if (state->stop && state->tasks.empty()) return;
+          task = std::move(state->tasks.front());
+          state->tasks.pop();
         }
         task();
       }
@@ -41,22 +69,21 @@ ThreadPoolExecutor::ThreadPoolExecutor(size_t n) {
 }
 
 ThreadPoolExecutor::~ThreadPoolExecutor() {
+  // the handle only signals stop; workers drain remaining tasks and the
+  // State is destroyed (and workers joined) by whichever thread exits last
   {
-    std::lock_guard lock(_mtx);
-    _stop = true;
+    std::lock_guard lock(_state->mtx);
+    _state->stop = true;
   }
-  _cv.notify_all();
-  for (auto& w : _workers) {
-    if (w.joinable()) w.join();
-  }
+  _state->cv.notify_all();
 }
 
 void ThreadPoolExecutor::schedule(move_only_function<void()> &&func) {
   {
-    std::lock_guard lock(_mtx);
-    _tasks.emplace(std::move(func));
+    std::lock_guard lock(_state->mtx);
+    _state->tasks.emplace(std::move(func));
   }
-  _cv.notify_one();
+  _state->cv.notify_one();
 }
 
 XSL_CORO_NE

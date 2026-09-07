@@ -16,6 +16,7 @@
 #  include <xsl/def.h>
 
 #  include <condition_variable>
+#  include <memory>
 #  include <mutex>
 #  include <queue>
 #  include <thread>
@@ -36,11 +37,32 @@ public:
   void schedule(move_only_function<void()> &&func);
 };
 
+/// @brief shared instance: NoopExecutor is stateless, one per program is enough
+inline const std::shared_ptr<ExecutorBase> &noop_executor() noexcept {
+  static const std::shared_ptr<ExecutorBase> instance = std::make_shared<NoopExecutor>();
+  return instance;
+}
+
 class NewThreadExecutor : public ExecutorBase {
 public:
   void schedule(move_only_function<void()> &&func);
 };
 
+/**
+ * @brief Thread pool executor — a HANDLE to a shared pool state
+ *
+ * The pool state outlives this handle (workers hold their own reference):
+ * destroying the handle only signals stop and never joins, so it is safe to
+ * drop the last handle (or the last shared_ptr<ExecutorBase> reference held
+ * by a completing coroutine) from ANY thread — including a pool worker.
+ * Without this split, a coroutine finishing on a worker could drop the last
+ * executor reference and run ~ThreadPoolExecutor on that worker, where
+ * join()-ing itself throws EDEADLK and terminates the process.
+ *
+ * Copies share the same pool. Remaining tasks are still drained (workers
+ * exit only when stop is set AND the queue is empty), just asynchronously
+ * with respect to the handle's destruction.
+ */
 class ThreadPoolExecutor : public ExecutorBase {
 public:
   explicit ThreadPoolExecutor(size_t n = std::thread::hardware_concurrency());
@@ -48,11 +70,8 @@ public:
   void schedule(move_only_function<void()> &&func) override;
 
 private:
-  std::vector<std::thread> _workers;
-  std::queue<move_only_function<void()>> _tasks;
-  std::mutex _mtx;
-  std::condition_variable _cv;
-  bool _stop = false;
+  struct State;
+  std::shared_ptr<State> _state;
 };
 
 XSL_CORO_NE

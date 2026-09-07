@@ -147,6 +147,11 @@ struct AsyncSocketCreator<Traits> : public Traits {
   Expected<AsyncSocketCompose<Traits, Flags...>, errc> cb(IOContext& ctx, const char* ip,
                                                           sys::net::inet::port_t port) noexcept {
     TRVEC(sock, sock_utils.template cb<Flags...>(ip, port));
+    // listen BEFORE registering with the poller: a bound-but-not-listening
+    // TCP socket reports EPOLLOUT|EPOLLHUP in epoll, and the handler treats
+    // HUP as DELETE — deregistering the device before it ever served. A later
+    // explicit listen() is legal and only updates the backlog.
+    ENSEC(sock.listen());
     TRVEC(asock, make_async_socket(ctx, std::move(sock)));
     return std::move(asock);
   }

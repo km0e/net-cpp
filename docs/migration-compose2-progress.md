@@ -122,7 +122,7 @@ ctest 26-27/27 通过（残留项见下文"未完成"）。
 - **已决议：不原子化**。安全性由"单 Inner 单链"所有权不变量保证（`docs/architecture.md` §3.5）；`detach()`/`by()` 以契约注释 + debug 断言（`Rc::unique()`）落实，违规调用点已修正为 `detach(*ctx)`
 
 ### 7. 已知残留测试问题
-- `it_bind` 偶发慢启动（~25% @ 并行 ctest）：echo 任务 thread-per-dispatch 启动延迟；客户端已加 15s SO_RCVTIMEO 防挂死，注释标注 KNOWN ISSUE（`test/integration/asio/bind.cpp`）
+- ~~`it_bind` 偶发慢启动~~ **已根治**：真正根因是 listen socket 在 listen() 之前注册进 poller，pre-listen 的 `EPOLLOUT|EPOLLHUP` 事件触发 handler 的 DELETE 分支将设备永久注销（与调度延迟无关）。修复：`AsyncSocketCreator::cb` 先 listen 再注册（并行 12 轮全绿）
 - `connect.cpp` 仍被注释（`io.h` recv span 重载缺失，见该文件内注释）
 
 ## 附：验证入口

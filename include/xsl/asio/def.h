@@ -36,7 +36,7 @@ using sys::IOContext;
 using sys::IOM_EVENTS;
 
 using io::Result;
-using IOSignal = SPSCSignal4;
+using IOSignal = MPSCSignal;
 
 inline const Reserved<IOContext> CurrentIOContext{};
 

@@ -91,11 +91,14 @@ public:
     self.for_each(f);
     return !empty;
   }
-  // Stop disabled: SPSCSignal4 has no stop()
-  // constexpr void stop(this auto&& self) {
-  //   auto f = [](const auto&, auto& tx) { tx.stop(); };
-  //   self.for_each(f);
-  // }
+  /**
+   * @brief Stop all signals (sticky): suspended consumers wake with false,
+   *        subsequent awaits observe the stop immediately
+   */
+  constexpr void stop(this auto&& self) {
+    auto f = [](const auto&, auto& tx) { tx.stop(); };
+    self.for_each(f);
+  }
 };
 
 template <typename K, typename S, K... keys>
@@ -121,7 +124,7 @@ struct StaticExactPubSubStorage : public std::array<S, sizeof...(keys)>,
   }
 };
 
-template <class K, std::size_t N, class Signal = SPSCSignal4>
+template <class K, std::size_t N, class Signal = MPSCSignal>
 struct ExactPubSubStorage : public std::array<std::pair<K, Signal>, N>,
                             public coro::PubSubUtil<K, Signal> {
   using key_type = K;

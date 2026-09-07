@@ -94,15 +94,30 @@ CoroContext::dispatch(f) → ExecutorBase::schedule(f)
 
 ### 3.3 信号（唤醒原语）
 
-`SPSCSignal4`：单个 `atomic<uintptr_t>` 状态机（0=idle, 1=signaled,
-ptr=等待者续体）。
+信号族已收敛为**一个状态机、两个竞争档**（`coro/signal/core.h`）：
 
-- `await_ready`：CAS(1→0) 消费已就绪信号
-- `await_suspend`：装入续体指针；若竞态中发现已 signaled 立即返回 false
-- `release`：exchange(1)；若旧值是续体指针则调用（续体经
-  `promise.resume` → `ctx->dispatch` 恢复协程）
+| 档 | 竞争模型 | 同步 |
+|------|----------|------|
+| `UnsafeSignal` | 单线程 | 零同步（~0.5ns/往返） |
+| `MPSCSignal` | N 生产 / 1 消费（SPSC 为退化情形） | 单个 `atomic<uintptr_t>`（~7ns/往返） |
 
-`Cancellable<SPSCSignal4>` 包装器额外经 `ctx->set_cc()` 注册取消续体。
+两档语义一致：四态状态机 `0=idle / 1=signaled / 2=stopped / ptr=waiting`，
+`await_resume` 在 signal 时返回 true、stop 后返回 false；**stop 为粘性
+终态**，之后的 release 被忽略、之后的 await 立即返回 false。
+
+- `MPSCSignal::await_suspend`：装入续体指针；竞态中发现已 signaled/stopped
+  时经**第二次 exchange 原子回收**续体（拿到指针者拥有指针），杜绝
+  store+delete 式回收的 UAF
+- `release`/`stop`：exchange 转移续体所有权后调用（续体经
+  `promise.resume` → `ctx->dispatch` 恢复协程）；release 多生产者安全，
+  并发释放合并，伪唤醒由消费端重查过滤
+- `UnsafeSignal` 的续体是内联成员（无堆分配），调用前**先移出**——回调
+  会内联恢复消费者，可能立即重新 await 并改写该成员
+
+`Cancellable<MPSCSignal>` 包装器经 `ctx->set_cc()` 注册取消续体（此处仍
+为每 await 一次堆 `Continuation`，待 stop_token 化消除），并在
+**每次完成（含正常路径）时注销**，不再按 await 泄漏；仅原子档可取消
+（取消线程相当于额外生产者）。
 **acq_rel 语义使"await 挂起前的副作用（如 Rc 计数 ++）对恢复线程可见"**，
 这是热路径上引用计数操作无需额外同步的原因。
 
@@ -162,8 +177,9 @@ task.detach(ctx);    // ✗ 传 Rc：共享 Inner，两条链并发 ++/-- → �
   **先 pin 住 handler 的 shared_memory 再释放锁**（handler 可能在派发期间
   被注销），DELETE hint → `remove(fd)`
 - `add/remove`：epoll_ctl + `ShardRes` 分片锁保护的 handler map
-- `shutdown()`：置 `stopped` 标志 → `shutdown_notify()` 唤醒全部订阅者
-  （`NONE` 事件匹配不到任何 key，必须用恒真谓词）→ 清空 map → 关闭 epoll
+- `shutdown()`：置 `stopped` 标志 → `shutdown_notify()` 对所有订阅信号执行
+  **粘性 stop** → 挂起的 IO await 以 false 恢复，激活 recv/send 循环的
+  `!co_await` 取消分支（不再依赖 fd 关闭时序）→ 清空 map → 关闭 epoll
 
 读写路径（`asio/io.h`）：先试 syscall（`recv/send`），`EAGAIN` 时
 `co_await read_signal()/write_signal()` 挂起，epoll 就绪后由信号恢复重试。

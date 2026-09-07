@@ -22,7 +22,7 @@
 using namespace xsl;
 
 TEST(ExactPubSub, Exit) {
-  auto pubsub = coro::make_pub_sub<_value_pack<1>, SPSCSignal2<1>>();
+  auto pubsub = coro::make_pub_sub<_value_pack<1>, MPSCSignal>();
   auto* sig = pubsub->template signal<1>();
   ASSERT_NE(sig, nullptr);
 

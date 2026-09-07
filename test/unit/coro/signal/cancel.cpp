@@ -50,20 +50,20 @@ protected:
   }
 };
 
-TEST_F(SignalCancelTest, SPSC4) {
+TEST_F(SignalCancelTest, MPSC) {
   std::size_t N = TEST_COUNT;
   while (N--) {
-    SPSCSignal4 m_sig{};
+    MPSCSignal m_sig{};
     cancel(m_sig);
   }
 }
 
 // Multi-threaded stress test: producer releases signals while main thread
 // cancels. Exercises the TOCTOU window between set_cc and _cs check.
-TEST_F(SignalCancelTest, SPSC4_CancelRace) {
+TEST_F(SignalCancelTest, MPSC_CancelRace) {
   for (int iter = 0; iter < 10; iter++) {
     auto ctx = CoroContext(NewThreadExecutor{});
-    SPSCSignal4 sig;
+    MPSCSignal sig;
     std::atomic<int> count = 0;
     std::binary_semaphore done{0};
 
@@ -94,7 +94,7 @@ TEST_F(SignalCancelTest, SPSC4_CancelRace) {
 TEST_F(SignalCancelTest, CancelBeforeSetCc) {
   for (int iter = 0; iter < 1000; iter++) {
     auto ctx = CoroContext(NewThreadExecutor{});
-    SPSCSignal4 sig;
+    MPSCSignal sig;
     std::atomic<int> count = 0;
     std::binary_semaphore done{0};
 
@@ -117,7 +117,7 @@ TEST_F(SignalCancelTest, CancelBeforeSetCc) {
 TEST_F(SignalCancelTest, CancelRaceSetCc) {
   for (int iter = 0; iter < 500; iter++) {
     auto ctx = CoroContext(NewThreadExecutor{});
-    SPSCSignal4 sig;
+    MPSCSignal sig;
     std::atomic<int> count = 0;
     std::binary_semaphore started{0}, done{0};
 

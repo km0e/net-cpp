@@ -62,7 +62,7 @@ TEST_F(SignalBasicTest, SPSC4) {
   std::size_t N = TEST_COUNT;
   while (N--) {
     {
-      SPSCSignal4 m_sig{};
+      MPSCSignal m_sig{};
       stop(m_sig);
     }
   }

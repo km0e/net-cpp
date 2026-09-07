@@ -43,8 +43,16 @@ struct AwaiterWrapper {
   }
   template <class Promise>
   constexpr auto await_suspend(std::coroutine_handle<Promise> handle) noexcept(
-      noexcept(std::declval<Awaiter>().await_suspend(handle))) {
+      noexcept(std::declval<Awaiter>().await_suspend(handle)))
+    requires(requires { awaiter.await_suspend(handle); })
+  {
     return awaiter.await_suspend(handle);
+  }
+  /// @brief fallback for awaiters that cannot suspend (e.g. Reserved):
+  ///        await_ready returned true, so never suspend
+  template <class Promise>
+  constexpr bool await_suspend(std::coroutine_handle<Promise>) const noexcept {
+    return false;
   }
   constexpr decltype(auto) await_resume() {
     if constexpr (requires { awaiter.await_resume(ctx); }) {
@@ -72,7 +80,12 @@ public:
   struct final_awaiter {
     constexpr bool await_ready() const noexcept { return false; }
     constexpr std::coroutine_handle<> await_suspend(std::coroutine_handle<>) const noexcept {
-      return _next;
+      // returning a null handle from await_suspend is UB: a Task that reaches
+      // its final suspend without a continuation was resumed outside
+      // co_await/block/detach — degrade to a defined no-op transfer
+      assert(_next && "Task completed without a continuation "
+                      "(resumed outside co_await/block/detach?)");
+      return _next ? _next : std::noop_coroutine();
     }
     constexpr void await_resume() const noexcept {}
     std::coroutine_handle<> _next;

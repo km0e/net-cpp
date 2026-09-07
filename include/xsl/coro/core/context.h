@@ -23,7 +23,7 @@
 
 XSL_CORO_NB
 
-enum class CancelState { None, Pending, Yes };
+enum class CancelState { None, Yes };
 using Continuation = std::function<void()>;
 
 class CoroContext {
@@ -83,23 +83,21 @@ struct Cancellable { Signal& _sig; };
 template <typename Signal>
 Cancellable<Signal> cancellable(Signal& sig) { return {sig}; }
 
+/// @brief awaiter yielding the reserved object of the current coroutine context
+/// @note never suspends; only valid inside coroutines whose await_transform
+///       supplies the CoroContext (Task). Using it elsewhere has no viable
+///       await_resume — a compile error rather than a silent null dereference.
 template <class T>
 struct Reserved {
-  mutable void* _ptr = nullptr;
   constexpr bool await_ready() const noexcept { return true; }
-  template <class Promise>
-  constexpr void await_suspend(std::coroutine_handle<Promise> handle) const noexcept {
-    _ptr = handle.promise().ctx()->get_reserved();
-    assert(_ptr != nullptr);
-  }
   /// @brief resume with the reserved object of the current coroutine context
-  /// @note await_transform wraps this awaiter with the promise's CoroContext,
-  ///       so the context-aware overload is preferred; the no-argument overload
-  ///       only works when await_suspend actually ran
   constexpr T& await_resume(CoroContext& ctx) const noexcept {
-    return *static_cast<T*>(ctx.get_reserved());
+    auto* p = ctx.get_reserved();
+    assert(p != nullptr && "co_await Reserved<T>: context has no reserved object "
+                           "(create the context with asio_ctx(...) or pass a "
+                           "reserved pointer to CoroContext)");
+    return *static_cast<T*>(p);
   }
-  constexpr T& await_resume() const noexcept { return *static_cast<T*>(_ptr); }
 };
 
 XSL_CORO_NE

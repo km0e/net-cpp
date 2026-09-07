@@ -82,8 +82,10 @@ public:
       return PollHandleHintTag::NONE;
     }
   }
-  /// @brief wake all subscribers (poller shutdown)
-  void shutdown_notify() override { this->publish([](IOM_EVENTS) { return true; }); }
+  /// @brief stop all subscribers (poller shutdown): sticky stop wakes every
+  ///        suspended IO await with false, activating the cancellation
+  ///        branches in the recv/send loops (no reliance on fd-close timing)
+  void shutdown_notify() override { this->stop(); }
 
 private:
   IOContext* ctx_ = nullptr;

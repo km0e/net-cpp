@@ -21,7 +21,7 @@ struct AsyncDeviceUtil {
   /**
    * @brief Get the read signal
    *
-   * @return SPSCSignal2<1>&
+   * @return IOSignal&
    */
   constexpr auto read_signal(this auto&& self) noexcept -> like_t<decltype(self), IOSignal> {
     return *self.template signal<IOM_EVENTS::IN>();
@@ -30,7 +30,7 @@ struct AsyncDeviceUtil {
   /**
    * @brief Get the write signal
    *
-   * @return SPSCSignal2<1>&
+   * @return IOSignal&
    */
   constexpr auto write_signal(this auto&& self) noexcept -> like_t<decltype(self), IOSignal> {
     return *self.template signal<IOM_EVENTS::OUT>();

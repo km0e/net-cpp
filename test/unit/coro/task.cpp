@@ -69,6 +69,19 @@ TEST(Task, and_then) {
 
 Task<int> then_chain_task() { co_return 1; }
 
+Task<void> void_task() { co_return; }
+
+// C4/then: Task<void> chains — the base feeds the innermost transform with
+// no argument, and later transforms chain on its result
+TEST(Task, then_void) {
+  EXPECT_EQ(void_task().then([] { return 1; }).block(), 1);
+  EXPECT_EQ(void_task().then([] {}).then([] { return 2; }).block(), 2);
+  int called = 0;
+  void_task().then([&] { called++; }).block();
+  EXPECT_EQ(called, 1);
+  EXPECT_EQ(void_task().then([] {}).then([] {}).then([] { return 3; }).block(), 3);
+}
+
 TEST(Task, then_chain) {
   EXPECT_EQ(then_chain_task().then([](int x) { return x + 1; }).block(), 2);
   EXPECT_EQ(

@@ -239,6 +239,12 @@ public:
   constexpr auto then(this Task&& self, std::invocable<result_type> auto&& f) {
     return ThenAwaiter<Task>(std::move(self).move_handle()).then(std::forward<decltype(f)>(f));
   }
+  /// @brief continuation on a void task (f takes no argument)
+  constexpr auto then(this Task&& self, std::invocable<> auto&& f)
+    requires std::is_void_v<result_type>
+  {
+    return ThenAwaiter<Task>(std::move(self).move_handle()).then(std::forward<decltype(f)>(f));
+  }
 
   template <class Self, class Res = Self::result_type>
     requires(!std::is_reference_v<Self>) && is_same_pack_v<Res, std::expected<void, void>>

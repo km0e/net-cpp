@@ -33,9 +33,12 @@ namespace _detail {
 
   template <class AwaiterResult, class First, class... Rest>
   struct compose_result<AwaiterResult, std::tuple<First, Rest...>> {
-    using type
-        = std::invoke_result_t<First,
-                               typename compose_result<AwaiterResult, std::tuple<Rest...>>::type>;
+    using input = typename compose_result<AwaiterResult, std::tuple<Rest...>>::type;
+    // lazy: both invoke_result specializations are formed, but only the
+    // selected one has ::type accessed (invoke_result<F, void> is fine to form)
+    using type = typename std::conditional_t<std::is_void_v<input>,
+                                             std::invoke_result<First>,
+                                             std::invoke_result<First, input>>::type;
   };
 }  // namespace _detail
 
@@ -62,9 +65,26 @@ public:
       : Base(std::move(awaiter)), _transforms(std::move(transforms)) {}
 
   // Apply transforms left-to-right using compile-time indexed recursion (not O(n) inheritance)
-  constexpr result_type await_resume() { return _apply<0>(Base::await_resume()); }
+  constexpr result_type await_resume() {
+    if constexpr (std::is_void_v<typename Base::result_type>) {
+      Base::await_resume();
+      return _apply_void<0>();  // the void base feeds the innermost transform
+    } else {
+      return _apply<0>(Base::await_resume());
+    }
+  }
 
   template <std::invocable<result_type> NextTransform>
+  constexpr decltype(auto) then(this ThenAwaiter&& self, NextTransform&& next) {
+    using NextTuple = std::tuple<std::remove_cvref_t<NextTransform>, Transform, Transforms...>;
+    auto next_transforms = std::tuple_cat(std::make_tuple(std::forward<NextTransform>(next)),
+                                          std::move(self._transforms));
+    return ThenAwaiter<AwaiterType, NextTuple>{std::exchange(self._handle, {}),
+                                               std::move(next_transforms)};
+  }
+  /// @brief continuation on a void-result base (f takes no argument)
+  template <std::invocable<> NextTransform>
+    requires std::is_void_v<result_type>
   constexpr decltype(auto) then(this ThenAwaiter&& self, NextTransform&& next) {
     using NextTuple = std::tuple<std::remove_cvref_t<NextTransform>, Transform, Transforms...>;
     auto next_transforms = std::tuple_cat(std::make_tuple(std::forward<NextTransform>(next)),
@@ -84,6 +104,22 @@ private:
       return std::get<I>(_transforms)(_apply<I + 1>(std::forward<decltype(value)>(value)));
     }
   }
+  /// @brief void-base evaluation: the innermost transform (index
+  ///        sizeof...(Transforms), the last element) is invoked with no
+  ///        argument; a transform returning void keeps the next one no-arg
+  template <std::size_t I>
+  constexpr auto _apply_void() {
+    if constexpr (I == sizeof...(Transforms)) {
+      return std::get<I>(_transforms)();
+    } else {
+      using inner = decltype(_apply_void<I + 1>());
+      if constexpr (std::is_void_v<inner>) {
+        return std::get<I>(_transforms)();
+      } else {
+        return std::get<I>(_transforms)(_apply_void<I + 1>());
+      }
+    }
+  }
 };
 
 template <class AwaiterType>
@@ -101,6 +137,13 @@ public:
   constexpr result_type await_resume() { return Base::await_resume(); }
 
   template <std::invocable<result_type> NextTransform>
+  constexpr decltype(auto) then(this ThenAwaiter&& self, NextTransform&& next) {
+    return ThenAwaiter<AwaiterType, std::tuple<std::remove_cvref_t<NextTransform>>>{
+        std::exchange(self._handle, {}), std::make_tuple(std::forward<NextTransform>(next))};
+  }
+  /// @brief continuation on a void-result base (f takes no argument)
+  template <std::invocable<> NextTransform>
+    requires std::is_void_v<result_type>
   constexpr decltype(auto) then(this ThenAwaiter&& self, NextTransform&& next) {
     return ThenAwaiter<AwaiterType, std::tuple<std::remove_cvref_t<NextTransform>>>{
         std::exchange(self._handle, {}), std::make_tuple(std::forward<NextTransform>(next))};

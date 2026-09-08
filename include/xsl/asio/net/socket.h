@@ -209,6 +209,8 @@ private:
     for (addrinfo& ai : ais) {
       CONTV(sock, sys::net::socket<_Traits>(ai));
       CO_TRVEC(addr, sys::net::inet_n2p(reinterpret_cast<sockaddr_storage&>(*ai.ai_addr)));
+      // addr is only consumed by log_debug, which compiles out at higher log levels
+      (void)addr;
       log_debug("Trying to connect to {}", addr);
       auto res = co_await asio::async_connect(asock, std::move(sock).into_raw(), ai.ai_addr,
                                               ai.ai_addrlen);

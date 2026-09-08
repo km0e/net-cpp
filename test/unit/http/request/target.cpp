@@ -10,7 +10,7 @@
  */
 #include <gtest/gtest.h>
 #include <xsl/net/http/request/target.h>
-using namespace xsl::_net::http;
+using namespace xsl::net::http;
 
 TEST(HttpRequestTarget, Target) {
   // Test OriginForm

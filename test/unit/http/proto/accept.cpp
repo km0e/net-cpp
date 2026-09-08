@@ -11,11 +11,11 @@
 #include <gtest/gtest.h>
 #include <xsl/log.h>
 #include <xsl/net/http/proto/accept.h>
-using namespace xsl::_net::http;
+using namespace xsl::net::http;
 
 TEST(HttpProto, parse_accept) {
   std::string_view accept0 = "text/html, application/xhtml+xml, application/xml;q=0.9, */*;q=0.8";
-  auto result1 = xsl::_net::http::parse_accept(accept0);
+  auto result1 = xsl::net::http::parse_accept(accept0);
   EXPECT_EQ(result1.size(), 4);
   EXPECT_EQ(result1[0].first.main_type(), "text");
   EXPECT_EQ(result1[0].first.sub_type(), "html");
@@ -31,7 +31,7 @@ TEST(HttpProto, parse_accept) {
   EXPECT_EQ(result1[3].second, "0.8");
 
   std::string_view accept1 = "audio/*; q=0.2, audio/basic";
-  auto result2 = xsl::_net::http::parse_accept(accept1);
+  auto result2 = xsl::net::http::parse_accept(accept1);
   EXPECT_EQ(result2.size(), 2);
   EXPECT_EQ(result2[0].first.main_type(), "audio");
   EXPECT_EQ(result2[0].first.sub_type(), "*");
@@ -41,7 +41,7 @@ TEST(HttpProto, parse_accept) {
   EXPECT_EQ(result2[1].second, std::string_view{});
 
   std::string_view accept2 = "text/plain; q=0.5, text/html, text/x-dvi; q=0.8, text/x-c";
-  auto result3 = xsl::_net::http::parse_accept(accept2);
+  auto result3 = xsl::net::http::parse_accept(accept2);
   EXPECT_EQ(result3.size(), 4);
   EXPECT_EQ(result3[0].first.main_type(), "text");
   EXPECT_EQ(result3[0].first.sub_type(), "plain");
@@ -59,7 +59,7 @@ TEST(HttpProto, parse_accept) {
   std::string_view accept3
       = "text/*;q=0.3, text/plain;q=0.7, text/plain;format=flowed,text/plain;format=fixed;q=0.4, "
         "*/*;q=0.5";
-  auto result4 = xsl::_net::http::parse_accept(accept3);
+  auto result4 = xsl::net::http::parse_accept(accept3);
   EXPECT_EQ(result4.size(), 5);
   EXPECT_EQ(result4[0].first.main_type(), "text");
   EXPECT_EQ(result4[0].first.sub_type(), "*");
@@ -86,7 +86,7 @@ TEST(HttpProto, parse_accept) {
 
 TEST(HttpProto, parse_accept_encoding) {
   std::string_view accept_encoding0 = "compress, gzip";
-  auto result1 = xsl::_net::http::parse_accept_encoding(accept_encoding0);
+  auto result1 = xsl::net::http::parse_accept_encoding(accept_encoding0);
   EXPECT_EQ(result1.size(), 2);
   EXPECT_EQ(result1[0].first, "compress");
   EXPECT_EQ(result1[0].second, std::string_view{});
@@ -94,11 +94,11 @@ TEST(HttpProto, parse_accept_encoding) {
   EXPECT_EQ(result1[1].second, std::string_view{});
 
   std::string_view accept_encoding1 = "";
-  auto result2 = xsl::_net::http::parse_accept_encoding(accept_encoding1);
+  auto result2 = xsl::net::http::parse_accept_encoding(accept_encoding1);
   EXPECT_EQ(result2.size(), 0);
 
   std::string_view accept_encoding2 = "compress;q=0.5, gzip;q=1.0";
-  auto result3 = xsl::_net::http::parse_accept_encoding(accept_encoding2);
+  auto result3 = xsl::net::http::parse_accept_encoding(accept_encoding2);
   EXPECT_EQ(result3.size(), 2);
   EXPECT_EQ(result3[0].first, "compress");
   EXPECT_EQ(result3[0].second, "0.5");
@@ -106,7 +106,7 @@ TEST(HttpProto, parse_accept_encoding) {
   EXPECT_EQ(result3[1].second, "1.0");
 
   std::string_view accept_encoding3 = "gzip;q=1.0, identity; q=0.5, *;q=0";
-  auto result4 = xsl::_net::http::parse_accept_encoding(accept_encoding3);
+  auto result4 = xsl::net::http::parse_accept_encoding(accept_encoding3);
   EXPECT_EQ(result4.size(), 3);
   EXPECT_EQ(result4[0].first, "gzip");
   EXPECT_EQ(result4[0].second, "1.0");

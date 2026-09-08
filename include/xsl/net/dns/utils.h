@@ -51,6 +51,7 @@ public:
   void compress(byte *_dst) {
     if (_src.empty()) {
       *_dst = byte{0};  // empty domain name, just write a zero byte
+      return;           // keep memcpy below away from a null _src.data()
     }
     // assert(dst.size() > 0
     //        && dst.size()

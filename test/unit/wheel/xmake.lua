@@ -5,7 +5,7 @@ for _, file in ipairs(os.files("*.cpp")) do
         set_kind("binary")
         set_default(false)
         add_files(name .. ".cpp")
-        add_deps("xsl_wheel")
-        add_tests("_", { group = "wheel" })
+        add_deps("xsl_wheel", "xsl_test_helpers")
+        add_tests("ut_" .. name, { group = "wheel" })
     end
 end

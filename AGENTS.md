@@ -9,28 +9,38 @@ Xsl is a C++26 network library using coroutines (C++20 `std::coroutine`), epoll-
 ## Build Commands
 
 ```bash
-# Configure (network needed for first-time dependency download)
+# Configure via preset (build/debug, CPM cache under ~/.cache/CPM)
+cmake --preset debug
+# Or plain configure (defaults to Debug when CMAKE_BUILD_TYPE is unset)
 fish -c 'proxy cmake -B build -S .'
 
 # Build all
-cmake --build build -j$(nproc)
+cmake --build build -j$(nproc)        # or: cmake --build --preset debug
 
 # Build specific target
 cmake --build build --target xsl_log
 
 # Run all tests
-ctest --test-dir build
+cmake --build build -j$(nproc) && ctest --test-dir build
 
 # Run single test
-ctest --test-dir build -R channel
+cmake --build build --target channel && ctest --test-dir build -R channel
 # or directly:
 ./build/test/unit/coro/channel
 
 # Run failed tests verbosely
 ctest --test-dir build --rerun-failed --output-on-failure
+
+# Filter by label (labels = path under test/, e.g. unit, unit/coro, integration)
+ctest --test-dir build -L wheel
 ```
 
-`-DXSL_LOG_LEVEL=TRACE` controls compile-time log filtering (default: INFO).
+Presets (`debug` / `release` / `asan` / `coverage`) live in `CMakePresets.json`.
+
+Notable options: `-DXSL_LOG_LEVEL=` (compile-time log filtering, default INFO),
+`-DXSL_BUILD_EXAMPLES=OFF`, `-DXSL_BUILD_TESTS=OFF`, `-DXSL_UNITY_BUILD=ON`
+(unity build: ~2x faster full rebuilds, worse incrementals), `-DXSL_PCH=ON`,
+`-DXSL_SANITIZE=address;undefined`.
 
 Xmake is used for benchmarks/examples (release + logs compiled out):
 
@@ -39,6 +49,15 @@ xmake f -m release -c --log_level=none
 xmake build -g benchmarks/http
 xmake run --workdir=build bench_http_xsl -p 18080 -n 4
 xmake run --workdir=build bench_http_loadgen -p 18080 -t 4 -c 4 -d 10
+```
+
+Package versions are pinned to match CMake (quill 10.0.1, gtest 1.17.0 with
+`main = true`). Tests are registered per-source-file with meaningful names:
+
+```bash
+xmake test                    # all tests (currently 32)
+xmake test --group=coro      # group = module (coro, http, wheel, integration, ...)
+xmake test ut_channel        # single test by test name
 ```
 
 `-n N` on `bench_http_xsl` selects the server threading model: `0` = thread-pool
@@ -141,6 +160,23 @@ LocalComosite2<Alloc, S...> : public S...  — 直接继承所有 Parts
 
 ## Environment
 
-- Linker: mold (`-fuse-ld=mold` in CMakeLists.txt)
+- Linker: mold (`-fuse-ld=mold` in CMakeLists.txt / root xmake.lua)
 - `CPP_LOG` env var controls runtime log level per-logger (e.g. `CPP_LOG=info` or `CPP_LOG=xsl=debug,coro=info`)
-- `CPM_SOURCE_CACHE` env var caches downloaded dependencies across clean builds
+- `CPM_SOURCE_CACHE` env var caches downloaded dependencies across clean builds (injected by
+  CMakePresets automatically; for plain `cmake -B build` runs set `export CPM_SOURCE_CACHE=~/.cache/CPM`)
+- `ccache` is auto-detected by CMake and used as compiler launcher; xmake manages its own cache.
+  Install it (`sudo apt install ccache`) for faster rebuilds
+- Non-interactive sudo is not available in this environment
+
+## Install
+
+`cmake --install <build> --prefix <dir>` installs headers, the six static libs and CMake
+package config (`find_package(xsl)` → `xsl::xsl`); quill is installed alongside
+(`QUILL_ENABLE_INSTALL=ON`) and resolved via `find_dependency`.
+
+## Xmake specifics
+
+- `xmake f --unity=y` enables unity (jumbo) builds for the six library targets
+  (`xsl_enable_unity()`; CMake equivalent: `-DXSL_UNITY_BUILD=ON`) — ~2x faster clean builds
+- `xmake f --log_level=<level>` is the compile-time log filter (CMake: `-DXSL_LOG_LEVEL=`);
+  both default to INFO, `none`/`OFF` compiles all log statements out

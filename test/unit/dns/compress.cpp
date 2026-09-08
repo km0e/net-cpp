@@ -25,10 +25,11 @@ protected:
 
   ~DnCompressCommonTest() {}
 
-  void compress(std::string_view src_dns[], uint8_t *base, std::size_t off) {
+  void compress(std::string_view src_dns[], uint8_t *base, std::size_t off,
+                std::size_t buf_len = 256) {
     uint8_t *dst_dns = base + off;
     xsl::byte *ptr = reinterpret_cast<xsl::byte *>(dst_dns);
-    memset(dst_dns, 0, 256);
+    memset(dst_dns, 0, buf_len - off);
     DnCompressor dc(reinterpret_cast<std::byte *>(base));
     auto res_n = dc.prepare(src_dns[0]);
     ASSERT_EQ(*res_n, 16);
@@ -78,12 +79,12 @@ protected:
 TEST_F(DnCompressCommonTest, SameBase) {
   std::string_view src_dns[] = {"www.google.com.", "mail.google.com", "com", "."};
   uint8_t dst_dns[256];
-  compress(src_dns, dst_dns, 0);
+  compress(src_dns, dst_dns, 0, 256);
 }
 TEST_F(DnCompressCommonTest, DifferentBase) {
   std::string_view src_dns[] = {"www.google.com.", "mail.google.com", "com", "."};
   uint8_t base[256];
-  compress(src_dns, base, 4);
+  compress(src_dns, base, 4, 256);
 }
 
 int main(int argc, char **argv) {

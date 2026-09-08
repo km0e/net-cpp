@@ -142,7 +142,8 @@ constexpr Expected<void, errc> init_async_device(shared_memory<T>& s, RawOwner&&
  *
  * @tparam Pointer
  * @param _raw
- * @param buf
+ * @param data
+ * @param size
  * @param sig
  * @return Task<io::Result>
  */
@@ -177,6 +178,18 @@ decltype(auto) recv(RawHandle _raw, byte* data, std::size_t size, auto& sig) {
     }
     return res;
   });
+}
+/**
+ * @brief Receive data from a device
+ *
+ * @tparam Pointer
+ * @param _raw
+ * @param buf
+ * @param sig
+ * @return Task<io::Result>
+ */
+decltype(auto) imm_recv(RawHandle _raw, std::span<byte>& buf, auto& sig) {
+  return imm_recv(_raw, buf.data(), buf.size(), sig);
 }
 /**
  * @brief Receive data from a device

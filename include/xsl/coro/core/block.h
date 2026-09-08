@@ -70,7 +70,8 @@ namespace _detail {
   };
 
   template <class Awaiter>
-  BlockShell block_shell(std::binary_semaphore& sem, Awaiter& task) {
+  BlockShell block_shell([[maybe_unused]] std::binary_semaphore& sem,
+                         [[maybe_unused]] Awaiter& task) {
     // the semaphore is released by final_suspend once this shell is fully
     // suspended; this body must contain no await expression and no result
     // move (GCC's coroutine temporary lifetime handling corrupts both), the
@@ -95,7 +96,6 @@ namespace _detail {
 template <class Awaiter>
 inline decltype(auto) block(Awaiter&& awaiter) {
   using awaiter_type = std::remove_reference_t<Awaiter>;
-  using result_type = typename awaiter_traits<awaiter_type>::result_type;
   // the task must be owned by THIS frame: the shell reads it after the
   // transfer, and this frame outlives that (it returns only after
   // sem.acquire())

@@ -1,4 +1,5 @@
-# ---- Add Subdirectories ----
+xsl_add_test(NAME compose INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/include")
+
 add_subdirectory(asio)
 add_subdirectory(coro)
 add_subdirectory(dns)
@@ -10,8 +11,3 @@ add_subdirectory(sync)
 add_subdirectory(http)
 add_subdirectory(ser)
 add_subdirectory(net)
-# ---- compose standalone test ----
-add_executable(compose compose.cpp)
-target_include_directories(compose PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(compose PRIVATE GTest::gtest_main)
-add_test(NAME compose COMMAND compose)

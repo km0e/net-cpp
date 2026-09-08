@@ -63,7 +63,7 @@ LogCtl::~LogCtl() {
   }
 }
 #else
-LogCtl::LogCtl() : logger(nullptr) {}
+LogCtl::LogCtl(std::string const&, std::string const&) : logger(nullptr) {}
 LogCtl::~LogCtl() {}
 #endif
 XSL_NE

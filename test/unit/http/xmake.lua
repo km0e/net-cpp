@@ -7,7 +7,7 @@ for _, file in ipairs(os.files("**.cpp")) do
         set_kind("binary")
         set_default(false)
         add_files(file)
-        add_deps("xsl_asio")
-        add_tests("_", { group = "http" })
+        add_deps("xsl_asio", "xsl_test_helpers")
+        add_tests(test_name, { group = "http" })
     end
 end

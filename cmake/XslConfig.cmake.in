@@ -1,0 +1,13 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# The exported targets reference quill::quill and OpenSSL, both installed in
+# the same prefix by the xsl install step (quill) / system (OpenSSL).
+find_dependency(Threads)
+find_dependency(OpenSSL REQUIRED COMPONENTS SSL Crypto)
+find_dependency(quill)
+
+include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
+
+check_required_components(@PROJECT_NAME@)

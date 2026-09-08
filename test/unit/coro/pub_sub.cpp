@@ -29,7 +29,7 @@ TEST(ExactPubSub, Exit) {
   int count = 0;
   std::binary_semaphore ready{0}, done{0};
 
-  [](auto sub, auto* sig, int& count, std::binary_semaphore& ready,
+  []([[maybe_unused]] auto sub, auto* sig, int& count, std::binary_semaphore& ready,
      std::binary_semaphore& done) -> Task<void> {
     while (true) {
       ready.release();

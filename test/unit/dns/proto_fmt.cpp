@@ -19,6 +19,12 @@
 using namespace xsl;
 using namespace xsl::dns;
 
+// MD/MF are deprecated RFC 1035 types, but the test covers their formatting on purpose
+#if defined(__GNUC__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 TEST(dns_proto, type) {
   auto cases = {
       Type::A,  Type::NS,  Type::MD,    Type::MF,    Type::CNAME, Type::SOA,   Type::MB,
@@ -127,6 +133,10 @@ TEST(dns_proto, question) {
   EXPECT_EQ(status, errc{});
   EXPECT_EQ(256 - bytes_span.size(), 37);
 }
+
+#if defined(__GNUC__)
+#  pragma GCC diagnostic pop
+#endif
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

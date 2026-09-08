@@ -74,10 +74,9 @@ public:
                                      // specially for the pop operation
     auto i = _head._ctl.load(std::memory_order_relaxed);
     auto n = _tail._ctl.load(std::memory_order_relaxed);
-    if (i != n) {
-      _destructor_callback(i, n);  // call the destructor callback to destroy the objects in the
-                                  // queue
-    }
+    // destroys [i, n) when non-empty and always deallocates the buffer
+    // (calling this unconditionally matters: an empty channel used to leak)
+    _destructor_callback(i, n);
   }
   // move would double-free: _head._buffer, _tail._buffer, and _destructor_callback
   // all hold copies of the pointer — neither source nor dest knows to null out the other

@@ -10,7 +10,7 @@
  */
 #include <gtest/gtest.h>
 #include <xsl/net/http/request/line.h>
-using namespace xsl::_net::http;
+using namespace xsl::net::http;
 
 TEST(RequestLineTest, ParseValidLine) {
   RequestLine line;

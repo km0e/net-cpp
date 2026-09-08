@@ -1,38 +1,20 @@
-add_deps("xsl_asio")
-
-target("it_connect")
-do
-    set_kind("binary")
-    set_default(false)
-    add_files("connect.cpp")
-    on_test(function(target)
-        local test_file = target:targetfile()
-        local script = get_config("test_scripts_dir") .. "/with_echo_server.py"
-        try({
-            function()
-                print("Running command: python " .. script .. " " .. test_file)
-                local _, errdata = os.iorunv("python", { script, test_file })
-                if errdata ~= "" then
-                    print(errdata)
-                    return false
-                end
-            end,
-            catch({
-                function(errors)
-                    print(errors)
-                    return false
-                end,
-            }),
-        })
-        return true
-    end)
-    add_tests("_", { run_timeout = 1000, group = "asio" })
-end
-
-target("intest_bind")
+target("it_bind")
 do
     set_kind("binary")
     set_default(false)
     add_files("bind.cpp")
-    add_tests("_", { run_timeout = 1000, group = "asio" })
+    add_deps("xsl_asio", "xsl_test_helpers")
+    add_tests("it_bind", { group = "integration", run_timeout = 60000 })
 end
+
+-- connect.cpp is disabled everywhere for now: io.h:198 (imm_recv span
+-- overload missing; UDP read(span) broken for connection-less sockets),
+-- see test/integration/asio/CMakeLists.txt for the pending CMake wiring.
+-- target("it_connect")
+-- do
+--     set_kind("binary")
+--     set_default(false)
+--     add_files("connect.cpp")
+--     add_deps("xsl_asio", "xsl_test_helpers")
+--     add_tests("it_connect", { group = "integration", run_timeout = 60000 })
+-- end

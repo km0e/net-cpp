@@ -28,6 +28,11 @@ namespace _detail {
     Expected<void, errc> b(net::Socket<_Traits>& sock,
                            const net::SockAddr<_Traits>& addr) noexcept {
       ENSEC(sock.reuse_addr());
+      // SO_REUSEPORT lets N pollers bind the same port (multi-poller server
+      // model); for a single listener it is harmless — the group has one
+      // member. Same-UID check still guards against accidental cross-process
+      // sharing.
+      ENSEC(sock.reuse_port());
       ENSEC(sock.bind(addr));
       return {};
     }

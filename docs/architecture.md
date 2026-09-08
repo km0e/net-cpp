@@ -1,7 +1,7 @@
 # Xsl 架构总览
 
 本文描述代码的**实际结构**(以本仓库当前实现为准),重点是协程运行时的控制流、
-所有权模型与线程模型。模块依赖图见 `CLAUDE.md`;性能数据见
+所有权模型与线程模型。模块依赖图见 `AGENTS.md`;性能数据见
 [benches/http.md](benches/http.md);compose2 迁移历史与未完成项见
 [migration-compose2-progress.md](migration-compose2-progress.md)。
 
@@ -88,7 +88,9 @@ AsyncSocket<Traits>
 CoroContext::dispatch(f) → ExecutorBase::schedule(f)
   NoopExecutor        f() 直接调用（在唤醒者线程内联执行）
   NewThreadExecutor   std::thread(f).detach()   // 每次唤醒一个新线程
-  ThreadPoolExecutor  任务队列 + N worker（已实现，未启用）
+  ThreadPoolExecutor  任务队列 + N worker（线程池服务器模式）
+  PollerGroup         N × (独立 IOContext + Noop ctx) 多 poller 服务器模型
+                      （SO_REUSEPORT 分流，协程内联恢复，见下文执行器选择）
 ```
 
 **并发恢复义务（[expr.await]、cppreference 原文核对）**：协程在**进入**
@@ -101,10 +103,14 @@ acquire；③ 同一协程不得被并发 resume（恢复权须原子独占）�
 义务（发布仅经 exchange、发布后不碰帧内成员、WAITING 槽 exchange 转移
 恢复权、恢复均发生于 std::thread），并在代码中以 RULE 注释钉死①。
 
-**执行器选择**：`ThreadPoolExecutor` 是当前推荐的多线程执行器（经
+**执行器选择**：多 poller 服务器模型（`asio/poller_group.h` 的
+`PollerGroup`）是当前推荐的 HTTP 服务端形态：N 个 listen socket 以
+SO_REUSEPORT 绑定同端口，每 poller 线程一个独立 `IOContext` + 绑定
+`NoopExecutor` 的 `CoroContext`，协程在唤醒它的 poller 线程**内联**恢复，
+消除调度 hop 且随 poller 数扩展（数据见 benches/http.md）。需要跨请求
+共享可变状态或阻塞型 handler 时改用 `ThreadPoolExecutor`（经
 `shared_ptr` 注入）；`NewThreadExecutor` 仅测试/调试（每 dispatch 一个
-无界 detached 线程）；串行化执行器（strand 语义，有序性保证与进一步
-降开销）列为后续可选优化，非正确性必需。
+无界 detached 线程）。
 
 - detached 任务的 promise 持有 `Rc<CoroContext>`，其完成线程与创建线程
   由信号握手（`SPSCSignal4` 的 acq_rel exchange）+ 线程创建同步排序
@@ -243,18 +249,32 @@ HttpServer::serve_connection        accept 循环（Task，detached）
 connect/read 就绪 → epoll → handler → publish(IN) → 信号 release
   → 续体 → dispatch → 协程恢复 → recv → 解析（Message::read → us_map）
   → HttpService::operator()（路由 → handler）→ easy_resp（string body + Content-Length）
-  → checkout（补 Date）→ to_string → write 头 + write 体 → 循环等待下一请求
+  → checkout（补 Date，按秒缓存）→ render_head（帧内定长缓冲，零堆分配）
+  → 单次 writev（head + body）→ 循环等待下一请求
 ```
+
+`Message::read` 的缓冲管理（include/xsl/asio/http/common.h）：块链按连接
+复用，`buffer[win_block]` 为活动块，解析窗口 `[win_begin, win_end)`；块满
+时把未消费尾部轮转（rotate）到下一块保持窗口连续。**请求行/头部的解析
+结果是块内存的 view，只在下一次 read() 入口做压缩**（上一请求的 view
+彼时已失效，此时把未消费的 pipelined 残余移到 buffer[0] 前端并回收已
+消费块）——因此每请求 O(1)，块数上界为该连接见过的最大头大小，与请求
+数量无关。实测：CPU/请求 ≈ 1.7 µs 恒定，RSS 恒定；修复前每请求泄漏一个
+4 KiB 块且做 O(n) 搬运（CPU/请求随连接历史线性涨至 43–70 µs，见
+benches/http.md）。
 
 ## 6. 已知设计权衡（基准实证，详见 benches/http.md）
 
-- **每请求固定成本 ~50µs**：响应 head/body 两次 `write`、`to_string()` 的
-  1024 字节拼接、`us_map` 构造、每请求 `std::format` 日期 —— dispatch 模型
-  （Noop vs NewThread）实测不是瓶颈（19K vs 20K RPS 持平）
+- **每请求固定成本 ≈ 1.5 µs CPU**（writev 组装 + Date 缓存后实测）：剩余项为
+  Task 帧分配、`us_map` 构造、regex 版请求行解析（≈490ns）等百 ns 量级项；
+  1×1 与 asio 的剩余差距（6µs vs 4µs p50）主要是 poller → 线程池 condvar
+  的调度 hop。后续优先级：多 poller（SO_REUSEPORT）多核扩展 → 协程帧分配
+  消除 → 响应头小容器
 - **TCP_NODELAY 必须开启**：accepted socket 缺省 Nagle 时 keep-alive 响应被
   delayed ACK 卡住 ~40ms（已修复：accept 流程默认 `no_delay()`）
-- **线程内联 vs 并行**：NoopExecutor 把整个服务器钉在一个核（4×4 反而
-  -20%）；NewThreadExecutor 用线程创建换来并行。多核扩展需池化或多 poller
+- **Message::read 的 view 生命周期契约**：解析出的 string_view 指向块内存，
+  在下一次 read() 之前有效；两次 read 之间不得移动块内字节（入口压缩是
+  唯一移动点，`test/unit/http/message.cpp` 钉死该契约）
 - **GCC 16 协程代码gen**：await 表达式临时量的生命周期标记有缺陷（协程帧
   清理时双重析构），`block()` 为此采用手动驱动 + 无 await 表达式的 shell
   协程；协程体内没有 `co_return`/`co_await` 时 GCC 不按协程编译（静默内联）
@@ -263,7 +283,8 @@ connect/read 就绪 → epoll → handler → publish(IN) → 信号 release
 
 | 内容 | 位置 |
 |------|------|
-| 两个 HTTP 实现的行为一致性 | `test/integration/http_compare/`（ctest: it_http_compare） |
+| 两个 HTTP 实现的行为一致性 | `test/integration/http_compare/`（ctest: it_http_compare，含 2-poller 变体） |
 | xsl vs asio 吞吐/延迟 | `test/benches/http/bench.sh`（数据: benches/http.md） |
+| Message::read 缓冲契约 | `test/unit/http/message.cpp`（ctest: message） |
 | TCP accept/echo | `test/integration/asio/bind.cpp`（ctest: it_bind） |
 | 协程原语单元测试 | `test/unit/coro/` |

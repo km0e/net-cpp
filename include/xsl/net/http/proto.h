@@ -18,6 +18,7 @@
 #  include <chrono>
 #  include <cstddef>
 #  include <optional>
+#  include <string>
 #  include <string_view>
 
 XSL_NET_HTTP_NB
@@ -357,6 +358,26 @@ template <class Clock, class Duration>
 constexpr std::string to_date_string(const std::chrono::time_point<Clock, Duration>& time) {
   return std::format("{:%a, %d %b %Y %T %Z}",
                      std::chrono::time_point_cast<std::chrono::seconds>(time));
+}
+
+/**
+ * @brief the Date header value, cached per second
+ *
+ * The HTTP Date field has one-second granularity, so the formatted string is
+ * recomputed at most once per second per thread (thread-local cache: no
+ * synchronization on the hot path, each worker thread holds its own copy).
+ */
+[[nodiscard("The cached http date string should be used")]]
+inline std::string_view cached_date_string() {
+  thread_local std::string cached;
+  thread_local std::int64_t cached_second = -1;
+  auto now = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+  std::int64_t second = now.time_since_epoch().count();
+  if (second != cached_second) {
+    cached = to_date_string(now);
+    cached_second = second;
+  }
+  return cached;
 }
 
 template <class Clock, class Duration = typename Clock::duration>

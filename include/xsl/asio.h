@@ -18,6 +18,7 @@
 #  include <xsl/asio/http/service.h>
 #  include <xsl/asio/net.h>
 #  include <xsl/asio/pipe.h>
+#  include <xsl/asio/poller_group.h>
 #  include <xsl/error.h>
 #  include <xsl/feature.h>
 #  include <xsl/sys.h>

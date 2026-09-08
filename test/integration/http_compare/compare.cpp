@@ -27,6 +27,7 @@
 #include <atomic>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -137,6 +138,41 @@ private:
 
 constexpr std::uint16_t kXslPort = 18080;
 constexpr std::uint16_t kAsioPort = 18081;
+constexpr std::uint16_t kXslMultiPollerPort = 18082;
+
+/// @brief run one GET against a server and check the meaningful parts
+void check_response(std::uint16_t port, std::string_view name, std::string_view path,
+                    std::string_view extra_headers, const std::string& expect_status,
+                    const std::string& expect_body, bool expect_close) {
+  int fd = -1;
+  ASSERT_TRUE(BlockingHttpClient::connect(fd, port)) << name << ": connect failed";
+  std::string raw = std::format(
+      "GET {} HTTP/1.1\r\nHost: 127.0.0.1\r\nUser-Agent: it-http-compare/0.1\r\n{}"
+      "\r\n",
+      path, extra_headers);
+  std::string status;
+  std::map<std::string, std::string> headers;
+  std::string body;
+  bool saw_eof = false;
+  ASSERT_TRUE(BlockingHttpClient::request(fd, raw, status, headers, body, &saw_eof))
+      << name << ": request failed";
+  EXPECT_EQ(status, expect_status) << name << ": status line mismatch";
+  if (!expect_body.empty()) {
+    EXPECT_EQ(headers.at("content-length"), std::to_string(expect_body.size()))
+        << name << ": content-length mismatch";
+  }
+  EXPECT_EQ(body, expect_body) << name << ": body mismatch";
+  EXPECT_FALSE(headers.find("date") == headers.end()) << name << ": missing Date header";
+  if (expect_close) {
+    EXPECT_EQ(headers.at("connection"), "close")
+        << name << ": server should acknowledge the close";
+    if (headers.find("content-length") == headers.end()) {
+      // no Content-Length: the body must be delimited by EOF
+      EXPECT_TRUE(saw_eof) << name << ": connection should be closed by the server";
+    }
+  }
+  BlockingHttpClient::disconnect(fd);
+}
 
 class HttpCompare : public ::testing::Test {
 protected:
@@ -167,36 +203,9 @@ protected:
   void compare_servers(std::string_view path, std::string_view extra_headers,
                        const std::string& expect_status, const std::string& expect_body,
                        bool expect_close) {
-    for (auto [name, port] : {std::pair{"xsl", kXslPort}, {"asio", kAsioPort}}) {
-      int fd = -1;
-      ASSERT_TRUE(BlockingHttpClient::connect(fd, port)) << name << ": connect failed";
-      std::string raw = std::format(
-          "GET {} HTTP/1.1\r\nHost: 127.0.0.1\r\nUser-Agent: it-http-compare/0.1\r\n{}"
-          "\r\n",
-          path, extra_headers);
-      std::string status;
-      std::map<std::string, std::string> headers;
-      std::string body;
-      bool saw_eof = false;
-      ASSERT_TRUE(BlockingHttpClient::request(fd, raw, status, headers, body, &saw_eof))
-          << name << ": request failed";
-      EXPECT_EQ(status, expect_status) << name << ": status line mismatch";
-      if (!expect_body.empty()) {
-        EXPECT_EQ(headers.at("content-length"), std::to_string(expect_body.size()))
-            << name << ": content-length mismatch";
-      }
-      EXPECT_EQ(body, expect_body) << name << ": body mismatch";
-      EXPECT_FALSE(headers.find("date") == headers.end()) << name << ": missing Date header";
-      if (expect_close) {
-        EXPECT_EQ(headers.at("connection"), "close")
-            << name << ": server should acknowledge the close";
-        if (headers.find("content-length") == headers.end()) {
-          // no Content-Length: the body must be delimited by EOF
-          EXPECT_TRUE(saw_eof) << name << ": connection should be closed by the server";
-        }
-      }
-      BlockingHttpClient::disconnect(fd);
-    }
+    check_response(kXslPort, "xsl", path, extra_headers, expect_status, expect_body, expect_close);
+    check_response(kAsioPort, "asio", path, extra_headers, expect_status, expect_body,
+                   expect_close);
   }
 
   xsl::Rc<xsl::CoroContext> ctx;
@@ -266,6 +275,77 @@ TEST_F(HttpCompare, concurrent_requests) {
     }
     for (auto& worker : workers) worker.join();
     EXPECT_EQ(failures.load(), 0) << name << ": concurrent requests failed";
+  }
+}
+
+/// @brief the same hello server behind a 2-poller PollerGroup (SO_REUSEPORT):
+///        responses must be byte-identical to the thread-pool mode
+class HttpCompareMultiPoller : public ::testing::Test {
+protected:
+  void SetUp() override {
+    this->group = std::make_unique<xsl::asio::PollerGroup>(2);
+    MUST(this->group->start([&](xsl::CoroContext&, xsl::sys::IOContext&) -> xsl::Task<void> {
+      return http_bench::run_xsl_hello_server("127.0.0.1", kXslMultiPollerPort);
+    }));
+    ASSERT_EQ(this->group->size(), 2u);
+
+    // standalone asio server on its own port for the byte-identity check
+    this->guard.emplace(asio::make_work_guard(this->ioc));
+    this->asio_server.emplace(this->ioc, "127.0.0.1", kAsioPort);
+    this->asio_thread = std::thread([this] { this->ioc.run(); });
+  }
+
+  void TearDown() override {
+    this->group->stop();
+    this->group->join();
+    this->group.reset();
+    this->ioc.stop();
+    this->asio_thread.join();
+    this->guard.reset();
+  }
+
+  void compare_servers(std::string_view path, std::string_view extra_headers,
+                       const std::string& expect_status, const std::string& expect_body,
+                       bool expect_close) {
+    check_response(kXslMultiPollerPort, "xsl-multi-poller", path, extra_headers, expect_status,
+                   expect_body, expect_close);
+    check_response(kAsioPort, "asio", path, extra_headers, expect_status, expect_body,
+                   expect_close);
+  }
+
+  std::unique_ptr<xsl::asio::PollerGroup> group;
+  asio::io_context ioc;
+  std::optional<asio::executor_work_guard<asio::io_context::executor_type>> guard;
+  std::optional<http_bench::AsioHelloServer> asio_server;
+  std::thread asio_thread;
+};
+
+TEST_F(HttpCompareMultiPoller, hello_ok) {
+  this->compare_servers(http_bench::HELLO_PATH, "", "HTTP/1.1 200 OK",
+                        std::string(http_bench::HELLO_BODY), false);
+}
+
+TEST_F(HttpCompareMultiPoller, not_found_close) {
+  this->compare_servers("/missing", "Connection: close\r\n", "HTTP/1.1 404 Not Found", "", true);
+}
+
+TEST_F(HttpCompareMultiPoller, keep_alive_three_requests) {
+  for (auto port : {kXslMultiPollerPort, kAsioPort}) {
+    int fd = -1;
+    ASSERT_TRUE(BlockingHttpClient::connect(fd, port));
+    for (int i = 0; i < 3; ++i) {
+      std::string raw = std::format(
+          "GET {} HTTP/1.1\r\nHost: 127.0.0.1\r\nUser-Agent: it-http-compare/0.1\r\n\r\n",
+          http_bench::HELLO_PATH);
+      std::string status;
+      std::map<std::string, std::string> headers;
+      std::string body;
+      ASSERT_TRUE(BlockingHttpClient::request(fd, raw, status, headers, body))
+          << "port " << port << ": request " << i << " failed";
+      EXPECT_EQ(status, "HTTP/1.1 200 OK");
+      EXPECT_EQ(body, std::string(http_bench::HELLO_BODY));
+    }
+    BlockingHttpClient::disconnect(fd);
   }
 }
 

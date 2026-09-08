@@ -21,6 +21,7 @@
 #  include <optional>
 XSL_ASIO_NB
 using xsl::http::Status;
+using xsl::net::http::cached_date_string;
 using xsl::http::to_date_string;
 template <AsyncRead R, AsyncWrite W>
 class HandleContext {
@@ -67,10 +68,7 @@ public:
   constexpr void resp(ResponsePart&& part, Args&&... args) {
     auto body = std::string(std::forward<Args>(args)...);
     part.headers.emplace("Content-Length", std::to_string(body.size()));
-    this->_response = response_type{
-        {std::move(part)}, [body = std::move(body)](out_dev_type& awd) -> Task<Result> {
-          return awd->write(reinterpret_cast<const byte*>(body.data()), body.size());
-        }};
+    this->_response = response_type{std::move(part), std::move(body)};
   }
   /// @brief checkout the response
   constexpr response_type checkout(this HandleContext&& self) {
@@ -91,7 +89,7 @@ public:
 private:
   constexpr void check_and_add_date() {
     if (!_response->_part.headers.contains("Date")) {
-      _response->_part.headers.emplace("Date", to_date_string(std::chrono::system_clock::now()));
+      _response->_part.headers.emplace("Date", cached_date_string());
     }
   }
 };

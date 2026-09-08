@@ -16,6 +16,7 @@
 #  include <fcntl.h>
 #  include <sys/sendfile.h>
 #  include <sys/socket.h>
+#  include <sys/uio.h>
 #  include <xsl/asio/def.h>
 #  include <xsl/byte.h>
 #  include <xsl/io.h>
@@ -318,6 +319,59 @@ constexpr Task<io::Result> send(Dev& dev, std::span<const byte> data) {
 }
 
 /**
+ * @brief Write a list of chunks with a single ::writev syscall
+ *
+ * Retries on partial writes (advancing through the chunks) and on EAGAIN
+ * (waiting on the write signal), so the chunks are either fully written or
+ * an error is reported; the returned size is the number of bytes written.
+ *
+ * @param _raw the raw handle
+ * @param chunks the chunks to write, at most writev_max_chunks of them
+ * @param sig the signal receiver
+ * @return Task<io::Result>
+ */
+inline constexpr std::size_t writev_max_chunks = 8;
+template <class Signal>
+Task<io::Result> sendv(RawHandle _raw, const std::span<const byte>* chunks, std::size_t n,
+                       Signal& sig) {
+  if (n > writev_max_chunks) co_return io::Result{0, errc::invalid_argument};
+  std::size_t total = 0;
+  for (std::size_t i = 0; i < n; ++i) total += chunks[i].size();
+  if (total == 0) co_return io::Result{0};
+  std::size_t written = 0;
+  std::size_t idx = 0;     ///< index of the chunk currently being written
+  std::size_t offset = 0;  ///< bytes of chunks[idx] already written
+  do {
+    struct iovec iov[writev_max_chunks];
+    int cnt = 0;
+    for (std::size_t i = idx; i < n; ++i) {
+      iov[cnt].iov_base = const_cast<byte*>(chunks[i].data() + (i == idx ? offset : 0));
+      iov[cnt].iov_len = chunks[i].size() - (i == idx ? offset : 0);
+      if (iov[cnt].iov_len != 0) ++cnt;  // skip empty tail chunks
+    }
+    if (cnt == 0) break;
+    ssize_t w = ::writev(_raw, iov, cnt);
+    if (w > 0) {
+      written += static_cast<std::size_t>(w);
+      offset += static_cast<std::size_t>(w);
+      while (idx < n && offset >= chunks[idx].size()) {
+        offset -= chunks[idx].size();
+        ++idx;
+      }
+    } else if (w < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      if (!co_await sig) {
+        co_return io::Result{written, errc::not_connected};
+      }
+    } else if (w < 0) {
+      co_return io::Result{written, errc(errno)};
+    } else {
+      break;  // no progress
+    }
+  } while (written < total);
+  co_return io::Result{written};
+}
+
+/**
  * @brief write file to device
  *
  * @tparam Pointer the pointer type, typically is a shared_ptr
@@ -364,6 +418,16 @@ struct NetAsyncTx {
   /// @brief Send data to a device
   Task<io::Result> write(this auto&& self, const byte* data, std::size_t size) {
     return send(self.raw(), data, size, self.write_signal());
+  }
+  /// @brief Write several chunks with a single ::writev syscall
+  Task<io::Result> writev(this auto&& self, const std::span<const byte>* chunks,
+                          std::size_t n) {
+    return sendv(self.raw(), chunks, n, self.write_signal());
+  }
+  /// @brief Write several chunks with a single ::writev syscall
+  Task<io::Result> writev(this auto&& self,
+                          std::span<const std::span<const byte>> chunks) {
+    return sendv(self.raw(), chunks.data(), chunks.size(), self.write_signal());
   }
   /// @brief Send data to a specific address through a device
   template <class Self, sys::net::SocketTraitsCompatible<typename Self::socket_traits_type> Up>

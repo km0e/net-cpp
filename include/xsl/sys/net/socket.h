@@ -120,6 +120,15 @@ struct SocketOptions {  /// TODO: add more socket options
     ENSEC(setsockopt(self.raw(), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == 0);
     return {};
   }
+  /// @brief Toggle SO_REUSEPORT: allow multiple sockets to bind the same port
+  /// @note the kernel then load-balances incoming connections across all
+  ///       sockets that joined the group (same UID, all set before bind) —
+  ///       the basis for the multi-poller server model; implies REUSEADDR
+  Expected<void, errc> reuse_port(this auto&& self, bool reuse = true) noexcept {
+    int opt = reuse ? 1 : 0;
+    ENSEC(setsockopt(self.raw(), SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) == 0);
+    return {};
+  }
   /// @brief Toggle TCP_NODELAY (disable Nagle's algorithm); no-op on non-TCP
   /// @note keep-alive request/response servers want this on, otherwise the
   ///       client's delayed ACK stalls the next response for up to 40ms

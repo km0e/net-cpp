@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents (and humans) working in this repository.
 
 ## Project Overview
 
@@ -32,6 +32,19 @@ ctest --test-dir build --rerun-failed --output-on-failure
 
 `-DXSL_LOG_LEVEL=TRACE` controls compile-time log filtering (default: INFO).
 
+Xmake is used for benchmarks/examples (release + logs compiled out):
+
+```bash
+xmake f -m release -c --log_level=none
+xmake build -g benchmarks/http
+xmake run --workdir=build bench_http_xsl -p 18080 -n 4
+xmake run --workdir=build bench_http_loadgen -p 18080 -t 4 -c 4 -d 10
+```
+
+`-n N` on `bench_http_xsl` selects the server threading model: `0` = thread-pool
+executor (default), `N` = N inline pollers (SO_REUSEPORT, see
+`include/xsl/asio/poller_group.h` and `docs/architecture.md` §3.2).
+
 ## Library Architecture
 
 ### Target Dependency Graph
@@ -51,6 +64,11 @@ xsl (STATIC, umbrella) — aggregates all above, exposes xsl.cpp
 - All sub-libraries link `xsl_log PUBLIC` (transitively provides include dir and quill)
 - Tests link the specific sub-library they test, plus `GTest::gtest_main`
 - Examples link `xsl_asio` (covers the full stack) plus `clilib` (CLI11)
+
+Deep dives: `docs/architecture.md` (coroutine runtime / IO / threading model,
+ownership invariants) and `docs/benches/http.md` (HTTP server performance,
+optimization history). The recommended HTTP server shape is the multi-poller
+`PollerGroup` — see `docs/architecture.md` §3.2.
 
 ### Namespace Conventions
 
@@ -73,17 +91,21 @@ include/xsl/          — Public headers, mirror src/ structure
   error.h             — Expected<T>, ResultError<T>, TRV/ENSURE/MUST macros, errc formatter
   def.h               — XSL_NB/NE macros, using declarations (errc, expected, optional)
   concept.h           — C++20 concepts
-  compose.h           — shared_memory<T> (atomic refcount, chainable ->) + LocalComosite (direct Part inheritance)
+  compose.h           — shared_memory<T> (atomic refcount, chainable ->) + LocalComposite (direct Part inheritance)
   io.h, io/           — Buffer, I/O context types
   coro/               — Coroutine headers (task, channel, signal, pub_sub)
   net/                — DNS, HTTP protocol types
   sys/                — epoll, socket, sockaddr wrappers
-  asio/               — Async I/O (HTTP, TCP, TLS, pipe) — uses compose2.h
+  asio/               — Async I/O (HTTP, TCP, TLS, pipe, poller_group.h) — uses compose2.h
   wheel/              — Utilities (str, bit, rc, type_traits)
   sync/               — SPSC queue
 src/                  — Implementation, same structure as include/xsl/
 test/unit/            — Unit tests per module, each test is a single executable
+test/integration/     — Cross-module integration tests (http_compare, asio bind/connect)
+test/benches/         — Benchmark harnesses (http: bench.sh + loadgen + two servers)
+test/include/         — Shared test helpers (http_bench/ server implementations)
 examples/             — Standalone example executables
+local/                — Untracked local notes (gitignored)
 cmake/
   deps.cmake          — CPMAddPackage declarations (quill, CLI11, googletest)
   CPM.cmake           — CPM.cmake itself (vendored)
@@ -109,7 +131,7 @@ LocalComosite2<Alloc, S...> : public S...  — 直接继承所有 Parts
 
 ## Code Conventions
 
-- C++26 (`std::cmake 26`): uses deducing `this` (`this auto&& self`), `std::expected`, `std::move_only_function`, `std::ranges::to`, `std::views::split`
+- C++26 (`set_languages("cxx26")`): uses deducing `this` (`this auto&& self`), `std::expected`, `std::move_only_function`, `std::ranges::to`, `std::views::split`
 - `#pragma once` + traditional `#ifndef XSL_{PATH}` guard (both, for tooling compatibility)
 - Doxygen `@file @author @brief @version @date` comment block on every header
 - Error handling pattern: `TRV(var, expr)` / `ENSURE(expr)` / `MUST(expr)` macros wrapping `xsl::Expected<T>` (≈ `std::expected<T, unique_ptr<Error>>`)

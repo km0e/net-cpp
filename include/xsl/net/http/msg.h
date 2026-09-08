@@ -42,21 +42,24 @@ struct MessageRestView {
         return {pos, {}};
       }
       size_t colon = view.find(':', pos);
-      if (colon == std::string_view::npos) {
-        break;
+      if (colon == std::string_view::npos || colon > end) {
+        return {pos, res};
       }
       auto key = view.substr(pos, colon - pos);
       size_t vstart = view.find_first_not_of(' ', colon + 1);
       size_t vend = view.find("\r\n", vstart);
       if (vend == std::string_view::npos) {
-        break;
+        // incomplete value (line split across reads): retry with more data
+        return {pos, errc::resource_unavailable_try_again};
       }
       auto value = view.substr(vstart, vend - vstart);
       headers[key] = value;
       log_trace("Header: {}={}", key, value);
       pos = vend + 2;
     }
-    return {pos, res};
+    // the whole view was consumed without the empty-line terminator: the
+    // head is simply incomplete, more data is needed (NOT a protocol error)
+    return {pos, errc::resource_unavailable_try_again};
   }
 };
 

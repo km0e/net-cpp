@@ -25,3 +25,6 @@ out/
 .claude/
 # ASan build dir
 build-asan/
+
+# Local notes (not tracked)
+local/

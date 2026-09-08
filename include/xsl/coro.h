@@ -50,7 +50,7 @@ using coro::Reserved;
 using coro::SPSCChannel;
 using coro::SPSCChannelStorage;
 using coro::StaticExactPubSubStorage;
-using coro::ExactPubSubStorage;
+
 using coro::Task;
 using coro::ThenAwaiter;
 using coro::ThreadPoolExecutor;

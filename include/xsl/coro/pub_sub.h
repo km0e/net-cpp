@@ -38,39 +38,13 @@ public:
    * @note This function just traverses the storage and finds the receiver with the key
    */
   template <K key>
-    requires(sizeof...(keys) == 0) || (find_value_v<key, _value_pack<keys...>> < sizeof...(keys))
+    requires(find_value_v<key, _value_pack<keys...>> < sizeof...(keys))
   constexpr bool publish(this auto&& self) {
-    if constexpr (sizeof...(keys) > 0) {
-      if (auto tx = self.template signal<key>()) {
-        tx->release();
-        return true;
-      }
-    } else {
-      if (auto tx = self.signal(key)) {
-        tx->release();
-        return true;
-      }
-    }
-    return false;
-  }
-  /**
-   * @brief Publish to the receiver
-   *
-   * @tparam _Args
-   * @param args
-   * @return true if the publisher is successful
-   * @return false if the publisher is not successful
-   * @note This function just traverses the storage and finds the receiver with the key
-   */
-  constexpr bool publish(this auto&& self, auto&&... args)
-    requires std::constructible_from<K, decltype(args)...>
-  {
-    if (auto tx = self.signal(std::forward<decltype(args)>(args)...)) {
+    if (auto tx = self.template signal<key>()) {
       tx->release();
       return true;
-    } else {
-      return false;
     }
+    return false;
   }
   /**
    * @brief Publish to the receiver with a predicate
@@ -124,36 +98,10 @@ struct StaticExactPubSubStorage : public std::array<S, sizeof...(keys)>,
   }
 };
 
-template <class K, std::size_t N, class Signal = MPSCSignal>
-struct ExactPubSubStorage : public std::array<std::pair<K, Signal>, N>,
-                            public coro::PubSubUtil<K, Signal> {
-  using key_type = K;
-  using signal_type = Signal;
-  using storage_type = std::array<std::pair<K, Signal>, N>;
-
-  using storage_type::storage_type;
-
-  constexpr ExactPubSubStorage(std::same_as<K> auto... keys)
-      : storage_type{{std::pair{std::forward<decltype(keys)>(keys), Signal()}...}} {}
-
-  template <std::invocable<K, Signal&> F>
-  constexpr void for_each(F&& _f) {
-    for (auto& [key, s] : *this) {
-      std::invoke(_f, key, s);
-    }
-  }
-
-  template <K key>
-  constexpr auto signal(this auto&& self) {
-    auto iter = std::find_if(self.begin(), self.end(),
-                             [](const auto& pair) { return pair.first == key; });
-    if (iter != self.end()) {
-      return &iter->second;
-    } else {
-      return nullptr;
-    }
-  }
-};
+// NOTE: a runtime-keyed variant (ExactPubSubStorage) was removed — it was
+// unused, its variadic constructor could not even compile with non-movable
+// signals, and its compile-time signal<key>() on runtime storage was a
+// mismatch. If runtime keys are ever needed, build a proper runtime map.
 
 namespace _detail {
   template <class...>
@@ -163,9 +111,6 @@ namespace _detail {
   struct Create<_value_pack<keys...>, S, Placeholder>
       : std::type_identity<StaticExactPubSubStorage<K, S, keys...>> {};
 
-  template <class K, class S, std::size_t N>
-  struct Create<K, S, Exact<N>> : std::type_identity<ExactPubSubStorage<K, N, S>> {};
-
 }  // namespace _detail
 
 template <class K, class S, class... Features>
@@ -173,7 +118,9 @@ constexpr decltype(auto) make_pub_sub(std::same_as<K> auto... keys) {
   using Storage
       = select_feature_flags_t<_detail::Create<Item<always_true<Placeholder, void>, void>,
                                                Item<always_true<Placeholder, void>, void>,
-                                               Item<is_same_pack<Placeholder, void>, Exact<0>>>,
+                                               // filler: consumes no flag, contributes the
+                                               // Placeholder default as the 3rd Create arg
+                                               Item<std::is_same<Placeholder, void>, void>>,
                                K, S, Features...>::type;
   shared_memory<Storage> ps{};
   ps.emplace(keys...);

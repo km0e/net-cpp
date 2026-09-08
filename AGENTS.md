@@ -57,7 +57,8 @@ Package versions are pinned to match CMake (quill 10.0.1, gtest 1.17.0 with
 ```bash
 xmake test                    # all tests (currently 32)
 xmake test --group=coro      # group = module (coro, http, wheel, integration, ...)
-xmake test ut_channel        # single test by test name
+xmake test "ut_channel/*"    # single test; the pattern is <target>/<test>,
+                             # bare names do not match on xmake 3.1.1
 ```
 
 `-n N` on `bench_http_xsl` selects the server threading model: `0` = thread-pool
